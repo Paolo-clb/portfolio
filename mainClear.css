@@ -707,6 +707,7 @@ footer h2 {
     box-shadow: 3px 3px 0 #6a0dad;
     padding: 8px 15px;
     min-width: 120px;
+    min-height: 45px;
     text-align: center;
     transition: all 0.3s ease;
     font-size: 0.9rem;
