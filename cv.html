@@ -8,6 +8,7 @@
     <title>MonPortfolio/CV</title>
     <script src="effects.js" defer></script> <!-- Mêmes effets -->
 </head>
+<body class="cyber-animate"></body>
 <div class="corner-credit">
     Image from: Katana Zero - Devolver Digital
 </div>
@@ -19,7 +20,6 @@
     <span class="control-text">Animations : ON</span>
   </button>
 </div>
-<body class="cyber-animate">
     <header>
         <div class="header-left">
             <h1>Colombat Paolo</h1>
@@ -33,11 +33,20 @@
         </nav>
     </header>
 
-    <main class="cv-container">
-        <img src="images/cv.png" 
-             alt="mon cv" 
-             class="pixel-border cv-image">
-    </main>
+<main class="cv-container">
+    <!-- PDF (responsive) -->
+<div class="pdf-container">
+            <iframe src="images/CV_Paolo.pdf" class="pdf-viewer" title="CV Paolo Colombat"></iframe>
+        </div>
+
+    <!-- Bouton de téléchargement stylisé -->
+    <div class="download-wrapper">
+        <a href="images/CV_Paolo.pdf" download="CV_Paolo.pdf" class="pixel-button cv-button">
+            <span class="btn-glitch">TÉLÉCHARGER LE CV (.PDF)</span>
+        </a>
+    </div>
+
+</main>
 
     <footer id="contact">
         <h2 class="pixel-text">ME CONTACTER</h2>

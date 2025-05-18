@@ -1113,7 +1113,52 @@ body {
     opacity: 0.7;
 }
 
+.pdf-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin: 2rem 0;
+        }
+        
+.pdf-viewer {
+            width: 60%;
+            height: 80vh; /* 80% de la hauteur de l'écran */
+            border: none;
+        box-shadow: 0 0 15px rgb(81, 90, 223), 
+                   0 0 30px rgba(49, 62, 245, 0.3);
+        /* Nouvelle bordure plus fine et stylisée */
+        outline: 1px solid rgb(67, 17, 148);
+        background: rgba(0, 0, 0, 0.7); /* Fond plus sombre pour mieux voir le PDF */
+        transition: all 0.3s ease;
+        /* Réduire l'espace autour du contenu PDF */
+        padding: 0;
+        margin: 0;
+    }
+.download-wrapper {
+    display: flex;
+    justify-content: center; /* Centre horizontalement */
+    align-items: center; /* Centre verticalement si besoin */
+    width: 100%;
+    margin: 2rem 0;
+    position: relative;
+}
 
+        
+@media (max-width: 768px) {
+            .pdf-viewer {
+                width: 95%;
+                height: 60vh;
+            }
+        }
+
+
+.pdf-viewer:hover {
+        box-shadow: 0 0 20px #6a0dad, 
+                   0 0 40px #6a0dad;
+        outline: 1px solid rgb(67, 17, 148);;
+    }
+
+        
 /* Responsive */
 @media (max-width: 768px) {
     .projects-grid {
