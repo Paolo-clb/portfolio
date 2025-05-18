@@ -1,0 +1,1177 @@
+/* === mainV2.css - fusion de main.css et projects.css === */
+
+/* Reset du curseur natif */
+html, a, button, [clickable] {
+    cursor: none !important;
+}
+
+
+/* Curseur principal */
+.cyber-cursor {
+    box-shadow: 
+        0 0 5px #9c27b0,
+        0 0 10px #6a0dad;
+    animation: cursor-pulse 1.5s infinite alternate;
+}
+
+@keyframes cursor-pulse {
+    0% { box-shadow: 0 0 5px #9c27b0; }
+    100% { box-shadow: 0 0 15px #9c27b0, 0 0 20px #6a0dad; }
+}
+
+/* Particules */
+.pixel-particle {
+    will-change: transform, opacity;
+    transition: 
+        left 0.4s ease-out,
+        top 0.4s ease-out,
+        opacity 0.3s ease;
+}
+
+/* Effet "data glitch" au survol */
+a:hover ~ .cyber-cursor,
+button:hover ~ .cyber-cursor {
+    animation: glitch-effect 0.3s linear infinite;
+}
+
+@keyframes glitch-effect {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    25% { transform: translate(-51%, -49%) scale(1.1); }
+    50% { transform: translate(-49%, -51%) scale(0.9); }
+    75% { transform: translate(-52%, -48%) scale(1.05); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
+/* Ajustement de la transparence */
+.hero, .projets, .competences {
+    background-color: rgba(10, 10, 32, 0.1) !important; /* 0.7 = 70% opaque */
+    backdrop-filter: blur(4px);
+    border: 2px solid rgba(63, 81, 181, 0.2); /* Bordure semi-transparente */
+}
+
+/* Pour le header et footer - moins transparent */
+header, footer {
+    background-color: rgba(26, 0, 51, 0.85) !important;
+}
+
+/* Option : effet de gradient transparent */
+.projets::before, .competences::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        to right,
+        rgba(106, 13, 173, 0.2),
+        rgba(63, 81, 181, 0.1)
+    );
+    pointer-events: none;
+    z-index: -1;
+}
+/* Animations néon */
+@keyframes flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+        text-shadow:
+            0 0 5px #9c27b0,
+            0 0 10px #6a0dad,
+            0 0 20px #3f51b5;
+    }
+    20%, 24%, 55% {
+        text-shadow: none;
+    }
+}
+
+@keyframes border-flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+        box-shadow:
+            0 0 5px #9c27b0,
+            0 0 10px #6a0dad,
+            0 0 20px #3f51b5;
+    }
+    20%, 24%, 55% {
+        box-shadow: none;
+    }
+}
+
+
+.pixel-border, nav a, .pixel-button {
+    animation: border-flicker 4s infinite alternate;
+}
+/* Fond animé cyberpunk */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('images/katanarooftop.gif') center/cover no-repeat;
+    opacity: 0.15;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Ajustement des sections pour transparence */
+section {
+    background-color: rgba(10, 10, 32, 0.85) !important;
+    backdrop-filter: blur(2px);
+    margin: 1rem 0;
+    padding: 2rem;
+    border: 2px solid #3f51b5;
+}
+
+header, footer {
+    background-color: rgba(26, 0, 51, 0.9) !important;
+    backdrop-filter: blur(2px);
+}
+/* Reset Pixel Art */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    image-rendering: pixelated;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background-color: #0a0a20;
+    color: #e0e0ff;
+    line-height: 1.6;
+}
+
+/* Header Style */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: #1a0033;
+    border-bottom: 4px solid #6a0dad;
+}
+
+.header-left h1 {
+    color: #9c27b0;
+    font-size: 1.8rem;
+    text-shadow: 2px 2px 0 #3f51b5;
+}
+
+.header-right ul {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+}
+
+.header-right a {
+    color: #e0e0ff;
+    text-decoration: none;
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    border: 2px solid #3f51b5;
+    background-color: #1a0033;
+}
+
+.header-right a:hover {
+    background-color: #6a0dad;
+    color: #ffffff;
+}
+
+/* Hero Section */
+.hero {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.hero h2 {
+    margin-bottom: 2rem;
+    font-size: 2.5rem;
+    color: #9c27b0;
+}
+
+.pixel-border {
+    border: 4px solid #3f51b5;
+    box-shadow: 6px 6px 0 #6a0dad;
+}
+
+.hero img {
+    width: 20%;
+    margin: auto;
+}
+/* Projets Section */
+.projets {
+    padding: 2rem;
+    text-align: center;
+}
+
+.projets h2 {
+    margin-bottom: 2rem;
+    font-size: 2rem;
+}
+
+.projet-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.projet-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pixel-button {
+    display: inline-block;
+    padding: 0.8rem 1.5rem;
+    background-color: #6a0dad;
+    color: white;
+    text-decoration: none;
+    border: none;
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    border: 2px solid #3f51b5;
+    box-shadow: 4px 4px 0 #3f51b5;
+    transition: all 0.2s;
+}
+
+.pixel-button:hover {
+    background-color: #9c27b0;
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #3f51b5;
+}
+
+/* Style du bouton principal */
+.big-button {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 1rem 2.5rem;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background-color: #6a0dad;
+    color: white;
+    text-decoration: none;
+    border: 2px solid #3f51b5;
+    box-shadow: 4px 4px 0 #3f51b5;
+    transition: all 0.2s;
+}
+
+.big-button:hover {
+    background-color: #9c27b0;
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #3f51b5;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+/* Animation supplémentaire */
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(106, 13, 173, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(106, 13, 173, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(106, 13, 173, 0); }
+}
+
+.big-button:hover {
+    animation: pulse 1.5s infinite;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Bouton */
+#animation-control {
+  position: fixed;
+  bottom: 70px;
+  right: 20px;
+  z-index: 999;
+}
+
+#toggle-animations {
+    background: rgba(26, 0, 51, 0.9);
+  border: 2px solid #3f51b5;
+  box-shadow: 3px 3px 0 #6a0dad;
+  padding: 8px 15px;
+  min-width: 120px;
+  text-align: center;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+/* Désactivation CIBLÉE uniquement des effets problématiques */
+body.animations-reduced {
+  /* Curseur et particules */
+  --cursor-display: none !important;
+  
+  /* Clignotements */
+  --text-flicker: none !important;
+  --border-flicker: none !important;
+}
+
+body.animations-reduced .cyber-cursor,
+body.animations-reduced .pixel-particle {
+  display: var(--cursor-display);
+  animation: none !important;
+}
+
+body.animations-reduced .pixel-text {
+  animation: var(--text-flicker) !important;
+}
+
+body.animations-reduced .pixel-border,
+body.animations-reduced nav a,
+body.animations-reduced .pixel-button {
+  animation: var(--border-flicker) !important;
+}
+
+/* Curseur par défaut activé */
+body.animations-reduced,
+body.animations-reduced * {
+  cursor: default !important;
+}
+
+
+
+
+
+
+
+/* Compétences Section */
+.competences {
+    padding: 2rem;
+    text-align: center;
+    background-color: #1a0033;
+    margin: 2rem 0;
+}
+
+.competences h2 {
+    margin-bottom: 2rem;
+    font-size: 2rem;
+}
+
+.competences-list {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    flex-wrap: wrap;
+}
+
+.competence-column {
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+}
+
+.competence-column h3 {
+    margin-bottom: 1rem;
+    color: #9c27b0;
+    font-size: 1.5rem;
+}
+
+.pixel-list {
+    list-style: none;
+}
+
+.pixel-list li {
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    background-color: #3f51b5;
+    border: 2px solid #6a0dad;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 2rem;
+    background-color: #1a0033;
+    border-top: 4px solid #6a0dad;
+}
+
+footer h2 {
+    margin-bottom: 1rem;
+    font-size: 1.8rem;
+}
+
+.contact-info {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.contact-info p {
+    padding: 0.5rem 1rem;
+    background-color: #3f51b5;
+    border: 2px solid #6a0dad;
+}
+
+/* Pixel Text Effect */
+.pixel-text {
+    position: relative;
+    display: inline-block;
+}
+
+.pixel-text::after {
+    content: "";
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #9c27b0;
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.pixel-text:hover::after {
+    transform: scaleX(1);
+}
+
+
+/* Nouveaux styles pour l'effet scan */
+.competences-list {
+    position: relative;
+}
+
+.skill-chip {
+    position: relative;
+    overflow: hidden;
+    background: rgba(26, 0, 51, 0.7);
+    border: 1px solid #3f51b5;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.4s ease;
+}
+
+.skill-chip:hover {
+    transform: translateY(-3px);
+    border-color: #9c27b0;
+    box-shadow: 0 5px 15px rgba(106, 13, 173, 0.4);
+}
+
+.skill-scan {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        transparent,
+        rgba(0, 255, 252, 0.1) 10%,
+        transparent 20%
+    );
+    background-size: 100% 8px;
+    animation: scan 3s linear infinite;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.skill-chip:hover .skill-scan {
+    opacity: 1;
+    animation: scan 1.5s linear infinite;
+}
+
+@keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+}
+
+/* Conservez votre style existant et ajoutez ceci */
+.pixel-list li {
+    position: relative;
+    transition: color 0.3s ease;
+}
+
+.skill-chip:hover .pixel-list li {
+    color: #e0e0ff;
+    text-shadow: 0 0 5px #9c27b0;
+}
+
+
+/* Bouton CV - Version améliorée */
+.cv-button {
+    background: rgba(26, 0, 51, 0.8);
+    border: 2px solid #3f51b5;
+    position: relative;
+    overflow: hidden;
+}
+
+.cv-button:hover {
+    background: rgba(106, 13, 173, 0.6);
+    box-shadow: 0 0 15px rgba(156, 39, 176, 0.5);
+}
+
+/* Animation de glitch textuel */
+.btn-glitch {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-glitch::before,
+.btn-glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: inherit;
+}
+
+.btn-glitch::before {
+    left: 2px;
+    text-shadow: -2px 0 #00fffc;
+    clip: rect(0, 900px, 0, 0);
+    animation: glitch-anim-1 2s infinite linear alternate-reverse;
+}
+
+.btn-glitch::after {
+    left: -2px;
+    text-shadow: 2px 0 #9c27b0;
+    clip: rect(0, 900px, 0, 0);
+    animation: glitch-anim-2 2s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-anim-1 {
+    0% { clip: rect(0, 900px, 20px, 0); }
+    20% { clip: rect(0, 900px, 20px, 0); }
+    30% { clip: rect(0, 900px, 0, 0); }
+    50% { clip: rect(0, 900px, 60px, 0); }
+    60% { clip: rect(0, 900px, 40px, 0); }
+    70% { clip: rect(0, 900px, 30px, 0); }
+    100% { clip: rect(0, 900px, 70px, 0); }
+}
+
+@keyframes glitch-anim-2 {
+    0% { clip: rect(0, 900px, 20px, 0); }
+    20% { clip: rect(0, 900px, 50px, 0); }
+    40% { clip: rect(0, 900px, 40px, 0); }
+    60% { clip: rect(0, 900px, 30px, 0); }
+    80% { clip: rect(0, 900px, 10px, 0); }
+    100% { clip: rect(0, 900px, 0, 0); }
+}
+
+/* Pulse léger au survol */
+@keyframes cv-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(63, 81, 181, 0.5); }
+    100% { box-shadow: 0 0 10px 5px rgba(63, 81, 181, 0); }
+}
+
+.cv-button:hover {
+    animation: cv-pulse 1.5s infinite;
+}
+.cv-container img{
+    width: 50%;
+    padding: auto;
+    margin: auto;
+}
+/* Responsive */
+@media (max-width: 768px) {
+    .cv-container {
+        padding: 1rem;
+    }
+    
+    .cv-image {
+        width: 95%;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .big-button {
+        padding: 0.8rem 1.8rem;
+        font-size: 1rem;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .projet-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+.cyber-animate {
+    opacity: 0;
+    animation: fade-in 1s forwards;
+}
+
+@keyframes fade-in {
+    to { opacity: 1; }
+}
+
+header {
+    transform: translateY(-20px);
+    animation: slide-down 0.8s forwards 0.3s;
+}
+
+.hero, .projects-header {
+    opacity: 0;
+    animation: neon-appear 1s forwards 0.6s;
+}
+
+/* Animation spécifique pour la grille projets */
+.projets {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: 
+        fade-in 0.8s forwards 0.8s,
+        slide-up 0.8s forwards 0.8s;
+}
+
+.projet-grid {
+    opacity: 0;
+    transition: opacity 0.5s ease 1s;
+}
+
+body.loaded .projet-grid {
+    opacity: 1;
+}
+
+@keyframes slide-up {
+    from { transform: translateY(20px); }
+    to { transform: translateY(0); }
+}
+
+.competences, footer {
+    opacity: 0;
+    animation: fade-in 1s forwards 1.2s;
+}
+
+@keyframes slide-down {
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes neon-appear {
+    from { 
+        opacity: 0;
+        text-shadow: 0 0 10px #9c27b0;
+    }
+    to { 
+        opacity: 1;
+        text-shadow: 0 0 20px #6a0dad;
+    }
+}
+.projet-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 
+        0 10px 20px rgba(106, 13, 173, 0.5),
+        0 0 30px rgba(63, 81, 181, 0.3);
+}
+
+
+
+/* === Contenu de projects.css fusionné === */
+
+/* Curseur principal */
+.cyber-cursor {
+    box-shadow: 
+        0 0 5px #9c27b0,
+        0 0 10px #6a0dad;
+    animation: cursor-pulse 1.5s infinite alternate;
+}
+
+@keyframes cursor-pulse {
+    0% { box-shadow: 0 0 5px #9c27b0; }
+    100% { box-shadow: 0 0 15px #9c27b0, 0 0 20px #6a0dad; }
+}
+
+/* Particules */
+.pixel-particle {
+    will-change: transform, opacity;
+    transition: 
+        left 0.4s ease-out,
+        top 0.4s ease-out,
+        opacity 0.3s ease;
+}
+
+/* Effet "data glitch" au survol */
+a:hover ~ .cyber-cursor,
+button:hover ~ .cyber-cursor {
+    animation: glitch-effect 0.3s linear infinite;
+}
+
+@keyframes glitch-effect {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    25% { transform: translate(-51%, -49%) scale(1.1); }
+    50% { transform: translate(-49%, -51%) scale(0.9); }
+    75% { transform: translate(-52%, -48%) scale(1.05); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
+/* projets.css - Version optimisée avec transparence */
+
+/* ==================== */
+/* Fond des sections */
+/* ==================== */
+.projects-header,
+.projects-grid {
+    background-color: rgba(10, 10, 32, 0.1) !important;
+    backdrop-filter: blur(4px);
+    border: 2px solid rgba(63, 81, 181, 0.2);
+}
+
+/* ==================== */
+/* Cartes de projets */
+/* ==================== */
+.project-card {
+    background: rgba(26, 0, 51, 0.6) !important;
+    backdrop-filter: blur(2px);
+    transition: all 0.3s ease;
+}
+
+.project-card:hover {
+    background: rgba(106, 13, 173, 0.5) !important;
+    transform: translateY(-5px);
+}
+
+/* ==================== */
+/* Effets spéciaux */
+/* ==================== */
+/* Bordure néon au survol */
+.project-card:hover .pixel-border {
+    border-color: rgba(156, 39, 176, 0.8);
+    box-shadow: 0 0 15px rgba(156, 39, 176, 0.5);
+}
+
+/* Texte des cartes */
+.project-info {
+    background: rgba(16, 16, 48, 0.4);
+}
+
+/* ==================== */
+/* Responsive */
+/* ==================== */
+@media (max-width: 768px) {
+    .projects-grid {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+    }
+    
+    .project-card {
+        margin-bottom: 1.5rem;
+    }
+}
+
+/* ==================== */
+/* Effet "verre dépoli" amélioré */
+/* ==================== */
+.projects-header::before,
+.projects-grid::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        linear-gradient(
+            135deg,
+            rgba(106, 13, 173, 0.15) 0%,
+            rgba(63, 81, 181, 0.1) 100%
+        );
+    z-index: -1;
+    pointer-events: none;
+}
+/* Animations néon */
+@keyframes flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+        text-shadow:
+            0 0 5px #9c27b0,
+            0 0 10px #6a0dad,
+            0 0 20px #3f51b5;
+    }
+    20%, 24%, 55% {
+        text-shadow: none;
+    }
+}
+
+@keyframes border-flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+        box-shadow:
+            0 0 5px #9c27b0,
+            0 0 10px #6a0dad,
+            0 0 20px #3f51b5;
+    }
+    20%, 24%, 55% {
+        box-shadow: none;
+    }
+}
+
+/* Application des animations */
+.pixel-text {
+    animation: flicker 3s infinite alternate;
+}
+
+.pixel-border, nav a, .pixel-button {
+    animation: border-flicker 4s infinite alternate;
+}
+/* Fond animé cyberpunk */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('images/katanarooftop.gif') center/cover no-repeat;
+    opacity: 0.15;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Ajustement des sections pour transparence */
+section {
+    background-color: rgba(10, 10, 32, 0.85) !important;
+    backdrop-filter: blur(2px);
+    margin: 1rem 0;
+    padding: 2rem;
+    border: 2px solid #3f51b5;
+}
+
+header, footer {
+    background-color: rgba(26, 0, 51, 0.9) !important;
+    backdrop-filter: blur(2px);
+}
+/* Reset Pixel Art */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    image-rendering: pixelated;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background-color: #0a0a20;
+    color: #e0e0ff;
+    line-height: 1.6;
+}
+
+/* Header Style (identique à main.css) */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: #1a0033;
+    border-bottom: 4px solid #6a0dad;
+}
+
+.header-left h1 {
+    color: #9c27b0;
+    font-size: 1.8rem;
+    text-shadow: 2px 2px 0 #3f51b5;
+}
+
+.header-right ul {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+}
+
+.header-right a {
+    color: #e0e0ff;
+    text-decoration: none;
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    border: 2px solid #3f51b5;
+    background-color: #1a0033;
+}
+
+.header-right a:hover {
+    background-color: #6a0dad;
+    color: #ffffff;
+}
+
+/* Projects Header */
+.projects-header {
+    text-align: center;
+    padding: 3rem 1rem;
+    background-color: #1a0033;
+    margin-bottom: 2rem;
+}
+
+.projects-header h2 {
+    font-size: 2.5rem;
+    color: #9c27b0;
+    margin-bottom: 1rem;
+}
+
+.projects-header p {
+    font-size: 1.2rem;
+    color: #e0e0ff;
+}
+
+/* Projects Grid */
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.project-card {
+    background-color: #1a0033;
+    border: 4px solid #3f51b5;
+    transition: transform 0.3s ease;
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(106, 13, 173, 0.3);
+}
+
+.pixel-border {
+    border-bottom: 4px solid #3f51b5;
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.project-info {
+    padding: 1.5rem;
+}
+
+.project-info h3 {
+    color: #9c27b0;
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+
+.project-info p {
+    color: #e0e0ff;
+    font-size: 1rem;
+}
+
+/* Footer (identique à main.css) */
+footer {
+    text-align: center;
+    padding: 2rem;
+    background-color: #1a0033;
+    border-top: 4px solid #6a0dad;
+    margin-top: 3rem;
+}
+
+footer h2 {
+    margin-bottom: 1rem;
+    font-size: 1.8rem;
+}
+
+.contact-info {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.contact-info p {
+    padding: 0.5rem 1rem;
+    background-color: #3f51b5;
+    border: 2px solid #6a0dad;
+}
+
+/* Pixel Text Effect */
+.pixel-text {
+    position: relative;
+    display: inline-block;
+}
+
+.pixel-text::after {
+    content: "";
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #9c27b0;
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.pixel-text:hover::after {
+    transform: scaleX(1);
+}
+
+
+
+
+.scroll-track {
+    position: fixed;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 100px;
+    width: 4px;
+    background: rgba(63, 81, 181, 0.2);
+    z-index: 100;
+}
+
+.scroll-progress {
+    position: absolute;
+    width: 100%;
+    background: linear-gradient(to bottom, #9c27b0, #3f51b5);
+    box-shadow: 0 0 5px #9c27b0;
+    transition: height 0.1s;
+}
+
+
+
+
+body {
+    font-family: 'Courier New', 'Lucida Console', Monaco, monospace;
+    -webkit-font-smoothing: antialiased; /* Rend plus lisse */
+    text-rendering: optimizeLegibility;
+}
+.pixel-button:hover {
+    text-shadow: 
+        0 0 5px #00fffc,
+        0 0 10px #9c27b0,
+        1px 1px 0 rgba(0,0,0,0.5);
+    letter-spacing: 1.5px; /* Effet d'expansion */
+}
+.pixel-button {
+    font-family: 'Courier New', monospace;
+    font-weight: 700; /* Plus gras */
+    letter-spacing: 1px; /* Espacement cyberpunk */
+    text-transform: uppercase; /* Style code militaire */
+    font-size: 1.1rem;
+    text-shadow: 
+        0 0 3px currentColor, /* Effet néon */
+        1px 1px 0 rgba(0,0,0,0.5); /* Légère ombre pour lisibilité */
+    transition: all 0.2s ease;
+}
+
+.project-info h3 {
+    font-family: 'Courier New', monospace;
+    font-weight: 900;
+    letter-spacing: 1.2px;
+    position: relative;
+    display: inline-block;
+}
+
+.header-right a {
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    font-size: 0.95rem;
+}
+.project-info h3::before {
+    content: "// ";
+    color: #9c27b0;
+}
+@media (max-width: 768px) {
+    .pixel-button {
+        font-size: 0.9rem;
+        letter-spacing: 0.5px;
+    }
+    
+    .header-right a {
+        font-size: 0.8rem;
+    }
+}
+/* Dans mainV2.css */
+
+/* Ajustement pour les crédits */
+.corner-credit {
+  bottom: 30px !important; /* Déplace les crédits plus bas */
+}
+
+.corner-credit {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); /* Ombre subtile */
+}
+.corner-credit {
+    position: fixed;
+    right: 10px;
+    font-size: 0.7rem;
+    color: #ffffffc7;
+    background: rgba(26, 0, 51, 0.3);
+    padding: 0.3rem 0.6rem;
+    border: 1px solid rgba(63, 81, 181, 0.2);
+    border-radius: 3px;
+    z-index: 100;
+    transition: opacity 0.3s;
+}
+
+.corner-credit:hover {
+    opacity: 0.7;
+}
+
+
+/* Responsive */
+@media (max-width: 768px) {
+    .projects-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+
+.cyber-animate {
+    opacity: 0;
+    animation: fade-in 1s forwards;
+}
+
+@keyframes fade-in {
+    to { opacity: 1; }
+}
+
+header {
+    transform: translateY(-20px);
+    animation: slide-down 0.8s forwards 0.3s;
+}
+
+.hero, .projects-header {
+    opacity: 0;
+    animation: neon-appear 1s forwards 0.6s;
+}
+
+.projet-grid, .projects-grid {
+    opacity: 0;
+    animation: fade-in 0.8s forwards 1s;
+}
+
+.competences, footer {
+    opacity: 0;
+    animation: fade-in 1s forwards 1.2s;
+}
+
+@keyframes slide-down {
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes neon-appear {
+    from { 
+        opacity: 0;
+        text-shadow: 0 0 10px #9c27b0;
+    }
+    to { 
+        opacity: 1;
+        text-shadow: 0 0 20px #6a0dad;
+    }
+}
+
+.project-card:hover {
+    z-index: 2;
+    transform: scale(1.02) rotate(-0.5deg);
+    border-color: #9c27b0 !important;
+}
