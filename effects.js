@@ -1,4 +1,4 @@
-// === effectsV2.js - Curseur animé et particules ===
+// === effects.js - Curseur animé et particules ===
 
 const config = {
     particleSize: 6,
