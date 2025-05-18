@@ -1,0 +1,4 @@
+//Toutes les animations doivent se désactiver avec le boutons "#toggle-animations".
+
+rajouter animation titre
+rajouter animations et effets.
