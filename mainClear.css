@@ -149,6 +149,9 @@ header {
     border-bottom: 4px solid #6a0dad;
     transform: translateY(-20px);
     animation: slide-down 0.8s forwards 0.3s;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
 .header-left h1 {
@@ -161,6 +164,32 @@ header {
     padding: 0.2em 0.5em;
     transition: text-shadow 0.3s, background 0.3s;
     line-height: 1.1;
+    position: relative;
+    overflow: hidden;
+}
+
+.header-left h1::after {
+    content: "";
+    position: absolute;
+    left: -100%;
+    bottom: 0.1em;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #9c27b0 60%, transparent);
+    animation: underline-move 4s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes underline-move {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.header-left h1:hover {
+    transform: scale(1.04);
+    text-shadow: 4px 4px 0 #6a0dad, 2px 2px 0 #3f51b5;
+    transition: transform 0.2s, text-shadow 0.2s;
+    
 }
 
 .header-right ul {
@@ -434,24 +463,27 @@ body.animations-reduced .project-scan {
     width: 100%; height: 100%;
     background: linear-gradient(
         to bottom,
-        transparent,
-        rgba(0, 255, 252, 0.1) 10%,
-        transparent 20%
+        transparent 0%,
+        rgba(0,255,252,0.07) 10%,
+        rgba(156,39,176,0.08) 30%,
+        rgba(255,255,255,0.06) 50%,
+        rgba(106,13,173,0.07) 70%,
+        transparent 100%
     );
-    background-size: 100% 8px;
-    /* animation: scan 3s linear infinite; */
+    background-size: 100% 18px;
+    filter: blur(1px);
     opacity: 0;
     pointer-events: none;
+    transition: opacity 0.2s;
 }
-
 
 /* Animation scan uniquement si animations activées */
 body:not(.animations-reduced) .skill-scan {
-    animation: scan 3s linear infinite;
+    animation: scan 4s linear infinite; /* plus lent */
 }
 body:not(.animations-reduced) .skill-chip:hover .skill-scan {
     opacity: 1;
-    animation: scan 1.5s linear infinite;
+    animation: scan 2.5s linear infinite; /* un peu plus rapide au hover */
 }
 
 /* Désactive l'animation scan si animations réduites */
@@ -459,7 +491,6 @@ body.animations-reduced .skill-scan {
     animation: none !important;
     opacity: 0 !important;
 }
-
 
 .skill-chip:hover .skill-scan {
     opacity: 1;
@@ -783,6 +814,14 @@ footer h2 {
     text-transform: uppercase;
 }
 
+#toggle-animations:hover {
+    background-color: #9c27b0;
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #3f51b5;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    animation: pulse 1.5s infinite;
+}
+
 /* Désactivation CIBLÉE uniquement des effets problématiques */
 body.animations-reduced {
     --cursor-display: none !important;
@@ -809,6 +848,10 @@ body.animations-reduced .pixel-button {
 body.animations-reduced,
 body.animations-reduced * {
     cursor: default !important;
+}
+
+body.animations-reduced .header-left h1::after {
+    animation: none !important;
 }
 
 /* Crédits */
@@ -868,4 +911,29 @@ body.animations-reduced * {
     .header-right a {
         font-size: 1rem;
     }
+    .header-right ul {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+        width: 100%;
+    }
+    .header-right a {
+        font-size: 1rem;
+        padding: 0.7rem 1rem; /* réduit le padding vertical */
+        width: 100%;
+        box-sizing: border-box;
+        margin: 0; /* retire tout margin éventuel */
+        border-radius: 0;
+        display: block;
+    }
+    .header-right li {
+        width: 100%;
+    }
+}
+
+header.header-scrolled {
+    background-color: rgba(26, 0, 51, 0.65) !important;
+    backdrop-filter: blur(4px);
+    transition: background-color 0.3s, backdrop-filter 0.3s;
+    box-shadow: 0 2px 16px 0 rgba(106, 13, 173, 0.08);
 }
