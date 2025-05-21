@@ -900,31 +900,15 @@ body.animations-reduced .header-left h1::after {
     opacity: 0.7;
 }
 
-/* Copy Button */
-.copy-btn {
-    background: #3f51b5;
-    border: 2px solid #6a0dad;
-    color: #fff;
-    border-radius: 5px;
-    margin-left: 0.5em;
-    cursor: pointer !important;
-    font-size: 1em;
-    padding: 0.1em 0.4em;
-    transition: background 0.2s, box-shadow 0.2s;
-    vertical-align: middle;
-}
-.copy-btn:hover {
-    background: #6a0dad;
-    color: #fff;
-    box-shadow: 0 0 8px #9c27b0;
-}
-
 /* ===================== */
 /* === MEDIA QUERIES === */
 /* ===================== */
-@media (max-width: 768px) {
+@media (max-width: 930px) {
     .cv-container {
         padding: 1rem;
+    }
+    .cv-image {
+        width: 95%;
     }
     .big-button {
         padding: 0.8rem 1.8rem;
@@ -966,28 +950,21 @@ body.animations-reduced .header-left h1::after {
     }
     .header-right a {
         font-size: 1rem;
-        padding: 0.7rem 1rem; /* réduit le padding vertical */
-        width: 100%;
-        box-sizing: border-box;
-        margin: 0; /* retire tout margin éventuel */
-        border-radius: 0;
-        display: block;
     }
     .header-right ul {
         flex-direction: column;
         gap: 0.5rem;
         align-items: flex-start;
         width: 100%;
-        display: none;
-        background: #1a0033;
-        position: absolute;
-        top: 100%;
-        right: 0;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        z-index: 1001;
     }
-    .header-right ul.open {
-        display: flex;
+    .header-right a {
+        font-size: 1rem;
+        padding: 0.7rem 1rem; /* réduit le padding vertical */
+        width: 100%;
+        box-sizing: border-box;
+        margin: 0; /* retire tout margin éventuel */
+        border-radius: 0;
+        display: block;
     }
     .header-right li {
         width: 100%;
@@ -1002,6 +979,23 @@ body.animations-reduced .header-left h1::after {
         position: relative;
         display: flex;
         align-items: center;
+    }
+    .header-right ul {
+        display: none;
+        flex-direction: column;
+        background: #1a0033;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        width: 200px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        z-index: 1001;
+    }
+    .header-right ul.open {
+        display: flex;
+    }
+    .header-right {
+        position: relative;
     }
 }
 

@@ -132,26 +132,3 @@ window.addEventListener('scroll', function() {
         header.classList.remove('header-scrolled');
     }
 });
-
-    function showCopied(btn, text) {
-        navigator.clipboard.writeText(text);
-        let msg = document.createElement('span');
-        msg.textContent = 'Copié !';
-        msg.className = 'copied-msg';
-        btn.parentNode.style.position = 'relative';
-        msg.style.position = 'absolute';
-        msg.style.left = '50%';
-        msg.style.transform = 'translateX(-50%)';
-        msg.style.bottom = '120%';
-        msg.style.background = '#3f51b5';
-        msg.style.color = '#fff';
-        msg.style.padding = '2px 10px';
-        msg.style.borderRadius = '6px';
-        msg.style.fontSize = '0.9em';
-        msg.style.boxShadow = '0 2px 8px #6a0dad44';
-        msg.style.opacity = '1';
-        msg.style.transition = 'opacity 0.4s';
-        btn.parentNode.appendChild(msg);
-        setTimeout(() => { msg.style.opacity = '0'; }, 1600);
-        setTimeout(() => { if(msg.parentNode) msg.parentNode.removeChild(msg); }, 2000);
-    }
