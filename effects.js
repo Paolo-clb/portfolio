@@ -111,6 +111,17 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   initAnimations();
+
+  // Burger menu logic
+  const burger = document.querySelector('.burger-menu');
+  const navList = document.querySelector('.header-right ul');
+  if (burger && navList) {
+      burger.addEventListener('click', function() {
+          const isOpen = navList.classList.toggle('open');
+          burger.setAttribute('aria-expanded', isOpen);
+          burger.classList.toggle('open', isOpen); // Ajoute/retire la classe open sur le bouton
+      });
+  }
 });
 
 window.addEventListener('scroll', function() {
