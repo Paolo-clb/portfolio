@@ -1,5 +1,3 @@
-/* === mainClear.css - version nettoyée de main.css, sans impact visuel === */
-
 /* Reset du curseur natif */
 html, a, button, [clickable] {
     cursor: none !important;

@@ -1,5 +1,3 @@
-// === effects.js - Curseur animé et particules ===
-
 const config = {
     particleSize: 6,
     particleCount: 12,
@@ -160,10 +158,10 @@ function showCopied(btn, text) {
 document.addEventListener("DOMContentLoaded", function() {
   const prompt = "portfolio@paolo:~$ ";
   const lines = [
-    "Bienvenue sur mon portfolio !'",
-    "Pour commencer, Luciano je te ez en 1v1 Darius",
+    "Bienvenue sur mon portfolio !",
+    "Pour commencer, Je vous ez tous sur LOL,",
     "SETT est de loin le meilleur champion du jeu.",
-    "W = 100000000000000 dégats bruts dans vos bouches"
+    "Pourquoi ? W = 1000000 true dmg dans vos bouches"
   ];
   const consoleElem = document.getElementById("bash-console");
   if (!consoleElem) return;
