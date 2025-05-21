@@ -160,9 +160,10 @@ function showCopied(btn, text) {
 document.addEventListener("DOMContentLoaded", function() {
   const prompt = "portfolio@paolo:~$ ";
   const lines = [
-    "echo 'Bienvenue sur mon portfolio !'",
-    "Bienvenue sur le terminal interactif.",
-    "Tapez 'help' pour voir les commandes disponibles."
+    "Bienvenue sur mon portfolio !'",
+    "Pour commencer, Luciano je te ez en 1v1 Darius",
+    "SETT est de loin le meilleur champion du jeu.",
+    "W = 100000000000000 dégats bruts dans vos bouches"
   ];
   const consoleElem = document.getElementById("bash-console");
   if (!consoleElem) return;
