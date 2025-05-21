@@ -950,21 +950,18 @@ body.animations-reduced .header-left h1::after {
     }
     .header-right a {
         font-size: 1rem;
-    }
-    .header-right ul {
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: flex-start;
-        width: 100%;
-    }
-    .header-right a {
-        font-size: 1rem;
         padding: 0.7rem 1rem; /* réduit le padding vertical */
         width: 100%;
         box-sizing: border-box;
         margin: 0; /* retire tout margin éventuel */
         border-radius: 0;
         display: block;
+    }
+    .header-right ul {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+        width: 100%;
     }
     .header-right li {
         width: 100%;
