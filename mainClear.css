@@ -252,6 +252,10 @@ header {
     padding: 3rem 1rem;
     opacity: 0;
     animation: neon-appear 1s forwards 0.6s;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* centre horizontalement les enfants */
+    justify-content: center;
 }
 
 .hero h2 {
@@ -269,9 +273,30 @@ header {
     display: block;
 }
 
-.hero img {
-    width: 20%;
-    margin: auto;
+.hero-console {
+    position: relative;
+    background: #0a0a20;
+    color: #ff4ecb;
+    font-family: 'Fira Mono', 'Consolas', monospace;
+    font-size: 1.05rem;
+    min-width: 260px;
+    max-width: 340px;
+    min-height: 110px;
+    padding: 0 1.3rem 1.2rem 1.3rem;
+    border-radius: 10px;
+    box-shadow: 0 0 16px #ff4ecb33;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    letter-spacing: 0.5px;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 0 2px #ff4ecb, 0 0 8px #6a0dad44;
+    border: 2px solid #9c27b0;
+    overflow: hidden;
+    width: 95vw;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* Projets Section */
@@ -680,6 +705,8 @@ footer h2 {
         0 0 20px #3f51b5;
 }
 
+
+
 .pixel-text::after {
     content: "";
     position: absolute;
@@ -694,6 +721,13 @@ footer h2 {
 
 .pixel-text:hover::after {
     transform: scaleX(1);
+}
+
+.pixel-text.less-glow {
+    text-shadow:
+        0 0 5px #9b27b0be,
+        0 0 10px #6a0dadd2,
+        0 0 20px #3f51b594;
 }
 
 /* Projects Page */
@@ -711,6 +745,7 @@ footer h2 {
     color: #9c27b0;
     margin-bottom: 1rem;
 }
+
 
 .projects-header p {
     font-size: 1.2rem;
@@ -865,6 +900,7 @@ body.animations-reduced .pixel-text {
     animation: var(--text-flicker) !important;
 }
 
+
 body.animations-reduced .pixel-border,
 body.animations-reduced nav a,
 body.animations-reduced .pixel-button {
@@ -918,6 +954,82 @@ body.animations-reduced .header-left h1::after {
     color: #fff;
     box-shadow: 0 0 8px #9c27b0;
 }
+
+/* Console cyberpunk dans le hero */
+.hero-console {
+  position: relative;
+  background: #0a0a20;
+  color: #ff4ecb;
+  font-family: 'Fira Mono', 'Consolas', monospace;
+  font-size: 1.05rem;
+  min-width: 260px;
+  max-width: 340px;
+  min-height: 110px;
+  padding: 0 1.3rem 1.2rem 1.3rem;
+  border-radius: 10px;
+  box-shadow: 0 0 16px #ff4ecb33;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  letter-spacing: 0.5px;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 0 2px #ff4ecb, 0 0 8px #6a0dad44;
+  border: 2px solid #9c27b0;
+  overflow: hidden;
+  width: 95vw;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.console-titlebar {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  background: linear-gradient(90deg, #181828 80%, #2a0033 100%);
+  border-bottom: 1px solid #3f51b5;
+  padding: 0 0.7rem;
+  margin: 0 -1.3rem 1rem -1.3rem;
+  position: relative;
+  z-index: 2;
+}
+
+.window-btn {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 7px;
+  margin-top: 1px;
+  border: 1.5px solid #222;
+  box-shadow: 0 1px 2px #0004;
+}
+.window-btn.close { background: #ff5f56; }
+.window-btn.min   { background: #ffbd2e; }
+.window-btn.max   { background: #27c93f; }
+
+.console-title {
+  color: #e0e0ffcc;
+  font-size: 1rem;
+  margin-left: 18px;
+  font-family: 'Fira Mono', 'Consolas', monospace;
+  letter-spacing: 0.5px;
+  user-select: none;
+  opacity: 0.85;
+}
+
+#bash-console {
+  margin: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  white-space: pre;
+  text-align: left;
+}
+
+
 /* ===================== */
 /* === MEDIA QUERIES === */
 /* ===================== */

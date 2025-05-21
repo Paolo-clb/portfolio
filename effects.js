@@ -155,3 +155,80 @@ function showCopied(btn, text) {
         setTimeout(() => { msg.style.opacity = '0'; }, 1600);
         setTimeout(() => { if(msg.parentNode) msg.parentNode.removeChild(msg); }, 2000);
     }
+
+// Animation console cyberpunk dans le hero
+document.addEventListener("DOMContentLoaded", function() {
+  const prompt = "portfolio@paolo:~$ ";
+  const lines = [
+    "echo 'Bienvenue sur mon portfolio !'",
+    "Bienvenue sur le terminal interactif.",
+    "Tapez 'help' pour voir les commandes disponibles."
+  ];
+  const consoleElem = document.getElementById("bash-console");
+  if (!consoleElem) return;
+
+  let lineIdx = 0;
+  let charIdx = 0;
+  let displayText = prompt; // Premier prompt affiché dès le chargement
+  let cursorVisible = true;
+  let typing = false;
+  let cursorInterval;
+
+  renderConsole();
+
+  function renderConsole() {
+    consoleElem.textContent = displayText + (typing || cursorVisible ? "_" : " ");
+  }
+
+  function startCursorBlink() {
+    if (cursorInterval) clearInterval(cursorInterval);
+    cursorInterval = setInterval(() => {
+      cursorVisible = !cursorVisible;
+      renderConsole();
+    }, 500);
+  }
+
+  function stopCursorBlink() {
+    if (cursorInterval) clearInterval(cursorInterval);
+    cursorVisible = true;
+    renderConsole();
+  }
+
+  function typeLine() {
+    typing = true;
+    const currentLine = lines[lineIdx];
+    if (charIdx < currentLine.length) {
+      displayText += currentLine[charIdx];
+      charIdx++;
+      renderConsole();
+      setTimeout(typeLine, 60);
+    } else {
+      typing = false;
+      displayText += "\n";
+      renderConsole();
+      lineIdx++;
+      charIdx = 0;
+      if (lineIdx < lines.length) {
+        // Ajoute le prompt d'un coup puis attend avant d'écrire la suite
+        displayText += prompt;
+        renderConsole();
+        setTimeout(typeLine, 300); // délai avant d'écrire la prochaine ligne
+      } else {
+        // Après la dernière ligne, affiche un prompt sur la ligne suivante immédiatement
+        displayText += prompt;
+        renderConsole();
+        startCursorBlink();
+      }
+    }
+  }
+
+  startCursorBlink();
+  setTimeout(() => {
+    stopCursorBlink();
+    setTimeout(typeLine, 600); // délai avant d'écrire la première ligne
+  }, 700);
+
+  setInterval(() => {
+    if (!typing) renderConsole();
+  }, 500);
+});
