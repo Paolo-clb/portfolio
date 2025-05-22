@@ -965,9 +965,9 @@ body.animations-reduced .header-left h1::after {
   font-size: 1.05rem;
   min-width: 260px;
   max-width: 340px;
-  min-height: 194px;
-  height: 194px;      /* Hauteur fixe */
-  max-height: 194px;  /* Optionnel : évite tout débordement */
+  min-height: 200px;
+  height: 200px;      /* Hauteur fixe */
+  max-height: 200px;  /* Optionnel : évite tout débordement */
   padding: 0 1.3rem 1.2rem 1.3rem;
   border-radius: 10px;
   box-shadow: 0 0 16px #ff4ecb33;
@@ -1083,7 +1083,6 @@ body.animations-reduced .header-left h1::after {
         letter-spacing: 0.5px;
     }
     .header-right a {
-        font-size: 1rem;
         padding: 0.7rem 1rem; /* réduit le padding vertical */
         width: 100%;
         box-sizing: border-box;
