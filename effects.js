@@ -163,7 +163,7 @@ document.addEventListener("DOMContentLoaded", function() {
     "SETT est de loin le meilleur champion du jeu.",
     "Pourquoi ? W = 1000000 true dmg dans vos bouches"
   ];
-  const consoleElem = document.getElementById("bash-shell");
+  const consoleElem = document.getElementById("bash-console");
   if (!consoleElem) return;
 
   let lineIdx = 0;
