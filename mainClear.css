@@ -154,12 +154,15 @@ header {
 
 .header-left h1 {
     color: #9c27b0;
-    font-size: 2.7rem; /* Agrandi uniquement le texte */
+    font-size: 2.3rem; /* Agrandi uniquement le texte */
     text-shadow: 2px 2px 0 #3f51b5;
     font-family: 'Courier New', monospace;
     font-weight: 900;
     letter-spacing: 2px;
-    padding: 0.2em 0.5em;
+    padding-top: 0em;
+    padding-bottom: 0.2em;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
     transition: text-shadow 0.3s, background 0.3s;
     line-height: 1.1;
     position: relative;
@@ -193,10 +196,10 @@ header {
     color: #e0e0ff;
     text-decoration: none;
     font-size: 1.3rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
-    padding-top: 1.2rem;
-    padding-bottom: 1.2rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-top: 0.9rem;
+    padding-bottom: 0.9rem;
     border: 2px solid #3f51b5;
     background-color: #1a0033;
     font-family: 'Courier New', monospace;
