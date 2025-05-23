@@ -275,32 +275,31 @@ header {
 }
 
 .hero-console {
-    position: relative;
-    background: #0a0a20;
-    color: #ff4ecb;
-    font-family: 'Fira Mono', 'Consolas', monospace;
-    font-size: 1.05rem;
-    min-width: 260px;
-    max-width: 340px;
-    min-height: 220px;
-    height: 220px;      /* Hauteur fixe */
-    max-height: 220px;  /* Optionnel : évite tout débordement */
-    padding: 0 1.3rem 1.2rem 1.3rem;
-    border-radius: 10px;
-    box-shadow: 0 0 16px #ff4ecb33;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: stretch;
-    letter-spacing: 0.5px;
-    margin-bottom: 1.5rem;
-    text-shadow: 0 0 2px #ff4ecb, 0 0 8px #6a0dad44;
-    border: 2px solid #9c27b0;
-    overflow: hidden;
-    width: 95vw;
-    max-width: 700px;
-    margin-left: auto;
-    margin-right: auto;
+  position: relative;
+  background: #0a0a20;
+  color: #ff4ecb;
+  font-family: 'Fira Mono', 'Consolas', monospace;
+  font-size: 1.05rem;
+  min-height: 200px;
+  height: 200px;
+  max-height: 200px;
+  padding: 0 1.3rem 1.2rem 1.3rem;
+  border-radius: 10px;
+  box-shadow: 0 0 16px #ff4ecb33;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  letter-spacing: 0.5px;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 0 2px #ff4ecb, 0 0 8px #6a0dad44;
+  border: 2px solid #9c27b0;
+  overflow: hidden;
+  width: 100%;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
 }
 
 /* Projets Section */
@@ -557,12 +556,6 @@ body.animations-reduced .skill-scan {
     100% { transform: translateY(100%); }
 }
 
-.skill-chip:hover .pixel-list li {
-    color: #e0e0ff;
-    text-shadow: 0 0 5px #9c27b0;
-}
-
-/* CV Button */
 .cv-button {
     background: rgba(26, 0, 51, 0.8);
     border: 2px solid #3f51b5;
@@ -966,11 +959,9 @@ body.animations-reduced .header-left h1::after {
   color: #ff4ecb;
   font-family: 'Fira Mono', 'Consolas', monospace;
   font-size: 1.05rem;
-  min-width: 260px;
-  max-width: 340px;
   min-height: 200px;
-  height: 200px;      /* Hauteur fixe */
-  max-height: 200px;  /* Optionnel : évite tout débordement */
+  height: 200px;
+  max-height: 200px;
   padding: 0 1.3rem 1.2rem 1.3rem;
   border-radius: 10px;
   box-shadow: 0 0 16px #ff4ecb33;
@@ -983,10 +974,11 @@ body.animations-reduced .header-left h1::after {
   text-shadow: 0 0 2px #ff4ecb, 0 0 8px #6a0dad44;
   border: 2px solid #9c27b0;
   overflow: hidden;
-  width: 95vw;
+  width: 100%;
   max-width: 700px;
   margin-left: auto;
   margin-right: auto;
+  box-sizing: border-box;
 }
 
 .console-titlebar {
@@ -1032,8 +1024,9 @@ body.animations-reduced .header-left h1::after {
   color: inherit;
   font-family: inherit;
   font-size: inherit;
-  white-space: pre;
+  white-space: pre;         /* Garde le format console */
   text-align: left;
+  min-width: 400px;         /* Facultatif : évite que le texte casse trop tôt */
 }
 
 
@@ -1130,6 +1123,17 @@ body.animations-reduced .header-left h1::after {
     .header-right {
         position: relative;
     }
+}
+
+@media (max-width: 700px) {
+  .hero-console {
+    padding-left: 4vw;
+    padding-right: 4vw;
+    height: auto;
+    max-height: none;
+    overflow-x: auto;      /* Ajoute la barre de défilement horizontal */
+    -webkit-overflow-scrolling: touch; /* Pour un scroll fluide sur mobile */
+  }
 }
 
 header.header-scrolled {
