@@ -166,14 +166,15 @@ document.addEventListener("DOMContentLoaded", function() {
   const consoleElem = document.getElementById("bash-console");
   if (!consoleElem) return;
 
+  // Vérifie si l'animation a déjà été jouée
+  const alreadyPlayed = localStorage.getItem('consoleAnimationPlayed') === 'true';
+
   let lineIdx = 0;
   let charIdx = 0;
-  let displayText = prompt; // Premier prompt affiché dès le chargement
+  let displayText = prompt;
   let cursorVisible = true;
   let typing = false;
   let cursorInterval;
-
-  renderConsole();
 
   function renderConsole() {
     consoleElem.textContent = displayText + (typing || cursorVisible ? "_" : " ");
@@ -208,26 +209,36 @@ document.addEventListener("DOMContentLoaded", function() {
       lineIdx++;
       charIdx = 0;
       if (lineIdx < lines.length) {
-        // Ajoute le prompt d'un coup puis attend avant d'écrire la suite
         displayText += prompt;
         renderConsole();
-        setTimeout(typeLine, 300); // délai avant d'écrire la prochaine ligne
+        setTimeout(typeLine, 300);
       } else {
-        // Après la dernière ligne, affiche un prompt sur la ligne suivante immédiatement
         displayText += prompt;
         renderConsole();
         startCursorBlink();
+        // Marque l'animation comme jouée
+        localStorage.setItem('consoleAnimationPlayed', 'true');
       }
     }
   }
 
-  startCursorBlink();
-  setTimeout(() => {
-    stopCursorBlink();
-    setTimeout(typeLine, 600); // délai avant d'écrire la première ligne
-  }, 700);
+  if (alreadyPlayed) {
+    // Affiche tout le texte directement
+    displayText = prompt;
+    for (let i = 0; i < lines.length; i++) {
+      displayText += lines[i] + "\n" + prompt;
+    }
+    renderConsole();
+    startCursorBlink();
+  } else {
+    startCursorBlink();
+    setTimeout(() => {
+      stopCursorBlink();
+      setTimeout(typeLine, 600);
+    }, 700);
 
-  setInterval(() => {
-    if (!typing) renderConsole();
-  }, 500);
+    setInterval(() => {
+      if (!typing) renderConsole();
+    }, 500);
+  }
 });
