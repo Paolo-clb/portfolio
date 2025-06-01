@@ -66,30 +66,7 @@ header, footer {
     z-index: -1;
 }
 
-/* Animations néon */
-@keyframes flicker {
-    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
-        text-shadow:
-            0 0 5px #9c27b0,
-            0 0 10px #6a0dad,
-            0 0 20px #3f51b5;
-    }
-    20%, 24%, 55% {
-        text-shadow: none;
-    }
-}
 
-@keyframes border-flicker {
-    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
-        box-shadow:
-            0 0 5px #9c27b0,
-            0 0 10px #6a0dad,
-            0 0 20px #3f51b5;
-    }
-    20%, 24%, 55% {
-        box-shadow: none;
-    }
-}
 
 .pixel-border, nav a, .pixel-button {
     /* animation: border-flicker 4s infinite alternate; */ /* Désactivé */
@@ -695,11 +672,6 @@ footer h2 {
 .pixel-text {
     position: relative;
     display: inline-block;
-    /* animation: flicker 3s infinite alternate; */ /* Désactivé */
-    text-shadow:
-        0 0 5px #9c27b0,
-        0 0 10px #6a0dad,
-        0 0 20px #3f51b5;
 }
 
 
@@ -720,12 +692,6 @@ footer h2 {
     transform: scaleX(1);
 }
 
-.pixel-text.less-glow {
-    text-shadow:
-        0 0 5px #9b27b0be,
-        0 0 10px #6a0dadd2,
-        0 0 20px #3f51b594;
-}
 
 /* Projects Page */
 .projects-header {
@@ -843,11 +809,10 @@ footer h2 {
 @keyframes neon-appear {
     from { 
         opacity: 0;
-        text-shadow: 0 0 10px #9c27b0;
+
     }
     to { 
         opacity: 1;
-        text-shadow: 0 0 20px #6a0dad;
     }
 }
 
@@ -893,9 +858,6 @@ body.animations-reduced .pixel-particle {
     animation: none !important;
 }
 
-body.animations-reduced .pixel-text {
-    animation: var(--text-flicker) !important;
-}
 
 
 body.animations-reduced .pixel-border,
@@ -1042,6 +1004,17 @@ body.animations-reduced .pixel-particle {
   min-width: 400px;         /* Facultatif : évite que le texte casse trop tôt */
 }
 
+/* Ajoute ceci dans mainClear.css */
+.contact-link {
+    color: #fff;
+    text-decoration: none;
+    transition: color 0.2s, text-shadow 0.2s;
+    font-weight: 500;
+}
+.contact-link:hover {
+    color: #650077;
+    text-decoration: underline;
+}
 
 /* ===================== */
 /* === MEDIA QUERIES === */
