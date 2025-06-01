@@ -242,3 +242,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }, 500);
   }
 });
+
+if (window.navigator.hardwareConcurrency && window.navigator.hardwareConcurrency <= 2) {
+    document.body.classList.add('animations-reduced');
+}

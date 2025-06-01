@@ -913,6 +913,19 @@ body.animations-reduced .header-left h1::after {
     animation: none !important;
 }
 
+/* Désactive le curseur custom et restaure le curseur natif si animations réduites */
+body.animations-reduced, 
+body.animations-reduced a, 
+body.animations-reduced button, 
+body.animations-reduced [clickable] {
+    cursor: auto !important;
+}
+
+body.animations-reduced .cyber-cursor,
+body.animations-reduced .pixel-particle {
+    display: none !important;
+}
+
 /* Crédits */
 .corner-credit {
     position: fixed;
