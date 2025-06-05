@@ -1,43 +1,6 @@
-/* Reset du curseur natif */
-html, a, button, [clickable] {
-    cursor: none !important;
-}
 
-/* Curseur principal */
-.cyber-cursor {
-    box-shadow: 
-        0 0 5px #9c27b0,
-        0 0 10px #6a0dad;
-    animation: cursor-pulse 1.5s infinite alternate;
-}
 
-@keyframes cursor-pulse {
-    0% { box-shadow: 0 0 5px #9c27b0; }
-    100% { box-shadow: 0 0 15px #9c27b0, 0 0 20px #6a0dad; }
-}
 
-/* Particules */
-.pixel-particle {
-    will-change: transform, opacity;
-    transition: 
-        left 0.4s ease-out,
-        top 0.4s ease-out,
-        opacity 0.3s ease;
-}
-
-/* Effet "data glitch" au survol */
-a:hover ~ .cyber-cursor,
-button:hover ~ .cyber-cursor {
-    animation: glitch-effect 0.3s linear infinite;
-}
-
-@keyframes glitch-effect {
-    0% { transform: translate(-50%, -50%) scale(1); }
-    25% { transform: translate(-51%, -49%) scale(1.1); }
-    50% { transform: translate(-49%, -51%) scale(0.9); }
-    75% { transform: translate(-52%, -48%) scale(1.05); }
-    100% { transform: translate(-50%, -50%) scale(1); }
-}
 
 /* Transparence et fond */
 .hero, .projets, .competences,
@@ -303,7 +266,7 @@ header {
     animation: fade-in 0.8s forwards 1s;
 }
 
-body.loaded .projet-grid {
+.projet-grid {
     opacity: 1;
 }
 
@@ -340,15 +303,11 @@ body.loaded .projet-grid {
     transition: opacity 0.2s;
 }
 
-body:not(.animations-reduced) .projet-item:hover .project-scan {
+body .projet-item:hover .project-scan {
     opacity: 1;
     animation: scan 1.5s linear;
-}
+}   
 
-body.animations-reduced .project-scan {
-    animation: none !important;
-    opacity: 0 !important;
-}
 
 /* Animation scan (tu peux réutiliser celle de skill-scan ou la personnaliser) */
 @keyframes scan {
@@ -509,19 +468,14 @@ body.animations-reduced .project-scan {
 }
 
 /* Animation scan uniquement si animations activées */
-body:not(.animations-reduced) .skill-scan {
+body .skill-scan {
     animation: scan 4s linear infinite; /* plus lent */
 }
-body:not(.animations-reduced) .skill-chip:hover .skill-scan {
+body .skill-chip:hover .skill-scan {
     opacity: 1;
     animation: scan 2.5s linear infinite; /* un peu plus rapide au hover */
 }
 
-/* Désactive l'animation scan si animations réduites */
-body.animations-reduced .skill-scan {
-    animation: none !important;
-    opacity: 0 !important;
-}
 
 .skill-chip:hover .skill-scan {
     opacity: 1;
@@ -816,77 +770,7 @@ footer h2 {
     }
 }
 
-/* Animation control bouton */
-#animation-control {
-    position: fixed;
-    bottom: 70px;
-    right: 20px;
-    z-index: 999;
-}
 
-#toggle-animations {
-    background: rgba(26, 0, 51, 0.9);
-    border: 2px solid #3f51b5;
-    box-shadow: 3px 3px 0 #6a0dad;
-    padding: 8px 15px;
-    min-width: 120px;
-    min-height: 45px;
-    text-align: center;
-    transition: all 0.3s ease;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-}
-
-#toggle-animations:hover {
-    background-color: #9c27b0;
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0 #3f51b5;
-    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-    animation: pulse 1.5s infinite;
-}
-
-/* Désactivation CIBLÉE uniquement des effets problématiques */
-body.animations-reduced {
-    --cursor-display: none !important;
-    --text-flicker: none !important;
-    --border-flicker: none !important;
-}
-
-body.animations-reduced .cyber-cursor,
-body.animations-reduced .pixel-particle {
-    display: var(--cursor-display);
-    animation: none !important;
-}
-
-
-
-body.animations-reduced .pixel-border,
-body.animations-reduced nav a,
-body.animations-reduced .pixel-button {
-    animation: var(--border-flicker) !important;
-}
-
-body.animations-reduced,
-body.animations-reduced * {
-    cursor: default !important;
-}
-
-body.animations-reduced .header-left h1::after {
-    animation: none !important;
-}
-
-/* Désactive le curseur custom et restaure le curseur natif si animations réduites */
-body.animations-reduced, 
-body.animations-reduced a, 
-body.animations-reduced button, 
-body.animations-reduced [clickable] {
-    cursor: auto !important;
-}
-
-body.animations-reduced .cyber-cursor,
-body.animations-reduced .pixel-particle {
-    display: none !important;
-}
 
 /* Crédits */
 .corner-credit {
@@ -908,24 +792,6 @@ body.animations-reduced .pixel-particle {
     opacity: 0.7;
 }
 
-/* Copy Button */
-.copy-btn {
-    background: #3f51b5;
-    border: 2px solid #6a0dad;
-    color: #fff;
-    border-radius: 5px;
-    margin-left: 0.5em;
-    cursor: pointer !important;
-    font-size: 1em;
-    padding: 0.1em 0.4em;
-    transition: background 0.2s, box-shadow 0.2s;
-    vertical-align: middle;
-}
-.copy-btn:hover {
-    background: #6a0dad;
-    color: #fff;
-    box-shadow: 0 0 8px #9c27b0;
-}
 
 /* Console cyberpunk dans le hero */
 .hero-console {
@@ -1128,3 +994,4 @@ header.header-scrolled {
     transition: background-color 0.3s, backdrop-filter 0.3s;
     box-shadow: 0 2px 16px 0 rgba(106, 13, 173, 0.08);
 }
+
