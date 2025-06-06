@@ -1095,3 +1095,13 @@ header.header-scrolled {
 .contact-info .pixel-button.mail-popup-btn {
     text-shadow: none !important;
 }   
+
+.contact-info .contact-link {
+    font-size: 1.1rem;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+#openMailPopup{
+    font-size: 0.8rem;
+}   
