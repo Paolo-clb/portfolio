@@ -113,6 +113,7 @@
 </section>
 
     <footer id="contact">
+
         <h2 class="pixel-text">ME CONTACTER</h2>
         <div class="contact-info">
             <p>
@@ -121,11 +122,27 @@
                 </a>
             </p>
             <p>
+                <button class="pixel-button mail-popup-btn" id="openMailPopup">M'envoyer un message</button>
+            </p>
+            <p>
                 <a href="https://gricad-gitlab.univ-grenoble-alpes.fr/colombpa" target="_blank" rel="noopener" class="contact-link">
                     mon gitlab
                 </a>
             </p>
         </div>
+        <div class="mail-modal" id="mailModal">
+    <div class="mail-modal-content pixel-border">
+        <button class="mail-modal-close" id="closeMailPopup" aria-label="Fermer">&times;</button>
+        <h3 class="pixel-text">M'envoyer un message</h3>
+        <form class="mail-form" autocomplete="off">
+            <input type="text" placeholder="Nom" class="pixel-input" required>
+            <input type="text" placeholder="Prénom" class="pixel-input" required>
+            <input type="email" placeholder="Votre email" class="pixel-input" required>
+            <textarea placeholder="Votre message" class="pixel-input" rows="5" required></textarea>
+            <button type="submit" class="pixel-button" disabled>Envoyer (actuellement non fonctionnel)</button>
+        </form>
+    </div>
+</div>
     </footer>
 </body>
 

@@ -150,3 +150,30 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
+// ...existing code...
+// Mail popup modal logic
+document.addEventListener('DOMContentLoaded', function() {
+    const openBtn = document.getElementById('openMailPopup');
+    const closeBtn = document.getElementById('closeMailPopup');
+    const modal = document.getElementById('mailModal');
+    if (openBtn && closeBtn && modal) {
+        openBtn.addEventListener('click', () => {
+            modal.classList.add('open');
+        });
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove('open');
+        });
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('open');
+        });
+    }
+    // Désactive l'envoi réel du formulaire
+    const mailForm = document.querySelector('.mail-form');
+    if (mailForm) {
+        mailForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert("L'envoi de mail n'est pas disponible sur ce site.");
+        });
+    }
+});
+// ...existing code...
