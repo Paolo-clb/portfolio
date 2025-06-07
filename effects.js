@@ -65,10 +65,10 @@ window.addEventListener('scroll', function() {
 document.addEventListener("DOMContentLoaded", function() {
     const prompt = "portfolio@paolo:~$ ";
     const lines = [
-        "Bienvenue sur mon portfolio !",
-        "Pour commencer, Je vous ez tous sur LOL,",
-        "SETT est de loin le meilleur champion du jeu.",
-        "Pourquoi ? W = 1000000 true dmg dans vos bouches"
+        "Bienvenue, pour me présenter succintement :",
+        "Je suis Titulaire d'un Bac NSI/math mention bien,",
+        "Actuellement en BUT INFO à l'IUT2 de Grenoble.",
+        "J'aspire à devenir développeur d'applications !",
     ];
     const consoleElem = document.getElementById("bash-console");
     if (!consoleElem) return;
@@ -150,7 +150,6 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
-// ...existing code...
 // Mail popup modal logic
 document.addEventListener('DOMContentLoaded', function() {
     const openBtn = document.getElementById('openMailPopup');
@@ -159,6 +158,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (openBtn && closeBtn && modal) {
         openBtn.addEventListener('click', () => {
             modal.classList.add('open');
+            setTimeout(() => {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }, 100); // 100ms pour laisser le temps à la modale de s'afficher
         });
         closeBtn.addEventListener('click', () => {
             modal.classList.remove('open');
@@ -176,4 +178,3 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-// ...existing code...
