@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <link rel="preload" href="images/katanarooftop.gif" as="image">
+    <link rel="preload" href="mainClear.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MonPortfolio | SAE 2.03</title>
+    <link rel="stylesheet" href="mainClear.css">
+    <script src="effects.js" defer></script>
+</head>
+<body class="cyber-animate">
+<div class="corner-credit">
+    Image from: Katana Zero - Devolver Digital
+</div>
+<div class="scroll-track">
+    <div class="scroll-progress"></div>
+</div>
+<header>
+    <div class="header-left">
+        <h1>Colombat Paolo</h1>
+    </div>
+    <nav class="header-right">
+        <button class="burger-menu" aria-label="Ouvrir le menu" aria-expanded="false">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <ul>
+            <li><a href="index.html">Accueil</a></li>
+            <li><a href="projects.html">Projets</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main>
+    <section class="projects-header">
+        <h2 class="pixel-text less-glow">SAE 2.03</h2>
+        <p>Installation de services réseau</p>
+    </section>
+    <section class="project-detail pixel-border" style="margin:2rem auto;max-width:900px;">
+        <div style="text-align:center;margin-bottom:2rem;">
+            <iframe class="pdfdebian" src="images/SAE2.03_Guide-server-Debian_Colombat-Paolo-E2.docx.pdf" width="100%" height="600px" class="pixel-border" style="background:white;"></iframe>
+            <br>
+            <a href="images/SAE2.03_Guide-server-Debian_Colombat-Paolo-E2.docx.pdf" class="pixel-button" target="_blank" rel="noopener">Télécharger le PDF</a>
+        </div>
+        <h3 class="pixel-text">Présentation</h3>
+        <p>
+            <!-- Présentation du projet ici -->
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
+        </p>
+        <h3 class="pixel-text">Fonctionnalités</h3>
+        <ul>
+            <li>Gestion des invités</li>
+            <li>Planification des menus</li>
+            <li>Suivi des réservations</li>
+        </ul>
+        <h3 class="pixel-text">Technologies utilisées</h3>
+        <p>
+            <!-- Technologies ici -->
+            HTML, CSS, JavaScript, etc.
+        </p>
+        <h3 class="pixel-text">Mon rôle</h3>
+        <p>
+            <!-- Ton rôle ici -->
+            Développement front-end, gestion de projet, etc.
+        </p>
+    </section>
+</main>
+<!-- À placer juste avant <footer> -->
+<div style="text-align:center; margin: 2rem 0;">
+    <a href="projects.html" class="pixel-button big-button">Voir les autres projets</a>
+</div>
+<footer id="contact">
+    <!-- Copie ton footer ici (identique à projects.html) -->
+    <h2 class="pixel-text">ME CONTACTER</h2>
+    <div class="contact-info">
+        <p>
+            <a href="https://github.com/Paolo-clb" target="_blank" rel="noopener" class="contact-link">
+                mon github
+            </a>
+        </p>
+        <p>
+            <button class="pixel-button mail-popup-btn" id="openMailPopup">M'envoyer un message</button>
+        </p>
+        <p>
+            <a href="https://gricad-gitlab.univ-grenoble-alpes.fr/colombpa" target="_blank" rel="noopener" class="contact-link">
+                mon gitlab
+            </a>
+        </p>
+    </div>
+    <div class="mail-modal" id="mailModal">
+        <div class="mail-modal-content pixel-border">
+            <button class="mail-modal-close" id="closeMailPopup" aria-label="Fermer">&times;</button>
+            <h3 class="pixel-text">M'envoyer un message</h3>
+            <form class="mail-form" autocomplete="off">
+                <input type="text" placeholder="Nom" class="pixel-input" required>
+                <input type="text" placeholder="Prénom" class="pixel-input" required>
+                <input type="email" placeholder="Votre email" class="pixel-input" required>
+                <textarea placeholder="Votre message" class="pixel-input" rows="5" required></textarea>
+                <button type="submit" class="pixel-button" disabled>Envoyer (actuellement non fonctionnel)</button>
+            </form>
+        </div>
+    </div>
+</footer>
+</body>
+</html>
