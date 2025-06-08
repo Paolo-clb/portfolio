@@ -27,6 +27,14 @@ header, footer {
 
 
 
+.pixel-border, nav a, .pixel-button {
+    /* animation: border-flicker 4s infinite alternate; */ /* Désactivé */
+    box-shadow:
+        0 0 5px #9c27b0,
+        0 0 10px #6a0dad,
+        0 0 20px #3f51b5;
+}
+
 /* Fond animé cyberpunk */
 body::before {
     content: "";
