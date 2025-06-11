@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const prompt = "portfolio@paolo:~$ ";
     const lines = [
         "Bienvenue, pour me présenter succintement :",
-        "Je suis Titulaire d'un Bac NSI/math mention bien,",
+        "Je suis titulaire d'un Bac NSI/math mention bien,",
         "Actuellement en BUT INFO à l'IUT2 de Grenoble.",
         "J'aspire à devenir développeur d'applications !",
     ];
