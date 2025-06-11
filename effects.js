@@ -60,6 +60,16 @@ window.addEventListener('scroll', function() {
     }
 });
 
+// Barre de progression de scroll cyberpunk
+window.addEventListener('scroll', function() {
+    const progressBar = document.querySelector('.scroll-progress');
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) : 0;
+    if (progressBar) {
+        progressBar.style.height = `${scrollPercent * 100}%`;
+    }
+});
 
 // Animation console cyberpunk dans le hero
 document.addEventListener("DOMContentLoaded", function() {
