@@ -185,6 +185,8 @@ ul {
   background: none;
   border: none;
   cursor: pointer;
+  padding: 0.5rem;
+  z-index: 110;
 }
 
 .nav__toggle span {
@@ -192,7 +194,23 @@ ul {
   width: 25px;
   height: 2px;
   background: var(--clr-text);
-  transition: var(--transition);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s ease;
+  transform-origin: center;
+}
+
+/* Burger → X animation */
+.nav__toggle--active span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.nav__toggle--active span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.nav__toggle--active span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
 }
 
 /* ==========================================================================
@@ -235,6 +253,7 @@ section.hero {
   position: relative;
   padding-top: 10rem;
   padding-bottom: 2rem;
+  overflow-x: hidden;
 }
 
 /* ==========================================================================
@@ -945,6 +964,7 @@ section.hero {
 
   .nav__toggle {
     display: flex;
+    margin-right: 0.25rem;
   }
 
   .skills-group,
@@ -955,5 +975,45 @@ section.hero {
   .skills-group:nth-child(even) {
     border-left: none;
     border-top: 1px solid rgba(191, 153, 160, 0.15);
+  }
+
+  /* ---- Modals mobile centering ---- */
+  .modal {
+    width: 95%;
+    max-width: 95%;
+    max-height: 90vh;
+    padding: 1.5rem;
+  }
+
+  .modal__header {
+    position: relative;
+    top: auto;
+    background: none;
+    backdrop-filter: none;
+    border-bottom: 1px solid rgba(191, 153, 160, 0.12);
+    padding: 0.5rem 0 0.75rem;
+    margin-top: 0;
+  }
+
+  .modal__title {
+    font-size: 1.35rem;
+  }
+
+  .modal__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-modal {
+    width: 95%;
+    max-width: 95%;
+    max-height: 90vh;
+  }
+
+  .detail-modal__content {
+    padding: 1.25rem 1.25rem 1.5rem;
+  }
+
+  .detail-modal__title {
+    font-size: 1.35rem;
   }
 }

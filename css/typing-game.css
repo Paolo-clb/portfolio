@@ -123,7 +123,7 @@
   font-weight: 600;
   line-height: 1.6;
   letter-spacing: 0.04em;
-  width: 95vw;
+  width: 100%;
   max-width: 1400px;
   text-align: left;
   color: var(--clr-text-muted);
@@ -141,6 +141,7 @@
   transition: background 0.8s ease,
               border-color 0.8s ease,
               box-shadow 0.8s ease;
+  box-sizing: border-box;
 }
 
 .typing-game__text--first-visit {
@@ -380,22 +381,39 @@
 /* ---- Responsive ---- */
 
 @media (max-width: 768px) {
+  .typing-game {
+    padding-inline: 0;
+    box-sizing: border-box;
+    width: 100%;
+  }
+
   .typing-game__text {
     font-size: 1.2rem;
-    width: 95vw;
-    max-width: 95vw;
+    width: 100%;
+    max-width: 100%;
+    padding: 0.6rem 0.8rem;
     /* height stays 7.8em, scales with font-size */
   }
 
   .typing-game__navbar {
-    gap: 0.5rem;
-    padding: 0.4rem 0.6rem;
+    gap: 0.4rem;
+    padding: 0.4rem 0.5rem;
     flex-wrap: wrap;
     justify-content: center;
+    max-width: 100%;
   }
 
   .typing-game__option {
-    font-size: 0.85rem;
-    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.45rem;
+  }
+
+  .typing-game__navbar-sep {
+    font-size: 0.9rem;
+  }
+
+  .typing-game__stats-row {
+    gap: 1.2rem;
+    font-size: 0.9rem;
   }
 }

@@ -398,12 +398,14 @@ function initNavToggle() {
 
   toggle.addEventListener('click', () => {
     navList.classList.toggle('nav__list--open');
+    toggle.classList.toggle('nav__toggle--active');
   });
 
   // Close menu when a link is clicked
   navList.querySelectorAll('.nav__link').forEach((link) => {
     link.addEventListener('click', () => {
       navList.classList.remove('nav__list--open');
+      toggle.classList.remove('nav__toggle--active');
     });
   });
 }
