@@ -6,6 +6,51 @@
 (function () {
   'use strict';
 
+  /* ---- Cookie helpers ---- */
+
+  function setCookie(name, value, days) {
+    var d = new Date();
+    d.setTime(d.getTime() + days * 86400000);
+    document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+  }
+
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  function getBestKey(mode) {
+    return 'typing_best_' + mode;
+  }
+
+  function getBestWPM(mode) {
+    var val = getCookie(getBestKey(mode));
+    return val ? parseInt(val, 10) : 0;
+  }
+
+  function saveBestWPM(mode, wpm) {
+    var current = getBestWPM(mode);
+    if (wpm > current) {
+      setCookie(getBestKey(mode), wpm, 365);
+      return true; // new record
+    }
+    return false;
+  }
+
+  function saveSettings(lang, mode) {
+    setCookie('typing_lang', lang, 365);
+    setCookie('typing_mode', mode, 365);
+  }
+
+  function loadSettings() {
+    var lang = getCookie('typing_lang');
+    var mode = getCookie('typing_mode');
+    return {
+      lang: (lang === 'fr' || lang === 'en') ? lang : null,
+      mode: mode && ['presentation', '10', '25', '50', '100'].indexOf(mode) !== -1 ? mode : null
+    };
+  }
+
   /* ---- Text data by language and mode ---- */
 
   const TEXTS = {
@@ -78,7 +123,7 @@
 
   /* ---- DOM refs (set in init) ---- */
 
-  let container, navbarEl, textEl, innerEl, wpmEl, accEl, timeEl, restartEl;
+  let container, navbarEl, textEl, innerEl, wpmEl, accEl, timeEl, bestEl, restartEl;
 
   /* ---- Helpers ---- */
 
@@ -232,6 +277,17 @@
     accEl.textContent = `Accuracy : ${acc}%`;
     timeEl.textContent = `Time : ${seconds}s`;
     timeEl.classList.add('typing-game__time--visible');
+
+    // Best score
+    var isNewRecord = saveBestWPM(currentMode, wpm);
+    var best = getBestWPM(currentMode);
+    bestEl.textContent = `Best : ${best} WPM`;
+    bestEl.classList.add('typing-game__best--visible');
+    if (isNewRecord && wpm > 0) {
+      bestEl.classList.add('typing-game__best--new');
+    } else {
+      bestEl.classList.remove('typing-game__best--new');
+    }
   }
 
   /* ---- Game lifecycle ---- */
@@ -253,6 +309,8 @@
     wpmEl.textContent = '0 WPM';
     accEl.textContent = '100%';
     timeEl.classList.remove('typing-game__time--visible');
+    bestEl.classList.remove('typing-game__best--visible');
+    bestEl.classList.remove('typing-game__best--new');
     restartEl.classList.remove('typing-game__restart--visible');
     // Show scroll hint again on reset
     var hint = document.getElementById('scroll-hint');
@@ -380,6 +438,7 @@
         });
         btn.classList.add('typing-game__option--active');
         onChange(opt.key);
+        saveSettings(currentLang, currentMode);
       });
       group.appendChild(btn);
     });
@@ -392,6 +451,11 @@
   function init() {
     container = document.getElementById('typing-game');
     if (!container) return;
+
+    // Load saved settings from cookies
+    var saved = loadSettings();
+    if (saved.lang) currentLang = saved.lang;
+    if (saved.mode) currentMode = saved.mode;
 
     // Build inner DOM
     const navbar = buildNavbar();
@@ -411,6 +475,10 @@
     timeEl.className = 'typing-game__time';
     timeEl.textContent = '';
 
+    bestEl = document.createElement('div');
+    bestEl.className = 'typing-game__best';
+    bestEl.textContent = '';
+
     restartEl = document.createElement('div');
     restartEl.className = 'typing-game__restart';
     restartEl.textContent = 'Espace pour recommencer';
@@ -421,6 +489,7 @@
     statsRow.appendChild(wpmEl);
     statsRow.appendChild(accEl);
     statsRow.appendChild(timeEl);
+    statsRow.appendChild(bestEl);
 
     container.appendChild(navbar);
     container.appendChild(textEl);
