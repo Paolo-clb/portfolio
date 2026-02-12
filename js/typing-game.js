@@ -131,6 +131,9 @@
   let startTime = null;
   let finished = false;
   let wpmInterval = null;
+  let paused = false; // whether the game is currently paused (lost focus)
+  let pauseStart = null; // timestamp when pause started
+  let totalPaused = 0; // accumulated paused milliseconds
   let totalKeystrokes = 0;
   let lockedIndex = 0;
   let correctWords = 0;
@@ -200,7 +203,7 @@
 
   function calcWPM() {
     if (!startTime) return 0;
-    const minutes = (Date.now() - startTime) / 60000;
+    const minutes = (Date.now() - startTime - totalPaused) / 60000;
     if (minutes < 0.01) return 0;
     return Math.round(correctWords / minutes) + wpmBoost;
   }
@@ -359,7 +362,7 @@
   function showFinalStats() {
     const wpm = calcWPM();
     const acc = calcAccuracy();
-    const seconds = Math.round((Date.now() - startTime) / 1000);
+    const seconds = Math.round((Date.now() - startTime - totalPaused) / 1000);
     wpmEl.textContent = `Words Per Minute : ${wpm}`;
     accEl.textContent = `Accuracy : ${acc}%`;
     timeEl.textContent = `Time : ${seconds}s`;
@@ -383,6 +386,9 @@
     text = pickText();
     typed = [];
     startTime = null;
+    paused = false;
+    pauseStart = null;
+    totalPaused = 0;
     finished = false;
     totalKeystrokes = 0;
     lockedIndex = 0;
@@ -425,6 +431,12 @@
 
   function finishGame() {
     finished = true;
+    // If the user finished while paused, include paused time
+    if (paused && pauseStart) {
+      totalPaused += Date.now() - pauseStart;
+      pauseStart = null;
+      paused = false;
+    }
     if (wpmInterval) clearInterval(wpmInterval);
     showFinalStats();
     restartEl.classList.add('typing-game__restart--visible');
@@ -690,6 +702,14 @@
       if (finished) {
         container.classList.add('typing-game--finished');
       }
+      // If the game was paused due to blur, resume timing and stats updates
+      if (paused && startTime && !finished) {
+        // accumulate paused duration
+        totalPaused += Date.now() - (pauseStart || Date.now());
+        pauseStart = null;
+        paused = false;
+        if (!wpmInterval) wpmInterval = setInterval(updateStats, 200);
+      }
       updateTextBackground(calcWPM());
     });
 
@@ -698,6 +718,15 @@
       container.classList.remove('typing-game--focused');
       container.classList.remove('typing-game--finished');
       container.classList.add('typing-game--blurred');
+      // Pause timing when the container loses focus during an active game
+      if (startTime && !finished && !paused) {
+        paused = true;
+        pauseStart = Date.now();
+        if (wpmInterval) {
+          clearInterval(wpmInterval);
+          wpmInterval = null;
+        }
+      }
       updateTextBackground(0);
     });
 
