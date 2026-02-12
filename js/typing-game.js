@@ -137,6 +137,7 @@
   let comboStreak = 0;
   let wpmBoost = 0; // DEBUG: artificial WPM boost (Ctrl+ArrowUp/Down)
   let showErrors = false;
+  let isFocused = true; // whether the game container has focus
 
   /* ---- DOM refs (set in init) ---- */
 
@@ -248,6 +249,11 @@
         }
       }
 
+      // When finished, put a static cursor AFTER the last character
+      if (finished && i === text.length - 1) {
+        cls += ' typing-game__char--cursor typing-game__char--cursor-end';
+      }
+
       // Show the original char (spaces wrap normally)
       const ch = text[i] === ' ' ? ' ' : text[i];
 
@@ -320,15 +326,22 @@
 
   function updateTextBackground(wpm) {
     if (!textEl) return;
+    // If not focused (and not finished with focus), use dim background
+    if (!isFocused) {
+      textEl.style.background = 'rgba(27, 26, 39, 0.06)';
+      textEl.style.borderColor = 'rgba(191, 153, 160, 0.04)';
+      textEl.style.boxShadow = '0 0 0 0 transparent';
+      return;
+    }
     // Linear 0–200 mapping, fully opaque at 200
     var t = Math.min(wpm / 200, 1);
     // Background opacity: starts translucent, fully opaque at 200
-    var bgAlpha = 0.25 + t * 0.75;
-    // Border glow ramps up strongly
-    var borderAlpha = 0.15 + t * 0.85;
-    // Glow: visible early, strong at top
-    var glowAlpha = 0.08 + t * 0.92;
-    var glowSize = Math.round(8 + t * 28);
+    var bgAlpha = 0.2 + t * 0.8;
+    // Border: visible base, strong at high WPM
+    var borderAlpha = 0.25 + t * 0.75;
+    // Glow: noticeable early, intense at top
+    var glowAlpha = 0.12 + t * 0.88;
+    var glowSize = Math.round(14 + t * 50);
 
     // Color transition: primary (#F2A285) → primary-hover (#F28080) from 60–130 WPM
     var r = 242, g = 162, b = 133; // base #F2A285
@@ -405,6 +418,7 @@
     if (hint) hint.classList.remove('scroll-hint--hidden');
     if (wpmInterval) clearInterval(wpmInterval);
     wpmInterval = null;
+    container.classList.remove('typing-game--finished');
     render();
     container.focus();
   }
@@ -414,6 +428,7 @@
     if (wpmInterval) clearInterval(wpmInterval);
     showFinalStats();
     restartEl.classList.add('typing-game__restart--visible');
+    container.classList.add('typing-game--finished');
     render();
   }
 
@@ -427,12 +442,19 @@
     // Ignore modifier combos (Ctrl+C, etc.) except Shift
     if (e.ctrlKey || e.altKey || e.metaKey) return;
 
-    // Restart on Enter when finished
+    // Restart on Space or Enter when finished
     if (finished) {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         startGame();
       }
+      return;
+    }
+
+    // Enter restarts even during gameplay
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      startGame();
       return;
     }
 
@@ -578,13 +600,43 @@
     container = document.getElementById('typing-game');
     if (!container) return;
 
+    // Detect smartphone: narrow screen + touch device
+    var isSmartphone = window.matchMedia('(max-width: 600px) and (pointer: coarse)').matches;
+
     // Load saved settings from cookies
     var saved = loadSettings();
     if (saved.lang) currentLang = saved.lang;
     if (saved.mode) currentMode = saved.mode;
 
+    // --- Mobile smartphone mode: show presentation text only ---
+    if (isSmartphone) {
+      // Change the title
+      var heroTitle = document.querySelector('#hero .section__title');
+      if (heroTitle) heroTitle.textContent = 'Colombat Paolo';
+
+      // Build greyed-out navbar
+      var navbar = buildNavbar();
+      navbar.classList.add('typing-game__navbar--disabled');
+
+      // Unavailable notice
+      var notice = document.createElement('div');
+      notice.className = 'typing-game__mobile-notice';
+      notice.textContent = 'Typing test indisponible sur t\u00e9l\u00e9phone';
+
+      // Show full presentation text (not as a game)
+      textEl = document.createElement('div');
+      textEl.className = 'typing-game__text typing-game__text--mobile-display';
+      var presText = TEXTS[currentLang].presentation[0];
+      textEl.textContent = presText;
+
+      container.appendChild(navbar);
+      container.appendChild(notice);
+      container.appendChild(textEl);
+      return;
+    }
+
     // Build inner DOM
-    const navbar = buildNavbar();
+    var navbar = buildNavbar();
 
     textEl = document.createElement('div');
     textEl.className = 'typing-game__text';
@@ -611,7 +663,7 @@
 
     restartEl = document.createElement('div');
     restartEl.className = 'typing-game__restart';
-    restartEl.textContent = 'Entrée pour recommencer';
+    restartEl.textContent = 'Entrée ou Espace pour recommencer';
 
     // Stats row wraps WPM + Accuracy side by side
     statsRow = document.createElement('div');
@@ -629,6 +681,25 @@
     // Make it focusable & listen for keys
     container.setAttribute('tabindex', '0');
     container.addEventListener('keydown', handleKey);
+
+    // Focus / blur detection
+    container.addEventListener('focus', function () {
+      isFocused = true;
+      container.classList.remove('typing-game--blurred');
+      container.classList.add('typing-game--focused');
+      if (finished) {
+        container.classList.add('typing-game--finished');
+      }
+      updateTextBackground(calcWPM());
+    });
+
+    container.addEventListener('blur', function () {
+      isFocused = false;
+      container.classList.remove('typing-game--focused');
+      container.classList.remove('typing-game--finished');
+      container.classList.add('typing-game--blurred');
+      updateTextBackground(0);
+    });
 
     startGame();
   }

@@ -10,6 +10,27 @@
   width: 100%;
   outline: none;
   user-select: none;
+  cursor: default;
+}
+
+/* Hover hint when game is not focused */
+.typing-game--blurred .typing-game__text {
+  cursor: pointer;
+  transition: background 0.5s ease,
+              border-color 0.5s ease,
+              box-shadow 0.5s ease;
+}
+
+.typing-game--blurred .typing-game__text:hover {
+  background: rgba(27, 26, 39, 0.12) !important;
+  border-color: rgba(242, 162, 133, 0.2) !important;
+  box-shadow: 0 0 18px rgba(242, 162, 133, 0.06),
+              inset 0 0 25px rgba(242, 162, 133, 0.025) !important;
+}
+
+/* Subtle invite border when focused but WPM is 0 (idle) */
+.typing-game--focused .typing-game__text {
+  border-color: rgba(242, 162, 133, 0.18);
 }
 
 /* ---- Mini navbar ---- */
@@ -225,6 +246,30 @@
   animation: typing-blink 1s step-end infinite;
 }
 
+/* Hide cursor when game is blurred (clicked outside) */
+.typing-game--blurred .typing-game__char--cursor::after {
+  opacity: 0;
+  animation: none;
+}
+
+/* Finished + still focused: cursor stays visible but stops blinking */
+.typing-game--finished .typing-game__char--cursor::after {
+  animation: none;
+  opacity: 0.6;
+}
+
+/* When finished, cursor sits to the RIGHT of the last char */
+.typing-game__char--cursor-end::after {
+  left: auto;
+  right: -2px;
+}
+
+/* Finished + blurred: cursor hidden */
+.typing-game--finished.typing-game--blurred .typing-game__char--cursor::after {
+  opacity: 0;
+  animation: none;
+}
+
 @keyframes typing-blink {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0; }
@@ -416,4 +461,35 @@
     gap: 1.2rem;
     font-size: 0.9rem;
   }
+}
+
+/* ---- Smartphone mode (touch + narrow) ---- */
+
+.typing-game__navbar--disabled {
+  opacity: 0.3;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+
+.typing-game__mobile-notice {
+  text-align: center;
+  color: var(--clr-text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+  margin-bottom: 1.5rem;
+  opacity: 0.7;
+}
+
+.typing-game__text--mobile-display {
+  height: auto;
+  overflow: visible;
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1.8;
+  color: var(--clr-text);
+  background: rgba(27, 26, 39, 0.15);
+  border: 1px solid rgba(191, 153, 160, 0.1);
+  padding: 1.2rem 1.5rem;
+  font-family: var(--ff-body);
+  letter-spacing: 0.01em;
 }
