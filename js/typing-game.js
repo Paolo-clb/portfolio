@@ -51,6 +51,20 @@
     };
   }
 
+  function hasPlayed() {
+    return getCookie('typing_played') === '1';
+  }
+
+  function markAsPlayed() {
+    if (!hasPlayed()) {
+      setCookie('typing_played', '1', 365);
+      if (textEl) {
+        textEl.classList.remove('typing-game__text--first-visit');
+        textEl.classList.add('typing-game__text--fading');
+      }
+    }
+  }
+
   /* ---- Text data by language and mode ---- */
 
   const TEXTS = {
@@ -120,10 +134,12 @@
   let totalKeystrokes = 0;
   let lockedIndex = 0;
   let correctWords = 0;
+  let comboStreak = 0;
+  let wpmBoost = 0; // DEBUG: artificial WPM boost (Ctrl+ArrowUp/Down)
 
   /* ---- DOM refs (set in init) ---- */
 
-  let container, navbarEl, textEl, innerEl, wpmEl, accEl, timeEl, bestEl, restartEl;
+  let container, navbarEl, textEl, innerEl, wpmEl, accEl, timeEl, bestEl, restartEl, statsRow;
 
   /* ---- Helpers ---- */
 
@@ -184,7 +200,7 @@
     if (!startTime) return 0;
     const minutes = (Date.now() - startTime) / 60000;
     if (minutes < 0.01) return 0;
-    return Math.round(correctWords / minutes);
+    return Math.round(correctWords / minutes) + wpmBoost;
   }
 
   function calcAccuracy() {
@@ -200,6 +216,7 @@
 
   function render() {
     let html = '';
+    let comboStyle = '';
 
     for (let i = 0; i < text.length; i++) {
       let cls = 'typing-game__char';
@@ -215,17 +232,33 @@
       // Cursor sits on the next character to type
       if (i === typed.length && !finished) {
         cls += ' typing-game__char--cursor';
+        // Combo streak tier classes
+        if (comboStreak >= 30) cls += ' typing-game__char--combo-3';
+        else if (comboStreak >= 15) cls += ' typing-game__char--combo-2';
+        else if (comboStreak >= 5) cls += ' typing-game__char--combo-1';
+        // Combo color shift: #F2A285 → #F28080 from 50–100 streak
+        if (comboStreak >= 50) {
+          var cc = Math.min((comboStreak - 50) / 50, 1);
+          var cg = Math.round(162 - cc * (162 - 128));
+          var cb = Math.round(133 - cc * (133 - 128));
+          comboStyle = ' style="--combo-clr:rgb(242,' + cg + ',' + cb + ')"';
+        } else {
+          comboStyle = '';
+        }
       }
 
       // Show the original char (spaces wrap normally)
       const ch = text[i] === ' ' ? ' ' : text[i];
 
+      // Use comboStyle only on cursor span
+      var extraAttr = (i === typed.length && !finished) ? comboStyle : '';
+
       // If incorrect, show the mistyped letter below
       if (i < typed.length && typed[i] !== text[i]) {
         const wrong = typed[i] === ' ' ? '␣' : typed[i];
-        html += `<span class="${cls}"><span class="typing-game__char-expected">${ch}</span><span class="typing-game__char-wrong">${wrong}</span></span>`;
+        html += `<span class="${cls}"${extraAttr}><span class="typing-game__char-expected">${ch}</span><span class="typing-game__char-wrong">${wrong}</span></span>`;
       } else {
-        html += `<span class="${cls}">${ch}</span>`;
+        html += `<span class="${cls}"${extraAttr}>${ch}</span>`;
       }
     }
 
@@ -286,19 +319,27 @@
 
   function updateTextBackground(wpm) {
     if (!textEl) return;
-    // Clamp wpm to 0–150 range for visual mapping
-    var t = Math.min(wpm / 150, 1);
-    // Background gets slightly more visible as WPM rises
-    var bgAlpha = 0.2 + t * 0.12;
-    // Border subtly glows with primary color
-    var borderAlpha = 0.08 + t * 0.14;
-    // Soft glow shadow intensifies
-    var glowAlpha = t * 0.15;
-    var glowSize = Math.round(4 + t * 12);
+    // Linear 0–200 mapping, fully opaque at 200
+    var t = Math.min(wpm / 200, 1);
+    // Background opacity: starts translucent, fully opaque at 200
+    var bgAlpha = 0.25 + t * 0.75;
+    // Border glow ramps up strongly
+    var borderAlpha = 0.15 + t * 0.85;
+    // Glow: visible early, strong at top
+    var glowAlpha = 0.08 + t * 0.92;
+    var glowSize = Math.round(8 + t * 28);
+
+    // Color transition: primary (#F2A285) → primary-hover (#F28080) from 60–130 WPM
+    var r = 242, g = 162, b = 133; // base #F2A285
+    if (wpm >= 60) {
+      var ct = Math.min((wpm - 60) / 70, 1); // 0 at 60, 1 at 130
+      g = Math.round(162 - ct * (162 - 128)); // 162 → 128
+      b = Math.round(133 - ct * (133 - 128)); // 133 → 128
+    }
 
     textEl.style.background = 'rgba(27, 26, 39, ' + bgAlpha.toFixed(3) + ')';
-    textEl.style.borderColor = 'rgba(242, 162, 133, ' + borderAlpha.toFixed(3) + ')';
-    textEl.style.boxShadow = '0 0 ' + glowSize + 'px rgba(242, 162, 133, ' + glowAlpha.toFixed(3) + ')';
+    textEl.style.borderColor = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + borderAlpha.toFixed(3) + ')';
+    textEl.style.boxShadow = '0 0 ' + glowSize + 'px rgba(' + r + ', ' + g + ', ' + b + ', ' + glowAlpha.toFixed(3) + ')';
   }
 
   function showFinalStats() {
@@ -332,6 +373,8 @@
     totalKeystrokes = 0;
     lockedIndex = 0;
     correctWords = 0;
+    comboStreak = 0;
+    wpmBoost = 0;
     if (innerEl) {
       innerEl.remove();
     }
@@ -345,7 +388,17 @@
     timeEl.classList.remove('typing-game__time--visible');
     bestEl.classList.remove('typing-game__best--visible');
     bestEl.classList.remove('typing-game__best--new');
+    // Instant collapse (no reverse animation)
+    timeEl.style.transition = 'none';
+    bestEl.style.transition = 'none';
+    requestAnimationFrame(function() {
+      timeEl.style.transition = '';
+      bestEl.style.transition = '';
+    });
     restartEl.classList.remove('typing-game__restart--visible');
+    // Reset stats to centered position
+    wpmEl.style.transform = '';
+    accEl.style.transform = '';
     // Show scroll hint again on reset
     var hint = document.getElementById('scroll-hint');
     if (hint) hint.classList.remove('scroll-hint--hidden');
@@ -366,12 +419,16 @@
   /* ---- Input handling ---- */
 
   function handleKey(e) {
+    // DEBUG: Ctrl+ArrowUp/Down to adjust artificial WPM boost
+    if (e.ctrlKey && e.key === 'ArrowUp') { e.preventDefault(); wpmBoost += 10; updateStats(); return; }
+    if (e.ctrlKey && e.key === 'ArrowDown') { e.preventDefault(); wpmBoost = Math.max(0, wpmBoost - 10); updateStats(); return; }
+
     // Ignore modifier combos (Ctrl+C, etc.) except Shift
     if (e.ctrlKey || e.altKey || e.metaKey) return;
 
-    // Restart on Space when finished
+    // Restart on Enter when finished
     if (finished) {
-      if (e.key === ' ') {
+      if (e.key === 'Enter') {
         e.preventDefault();
         startGame();
       }
@@ -383,6 +440,7 @@
       if (typed.length > lockedIndex) {
         totalKeystrokes--;
         typed.pop();
+        comboStreak = 0;
         render();
       }
       return;
@@ -398,6 +456,8 @@
       wpmEl.classList.add('typing-game__wpm--visible');
       accEl.classList.add('typing-game__acc--visible');
       wpmInterval = setInterval(updateStats, 200);
+      // Mark as played (remove first-visit white text)
+      markAsPlayed();
       // Hide scroll hint while typing
       var hint = document.getElementById('scroll-hint');
       if (hint) hint.classList.add('scroll-hint--hidden');
@@ -405,6 +465,14 @@
 
     totalKeystrokes++;
     typed.push(e.key);
+
+    // Track combo streak (consecutive correct chars)
+    var lastIdx = typed.length - 1;
+    if (typed[lastIdx] === text[lastIdx]) {
+      comboStreak++;
+    } else {
+      comboStreak = 0;
+    }
 
     // Try to lock the current word as soon as its last character is typed
     tryLockWord();
@@ -473,6 +541,8 @@
         btn.classList.add('typing-game__option--active');
         onChange(opt.key);
         saveSettings(currentLang, currentMode);
+        // Clicking a mode marks as played
+        markAsPlayed();
       });
       group.appendChild(btn);
     });
@@ -496,6 +566,10 @@
 
     textEl = document.createElement('div');
     textEl.className = 'typing-game__text';
+    // First visit: white text if never played
+    if (!hasPlayed() && currentMode === 'presentation') {
+      textEl.classList.add('typing-game__text--first-visit');
+    }
 
     wpmEl = document.createElement('div');
     wpmEl.className = 'typing-game__wpm';
@@ -515,10 +589,10 @@
 
     restartEl = document.createElement('div');
     restartEl.className = 'typing-game__restart';
-    restartEl.textContent = 'Espace pour recommencer';
+    restartEl.textContent = 'Entrée pour recommencer';
 
     // Stats row wraps WPM + Accuracy side by side
-    const statsRow = document.createElement('div');
+    statsRow = document.createElement('div');
     statsRow.className = 'typing-game__stats';
     statsRow.appendChild(wpmEl);
     statsRow.appendChild(accEl);

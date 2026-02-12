@@ -55,6 +55,11 @@ function buildProjectCard(project) {
 
   card.appendChild(imgWrap);
   card.appendChild(body);
+
+  // "En savoir plus" hover hint
+  const hint = createElement('span', 'project-card__hint', 'En savoir plus');
+  card.appendChild(hint);
+
   return card;
 }
 

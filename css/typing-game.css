@@ -86,6 +86,19 @@
               box-shadow 0.8s ease;
 }
 
+.typing-game__text--first-visit {
+  color: var(--clr-text);
+}
+
+.typing-game__text--fading {
+  animation: first-visit-fade 1.8s ease forwards;
+}
+
+@keyframes first-visit-fade {
+  from { color: var(--clr-text); }
+  to   { color: var(--clr-text-muted); }
+}
+
 .typing-game__text-inner {
   position: relative;
   transition: transform 0.25s ease;
@@ -137,7 +150,7 @@
   top: 0.15em;
   width: 2px;
   height: 1.1em;
-  background: var(--clr-primary);
+  background: var(--combo-clr, var(--clr-primary));
   animation: typing-blink 1s step-end infinite;
 }
 
@@ -146,21 +159,63 @@
   50%      { opacity: 0; }
 }
 
+/* ---- Combo streak glow on cursor ---- */
+
+.typing-game__char--combo-1::after {
+  background: var(--combo-clr, var(--clr-primary));
+  box-shadow: 0 0 6px rgba(242, 162, 133, 0.5),
+              0 0 12px rgba(242, 162, 133, 0.2);
+  animation: combo-pulse-1 0.8s ease-in-out infinite;
+}
+
+.typing-game__char--combo-2::after {
+  background: var(--combo-clr, var(--clr-primary));
+  box-shadow: 0 0 8px rgba(242, 162, 133, 0.7),
+              0 0 18px rgba(242, 162, 133, 0.3),
+              0 0 30px rgba(242, 128, 128, 0.15);
+  animation: combo-pulse-2 0.6s ease-in-out infinite;
+}
+
+.typing-game__char--combo-3::after {
+  background: var(--combo-clr, var(--clr-primary));
+  box-shadow: 0 0 10px rgba(242, 162, 133, 0.9),
+              0 0 24px rgba(242, 128, 128, 0.4),
+              0 0 40px rgba(191, 153, 160, 0.2);
+  animation: combo-pulse-3 0.45s ease-in-out infinite;
+}
+
+@keyframes combo-pulse-1 {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(242,162,133,0.5), 0 0 12px rgba(242,162,133,0.2); }
+  50%      { opacity: 0.85; box-shadow: 0 0 8px rgba(242,162,133,0.6), 0 0 16px rgba(242,162,133,0.25); }
+}
+
+@keyframes combo-pulse-2 {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(242,162,133,0.7), 0 0 18px rgba(242,162,133,0.3), 0 0 30px rgba(242,128,128,0.15); }
+  50%      { opacity: 0.8; box-shadow: 0 0 12px rgba(242,162,133,0.8), 0 0 24px rgba(242,162,133,0.4), 0 0 36px rgba(242,128,128,0.2); }
+}
+
+@keyframes combo-pulse-3 {
+  0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(242,162,133,0.9), 0 0 24px rgba(242,128,128,0.4), 0 0 40px rgba(191,153,160,0.2); }
+  50%      { opacity: 0.75; box-shadow: 0 0 14px rgba(242,162,133,1), 0 0 30px rgba(242,128,128,0.5), 0 0 50px rgba(191,153,160,0.3); }
+}
+
 /* ---- Stats row (WPM + Accuracy) ---- */
 
 .typing-game__stats {
   display: flex;
-  gap: 3rem;
+  gap: 2.5rem;
   margin-top: 2.5rem;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .typing-game__wpm {
   font-size: 1.5rem;
   color: var(--clr-accent);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transform: translateX(0);
+  transition: opacity 0.3s ease, transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   font-variant-numeric: tabular-nums;
 }
 
@@ -172,7 +227,8 @@
   font-size: 1.5rem;
   color: var(--clr-primary);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transform: translateX(0);
+  transition: opacity 0.3s ease, transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   font-variant-numeric: tabular-nums;
 }
 
@@ -184,12 +240,20 @@
   font-size: 1.5rem;
   color: var(--clr-text);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: translateX(30px);
+  transition: opacity 0.4s ease 0.15s,
+              transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
+              max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
   font-variant-numeric: tabular-nums;
 }
 
 .typing-game__time--visible {
   opacity: 1;
+  max-width: 300px;
+  transform: translateX(0);
 }
 
 /* ---- Best score ---- */
@@ -198,12 +262,20 @@
   font-size: 1.5rem;
   color: var(--clr-text-muted);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: translateX(30px);
+  transition: opacity 0.4s ease 0.3s,
+              transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s,
+              max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.25s;
   font-variant-numeric: tabular-nums;
 }
 
 .typing-game__best--visible {
   opacity: 1;
+  max-width: 300px;
+  transform: translateX(0);
 }
 
 .typing-game__best--new {
