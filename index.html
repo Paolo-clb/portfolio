@@ -1,155 +1,107 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
-    <link rel="preload" href="images/katanarooftop.gif" as="image">
-    <link rel="preload" href="mainClear.css">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="mainClear.css">
-    <title>MonPortfolio/Main</title>
-    <script src="effects.js" defer></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Personal portfolio showcasing projects and skills" />
+  <title>My Portfolio</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/typing-game.css" />
+  <link rel="stylesheet" href="css/music-player.css" />
+  <link rel="stylesheet" href="css/visualizer.css" />
 </head>
-<body class="cyber-animate">
-<div class="corner-credit">
-    Image from: Katana Zero - Devolver Digital
-</div>
-<div class="scroll-track">
-    <div class="scroll-progress"></div>
-</div>
-    <header>
-        <div class="header-left">
-            <h1>Colombat Paolo</h1>
-        </div>
-        <nav class="header-right">
-            <button class="burger-menu" aria-label="Ouvrir le menu" aria-expanded="false">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-            <ul>
-                <li><a href="projects.html">Projets</a></li>
-                <li><a href="#competences">Compétences</a></li>
-                <li><a href="#contact">Contact</a></li>
-            </ul>
-        </nav>
-    </header>
-<section class="hero">
-<h2 class="pixel-text less-glow">Étudiant en informatique</h2>
-  <div class="hero-console pixel-border">
-    <div class="console-titlebar">
-      <span class="window-btn close"></span>
-      <span class="window-btn min"></span>
-      <span class="window-btn max"></span>
-      <span class="console-title">shell</span>
-    </div>
-    <pre id="bash-console"></pre>
-  </div>
-  
-  <div class="hero-buttons">
-    <a href="cv.html" class="pixel-button cv-button">
-      <span class="btn-glitch">Mon CV_</span>
-    </a>
-  </div>
-</section>
+<body>
+  <!-- Navigation -->
+  <header class="header" id="header">
+    <nav class="nav container">
+      <div class="music-player" id="music-player"></div>
+      <ul class="nav__list">
+        <li><a href="#hero" class="nav__link">Home</a></li>
+        <li><a href="#projects" class="nav__link">Projects</a></li>
+        <li><a href="#skills" class="nav__link">Skills</a></li>
+        <li><a href="#contact" class="nav__link">Contact</a></li>
+      </ul>
+      <button class="nav__toggle" id="nav-toggle" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </button>
+    </nav>
+  </header>
 
-    <section class="projets" >
-    <h2 class="pixel-text">MES PROJETS</h2>
-    <div class="projet-grid">
-        <div class="projet-item">
-            <img src="images/banquet.jpg" alt="Projet 1" class="pixel-border">
-            <div class="project-scan"></div>
-        </div>
-        <div class="projet-item">
-            <img src="images/debian2.png" alt="Projet 2" class="pixel-border">
-            <div class="project-scan"></div>
-        </div>
-        <div class="projet-item">
-            <img src="images/sopra2.jpg" alt="Projet 3" class="pixel-border">
-            <div class="project-scan"></div>
-        </div>
-    </div>
-    <a href="projects.html" class="pixel-button big-button">VOIR TOUS LES PROJETS</a>
-</section>
+  <main>
+    <!-- Hero Section — Typing Game -->
+    <section class="hero section" id="hero">
+      <div class="container hero__content">
+        <h2 class="section__title">Colombat Paolo - Typing Test</h2>
+        <div class="typing-game" id="typing-game"></div>
+      </div>
+      <a href="#projects" class="scroll-hint" id="scroll-hint" aria-label="Scroll down">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </a>
+    </section>
 
-<section class="competences" id="competences">
-    <h2 class="pixel-text">MES COMPÉTENCES </h2>
-    <div class="competences-list">
-        <div class="competence-column">
-            <div class="skill-chip">
-                <h3 class="pixel-text skill-name">Transversale</h3>
-                <ul class="pixel-list">
-                    <li>Polyvalent</li>
-                    <li>Social</li>
-                    <li>Pédagogue</li>
-                    <li>Enthousiaste</li>
-                    <li>Travail en équipe</li>
-                </ul>
-                <div class="skill-scan"></div>
-            </div>
+    <!-- Projects Section -->
+    <section class="projects section" id="projects">
+      <div class="container">
+        <h2 class="section__title">Projects</h2>
+        <div class="projects__grid" id="projects-grid">
+          <!-- Project cards are rendered by js/main.js from js/data.js -->
         </div>
-        <div class="competence-column">
-            <div class="skill-chip">
-                <h3 class="pixel-text skill-name">Utilisation efficaces de l'IA</h3>
-                <ul class="pixel-list">
-                    <li>Apprentissage ultra-rapide et pertinent</li>
-                    <li>Création de site web complexe et structuré</li>
-                    <li>Grande productivité grâce à une maîtrise avancée des outils IA</li>
-                </ul>
-                <div class="skill-scan"></div>
-            </div>
-        </div>
-        
+      </div>
+    </section>
 
-        
-        <div class="competence-column">
-            <div class="skill-chip">
-                <h3 class="pixel-text skill-name">Logiciels et languages</h3>
-                <ul class="pixel-list">
-                    <li>maitrise de Git</li>
-                    <li>shell bash</li>
-                    <li>java/java FX</li>
-                    <li>postgreSQL</li>
-                    <li>assembly 68k</li>
-                    <li>html & css</li>
-                </ul>
-                <div class="skill-scan"></div>
-            </div>
+    <!-- Skills Section -->
+    <section class="skills section" id="skills">
+      <div class="container">
+        <h2 class="section__title">Skills</h2>
+        <div class="skills__grid" id="skills-grid">
+          <!-- Skill items are rendered by js/main.js from js/data.js -->
         </div>
-    </div>
-</section>
+      </div>
+    </section>
 
-    <footer id="contact">
-
-        <h2 class="pixel-text">ME CONTACTER</h2>
-        <div class="contact-info">
-            <p>
-                <a href="https://github.com/Paolo-clb" target="_blank" rel="noopener" class="contact-link">
-                    mon github
-                </a>
-            </p>
-            <p>
-                <button class="pixel-button mail-popup-btn" id="openMailPopup">M'envoyer un message</button>
-            </p>
-            <p>
-                <a href="https://gricad-gitlab.univ-grenoble-alpes.fr/colombpa" target="_blank" rel="noopener" class="contact-link">
-                    mon gitlab
-                </a>
-            </p>
-        </div>
-        <div class="mail-modal" id="mailModal">
-    <div class="mail-modal-content pixel-border">
-        <button class="mail-modal-close" id="closeMailPopup" aria-label="Fermer">&times;</button>
-        <h3 class="pixel-text">M'envoyer un message</h3>
-        <form class="mail-form" autocomplete="off">
-            <input type="text" placeholder="Nom" class="pixel-input" required>
-            <input type="text" placeholder="Prénom" class="pixel-input" required>
-            <input type="email" placeholder="Votre email" class="pixel-input" required>
-            <textarea placeholder="Votre message" class="pixel-input" rows="5" required></textarea>
-            <button type="submit" class="pixel-button" disabled>Envoyer (actuellement non fonctionnel)</button>
+    <!-- Contact Section -->
+    <section class="contact section" id="contact">
+      <div class="container">
+        <h2 class="section__title">Contact</h2>
+        <form class="contact__form" id="contact-form" action="https://formspree.io/f/mkovoawq" method="POST">
+          <!-- Honeypot anti-spam (hidden from users) -->
+          <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
+          <div class="form__group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required minlength="2" maxlength="100" />
+          </div>
+          <div class="form__group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required maxlength="254" />
+          </div>
+          <div class="form__group">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" rows="5" required minlength="10" maxlength="3000"></textarea>
+          </div>
+          <div class="form__actions">
+            <button type="submit" class="btn btn--primary">Send Message</button>
+          </div>
+          <p id="form-status" class="form__status" style="display:none;"></p>
         </form>
-    </div>
-</div>
-    </footer>
-</body>
+      </div>
+    </section>
+  </main>
 
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Your Name. All rights reserved.</p>
+      <ul class="footer__socials">
+        <li><a href="#" aria-label="GitHub">GitHub</a></li>
+        <li><a href="#" aria-label="LinkedIn">LinkedIn</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/typing-game.js"></script>
+  <script src="js/music-player.js"></script>
+  <script src="js/visualizer.js"></script>
+  <script src="js/main.js"></script>
+</body>
 </html>

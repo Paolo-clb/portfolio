@@ -1,0 +1,216 @@
+/* ==========================================================================
+   Typing Game — Hero mini-game
+   ========================================================================== */
+
+.typing-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  outline: none;
+  user-select: none;
+}
+
+/* ---- Mini navbar ---- */
+
+.typing-game__navbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 3rem;
+  padding: 0.5rem 1.4rem;
+  border-radius: var(--radius);
+  background: rgba(27, 26, 39, 0.5);
+  border: 1px solid rgba(191, 153, 160, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.typing-game__navbar-sep {
+  color: var(--clr-border);
+  font-size: 1.2rem;
+  user-select: none;
+}
+
+.typing-game__option-group {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.typing-game__option {
+  background: none;
+  border: none;
+  color: var(--clr-text-muted);
+  font-family: var(--ff-body);
+  font-size: 1rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: calc(var(--radius) * 0.7);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.typing-game__option:hover {
+  color: var(--clr-text);
+}
+
+.typing-game__option--active {
+  color: var(--clr-primary);
+  background: rgba(242, 162, 133, 0.12);
+}
+
+/* ---- Text display ---- */
+
+.typing-game__text {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  width: 95vw;
+  max-width: 1400px;
+  text-align: left;
+  color: var(--clr-text-muted);
+  position: relative;
+  overflow: hidden;
+  /* 3 lines: 3 × 1.6em line-height = 4.8em */
+  height: 4.8em;
+}
+
+.typing-game__text-inner {
+  position: relative;
+  transition: transform 0.25s ease;
+  will-change: transform;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.typing-game__char {
+  position: relative;
+  transition: color 0.08s ease;
+}
+
+.typing-game__char--correct {
+  color: var(--clr-primary);
+}
+
+.typing-game__char--incorrect {
+  color: var(--clr-primary-hover);
+  position: relative;
+}
+
+.typing-game__char-wrong {
+  position: absolute;
+  left: 50%;
+  top: 85%;
+  transform: translateX(-50%);
+  font-size: 0.55em;
+  color: var(--clr-primary-hover);
+  opacity: 0.7;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.typing-game__char--locked {
+  opacity: 0.35;
+}
+
+/* ---- Blinking cursor ---- */
+
+.typing-game__char--cursor::after {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0.15em;
+  width: 2px;
+  height: 1.1em;
+  background: var(--clr-primary);
+  animation: typing-blink 1s step-end infinite;
+}
+
+@keyframes typing-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+/* ---- Stats row (WPM + Accuracy) ---- */
+
+.typing-game__stats {
+  display: flex;
+  gap: 3rem;
+  margin-top: 2.5rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.typing-game__wpm {
+  font-size: 1.5rem;
+  color: var(--clr-accent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  font-variant-numeric: tabular-nums;
+}
+
+.typing-game__wpm--visible {
+  opacity: 1;
+}
+
+.typing-game__acc {
+  font-size: 1.5rem;
+  color: var(--clr-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  font-variant-numeric: tabular-nums;
+}
+
+.typing-game__acc--visible {
+  opacity: 1;
+}
+
+.typing-game__time {
+  font-size: 1.5rem;
+  color: var(--clr-text);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  font-variant-numeric: tabular-nums;
+}
+
+.typing-game__time--visible {
+  opacity: 1;
+}
+
+/* ---- Restart hint ---- */
+
+.typing-game__restart {
+  margin-top: 1.2rem;
+  font-size: 1rem;
+  color: var(--clr-text-muted);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.typing-game__restart--visible {
+  opacity: 1;
+}
+
+/* ---- Responsive ---- */
+
+@media (max-width: 768px) {
+  .typing-game__text {
+    font-size: 1.2rem;
+    width: 95vw;
+    max-width: 95vw;
+    /* height stays 7.8em, scales with font-size */
+  }
+
+  .typing-game__navbar {
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .typing-game__option {
+    font-size: 0.85rem;
+    padding: 0.2rem 0.5rem;
+  }
+}
