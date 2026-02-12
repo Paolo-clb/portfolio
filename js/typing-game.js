@@ -136,6 +136,7 @@
   let correctWords = 0;
   let comboStreak = 0;
   let wpmBoost = 0; // DEBUG: artificial WPM boost (Ctrl+ArrowUp/Down)
+  let showErrors = false;
 
   /* ---- DOM refs (set in init) ---- */
 
@@ -519,6 +520,27 @@
     navbarEl.appendChild(langGroup);
     navbarEl.appendChild(sep);
     navbarEl.appendChild(modeGroup);
+
+    // Eye toggle for error details
+    var sep2 = document.createElement('span');
+    sep2.className = 'typing-game__navbar-sep';
+    sep2.textContent = '|';
+    navbarEl.appendChild(sep2);
+
+    var eyeBtn = document.createElement('button');
+    eyeBtn.className = 'typing-game__eye';
+    eyeBtn.setAttribute('tabindex', '-1');
+    eyeBtn.setAttribute('title', 'Afficher/masquer les erreurs');
+    eyeBtn.innerHTML = '<svg class="typing-game__eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="typing-game__eye-top" d="M1 12s4-8 11-8 11 8 11 8"/><path class="typing-game__eye-bottom" d="M1 12s4 8 11 8 11-8 11-8"/><circle class="typing-game__eye-pupil" cx="12" cy="12" r="3"/><line class="typing-game__eye-slash" x1="2" y1="2" x2="22" y2="22"/></svg>';
+    eyeBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      showErrors = !showErrors;
+      eyeBtn.classList.toggle('typing-game__eye--active', showErrors);
+      container.classList.toggle('typing-game--show-errors', showErrors);
+      container.focus();
+    });
+    navbarEl.appendChild(eyeBtn);
+
     return navbarEl;
   }
 

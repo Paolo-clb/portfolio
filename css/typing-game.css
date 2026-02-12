@@ -58,6 +58,63 @@
   background: rgba(242, 162, 133, 0.12);
 }
 
+/* ---- Eye toggle ---- */
+
+.typing-game__eye {
+  background: none;
+  border: none;
+  color: var(--clr-text-muted);
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: calc(var(--radius) * 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease, background 0.3s ease;
+}
+
+.typing-game__eye:hover {
+  color: var(--clr-text);
+}
+
+.typing-game__eye-icon {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+/* Closed state (default): slash visible, pupil hidden */
+.typing-game__eye-slash {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.typing-game__eye-pupil {
+  opacity: 0;
+  transform-origin: center;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  transform: scale(0);
+}
+
+.typing-game__eye-top,
+.typing-game__eye-bottom {
+  transition: d 0.3s ease, stroke 0.3s ease;
+}
+
+/* Open state (active): slash hidden, pupil visible, orange */
+.typing-game__eye--active {
+  color: var(--clr-primary);
+  background: rgba(242, 162, 133, 0.12);
+}
+
+.typing-game__eye--active .typing-game__eye-slash {
+  opacity: 0;
+}
+
+.typing-game__eye--active .typing-game__eye-pupil {
+  opacity: 1;
+  transform: scale(1);
+}
+
 /* ---- Text display ---- */
 
 .typing-game__text {
@@ -119,6 +176,14 @@
 .typing-game__char--incorrect {
   color: var(--clr-primary-hover);
   position: relative;
+  text-decoration: underline;
+  text-decoration-color: rgba(242, 128, 128, 0.35);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+}
+
+.typing-game--show-errors .typing-game__char--incorrect {
+  text-decoration: none;
 }
 
 .typing-game__char-wrong {
@@ -128,9 +193,14 @@
   transform: translateX(-50%);
   font-size: 0.55em;
   color: var(--clr-primary-hover);
-  opacity: 0.7;
+  opacity: 0;
   line-height: 1;
   pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.typing-game--show-errors .typing-game__char-wrong {
+  opacity: 0.7;
 }
 
 .typing-game__char--locked {
