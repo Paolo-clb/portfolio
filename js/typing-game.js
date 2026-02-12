@@ -260,6 +260,20 @@
     // Keep cursor on line 1 (middle of 3)
     var scrollLines = Math.max(0, cursorLine - 1);
     innerEl.style.transform = 'translateY(' + -(scrollLines * lh) + 'px)';
+
+    // Hide characters on lines that scrolled above the visible area
+    // (overflow:hidden clips at padding-box, so chars in the padding zone stay visible otherwise)
+    if (scrollLines > 0) {
+      var cutoffY = scrollLines * lh;
+      var spans = innerEl.children;
+      for (var i = 0; i < spans.length; i++) {
+        if (spans[i].offsetTop < cutoffY - 2) {
+          spans[i].style.visibility = 'hidden';
+        } else {
+          break;
+        }
+      }
+    }
   }
 
   function updateStats() {
@@ -267,6 +281,24 @@
     const acc = calcAccuracy();
     wpmEl.textContent = `${wpm} WPM`;
     accEl.textContent = `${acc}%`;
+    updateTextBackground(wpm);
+  }
+
+  function updateTextBackground(wpm) {
+    if (!textEl) return;
+    // Clamp wpm to 0–150 range for visual mapping
+    var t = Math.min(wpm / 150, 1);
+    // Background gets slightly more visible as WPM rises
+    var bgAlpha = 0.2 + t * 0.12;
+    // Border subtly glows with primary color
+    var borderAlpha = 0.08 + t * 0.14;
+    // Soft glow shadow intensifies
+    var glowAlpha = t * 0.15;
+    var glowSize = Math.round(4 + t * 12);
+
+    textEl.style.background = 'rgba(27, 26, 39, ' + bgAlpha.toFixed(3) + ')';
+    textEl.style.borderColor = 'rgba(242, 162, 133, ' + borderAlpha.toFixed(3) + ')';
+    textEl.style.boxShadow = '0 0 ' + glowSize + 'px rgba(242, 162, 133, ' + glowAlpha.toFixed(3) + ')';
   }
 
   function showFinalStats() {
@@ -308,6 +340,8 @@
     accEl.classList.remove('typing-game__acc--visible');
     wpmEl.textContent = '0 WPM';
     accEl.textContent = '100%';
+    // Reset text background
+    updateTextBackground(0);
     timeEl.classList.remove('typing-game__time--visible');
     bestEl.classList.remove('typing-game__best--visible');
     bestEl.classList.remove('typing-game__best--new');

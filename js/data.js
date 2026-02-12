@@ -191,55 +191,60 @@ const PROJECTS = [
       challenges: '',
     },
   },
-  {
-    title: 'Blog Platform',
-    description: 'Markdown-based blog with dark/light theme toggle and reading time estimates.',
-    image: 'assets/images/project-5.jpg',
-    tags: ['JavaScript', 'Markdown', 'CSS'],
-    demo: '#',
-    repo: '#',
-    details: {
-      overview: 'Plateforme de blog qui convertit des fichiers Markdown en pages HTML stylisées, avec estimation du temps de lecture et thème adaptatif.',
-      features: [
-        'Parsing Markdown vers HTML',
-        'Estimation automatique du temps de lecture',
-        'Toggle dark / light theme avec persistance',
-        'Table des matières générée automatiquement',
-        'Coloration syntaxique des blocs de code',
-      ],
-      techDetails: 'Le parsing Markdown est fait côté client avec un parser custom léger. Le thème est persisté via localStorage et respecte prefers-color-scheme.',
-      challenges: 'Créer un parser Markdown suffisamment robuste sans dépendre de librairies externes, tout en supportant les éléments courants (titres, listes, code, liens).',
-    },
-  },
-  {
-    title: 'Recipe Finder',
-    description: 'Recipe search app with ingredient-based filtering and responsive card layout.',
-    image: 'assets/images/project-6.jpg',
-    tags: ['API', 'JavaScript', 'Responsive'],
-    demo: '#',
-    repo: '#',
-    details: {
-      overview: 'Application de recherche de recettes qui permet de trouver des plats à partir d\'ingrédients disponibles, avec un layout responsive en cartes.',
-      features: [
-        'Recherche multi-ingrédients',
-        'Filtres par type de cuisine et régime alimentaire',
-        'Affichage détaillé des recettes avec étapes',
-        'Système de favoris (LocalStorage)',
-        'Layout masonry responsive',
-      ],
-      techDetails: 'Consomme une API REST de recettes avec gestion du debounce sur la recherche. Les favoris sont stockés en localStorage avec synchronisation temps réel de l\'UI.',
-      challenges: 'Implémenter un layout masonry performant en CSS pur (columns) avec un fallback grid pour les navigateurs non supportés.',
-    },
-  },
 ];
 
-const SKILLS = [
-  { name: 'HTML', icon: '🌐' },
-  { name: 'CSS', icon: '🎨' },
-  { name: 'JavaScript', icon: '⚡' },
-  { name: 'Git', icon: '🔀' },
-  { name: 'Responsive Design', icon: '📱' },
-  { name: 'Accessibility', icon: '♿' },
+const SKILL_GROUPS = [
+  {
+    label: 'Langages',
+    skills: [
+      { name: 'C',          icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/c/c-original.svg' },
+      { name: 'C++',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg' },
+      { name: 'Java',       icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg' },
+      { name: 'Python',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg' },
+      { name: 'JavaScript', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg' },
+      { name: 'PHP',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg' },
+      { name: 'SQL',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azuresqldatabase/azuresqldatabase-original.svg' },
+    ],
+  },
+    {
+    label: 'Outils de dev',
+    skills: [
+      { name: 'Git',               icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg' },
+      { name: 'GitLab & GitHub',   icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/gitlab/gitlab-original.svg' },
+      { name: 'VS Code',           icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vscode/vscode-original.svg' },
+      { name: 'JetBrains',         icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/jetbrains/jetbrains-original.svg' },
+      { name: 'Bash',              icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/bash/bash-original.svg' },
+    ],
+  },
+  {
+    label: 'Web',
+    skills: [
+      { name: 'HTML / CSS', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg' },
+      { name: 'React',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg' },
+    ],
+  },
+  {
+    label: 'Mobile',
+    skills: [
+      { name: 'Android',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/android/android-original.svg' },
+      { name: 'Android Studio', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/androidstudio/androidstudio-original.svg' },
+    ],
+  },
+  {
+    label: 'Bases de données',
+    skills: [
+      { name: 'PostgreSQL', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg' },
+      { name: 'SQLite',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/sqlite/sqlite-original.svg' },
+      { name: 'MySQL',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mysql/mysql-original.svg' },
+    ],
+  },
+  {
+    label: 'Serveur / Admin',
+    skills: [
+      { name: 'Apache',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/apache/apache-original.svg' },
+      { name: 'phpPgAdmin', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg' },
+    ],
+  },
 ];
 
 /**

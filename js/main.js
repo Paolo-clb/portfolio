@@ -307,18 +307,80 @@ function closeProjectDetail() {
 }
 
 // ---------------------------------------------------------------------------
-// Render skill items into #skills-grid
+// Render skill items into #skills-grid (grouped)
 // ---------------------------------------------------------------------------
 function renderSkills() {
   const grid = document.getElementById('skills-grid');
   if (!grid) return;
 
-  SKILLS.forEach((skill) => {
-    const item = createElement('div', 'skill-item');
-    item.appendChild(createElement('div', 'skill-item__icon', skill.icon));
-    item.appendChild(createElement('div', 'skill-item__name', skill.name));
-    grid.appendChild(item);
+  var VISIBLE_COUNT = 2;
+
+  SKILL_GROUPS.forEach(function (group, index) {
+    var section = createElement('div', 'skills-group');
+    if (index >= VISIBLE_COUNT) {
+      section.classList.add('skills-group--hidden');
+    }
+
+    section.appendChild(createElement('h3', 'skills-group__label', group.label));
+
+    var row = createElement('div', 'skills-group__items');
+    group.skills.forEach(function (skill) {
+      var item = createElement('div', 'skill-item');
+
+      var iconEl = document.createElement('img');
+      iconEl.src = skill.icon;
+      iconEl.alt = skill.name;
+      iconEl.className = 'skill-item__icon';
+      iconEl.loading = 'lazy';
+      item.appendChild(iconEl);
+
+      item.appendChild(createElement('div', 'skill-item__name', skill.name));
+      row.appendChild(item);
+    });
+
+    section.appendChild(row);
+    grid.appendChild(section);
   });
+
+  // Toggle button (same style as "Voir tous les projets")
+  if (SKILL_GROUPS.length > VISIBLE_COUNT) {
+    var wrapper = grid.parentElement;
+    var actions = createElement('div', 'skills__actions');
+    var btn = createElement('button', 'btn btn--outline', 'Voir toutes les compétences');
+    var expanded = false;
+
+    btn.addEventListener('click', function () {
+      var hiddenGroups = grid.querySelectorAll('.skills-group--hidden');
+      var allGroups = grid.querySelectorAll('.skills-group');
+
+      if (!expanded) {
+        // Expand
+        hiddenGroups.forEach(function (g) {
+          g.classList.add('skills-group--revealing');
+          g.classList.remove('skills-group--hidden');
+          // Trigger reflow for animation
+          void g.offsetWidth;
+          g.classList.add('skills-group--visible');
+        });
+        btn.textContent = 'Voir moins';
+        expanded = true;
+      } else {
+        // Collapse
+        allGroups.forEach(function (g, i) {
+          if (i >= VISIBLE_COUNT) {
+            g.classList.remove('skills-group--visible');
+            g.classList.remove('skills-group--revealing');
+            g.classList.add('skills-group--hidden');
+          }
+        });
+        btn.textContent = 'Voir toutes les compétences';
+        expanded = false;
+      }
+    });
+
+    actions.appendChild(btn);
+    wrapper.appendChild(actions);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -520,6 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initContactForm();
   setFooterYear();
   initScrollHint();
+  initCvModal();
 });
 
 // ---------------------------------------------------------------------------
@@ -538,4 +601,78 @@ function initScrollHint() {
       hidden = false;
     }
   }, { passive: true });
+}
+
+// ---------------------------------------------------------------------------
+// CV Modal
+// ---------------------------------------------------------------------------
+function createCvModal() {
+  var overlay = createElement('div', 'modal-overlay');
+  overlay.id = 'cv-modal';
+
+  var modal = createElement('div', 'modal cv-modal');
+
+  // Header
+  var header = createElement('div', 'cv-modal__header');
+  header.appendChild(createElement('h2', 'cv-modal__title', 'Curriculum Vitae'));
+  var closeBtn = createElement('button', 'modal__close', '\u00D7');
+  closeBtn.setAttribute('aria-label', 'Fermer');
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  // PDF viewer
+  var viewer = createElement('div', 'cv-modal__viewer');
+  var iframe = document.createElement('iframe');
+  iframe.src = 'assets/doc/CV_Paolo.pdf';
+  iframe.title = 'CV Paolo';
+  viewer.appendChild(iframe);
+  modal.appendChild(viewer);
+
+  // Footer with download button
+  var footer = createElement('div', 'cv-modal__footer');
+  var dlBtn = document.createElement('a');
+  dlBtn.href = 'assets/doc/CV_Paolo.pdf';
+  dlBtn.download = 'CV_Paolo.pdf';
+  dlBtn.className = 'btn btn--primary';
+  dlBtn.textContent = 'T\u00e9l\u00e9charger le CV';
+  footer.appendChild(dlBtn);
+  modal.appendChild(footer);
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  closeBtn.addEventListener('click', closeCvModal);
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) closeCvModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeCvModal();
+  });
+}
+
+function openCvModal() {
+  var overlay = document.getElementById('cv-modal');
+  if (!overlay) {
+    createCvModal();
+    overlay = document.getElementById('cv-modal');
+  }
+  void overlay.offsetWidth;
+  overlay.classList.add('modal-overlay--open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCvModal() {
+  var overlay = document.getElementById('cv-modal');
+  if (!overlay) return;
+  overlay.classList.remove('modal-overlay--open');
+  document.body.style.overflow = '';
+}
+
+function initCvModal() {
+  var link = document.getElementById('cv-link');
+  if (!link) return;
+  link.addEventListener('click', function (e) {
+    e.preventDefault();
+    openCvModal();
+  });
 }
