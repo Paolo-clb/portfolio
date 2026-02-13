@@ -37,17 +37,22 @@
     return false;
   }
 
-  function saveSettings(lang, mode) {
+  function saveSettings(lang, mode, showErrorsState) {
     setCookie('typing_lang', lang, 365);
     setCookie('typing_mode', mode, 365);
+    if (typeof showErrorsState !== 'undefined') {
+      setCookie('typing_show_errors', showErrorsState ? '1' : '0', 365);
+    }
   }
 
   function loadSettings() {
     var lang = getCookie('typing_lang');
     var mode = getCookie('typing_mode');
+    var showErrorsCookie = getCookie('typing_show_errors');
     return {
       lang: (lang === 'fr' || lang === 'en') ? lang : null,
-      mode: mode && ['presentation', '10', '25', '50', '100'].indexOf(mode) !== -1 ? mode : null
+      mode: mode && ['presentation', '10', '25', '50', '100'].indexOf(mode) !== -1 ? mode : null,
+      showErrors: showErrorsCookie === '1'
     };
   }
 
@@ -566,11 +571,15 @@
     eyeBtn.setAttribute('tabindex', '-1');
     eyeBtn.setAttribute('title', 'Afficher/masquer les erreurs');
     eyeBtn.innerHTML = '<svg class="typing-game__eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="typing-game__eye-top" d="M1 12s4-8 11-8 11 8 11 8"/><path class="typing-game__eye-bottom" d="M1 12s4 8 11 8 11-8 11-8"/><circle class="typing-game__eye-pupil" cx="12" cy="12" r="3"/><line class="typing-game__eye-slash" x1="2" y1="2" x2="22" y2="22"/></svg>';
+    // Appliquer l'état initial de showErrors
+    eyeBtn.classList.toggle('typing-game__eye--active', showErrors);
+    container.classList.toggle('typing-game--show-errors', showErrors);
     eyeBtn.addEventListener('click', function(e) {
       e.preventDefault();
       showErrors = !showErrors;
       eyeBtn.classList.toggle('typing-game__eye--active', showErrors);
       container.classList.toggle('typing-game--show-errors', showErrors);
+      saveSettings(currentLang, currentMode, showErrors);
       container.focus();
     });
     navbarEl.appendChild(eyeBtn);
@@ -596,7 +605,7 @@
         });
         btn.classList.add('typing-game__option--active');
         onChange(opt.key);
-        saveSettings(currentLang, currentMode);
+        saveSettings(currentLang, currentMode, showErrors);
         // Clicking a mode marks as played
         markAsPlayed();
       });
@@ -619,6 +628,7 @@
     var saved = loadSettings();
     if (saved.lang) currentLang = saved.lang;
     if (saved.mode) currentMode = saved.mode;
+    if (typeof saved.showErrors !== 'undefined') showErrors = saved.showErrors;
 
     // --- Mobile smartphone mode: show presentation text only ---
     if (isSmartphone) {
