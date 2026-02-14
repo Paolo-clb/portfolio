@@ -12,7 +12,7 @@ const PROJECTS = [
   {
     title: 'MEGA SAE',
     description: 'Application JavaFX d\'organisation de banquets — gestion d\'événements, invités, menus et plans de table.',
-    image: 'assets/images/project-1.jpg',
+    image: 'assets/images/background.jpg',
     tags: ['JavaFX', 'MVC', 'UML', 'Gestion de projet'],
     demo: '#',
     repo: '#',
