@@ -243,9 +243,9 @@
       if (i === typed.length && !finished) {
         cls += ' typing-game__char--cursor';
         // Combo streak tier classes
-        if (comboStreak >= 30) cls += ' typing-game__char--combo-3';
-        else if (comboStreak >= 15) cls += ' typing-game__char--combo-2';
-        else if (comboStreak >= 5) cls += ' typing-game__char--combo-1';
+        if (comboStreak >= 60) cls += ' typing-game__char--combo-3';
+        else if (comboStreak >= 30) cls += ' typing-game__char--combo-2';
+        else if (comboStreak >= 10) cls += ' typing-game__char--combo-1';
         // Combo color shift: #F2A285 → #F28080 from 50–100 streak
         if (comboStreak >= 50) {
           var cc = Math.min((comboStreak - 50) / 50, 1);
