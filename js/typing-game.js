@@ -336,7 +336,7 @@
     if (!textEl) return;
     // If not focused (and not finished with focus), use dim background
     if (!isFocused) {
-      textEl.style.background = 'rgba(27, 26, 39, 0.06)';
+      textEl.style.background = 'rgba(27, 26, 39, 0.04)';
       textEl.style.borderColor = 'rgba(191, 153, 160, 0.04)';
       textEl.style.boxShadow = '0 0 0 0 transparent';
       return;

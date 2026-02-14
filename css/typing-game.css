@@ -23,7 +23,7 @@
 }
 
 .typing-game--blurred .typing-game__text:hover {
-  background: rgba(27, 26, 39, 0.162) !important;
+  background: rgba(70, 67, 113, 0.13) !important;
   border-color: rgba(242, 162, 133, 0.2) !important;
   box-shadow: 0 0 18px rgba(242, 162, 133, 0.06),
               inset 0 0 25px rgba(242, 162, 133, 0.025) !important;
@@ -34,7 +34,7 @@
 
 /* Subtle invite border when focused but WPM is 0 (idle) */
 .typing-game--focused .typing-game__text {
-  border-color: rgba(242, 162, 133, 0.18);
+  border-color: rgba(242, 162, 133, 0.2);
   /* Transition plus rapide pour le fond, la bordure et l'ombre */
   transition: background 0.30s ease, border-color 0.30s ease, box-shadow 0.30s ease;
 }
