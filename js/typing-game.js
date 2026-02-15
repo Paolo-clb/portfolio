@@ -78,7 +78,7 @@
   const TEXTS = {
     fr: {
       presentation: [
-        'salut moi c est paolo developpeur full stack en deuxieme annee de but informatique passionné par le code et toujours pret a relever de nouveaux defis',
+        'Bienvenu, je suis developpeur full stack en 2eme année de BUT informatique. Scrollez pour voir mes projets, ou tapez pour jouer à mon Typing Game.',
       ],
       '10': [
         'le midlaner a flash sous la tourelle ennemie facilement',
@@ -879,7 +879,7 @@
   function showHardcorePopup(onClose) {
     setCookie('typing_hardcore_seen', '1', 365);
     showInfoPopup('Mode Hardcore',
-      'Le texte s\'affiche pendant 3 secondes puis disparaît.<br>Écrivez tout de mémoire — aucune erreur tolérée.',
+      'Le texte s\'affiche pendant 3 secondes puis disparaît.<br>Écrivez tout de mémoire, et sans faute !',
       'Pas de retour en arrière possible',
       onClose);
   }
@@ -924,7 +924,7 @@
 
     // Language selector
     const langGroup = buildOptionGroup(
-      [{ key: 'fr', label: 'Français' }, { key: 'en', label: 'English' }],
+      [{ key: 'fr', label: 'FR' }, { key: 'en', label: 'EN' }],
       currentLang,
       function (key) {
         // Keep currentTextIndex so pickText uses the same position
@@ -941,7 +941,7 @@
     // Mode selector
     const modeGroup = buildOptionGroup(
       [
-        { key: 'presentation', label: 'présentation' },
+        { key: 'presentation', label: 'hub' },
         { key: '10', label: '10' },
         { key: '25', label: '25' },
         { key: '50', label: '50' },
