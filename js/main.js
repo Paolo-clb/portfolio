@@ -101,6 +101,12 @@ function createProjectsModal() {
 
   const modal = createElement('div', 'modal');
 
+  // Mobile-only sticky close button (direct child of scroll container)
+  const stickyClose = createElement('button', 'modal__close modal__close--sticky', '\u00D7');
+  stickyClose.setAttribute('aria-label', 'Fermer');
+  stickyClose.addEventListener('click', closeProjectsModal);
+  modal.appendChild(stickyClose);
+
   // Header
   const header = createElement('div', 'modal__header');
   header.appendChild(createElement('h2', 'modal__title', 'Tous les projets'));
@@ -331,6 +337,7 @@ function renderSkills() {
     var row = createElement('div', 'skills-group__items');
     group.skills.forEach(function (skill) {
       var item = createElement('div', 'skill-item');
+      item.style.cursor = 'pointer';
 
       var iconEl = document.createElement('img');
       iconEl.src = skill.icon;
@@ -340,6 +347,11 @@ function renderSkills() {
       item.appendChild(iconEl);
 
       item.appendChild(createElement('div', 'skill-item__name', skill.name));
+
+      item.addEventListener('click', function () {
+        openSkillPopup(skill);
+      });
+
       row.appendChild(item);
     });
 
@@ -386,6 +398,103 @@ function renderSkills() {
     actions.appendChild(btn);
     wrapper.appendChild(actions);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Skill popup
+// ---------------------------------------------------------------------------
+function openSkillPopup(skill) {
+  // Remove any existing popup
+  var existing = document.getElementById('skill-popup');
+  if (existing) existing.remove();
+
+  var overlay = createElement('div', 'modal-overlay skill-overlay');
+  overlay.id = 'skill-popup';
+
+  var popup = createElement('div', 'skill-popup');
+
+  // Close button
+  var closeBtn = createElement('button', 'modal__close skill-popup__close', '\u00D7');
+  closeBtn.setAttribute('aria-label', 'Fermer');
+  popup.appendChild(closeBtn);
+
+  // Icon
+  var iconWrap = createElement('div', 'skill-popup__icon-wrap');
+  var icon = document.createElement('img');
+  icon.src = skill.icon;
+  icon.alt = skill.name;
+  icon.className = 'skill-popup__icon';
+  iconWrap.appendChild(icon);
+  popup.appendChild(iconWrap);
+
+  // Name
+  popup.appendChild(createElement('h3', 'skill-popup__name', skill.name));
+
+  // Description
+  if (skill.description) {
+    popup.appendChild(createElement('p', 'skill-popup__desc', skill.description));
+  }
+
+  // Level bar
+  if (skill.level) {
+    var levelWrap = createElement('div', 'skill-popup__level');
+    var labelRow = createElement('div', 'skill-popup__level-header');
+    labelRow.appendChild(createElement('span', 'skill-popup__level-label', 'Niveau'));
+    var levelLabels = ['', 'D\u00e9butant', 'Junior', 'Interm\u00e9diaire', 'Avanc\u00e9', 'Expert'];
+    labelRow.appendChild(createElement('span', 'skill-popup__level-text', levelLabels[skill.level] || ''));
+    levelWrap.appendChild(labelRow);
+
+    var track = createElement('div', 'skill-popup__bar-track');
+    var fill = createElement('div', 'skill-popup__bar-fill');
+    fill.style.width = '0%';
+    track.appendChild(fill);
+    levelWrap.appendChild(track);
+
+    // Dots
+    var dots = createElement('div', 'skill-popup__dots');
+    for (var i = 1; i <= 5; i++) {
+      var dot = createElement('span', 'skill-popup__dot');
+      if (i <= skill.level) dot.classList.add('skill-popup__dot--active');
+      dots.appendChild(dot);
+    }
+    levelWrap.appendChild(dots);
+
+    popup.appendChild(levelWrap);
+
+    // Animate the bar after render
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        fill.style.width = (skill.level / 5 * 100) + '%';
+      });
+    });
+  }
+
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
+
+  // Open with transition
+  void overlay.offsetWidth;
+  overlay.classList.add('modal-overlay--open');
+
+  // Close handlers
+  closeBtn.addEventListener('click', closeSkillPopup);
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) closeSkillPopup();
+  });
+  var escHandler = function (e) {
+    if (e.key === 'Escape') {
+      closeSkillPopup();
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
+}
+
+function closeSkillPopup() {
+  var overlay = document.getElementById('skill-popup');
+  if (!overlay) return;
+  overlay.classList.remove('modal-overlay--open');
+  setTimeout(function () { overlay.remove(); }, 350);
 }
 
 // ---------------------------------------------------------------------------

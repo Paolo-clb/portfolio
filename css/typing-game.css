@@ -11,12 +11,15 @@
   outline: none;
   user-select: none;
   cursor: default;
+  position: relative;
 }
 
 /* Hover hint when game is not focused */
 .typing-game--blurred .typing-game__text {
   cursor: pointer;
   background: rgba(27, 26, 39, 0) !important;
+  border-color: rgba(191, 153, 160, 0) !important;
+  box-shadow: 0 0 0 0 transparent !important;
   transition: background 0.28s ease,
               border-color 0.28s ease,
               box-shadow 0.28s ease;
@@ -285,47 +288,74 @@
 
 .typing-game__char--combo-1::after {
   background: var(--combo-clr, var(--clr-primary));
-  box-shadow: 0 0 6px rgba(242, 162, 133, 0.5),
-              0 0 12px rgba(242, 162, 133, 0.2);
+  box-shadow: 0 0 8px rgba(242, 162, 133, 0.7),
+              0 0 16px rgba(242, 162, 133, 0.4),
+              0 0 24px rgba(242, 162, 133, 0.15);
   animation: combo-pulse-1 0.8s ease-in-out infinite;
 }
 
 .typing-game__char--combo-2::after {
   background: var(--combo-clr, var(--clr-primary));
-  box-shadow: 0 0 8px rgba(242, 162, 133, 0.7),
-              0 0 18px rgba(242, 162, 133, 0.3),
-              0 0 30px rgba(242, 128, 128, 0.15);
+  box-shadow: 0 0 12px rgba(242, 162, 133, 0.9),
+              0 0 24px rgba(242, 162, 133, 0.5),
+              0 0 40px rgba(242, 128, 128, 0.25),
+              0 0 60px rgba(242, 128, 128, 0.1);
   animation: combo-pulse-2 0.6s ease-in-out infinite;
 }
 
 .typing-game__char--combo-3::after {
   background: var(--combo-clr, var(--clr-primary));
-  box-shadow: 0 0 10px rgba(242, 162, 133, 0.9),
-              0 0 24px rgba(242, 128, 128, 0.4),
-              0 0 40px rgba(191, 153, 160, 0.2);
+  box-shadow: 0 0 14px rgba(242, 162, 133, 1),
+              0 0 30px rgba(242, 128, 128, 0.6),
+              0 0 50px rgba(191, 153, 160, 0.3),
+              0 0 80px rgba(242, 128, 128, 0.15);
   animation: combo-pulse-3 0.45s ease-in-out infinite;
 }
 
 @keyframes combo-pulse-1 {
-  0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(242,162,133,0.5), 0 0 12px rgba(242,162,133,0.2); }
-  50%      { opacity: 0.85; box-shadow: 0 0 8px rgba(242,162,133,0.6), 0 0 16px rgba(242,162,133,0.25); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(242,162,133,0.7), 0 0 16px rgba(242,162,133,0.4), 0 0 24px rgba(242,162,133,0.15); }
+  50%      { opacity: 0.85; box-shadow: 0 0 12px rgba(242,162,133,0.85), 0 0 22px rgba(242,162,133,0.5), 0 0 32px rgba(242,162,133,0.2); }
 }
 
 @keyframes combo-pulse-2 {
-  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(242,162,133,0.7), 0 0 18px rgba(242,162,133,0.3), 0 0 30px rgba(242,128,128,0.15); }
-  50%      { opacity: 0.8; box-shadow: 0 0 12px rgba(242,162,133,0.8), 0 0 24px rgba(242,162,133,0.4), 0 0 36px rgba(242,128,128,0.2); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 12px rgba(242,162,133,0.9), 0 0 24px rgba(242,162,133,0.5), 0 0 40px rgba(242,128,128,0.25), 0 0 60px rgba(242,128,128,0.1); }
+  50%      { opacity: 0.8; box-shadow: 0 0 16px rgba(242,162,133,1), 0 0 32px rgba(242,162,133,0.6), 0 0 50px rgba(242,128,128,0.35), 0 0 70px rgba(242,128,128,0.15); }
 }
 
 @keyframes combo-pulse-3 {
-  0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(242,162,133,0.9), 0 0 24px rgba(242,128,128,0.4), 0 0 40px rgba(191,153,160,0.2); }
-  50%      { opacity: 0.75; box-shadow: 0 0 14px rgba(242,162,133,1), 0 0 30px rgba(242,128,128,0.5), 0 0 50px rgba(191,153,160,0.3); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 14px rgba(242,162,133,1), 0 0 30px rgba(242,128,128,0.6), 0 0 50px rgba(191,153,160,0.3), 0 0 80px rgba(242,128,128,0.15); }
+  50%      { opacity: 0.75; box-shadow: 0 0 20px rgba(242,162,133,1), 0 0 40px rgba(242,128,128,0.7), 0 0 65px rgba(191,153,160,0.4), 0 0 100px rgba(242,128,128,0.2); }
+}
+
+/* ---- Cursor trail effect ---- */
+
+.typing-game__char--trail {
+  position: relative;
+}
+
+.typing-game__char--trail::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.05em;
+  height: 2px;
+  background: linear-gradient(90deg,
+    rgba(var(--trail-r, 242), var(--trail-g, 162), var(--trail-b, 133), calc(var(--trail-opacity, 0) * 0.9)),
+    rgba(var(--trail-r, 242), var(--trail-g, 162), var(--trail-b, 133), calc(var(--trail-opacity, 0) * 0.4)));
+  border-radius: 1px;
+  box-shadow:
+    0 0 4px rgba(var(--trail-r, 242), var(--trail-g, 162), var(--trail-b, 133), calc(var(--trail-opacity, 0) * 0.6)),
+    0 0 10px rgba(var(--trail-r, 242), var(--trail-g, 162), var(--trail-b, 133), calc(var(--trail-opacity, 0) * 0.3)),
+    0 0 20px rgba(var(--trail-r, 242), var(--trail-g, 162), var(--trail-b, 133), calc(var(--trail-opacity, 0) * 0.15));
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* ---- Stats row (WPM + Accuracy) ---- */
 
 .typing-game__stats {
   display: flex;
-  gap: 2.5rem;
   margin-top: 2.5rem;
   align-items: center;
   justify-content: center;
@@ -336,26 +366,31 @@
   font-size: 1.5rem;
   color: var(--clr-accent);
   opacity: 0;
-  transform: translateX(0);
-  transition: opacity 0.3s ease, transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(8px);
+  transition: opacity 0.6s ease,
+              transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   font-variant-numeric: tabular-nums;
 }
 
 .typing-game__wpm--visible {
   opacity: 1;
+  transform: translateX(0);
 }
 
 .typing-game__acc {
   font-size: 1.5rem;
   color: var(--clr-primary);
   opacity: 0;
-  transform: translateX(0);
-  transition: opacity 0.3s ease, transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 2.5rem;
+  transform: translateX(8px);
+  transition: opacity 0.6s ease,
+              transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   font-variant-numeric: tabular-nums;
 }
 
 .typing-game__acc--visible {
   opacity: 1;
+  transform: translateX(0);
 }
 
 .typing-game__time {
@@ -363,18 +398,21 @@
   color: var(--clr-text);
   opacity: 0;
   max-width: 0;
+  margin-left: 0;
   overflow: hidden;
   white-space: nowrap;
   transform: translateX(30px);
   transition: opacity 0.4s ease 0.15s,
               transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
-              max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
+              max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s,
+              margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
   font-variant-numeric: tabular-nums;
 }
 
 .typing-game__time--visible {
   opacity: 1;
   max-width: 300px;
+  margin-left: 2.5rem;
   transform: translateX(0);
 }
 
@@ -385,18 +423,21 @@
   color: var(--clr-text-muted);
   opacity: 0;
   max-width: 0;
+  margin-left: 0;
   overflow: hidden;
   white-space: nowrap;
   transform: translateX(30px);
   transition: opacity 0.4s ease 0.3s,
               transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s,
-              max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.25s;
+              max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.25s,
+              margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.25s;
   font-variant-numeric: tabular-nums;
 }
 
 .typing-game__best--visible {
   opacity: 1;
   max-width: 300px;
+  margin-left: 2.5rem;
   transform: translateX(0);
 }
 
@@ -427,6 +468,37 @@
 
 .typing-game__restart--visible {
   opacity: 1;
+}
+
+/* ---- Focus hint (click to start) ---- */
+
+.typing-game__focus-hint {
+  margin-top: 0.8rem;
+  font-size: 0.95rem;
+  color: var(--clr-text-muted);
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  height: 0;
+  overflow: visible;
+}
+
+.typing-game__focus-hint svg {
+  flex-shrink: 0;
+  animation: focus-hint-bounce 2s ease-in-out infinite;
+}
+
+.typing-game__focus-hint--visible {
+  opacity: 0.7;
+}
+
+@keyframes focus-hint-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
 }
 
 /* ---- Responsive ---- */
@@ -498,4 +570,286 @@
   padding: 1.2rem 1.5rem;
   font-family: var(--ff-body);
   letter-spacing: 0.01em;
+}
+
+/* ---- Zen mode ---- */
+
+/* Hide eye toggle and language group in zen mode */
+.typing-game--zen .typing-game__eye,
+.typing-game--zen .typing-game__navbar-sep:last-of-type,
+.typing-game--zen .typing-game__option-group:first-child,
+.typing-game--zen .typing-game__navbar-sep:first-of-type {
+  opacity: 0.2;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+
+/* Zen mode restart hint (always visible during gameplay) */
+.typing-game--zen .typing-game__restart--visible {
+  opacity: 0.45;
+  font-size: 0.85rem;
+}
+
+/* ---- Zen popup ---- */
+
+.zen-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  transition: background 0.35s ease, backdrop-filter 0.35s ease;
+}
+
+.zen-popup-overlay--visible {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.zen-popup {
+  background: rgba(27, 26, 39, 0.92);
+  border: 1px solid rgba(242, 162, 133, 0.25);
+  border-radius: var(--radius);
+  padding: 2.2rem 2.8rem;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(242, 162, 133, 0.12),
+              0 0 80px rgba(242, 162, 133, 0.06);
+  transform: scale(0.9) translateY(10px);
+  opacity: 0;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.zen-popup-overlay--visible .zen-popup {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+.zen-popup__title {
+  font-family: var(--ff-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  margin-bottom: 0.8rem;
+}
+
+.zen-popup__text {
+  font-size: 0.95rem;
+  color: var(--clr-text-muted);
+  line-height: 1.6;
+  margin-bottom: 1.2rem;
+}
+
+.zen-popup__shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 1rem;
+  color: var(--clr-text);
+  margin-bottom: 1.5rem;
+}
+
+.zen-popup__shortcut kbd {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  font-family: var(--ff-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--clr-primary);
+  background: rgba(242, 162, 133, 0.1);
+  border: 1px solid rgba(242, 162, 133, 0.3);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(242, 162, 133, 0.15);
+}
+
+.zen-popup__btn {
+  padding: 0.5rem 2rem;
+  font-family: var(--ff-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--clr-bg);
+  background: var(--clr-primary);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.zen-popup__btn:hover {
+  background: var(--clr-primary-hover);
+  transform: scale(1.04);
+}
+
+/* ---- Hardcore mode ---- */
+
+/* Hardcore toggle button (skull icon) */
+.typing-game__hardcore {
+  background: none;
+  border: none;
+  color: var(--clr-text-muted);
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: calc(var(--radius) * 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease, background 0.3s ease, transform 0.15s ease;
+  margin-left: 0.15rem;
+}
+
+.typing-game__hardcore:hover {
+  color: var(--clr-text);
+}
+
+.typing-game__hardcore-icon {
+  width: 1.3rem;
+  height: 1.3rem;
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+/* Happy face — visible by default */
+.typing-game__hc-happy {
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+/* Scary face — hidden by default, shown on activation */
+.typing-game__hc-scary {
+  opacity: 0;
+  transform-origin: center;
+  transition: opacity 0.25s ease, transform 0.3s ease;
+  transform: scale(0);
+}
+
+/* Active state: swap faces + glow */
+.typing-game__hardcore--active {
+  color: var(--clr-primary-hover);
+  background: rgba(242, 128, 128, 0.12);
+}
+
+.typing-game__hardcore--active .typing-game__hardcore-icon {
+  filter: drop-shadow(0 0 4px rgba(242, 128, 128, 0.5));
+}
+
+.typing-game__hardcore--active .typing-game__hc-happy {
+  opacity: 0;
+}
+
+.typing-game__hardcore--active .typing-game__hc-scary {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Disabled mode options */
+.typing-game__option--disabled {
+  opacity: 0.25 !important;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+
+/* Hardcore countdown — below text zone */
+.typing-game__hc-countdown {
+  width: 100%;
+  text-align: center;
+  font-family: var(--ff-heading);
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--clr-primary-hover);
+  opacity: 0;
+  pointer-events: none;
+  text-shadow: 0 0 30px rgba(242, 128, 128, 0.5),
+               0 0 60px rgba(242, 128, 128, 0.25);
+  margin-top: 1.5rem;
+  height: 0;
+  overflow: visible;
+  transform: scale(0);
+}
+
+.typing-game__hc-countdown--visible {
+  animation: hc-countdown-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes hc-countdown-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Hidden chars in hardcore typing phase */
+.typing-game__char--hidden {
+  color: transparent !important;
+}
+
+/* Text fade-out animation when memorize phase ends */
+.typing-game--hardcore-typing .typing-game__text-inner {
+  animation: hc-text-fade 0.6s ease forwards;
+}
+
+@keyframes hc-text-fade {
+  0%   { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; filter: blur(0); }
+}
+
+/* Hardcore fail state */
+.typing-game--hardcore-fail .typing-game__stats {
+  justify-content: center;
+}
+
+.typing-game--hardcore-fail .typing-game__acc {
+  display: none;
+}
+
+.typing-game--hardcore-fail .typing-game__wpm {
+  color: var(--clr-primary-hover) !important;
+  font-size: 2.5rem;
+  text-align: center;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 20px rgba(242, 128, 128, 0.4);
+  animation: hc-fail-shake 0.5s ease;
+}
+
+@keyframes hc-fail-shake {
+  0%, 100% { transform: translateX(0); }
+  15%      { transform: translateX(-8px); }
+  30%      { transform: translateX(8px); }
+  45%      { transform: translateX(-6px); }
+  60%      { transform: translateX(6px); }
+  75%      { transform: translateX(-3px); }
+  90%      { transform: translateX(3px); }
+}
+
+/* Hardcore success state */
+.typing-game--hardcore-success .typing-game__wpm {
+  animation: hc-success-glow 1.5s ease;
+}
+
+.typing-game--hardcore-success .typing-game__text {
+  border-color: rgba(46, 204, 113, 0.4) !important;
+  box-shadow: 0 0 30px rgba(46, 204, 113, 0.15),
+              0 0 60px rgba(46, 204, 113, 0.08) !important;
+}
+
+@keyframes hc-success-glow {
+  0%   { text-shadow: none; }
+  30%  { text-shadow: 0 0 20px rgba(46, 204, 113, 0.6), 0 0 40px rgba(46, 204, 113, 0.3); }
+  100% { text-shadow: none; }
+}
+
+/* Zen mode: also hide hardcore btn */
+.typing-game--zen .typing-game__hardcore {
+  opacity: 0.2;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+
+/* Hardcore mode: grey out eye toggle */
+.typing-game--hardcore .typing-game__eye {
+  opacity: 0.2;
+  pointer-events: none;
+  filter: grayscale(1);
 }

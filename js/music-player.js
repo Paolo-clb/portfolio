@@ -22,6 +22,7 @@
   let btnPrev, btnPlay, btnNext;
   let volumeSlider, volumeIcon;
   let container;
+  let playlistBtn, playlistDropdown, playlistOpen = false;
 
   /* ---- Shuffle (Fisher–Yates) ---- */
 
@@ -66,6 +67,7 @@
     coverImg.alt = track.title;
     titleEl.textContent = track.title;
     artistEl.textContent = track.artist;
+    updatePlaylistHighlight();
   }
 
   /* ---- Playback ---- */
@@ -224,6 +226,86 @@
     volWrap.appendChild(volumeIcon);
     volWrap.appendChild(volumeSlider);
     container.appendChild(volWrap);
+
+    // Playlist toggle button
+    playlistBtn = document.createElement('button');
+    playlistBtn.className = 'music-player__btn music-player__btn--playlist';
+    playlistBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="12" height="2" rx="1"/><rect x="3" y="11" width="12" height="2" rx="1"/><rect x="3" y="17" width="12" height="2" rx="1"/><polygon points="19,8 19,3 21,3 21,12 19,12 19,10 17,10 17,8"/></svg>';
+    playlistBtn.setAttribute('aria-label', 'Playlist');
+    playlistBtn.setAttribute('tabindex', '-1');
+    container.appendChild(playlistBtn);
+
+    // Playlist dropdown
+    playlistDropdown = document.createElement('div');
+    playlistDropdown.className = 'music-player__playlist';
+    buildPlaylistItems();
+    container.appendChild(playlistDropdown);
+  }
+
+  /* ---- Playlist dropdown ---- */
+
+  function buildPlaylistItems() {
+    playlistDropdown.innerHTML = '';
+    playlist.forEach(function (track, i) {
+      var item = document.createElement('div');
+      item.className = 'music-player__playlist-item';
+      if (i === currentIndex) item.classList.add('music-player__playlist-item--active');
+      item.dataset.index = i;
+
+      var cover = document.createElement('img');
+      cover.className = 'music-player__playlist-cover';
+      cover.src = track.cover;
+      cover.alt = track.title;
+
+      var info = document.createElement('div');
+      info.className = 'music-player__playlist-info';
+
+      var title = document.createElement('span');
+      title.className = 'music-player__playlist-title';
+      title.textContent = track.title;
+
+      var artist = document.createElement('span');
+      artist.className = 'music-player__playlist-artist';
+      artist.textContent = track.artist;
+
+      info.appendChild(title);
+      info.appendChild(artist);
+      item.appendChild(cover);
+      item.appendChild(info);
+
+      item.addEventListener('click', function () {
+        currentIndex = i;
+        loadTrack(currentIndex);
+        play();
+      });
+
+      playlistDropdown.appendChild(item);
+    });
+  }
+
+  function updatePlaylistHighlight() {
+    if (!playlistDropdown) return;
+    var items = playlistDropdown.querySelectorAll('.music-player__playlist-item');
+    items.forEach(function (item, i) {
+      item.classList.toggle('music-player__playlist-item--active', i === currentIndex);
+    });
+  }
+
+  function togglePlaylist() {
+    playlistOpen = !playlistOpen;
+    playlistDropdown.classList.toggle('music-player__playlist--open', playlistOpen);
+    playlistBtn.classList.toggle('music-player__btn--active', playlistOpen);
+    if (playlistOpen) {
+      // Scroll active item into view
+      var active = playlistDropdown.querySelector('.music-player__playlist-item--active');
+      if (active) active.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function closePlaylist() {
+    playlistOpen = false;
+    playlistDropdown.classList.remove('music-player__playlist--open');
+    playlistBtn.classList.remove('music-player__btn--active');
   }
 
   /* ---- Events ---- */
@@ -241,6 +323,16 @@
 
     // Auto-next when track ends
     audio.addEventListener('ended', next);
+
+    // Playlist toggle
+    playlistBtn.addEventListener('click', togglePlaylist);
+
+    // Close playlist on outside click
+    document.addEventListener('click', function (e) {
+      if (playlistOpen && !playlistDropdown.contains(e.target) && e.target !== playlistBtn && !playlistBtn.contains(e.target)) {
+        closePlaylist();
+      }
+    });
   }
 
   /* ---- Init ---- */

@@ -197,52 +197,52 @@ const SKILL_GROUPS = [
   {
     label: 'Langages',
     skills: [
-      { name: 'C',          icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/c/c-original.svg' },
-      { name: 'C++',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg' },
-      { name: 'Java',       icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg' },
-      { name: 'Python',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg' },
-      { name: 'JavaScript', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg' },
-      { name: 'PHP',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg' },
-      { name: 'SQL',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azuresqldatabase/azuresqldatabase-original.svg' },
+      { name: 'C',          icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/c/c-original.svg', description: 'Programmation système, pointeurs, gestion mémoire. Utilisé en cours et projets bas niveau.', level: 3 },
+      { name: 'C++',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg', description: 'Programmation orientée objet, STL et gestion de ressources. Utilisé pour des projets algorithmiques.', level: 2 },
+      { name: 'Java',       icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg', description: 'Langage principal en BUT : JavaFX, MVC, classification de texte, applications Android.', level: 4 },
+      { name: 'Python',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg', description: 'Scripts, automatisation et prototypage rapide. Utilisé pour le traitement de données.', level: 3 },
+      { name: 'JavaScript', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg', description: 'Développement web front-end, DOM, événements. Ce portfolio est entièrement en vanilla JS.', level: 4 },
+      { name: 'PHP',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg', description: 'Développement back-end, formulaires, sessions et intégration avec bases de données.', level: 3 },
+      { name: 'SQL',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azuresqldatabase/azuresqldatabase-original.svg', description: 'Requêtes complexes, jointures, sous-requêtes, window functions. Utilisé dans plusieurs SAE.', level: 4 },
     ],
   },
     {
     label: 'Outils de dev',
     skills: [
-      { name: 'Git',               icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg' },
-      { name: 'GitLab & GitHub',   icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/gitlab/gitlab-original.svg' },
-      { name: 'VS Code',           icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vscode/vscode-original.svg' },
-      { name: 'JetBrains',         icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/jetbrains/jetbrains-original.svg' },
-      { name: 'Bash',              icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/bash/bash-original.svg' },
+      { name: 'Git',               icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg', description: 'Versionning, branches, merge, rebase. Utilisé au quotidien sur tous les projets.', level: 4 },
+      { name: 'GitLab & GitHub',   icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/gitlab/gitlab-original.svg', description: 'Hébergement de dépôts, issues, CI/CD. GitLab institutionnel + GitHub pour projets personnels.', level: 4 },
+      { name: 'VS Code',           icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vscode/vscode-original.svg', description: 'Éditeur principal pour le développement web, extensions, debugging intégré.', level: 5 },
+      { name: 'JetBrains',         icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/jetbrains/jetbrains-original.svg', description: 'IntelliJ IDEA pour Java, PyCharm pour Python. IDE complets utilisés en SAE.', level: 3 },
+      { name: 'Bash',              icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/bash/bash-original.svg', description: 'Scripts shell, automatisation de tâches, navigation système Linux.', level: 3 },
     ],
   },
   {
     label: 'Web',
     skills: [
-      { name: 'HTML / CSS', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg' },
-      { name: 'React',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg' },
+      { name: 'HTML / CSS', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg', description: 'Structure sémantique, Flexbox, Grid, animations CSS, responsive design mobile-first.', level: 4 },
+      { name: 'React',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg', description: 'Composants, hooks, state management. Initiation au développement d\'interfaces modernes.', level: 2 },
     ],
   },
   {
     label: 'Mobile',
     skills: [
-      { name: 'Android',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/android/android-original.svg' },
-      { name: 'Android Studio', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/androidstudio/androidstudio-original.svg' },
+      { name: 'Android',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/android/android-original.svg', description: 'Développement d\'applications natives Android en Java, activités, fragments, intents.', level: 3 },
+      { name: 'Android Studio', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/androidstudio/androidstudio-original.svg', description: 'IDE officiel Android : émulateur, layout editor, Gradle, debugging.', level: 3 },
     ],
   },
   {
     label: 'Bases de données',
     skills: [
-      { name: 'PostgreSQL', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg' },
-      { name: 'SQLite',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/sqlite/sqlite-original.svg' },
-      { name: 'MySQL',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mysql/mysql-original.svg' },
+      { name: 'PostgreSQL', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg', description: 'SGBD principal utilisé en SAE : conception, requêtes avancées, contraintes d\'intégrité.', level: 4 },
+      { name: 'SQLite',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/sqlite/sqlite-original.svg', description: 'Base embarquée pour applications mobiles et projets légers.', level: 3 },
+      { name: 'MySQL',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mysql/mysql-original.svg', description: 'Utilisé pour des projets web avec PHP, administration via phpMyAdmin.', level: 3 },
     ],
   },
   {
     label: 'Serveur / Admin',
     skills: [
-      { name: 'Apache',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/apache/apache-original.svg' },
-      { name: 'phpPgAdmin', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg' },
+      { name: 'Apache',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/apache/apache-original.svg', description: 'Configuration de serveur HTTP, virtual hosts, modules. Déploiement de sites PHP.', level: 2 },
+      { name: 'phpPgAdmin', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg', description: 'Interface web d\'administration PostgreSQL, gestion des schémas et requêtes.', level: 3 },
     ],
   },
 ];

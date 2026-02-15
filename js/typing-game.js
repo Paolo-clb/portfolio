@@ -43,16 +43,19 @@
     if (typeof showErrorsState !== 'undefined') {
       setCookie('typing_show_errors', showErrorsState ? '1' : '0', 365);
     }
+    setCookie('typing_hardcore', hardcoreMode ? '1' : '0', 365);
   }
 
   function loadSettings() {
     var lang = getCookie('typing_lang');
     var mode = getCookie('typing_mode');
     var showErrorsCookie = getCookie('typing_show_errors');
+    var hardcoreCookie = getCookie('typing_hardcore');
     return {
       lang: (lang === 'fr' || lang === 'en') ? lang : null,
-      mode: mode && ['presentation', '10', '25', '50', '100'].indexOf(mode) !== -1 ? mode : null,
-      showErrors: showErrorsCookie === '1'
+      mode: mode && ['presentation', '10', '25', '50', '100', 'zen'].indexOf(mode) !== -1 ? mode : null,
+      showErrors: showErrorsCookie === '1',
+      hardcore: hardcoreCookie === '1'
     };
   }
 
@@ -122,7 +125,7 @@
         'the game starts and the jungler decides to do a full clear starting from red buff he clears the camps quickly and arrives at the scuttle crab at the same time as the enemy jungler a duel breaks out in the river and thanks to the midlaner roaming we secure first blood the team morale is high and we decide to put pressure on every lane at the same time to snowball our advantage as quickly as possible before the enemy team can recover',
       ],
       '100': [
-        'the match starts with an invade on the enemy blue buff the entire team groups in the bush and waits for the enemy jungler as soon as he appears the support engages with his ultimate and the fight breaks out we secure the buff and first blood without any losses the enemy jungler falls behind on his camps and our jungler takes advantage by ganking top lane which succeeds perfectly the enemy toplaner is forced to recall and we take the first tower of the game the bot lane plays aggressively and our adc farms perfectly reaching two hundred cs in twenty minutes the support roams to midlane to help place vision around the dragon pit our midlaner controls the lane well and prevents the enemy midlaner from roaming the infernal dragon spawns and we take it without contest thanks to the vision control the support set up the enemy jungler attempts a steal but gets pushed back by the entire team we rotate to the mid lane and siege the tower slowly poking the enemies under turret until they are too low to defend',
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaer takes advantage by ganking top lane which succeeds perfectly the enemy toplaner is forced to recall and we take the first tower of the game the bot lane plays aggressively and our adc farms perfectly reaching two hundred cs in twenty minutes the support roams to midlane to help place vision around the dragon pit our midlaner controls the lane well and prevents the enemy midlaner from roaming the infernal dragon spawns and we take it without contest thanks to the vision control the support set up the enemy jungler attempts a steal but gets pushed back by the entire team we rotate to the mid lane and siege the tower slowly poking the enemies under turret until they are too low to defend',
       ],
     },
   };
@@ -146,16 +149,35 @@
   let wpmBoost = 0; // DEBUG: artificial WPM boost (Ctrl+ArrowUp/Down)
   let showErrors = false;
   let isFocused = true; // whether the game container has focus
+  let blurHintTimer = null; // debounce timer for focus hint
+  let trailTimestamps = []; // timestamps of recent correct keystrokes for trail speed calc
+  let trailSpeed = 0; // 0–1 speed factor for trail intensity
+  let zenWordCount = 0; // word counter for zen mode
+  let currentTextIndex = -1; // current text index in pool (-1 = random)
+  let hardcoreMode = false; // hardcore toggle
+  let hardcorePhase = null; // 'memorize' | 'typing' | null
+  let hardcoreCountdown = 0; // countdown seconds remaining
+  let hardcoreTimer = null; // setInterval id for countdown
+  let hardcoreFailed = false; // whether the player made an error
 
   /* ---- DOM refs (set in init) ---- */
 
-  let container, navbarEl, textEl, innerEl, wpmEl, accEl, timeEl, bestEl, restartEl, statsRow;
+  let container, navbarEl, textEl, innerEl, wpmEl, accEl, timeEl, bestEl, restartEl, statsRow, focusHintEl, hardcoreCountdownEl;
 
   /* ---- Helpers ---- */
 
   function pickText() {
+    if (currentMode === 'zen') return '';
     const pool = TEXTS[currentLang][currentMode];
-    return pool[Math.floor(Math.random() * pool.length)];
+    if (currentTextIndex >= 0 && currentTextIndex < pool.length) {
+      // Use preserved index (e.g. after language switch)
+      var idx = currentTextIndex;
+      currentTextIndex = -1;
+      return pool[idx];
+    }
+    var idx = Math.floor(Math.random() * pool.length);
+    currentTextIndex = idx;
+    return pool[idx];
   }
 
   /**
@@ -210,10 +232,14 @@
     if (!startTime) return 0;
     const minutes = (Date.now() - startTime - totalPaused) / 60000;
     if (minutes < 0.01) return 0;
+    if (currentMode === 'zen') {
+      return Math.round(zenWordCount / minutes) + wpmBoost;
+    }
     return Math.round(correctWords / minutes) + wpmBoost;
   }
 
   function calcAccuracy() {
+    if (currentMode === 'zen') return 100;
     if (totalKeystrokes === 0) return 100;
     let correctChars = 0;
     for (let i = 0; i < typed.length; i++) {
@@ -222,14 +248,121 @@
     return Math.round((correctChars / totalKeystrokes) * 100);
   }
 
-  /* ---- Rendering ---- */
+  /* ---- Trail speed calculator ---- */
 
-  function render() {
+  function updateTrailSpeed() {
+    if (trailTimestamps.length < 2) { trailSpeed = 0; return; }
+    // Average interval between last N keystrokes (ms)
+    var recent = trailTimestamps.slice(-8);
+    var totalInterval = recent[recent.length - 1] - recent[0];
+    var avgInterval = totalInterval / (recent.length - 1);
+    // Map: 50ms (very fast) → 1.0, 500ms (slow) → 0.0
+    trailSpeed = Math.max(0, Math.min(1, 1 - (avgInterval - 50) / 450));
+  }
+
+  /* ---- Zen mode rendering ---- */
+
+  function renderZen() {
     let html = '';
     let comboStyle = '';
 
+    // Trail for zen mode
+    var trailLen = 0;
+    if (comboStreak >= 10 && trailSpeed > 0.05) {
+      var comboFactor = Math.min(comboStreak / 150, 1);
+      trailLen = Math.round(2 + comboFactor * 28);
+      trailLen = Math.round(trailLen * (0.15 + trailSpeed * 0.85));
+    }
+    var trailR = 242, trailG = 162, trailB = 133;
+    if (comboStreak >= 50) {
+      var tc = Math.min((comboStreak - 50) / 50, 1);
+      trailG = Math.round(162 - tc * (162 - 128));
+      trailB = Math.round(133 - tc * (133 - 128));
+    }
+
+    for (let i = 0; i < typed.length; i++) {
+      let cls = 'typing-game__char typing-game__char--correct';
+      var trailAttr = '';
+
+      // Trail
+      if (!finished && trailLen > 0) {
+        var distFromCursor = typed.length - i;
+        if (distFromCursor <= trailLen && distFromCursor >= 1) {
+          cls += ' typing-game__char--trail';
+          var trailOpacity = (1 - (distFromCursor - 1) / trailLen) * trailSpeed;
+          trailOpacity = Math.max(0.05, Math.min(1, trailOpacity));
+          trailAttr = ' style=\"--trail-opacity:' + trailOpacity.toFixed(3)
+            + ';--trail-r:' + trailR
+            + ';--trail-g:' + trailG
+            + ';--trail-b:' + trailB + '\"';
+        }
+      }
+
+      var ch = typed[i] === ' ' ? ' ' : typed[i];
+      html += '<span class=\"' + cls + '\"' + trailAttr + '>' + ch + '</span>';
+    }
+
+    // Cursor after all typed chars
+    if (!finished) {
+      var cursorCls = 'typing-game__char typing-game__char--cursor';
+      if (comboStreak >= 60) cursorCls += ' typing-game__char--combo-3';
+      else if (comboStreak >= 30) cursorCls += ' typing-game__char--combo-2';
+      else if (comboStreak >= 10) cursorCls += ' typing-game__char--combo-1';
+
+      if (comboStreak >= 50) {
+        var cc = Math.min((comboStreak - 50) / 50, 1);
+        var cg = Math.round(162 - cc * (162 - 128));
+        var cb = Math.round(133 - cc * (133 - 128));
+        comboStyle = ' style=\"--combo-clr:rgb(242,' + cg + ',' + cb + ')\"';
+      }
+      // Use a zero-width space so the cursor span has position
+      html += '<span class="' + cursorCls + '"' + comboStyle + '>\u200B</span>';
+    }
+
+    if (!innerEl) {
+      innerEl = document.createElement('div');
+      innerEl.className = 'typing-game__text-inner';
+      textEl.textContent = '';
+      textEl.appendChild(innerEl);
+    }
+    innerEl.innerHTML = html;
+
+    requestAnimationFrame(scrollToCursor);
+  }
+
+  /* ---- Rendering ---- */
+
+  function render() {
+    if (currentMode === 'zen') { renderZen(); return; }
+    let html = '';
+    let comboStyle = '';
+
+    // In hardcore typing phase, untyped chars are hidden
+    var hideUntyped = hardcoreMode && hardcorePhase === 'typing' && !finished;
+
+    // Trail: compute how many chars behind the cursor to highlight
+    // Trail length depends on combo streak AND speed
+    var trailLen = 0;
+    if (comboStreak >= 10 && trailSpeed > 0.05) {
+      // Base trail from combo: scales slower, much longer max
+      // 2 at streak 3, up to 30 at streak 150+
+      var comboFactor = Math.min(comboStreak / 150, 1);
+      trailLen = Math.round(2 + comboFactor * 28);
+      // Speed amplifies trail length significantly
+      trailLen = Math.round(trailLen * (0.15 + trailSpeed * 0.85));
+    }
+
+    // Trail color shift: #F2A285 → #F28080 matching cursor combo shift
+    var trailR = 242, trailG = 162, trailB = 133;
+    if (comboStreak >= 50) {
+      var tc = Math.min((comboStreak - 50) / 50, 1);
+      trailG = Math.round(162 - tc * (162 - 128));
+      trailB = Math.round(133 - tc * (133 - 128));
+    }
+
     for (let i = 0; i < text.length; i++) {
       let cls = 'typing-game__char';
+      var trailAttr = '';
 
       if (i < typed.length) {
         const isLocked = i < lockedIndex;
@@ -237,6 +370,21 @@
           ? ' typing-game__char--correct'
           : ' typing-game__char--incorrect';
         if (isLocked) cls += ' typing-game__char--locked';
+
+        // Trail: apply to correct chars near cursor
+        if (!finished && trailLen > 0 && typed[i] === text[i]) {
+          var distFromCursor = typed.length - i;
+          if (distFromCursor <= trailLen && distFromCursor >= 1) {
+            cls += ' typing-game__char--trail';
+            // Opacity: closer to cursor = brighter, further = dimmer
+            var trailOpacity = (1 - (distFromCursor - 1) / trailLen) * trailSpeed;
+            trailOpacity = Math.max(0.05, Math.min(1, trailOpacity));
+            trailAttr = ' style="--trail-opacity:' + trailOpacity.toFixed(3)
+              + ';--trail-r:' + trailR
+              + ';--trail-g:' + trailG
+              + ';--trail-b:' + trailB + '"';
+          }
+        }
       }
 
       // Cursor sits on the next character to type
@@ -263,10 +411,17 @@
       }
 
       // Show the original char (spaces wrap normally)
-      const ch = text[i] === ' ' ? ' ' : text[i];
+      // In hardcore typing, cursor position shows a blank rather than the actual letter
+      const ch = (hideUntyped && i === typed.length) ? '\u00A0' : (text[i] === ' ' ? ' ' : text[i]);
 
-      // Use comboStyle only on cursor span
-      var extraAttr = (i === typed.length && !finished) ? comboStyle : '';
+      // In hardcore typing phase, hide untyped characters (except cursor position)
+      if (hideUntyped && i > typed.length) {
+        html += '<span class="typing-game__char typing-game__char--hidden">\u00A0</span>';
+        continue;
+      }
+
+      // Use comboStyle on cursor span, trailAttr on trail spans
+      var extraAttr = (i === typed.length && !finished) ? comboStyle : trailAttr;
 
       // If incorrect, show the mistyped letter below
       if (i < typed.length && typed[i] !== text[i]) {
@@ -285,6 +440,10 @@
       textEl.appendChild(innerEl);
     }
     innerEl.innerHTML = html;
+
+    // In hardcore typing phase, push text down by one line so cursor starts on 2nd visible line
+    var lh = parseFloat(getComputedStyle(textEl).fontSize) * 1.6;
+    innerEl.style.paddingTop = (hardcoreMode && hardcorePhase === 'typing') ? lh + 'px' : '';
 
     // Scroll so the cursor stays on the middle visible line
     requestAnimationFrame(scrollToCursor);
@@ -328,16 +487,34 @@
     const wpm = calcWPM();
     const acc = calcAccuracy();
     wpmEl.textContent = `${wpm} WPM`;
-    accEl.textContent = `${acc}%`;
+    if (currentMode === 'zen') {
+      accEl.textContent = `${zenWordCount} mots`;
+    } else {
+      accEl.textContent = `${acc}%`;
+    }
     updateTextBackground(wpm);
+
+    // Trail decay: if no recent keystrokes, fade the trail
+    if (trailTimestamps.length > 0) {
+      var timeSinceLast = Date.now() - trailTimestamps[trailTimestamps.length - 1];
+      if (timeSinceLast > 300) {
+        // Decay speed factor based on idle time
+        trailSpeed = Math.max(0, trailSpeed - 0.15);
+        if (trailSpeed <= 0.01) {
+          trailTimestamps = [];
+          trailSpeed = 0;
+        }
+        render();
+      }
+    }
   }
 
   function updateTextBackground(wpm) {
     if (!textEl) return;
-    // If not focused (and not finished with focus), use dim background
+    // If not focused (and not finished with focus), use fully transparent background
     if (!isFocused) {
-      textEl.style.background = 'rgba(27, 26, 39, 0.02)';
-      textEl.style.borderColor = 'rgba(191, 153, 160, 0.04)';
+      textEl.style.background = 'rgba(27, 26, 39, 0)';
+      textEl.style.borderColor = 'rgba(191, 153, 160, 0.02)';
       textEl.style.boxShadow = '0 0 0 0 transparent';
       return;
     }
@@ -347,9 +524,12 @@
     var bgAlpha = 0.2 + t * 0.8;
     // Border: visible base, strong at high WPM
     var borderAlpha = 0.25 + t * 0.75;
-    // Glow: noticeable early, intense at top
-    var glowAlpha = 0.12 + t * 0.88;
-    var glowSize = Math.round(14 + t * 50);
+    // Glow: strong base, intense scaling with WPM
+    var glowAlpha = 0.25 + t * 0.75;
+    var glowSize = Math.round(20 + t * 60);
+    // Secondary outer glow for more spread
+    var outerAlpha = 0.08 + t * 0.35;
+    var outerSize = Math.round(30 + t * 90);
 
     // Color transition: primary (#F2A285) → primary-hover (#F28080) from 60–130 WPM
     var r = 242, g = 162, b = 133; // base #F2A285
@@ -361,7 +541,8 @@
 
     textEl.style.background = 'rgba(27, 26, 39, ' + bgAlpha.toFixed(3) + ')';
     textEl.style.borderColor = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + borderAlpha.toFixed(3) + ')';
-    textEl.style.boxShadow = '0 0 ' + glowSize + 'px rgba(' + r + ', ' + g + ', ' + b + ', ' + glowAlpha.toFixed(3) + ')';
+    textEl.style.boxShadow = '0 0 ' + glowSize + 'px rgba(' + r + ', ' + g + ', ' + b + ', ' + glowAlpha.toFixed(3) + '), '
+                           + '0 0 ' + outerSize + 'px rgba(' + r + ', ' + g + ', ' + b + ', ' + outerAlpha.toFixed(3) + ')';
   }
 
   function showFinalStats() {
@@ -369,7 +550,11 @@
     const acc = calcAccuracy();
     const seconds = Math.round((Date.now() - startTime - totalPaused) / 1000);
     wpmEl.textContent = `Words Per Minute : ${wpm}`;
-    accEl.textContent = `Accuracy : ${acc}%`;
+    if (currentMode === 'zen') {
+      accEl.textContent = `Mots : ${zenWordCount}`;
+    } else {
+      accEl.textContent = `Accuracy : ${acc}%`;
+    }
     timeEl.textContent = `Time : ${seconds}s`;
     timeEl.classList.add('typing-game__time--visible');
 
@@ -400,14 +585,30 @@
     correctWords = 0;
     comboStreak = 0;
     wpmBoost = 0;
+    trailTimestamps = [];
+    trailSpeed = 0;
+    zenWordCount = 0;
     if (innerEl) {
       innerEl.remove();
     }
     innerEl = null;
+    // Remove hardcore/finished states first so display:none overrides are cleared
+    container.classList.remove('typing-game--finished');
+    container.classList.remove('typing-game--hardcore-memorize', 'typing-game--hardcore-typing', 'typing-game--hardcore-fail', 'typing-game--hardcore-success');
+    // Instantly hide stats only after hardcore fail (prevent flash), otherwise let transition play
+    if (hardcoreFailed) {
+      wpmEl.style.transition = 'none';
+      accEl.style.transition = 'none';
+    }
     wpmEl.classList.remove('typing-game__wpm--visible');
     accEl.classList.remove('typing-game__acc--visible');
     wpmEl.textContent = '0 WPM';
     accEl.textContent = '100%';
+    if (hardcoreFailed) {
+      void wpmEl.offsetHeight;
+      wpmEl.style.transition = '';
+      accEl.style.transition = '';
+    }
     // Reset text background
     updateTextBackground(0);
     timeEl.classList.remove('typing-game__time--visible');
@@ -429,8 +630,54 @@
     if (hint) hint.classList.remove('scroll-hint--hidden');
     if (wpmInterval) clearInterval(wpmInterval);
     wpmInterval = null;
-    container.classList.remove('typing-game--finished');
-    render();
+    // Toggle zen-specific classes
+    if (currentMode === 'zen') {
+      container.classList.add('typing-game--zen');
+      restartEl.textContent = 'Shift + Espace pour arrêter';
+    } else {
+      container.classList.remove('typing-game--zen');
+      restartEl.textContent = 'Entrée ou Espace pour recommencer';
+    }
+    // Hardcore mode reset
+    hardcorePhase = null;
+    hardcoreFailed = false;
+    if (hardcoreTimer) { clearInterval(hardcoreTimer); hardcoreTimer = null; }
+    if (hardcoreCountdownEl) hardcoreCountdownEl.classList.remove('typing-game__hc-countdown--visible');
+    // If hardcore is active and mode is compatible, start memorize phase
+    if (hardcoreMode && currentMode !== 'zen' && ['presentation', '10'].indexOf(currentMode) !== -1) {
+      hardcorePhase = 'memorize';
+      hardcoreCountdown = 3;
+      container.classList.add('typing-game--hardcore-memorize');
+      render();
+      // Show countdown overlay
+      if (hardcoreCountdownEl) {
+        hardcoreCountdownEl.textContent = hardcoreCountdown;
+        hardcoreCountdownEl.classList.add('typing-game__hc-countdown--visible');
+      }
+      hardcoreTimer = setInterval(function () {
+        hardcoreCountdown--;
+        if (hardcoreCountdown > 0) {
+          if (hardcoreCountdownEl) {
+            // Re-trigger pop animation by removing & re-adding class
+            hardcoreCountdownEl.classList.remove('typing-game__hc-countdown--visible');
+            hardcoreCountdownEl.offsetHeight; // force reflow
+            hardcoreCountdownEl.textContent = hardcoreCountdown;
+            hardcoreCountdownEl.classList.add('typing-game__hc-countdown--visible');
+          }
+        } else {
+          clearInterval(hardcoreTimer);
+          hardcoreTimer = null;
+          hardcorePhase = 'typing';
+          container.classList.remove('typing-game--hardcore-memorize');
+          container.classList.add('typing-game--hardcore-typing');
+          if (hardcoreCountdownEl) hardcoreCountdownEl.classList.remove('typing-game__hc-countdown--visible');
+          render();
+          container.focus();
+        }
+      }, 1000);
+    } else {
+      render();
+    }
     container.focus();
   }
 
@@ -443,7 +690,27 @@
       paused = false;
     }
     if (wpmInterval) clearInterval(wpmInterval);
-    showFinalStats();
+
+    // Hardcore outcome
+    if (hardcoreMode && hardcorePhase === 'typing') {
+      container.classList.remove('typing-game--hardcore-typing');
+      if (hardcoreFailed) {
+        container.classList.add('typing-game--hardcore-fail');
+        wpmEl.textContent = 'Échec';
+        wpmEl.classList.add('typing-game__wpm--visible');
+        accEl.textContent = '';
+        accEl.classList.remove('typing-game__acc--visible');
+      } else {
+        container.classList.add('typing-game--hardcore-success');
+        showFinalStats();
+      }
+      hardcorePhase = null;
+    } else {
+      showFinalStats();
+    }
+
+    // Update restart hint for finished state
+    restartEl.textContent = 'Entrée ou Espace pour recommencer';
     restartEl.classList.add('typing-game__restart--visible');
     container.classList.add('typing-game--finished');
     render();
@@ -459,12 +726,22 @@
     // Ignore modifier combos (Ctrl+C, etc.) except Shift
     if (e.ctrlKey || e.altKey || e.metaKey) return;
 
+    // Block all input during hardcore memorize phase
+    if (hardcorePhase === 'memorize') return;
+
     // Restart on Space or Enter when finished
     if (finished) {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         startGame();
       }
+      return;
+    }
+
+    // Zen mode: Shift+Space finishes the game
+    if (currentMode === 'zen' && e.shiftKey && e.key === ' ') {
+      e.preventDefault();
+      if (startTime) finishGame();
       return;
     }
 
@@ -475,12 +752,60 @@
       return;
     }
 
+    // --- Zen mode input ---
+    if (currentMode === 'zen') {
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        if (typed.length > 0) {
+          typed.pop();
+          comboStreak = 0;
+          trailTimestamps = [];
+          trailSpeed = 0;
+          render();
+        }
+        return;
+      }
+      if (e.key.length !== 1) return;
+      e.preventDefault();
+
+      // Start timer on first keypress
+      if (!startTime) {
+        startTime = Date.now();
+        wpmEl.classList.add('typing-game__wpm--visible');
+        accEl.classList.add('typing-game__acc--visible');
+        wpmInterval = setInterval(updateStats, 200);
+        markAsPlayed();
+        var hint = document.getElementById('scroll-hint');
+        if (hint) hint.classList.add('scroll-hint--hidden');
+        // Show the Shift+Space hint while typing in zen mode
+        restartEl.classList.add('typing-game__restart--visible');
+      }
+
+      typed.push(e.key);
+      comboStreak++;
+      trailTimestamps.push(Date.now());
+      if (trailTimestamps.length > 20) trailTimestamps.shift();
+      updateTrailSpeed();
+
+      // Count words on space
+      if (e.key === ' ') {
+        zenWordCount++;
+      }
+
+      render();
+      return;
+    }
+
+    // --- Normal mode input ---
     if (e.key === 'Backspace') {
       e.preventDefault();
-      if (typed.length > lockedIndex) {
-        totalKeystrokes--;
+      // No backspace in hardcore typing phase
+      if (hardcoreMode && hardcorePhase === 'typing') return;
+      if (typed.length > lockedIndex) {        totalKeystrokes--;
         typed.pop();
         comboStreak = 0;
+        trailTimestamps = [];
+        trailSpeed = 0;
         render();
       }
       return;
@@ -510,8 +835,23 @@
     var lastIdx = typed.length - 1;
     if (typed[lastIdx] === text[lastIdx]) {
       comboStreak++;
+      // Track keystroke time for trail speed
+      trailTimestamps.push(Date.now());
+      // Keep only last 20 timestamps
+      if (trailTimestamps.length > 20) trailTimestamps.shift();
+      // Compute speed: chars per second over recent window
+      updateTrailSpeed();
     } else {
       comboStreak = 0;
+      trailTimestamps = [];
+      trailSpeed = 0;
+      // Hardcore: any error ends the game immediately
+      if (hardcoreMode && hardcorePhase === 'typing') {
+        hardcoreFailed = true;
+        render();
+        finishGame();
+        return;
+      }
     }
 
     // Try to lock the current word as soon as its last character is typed
@@ -525,6 +865,57 @@
     }
   }
 
+  /* ---- Zen popup (first time) ---- */
+
+  function showZenPopup() {
+    setCookie('typing_zen_seen', '1', 365);
+    showInfoPopup('Mode Zen',
+      'Tapez librement, sans limite de texte ni validation.<br>Tous les mots comptent pour le WPM.',
+      '<kbd>Shift</kbd> + <kbd>Espace</kbd> pour arrêter et voir les stats');
+  }
+
+  /* ---- Hardcore popup (first time) ---- */
+
+  function showHardcorePopup(onClose) {
+    setCookie('typing_hardcore_seen', '1', 365);
+    showInfoPopup('Mode Hardcore',
+      'Le texte s\'affiche pendant 3 secondes puis disparaît.<br>Écrivez tout de mémoire — aucune erreur tolérée.',
+      'Pas de retour en arrière possible',
+      onClose);
+  }
+
+  /* ---- Shared info popup ---- */
+
+  function showInfoPopup(title, text, shortcut, onClose) {
+    var overlay = document.createElement('div');
+    overlay.className = 'zen-popup-overlay';
+    var popup = document.createElement('div');
+    popup.className = 'zen-popup';
+    popup.innerHTML =
+      '<div class="zen-popup__title">' + title + '</div>' +
+      '<p class="zen-popup__text">' + text + '</p>' +
+      '<div class="zen-popup__shortcut">' + shortcut + '</div>' +
+      '<button class="zen-popup__btn">Compris</button>';
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+    // Force reflow then animate in
+    overlay.offsetHeight;
+    overlay.classList.add('zen-popup-overlay--visible');
+
+    function close() {
+      overlay.classList.remove('zen-popup-overlay--visible');
+      overlay.addEventListener('transitionend', function () {
+        overlay.remove();
+        if (typeof onClose === 'function') onClose();
+        container.focus();
+      });
+    }
+    popup.querySelector('.zen-popup__btn').addEventListener('click', close);
+    overlay.addEventListener('click', function (ev) {
+      if (ev.target === overlay) close();
+    });
+  }
+
   /* ---- Navbar builder ---- */
 
   function buildNavbar() {
@@ -535,7 +926,11 @@
     const langGroup = buildOptionGroup(
       [{ key: 'fr', label: 'Français' }, { key: 'en', label: 'English' }],
       currentLang,
-      function (key) { currentLang = key; startGame(); }
+      function (key) {
+        // Keep currentTextIndex so pickText uses the same position
+        currentLang = key;
+        startGame();
+      }
     );
 
     // Separator
@@ -551,9 +946,17 @@
         { key: '25', label: '25' },
         { key: '50', label: '50' },
         { key: '100', label: '100' },
+        { key: 'zen', label: 'zen' },
       ],
       currentMode,
-      function (key) { currentMode = key; startGame(); }
+      function (key) {
+        currentMode = key;
+        startGame();
+        // First time zen: show info popup
+        if (key === 'zen' && !getCookie('typing_zen_seen')) {
+          showZenPopup();
+        }
+      }
     );
 
     navbarEl.appendChild(langGroup);
@@ -584,6 +987,52 @@
     });
     navbarEl.appendChild(eyeBtn);
 
+    // Hardcore toggle (skull icon)
+    var hcBtn = document.createElement('button');
+    hcBtn.className = 'typing-game__hardcore';
+    hcBtn.setAttribute('tabindex', '-1');
+    hcBtn.setAttribute('title', 'Mode Hardcore');
+    hcBtn.innerHTML = '<svg class="typing-game__hardcore-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><g class="typing-game__hc-happy"><circle cx="8.5" cy="11" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="11" r="1.5" fill="currentColor" stroke="none"/><path d="M8 16c0 0 1.5 2 4 2s4-2 4-2" stroke="currentColor" stroke-width="1.6" fill="none"/></g><g class="typing-game__hc-scary"><rect x="7" y="9" width="3" height="3.5" rx="0.3" fill="currentColor" stroke="none"/><rect x="14" y="9" width="3" height="3.5" rx="0.3" fill="currentColor" stroke="none"/><path d="M8 17h8" stroke="currentColor" stroke-width="1.8"/><path d="M10 17v-1.5M14 17v-1.5" stroke="currentColor" stroke-width="1.4"/></g></svg>';
+
+    function updateHardcoreUI() {
+      hcBtn.classList.toggle('typing-game__hardcore--active', hardcoreMode);
+      container.classList.toggle('typing-game--hardcore', hardcoreMode);
+      // Grey out incompatible modes when hardcore is active
+      var modeBtns = modeGroup.querySelectorAll('.typing-game__option');
+      modeBtns.forEach(function(btn) {
+        var key = btn.getAttribute('data-key');
+        if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(key) !== -1) {
+          btn.classList.add('typing-game__option--disabled');
+        } else {
+          btn.classList.remove('typing-game__option--disabled');
+        }
+      });
+    }
+
+    hcBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      hardcoreMode = !hardcoreMode;
+      updateHardcoreUI();
+      saveSettings(currentLang, currentMode, showErrors);
+      // If turning on and mode is incompatible, switch to presentation
+      if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
+        currentMode = 'presentation';
+        // Update active class in mode group
+        modeGroup.querySelectorAll('.typing-game__option').forEach(function(b) {
+          b.classList.toggle('typing-game__option--active', b.getAttribute('data-key') === currentMode);
+        });
+      }
+      // First time popup — delay startGame until popup is closed
+      if (hardcoreMode && !getCookie('typing_hardcore_seen')) {
+        showHardcorePopup(function() { startGame(); });
+      } else {
+        startGame();
+      }
+    });
+
+    updateHardcoreUI();
+    navbarEl.appendChild(hcBtn);
+
     return navbarEl;
   }
 
@@ -600,6 +1049,8 @@
       btn.setAttribute('tabindex', '-1');
       btn.addEventListener('click', function (e) {
         e.preventDefault();
+        // Block clicking disabled options (hardcore mode restriction)
+        if (btn.classList.contains('typing-game__option--disabled')) return;
         group.querySelectorAll('.typing-game__option').forEach(function (b) {
           b.classList.remove('typing-game__option--active');
         });
@@ -629,6 +1080,11 @@
     if (saved.lang) currentLang = saved.lang;
     if (saved.mode) currentMode = saved.mode;
     if (typeof saved.showErrors !== 'undefined') showErrors = saved.showErrors;
+    if (saved.hardcore) hardcoreMode = true;
+    // If hardcore is on but mode is incompatible, force to presentation
+    if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
+      currentMode = 'presentation';
+    }
 
     // --- Mobile smartphone mode: show presentation text only ---
     if (isSmartphone) {
@@ -687,6 +1143,11 @@
     restartEl.className = 'typing-game__restart';
     restartEl.textContent = 'Entrée ou Espace pour recommencer';
 
+    // Focus hint (visible when blurred)
+    focusHintEl = document.createElement('div');
+    focusHintEl.className = 'typing-game__focus-hint';
+    focusHintEl.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> Cliquez ici pour commencer à taper';
+
     // Stats row wraps WPM + Accuracy side by side
     statsRow = document.createElement('div');
     statsRow.className = 'typing-game__stats';
@@ -695,8 +1156,14 @@
     statsRow.appendChild(timeEl);
     statsRow.appendChild(bestEl);
 
+    // Hardcore countdown overlay
+    hardcoreCountdownEl = document.createElement('div');
+    hardcoreCountdownEl.className = 'typing-game__hc-countdown';
+
     container.appendChild(navbar);
     container.appendChild(textEl);
+    container.appendChild(hardcoreCountdownEl);
+    container.appendChild(focusHintEl);
     container.appendChild(statsRow);
     container.appendChild(restartEl);
 
@@ -707,11 +1174,16 @@
     // Focus / blur detection
     container.addEventListener('focus', function () {
       isFocused = true;
+      if (blurHintTimer) { clearTimeout(blurHintTimer); blurHintTimer = null; }
       container.classList.remove('typing-game--blurred');
       container.classList.add('typing-game--focused');
       if (finished) {
         container.classList.add('typing-game--finished');
       }
+      // Hide focus hint & scroll-hint on focus
+      focusHintEl.classList.remove('typing-game__focus-hint--visible');
+      var hint = document.getElementById('scroll-hint');
+      if (hint) hint.classList.add('scroll-hint--hidden');
       // If the game was paused due to blur, resume timing and stats updates
       if (paused && startTime && !finished) {
         // accumulate paused duration
@@ -727,7 +1199,17 @@
       isFocused = false;
       container.classList.remove('typing-game--focused');
       container.classList.remove('typing-game--finished');
-      container.classList.add('typing-game--blurred');
+      // Debounce focus hint to avoid flash on navbar clicks
+      if (blurHintTimer) clearTimeout(blurHintTimer);
+      blurHintTimer = setTimeout(function () {
+        if (!isFocused && hardcorePhase !== 'memorize') {
+          container.classList.add('typing-game--blurred');
+          focusHintEl.classList.add('typing-game__focus-hint--visible');
+          var hint = document.getElementById('scroll-hint');
+          if (hint && window.scrollY <= 80) hint.classList.remove('scroll-hint--hidden');
+        }
+        blurHintTimer = null;
+      }, 120);
       // Pause timing when the container loses focus during an active game
       if (startTime && !finished && !paused) {
         paused = true;
