@@ -274,11 +274,6 @@
       trailLen = Math.round(trailLen * (0.15 + trailSpeed * 0.85));
     }
     var trailR = 242, trailG = 162, trailB = 133;
-    if (comboStreak >= 50) {
-      var tc = Math.min((comboStreak - 50) / 50, 1);
-      trailG = Math.round(162 - tc * (162 - 128));
-      trailB = Math.round(133 - tc * (133 - 128));
-    }
 
     for (let i = 0; i < typed.length; i++) {
       let cls = 'typing-game__char typing-game__char--correct';
@@ -309,12 +304,6 @@
       else if (comboStreak >= 30) cursorCls += ' typing-game__char--combo-2';
       else if (comboStreak >= 10) cursorCls += ' typing-game__char--combo-1';
 
-      if (comboStreak >= 50) {
-        var cc = Math.min((comboStreak - 50) / 50, 1);
-        var cg = Math.round(162 - cc * (162 - 128));
-        var cb = Math.round(133 - cc * (133 - 128));
-        comboStyle = ' style=\"--combo-clr:rgb(242,' + cg + ',' + cb + ')\"';
-      }
       // Use a zero-width space so the cursor span has position
       html += '<span class="' + cursorCls + '"' + comboStyle + '>\u200B</span>';
     }
