@@ -1182,8 +1182,12 @@
       }
       // Hide focus hint & scroll-hint on focus
       focusHintEl.classList.remove('typing-game__focus-hint--visible');
-      var hint = document.getElementById('scroll-hint');
-      if (hint) hint.classList.add('scroll-hint--hidden');
+      // Keep scroll-hint visible on first visit OR if the game hasn't started yet (e.g. page reload)
+      var firstVisit = textEl && textEl.classList.contains('typing-game__text--first-visit');
+      if (!firstVisit && startTime) {
+        var hint = document.getElementById('scroll-hint');
+        if (hint) hint.classList.add('scroll-hint--hidden');
+      }
       // If the game was paused due to blur, resume timing and stats updates
       if (paused && startTime && !finished) {
         // accumulate paused duration
