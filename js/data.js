@@ -263,15 +263,41 @@ const MUSIC = [
     src: 'assets/music/paulyudin-chill-silent-bloom-chill-481864.mp3',
   },
   {
-    title: 'Track 2',
-    artist: 'Artist 2',
-    cover: 'assets/images/cover-2.jpg',
-    src: 'assets/music/track-2.mp3',
+    title: 'La Nuit',
+    artist: 'Ziak',
+    cover: 'assets/images/lanuit.jpg',
+    src: 'assets/music/lanuit.mp3',
   },
   {
+    title: 'ambatukam',
+    artist: 'DreamyBull',
+    cover: 'assets/images/dreamy.jpg',
+    src: 'assets/music/ambatukam choir extended.mp3',
+  },
+    {
+    title: 'COUSINS',
+    artist: 'Kanye West',
+    cover: 'assets/images/kaynie.jpg',
+    src: 'assets/music/Kanye West - COUSINS (Lyrics).mp3',
+  },
+    {
     title: 'Track 3',
     artist: 'Artist 3',
     cover: 'assets/images/cover-3.jpg',
-    src: 'assets/music/track-3.mp3',
+    src: 'assets/music/.mp3',
   },
+    {
+    title: 'Track 3',
+    artist: 'Artist 3',
+    cover: 'assets/images/cover-3.jpg',
+    src: 'assets/music/.mp3',
+  },
+    {
+    title: 'Track 3',
+    artist: 'Artist 3',
+    cover: 'assets/images/cover-3.jpg',
+    src: 'assets/music/.mp3',
+  },
+
+  
 ];
