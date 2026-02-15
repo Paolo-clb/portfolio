@@ -163,6 +163,14 @@
     }
     container.appendChild(audio);
 
+    // Playlist toggle button (before cover)
+    playlistBtn = document.createElement('button');
+    playlistBtn.className = 'music-player__btn music-player__btn--playlist';
+    playlistBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="12" height="2" rx="1"/><rect x="3" y="11" width="12" height="2" rx="1"/><rect x="3" y="17" width="12" height="2" rx="1"/><polygon points="19,8 19,3 21,3 21,12 19,12 19,10 17,10 17,8"/></svg>';
+    playlistBtn.setAttribute('aria-label', 'Playlist');
+    playlistBtn.setAttribute('tabindex', '-1');
+    container.appendChild(playlistBtn);
+
     // Cover
     coverImg = document.createElement('img');
     coverImg.className = 'music-player__cover';
@@ -227,14 +235,6 @@
     volWrap.appendChild(volumeSlider);
     container.appendChild(volWrap);
 
-    // Playlist toggle button
-    playlistBtn = document.createElement('button');
-    playlistBtn.className = 'music-player__btn music-player__btn--playlist';
-    playlistBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="12" height="2" rx="1"/><rect x="3" y="11" width="12" height="2" rx="1"/><rect x="3" y="17" width="12" height="2" rx="1"/><polygon points="19,8 19,3 21,3 21,12 19,12 19,10 17,10 17,8"/></svg>';
-    playlistBtn.setAttribute('aria-label', 'Playlist');
-    playlistBtn.setAttribute('tabindex', '-1');
-    container.appendChild(playlistBtn);
-
     // Playlist dropdown
     playlistDropdown = document.createElement('div');
     playlistDropdown.className = 'music-player__playlist';
@@ -293,13 +293,25 @@
 
   function togglePlaylist() {
     playlistOpen = !playlistOpen;
+    if (playlistOpen) {
+      // Pre-calculate scroll position before opening (layout is available even when hidden)
+      var active = playlistDropdown.querySelector('.music-player__playlist-item--active');
+      if (active) {
+        // Items are laid out even when max-height:0; use a known max visible height
+        var offsetTop = active.offsetTop;
+        var itemH = active.offsetHeight;
+        // The open max-height is 280px; use that as the expected list height
+        var listH = 280;
+        // Compute the real content height to cap scroll
+        var contentH = playlistDropdown.scrollHeight;
+        if (contentH < listH) listH = contentH;
+        playlistDropdown.scrollTop = Math.max(0, offsetTop - listH / 2 + itemH / 2);
+      } else {
+        playlistDropdown.scrollTop = 0;
+      }
+    }
     playlistDropdown.classList.toggle('music-player__playlist--open', playlistOpen);
     playlistBtn.classList.toggle('music-player__btn--active', playlistOpen);
-    if (playlistOpen) {
-      // Scroll active item into view
-      var active = playlistDropdown.querySelector('.music-player__playlist-item--active');
-      if (active) active.scrollIntoView({ block: 'nearest' });
-    }
   }
 
   function closePlaylist() {

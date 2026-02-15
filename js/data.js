@@ -298,6 +298,36 @@ const MUSIC = [
     cover: 'assets/images/cover-3.jpg',
     src: 'assets/music/.mp3',
   },
+    {
+    title: 'Track 3',
+    artist: 'Artist 3',
+    cover: 'assets/images/cover-3.jpg',
+    src: 'assets/music/.mp3',
+  },
+      {
+    title: 'Track 3',
+    artist: 'Artist 3',
+    cover: 'assets/images/cover-3.jpg',
+    src: 'assets/music/.mp3',
+  },
+      {
+    title: 'Track 3',
+    artist: 'Artist 3',
+    cover: 'assets/images/cover-3.jpg',
+    src: 'assets/music/.mp3',
+  },
+      {
+    title: 'Track 3',
+    artist: 'Artist 3',
+    cover: 'assets/images/cover-3.jpg',
+    src: 'assets/music/.mp3',
+  },
+      {
+    title: 'Track 3',
+    artist: 'Artist 3',
+    cover: 'assets/images/cover-3.jpg',
+    src: 'assets/music/.mp3',
+  },
 
   
 ];
