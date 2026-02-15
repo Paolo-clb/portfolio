@@ -440,6 +440,8 @@
 
   function scrollToCursor() {
     if (!innerEl) return;
+    // After hardcore fail, don't scroll — keep all lines visible
+    if (hardcoreFailed && finished) return;
     const cursorSpan = innerEl.querySelector('.typing-game__char--cursor');
     if (!cursorSpan) return;
 
@@ -689,6 +691,15 @@
         wpmEl.classList.add('typing-game__wpm--visible');
         accEl.textContent = '';
         accEl.classList.remove('typing-game__acc--visible');
+        // Remove the extra padding so all lines (including the first) are visible
+        if (innerEl) {
+          innerEl.style.paddingTop = '';
+          innerEl.style.transform = '';
+          var spans = innerEl.children;
+          for (var si = 0; si < spans.length; si++) {
+            spans[si].style.visibility = '';
+          }
+        }
       } else {
         container.classList.add('typing-game--hardcore-success');
         showFinalStats();
