@@ -43,19 +43,17 @@
     if (typeof showErrorsState !== 'undefined') {
       setCookie('typing_show_errors', showErrorsState ? '1' : '0', 365);
     }
-    setCookie('typing_hardcore', hardcoreMode ? '1' : '0', 365);
   }
 
   function loadSettings() {
     var lang = getCookie('typing_lang');
     var mode = getCookie('typing_mode');
     var showErrorsCookie = getCookie('typing_show_errors');
-    var hardcoreCookie = getCookie('typing_hardcore');
     return {
       lang: (lang === 'fr' || lang === 'en') ? lang : null,
       mode: mode && ['presentation', '10', '25', '50', '100', 'zen'].indexOf(mode) !== -1 ? mode : null,
       showErrors: showErrorsCookie === '1',
-      hardcore: hardcoreCookie === '1'
+      hardcore: false
     };
   }
 
