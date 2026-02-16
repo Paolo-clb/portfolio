@@ -64,9 +64,9 @@
   function markAsPlayed() {
     if (!hasPlayed()) {
       setCookie('typing_played', '1', 365);
+      // Remove first-visit white text — CSS transition on color handles the smooth fade
       if (textEl) {
         textEl.classList.remove('typing-game__text--first-visit');
-        textEl.classList.add('typing-game__text--fading');
       }
     }
   }
@@ -581,6 +581,21 @@
       innerEl.remove();
     }
     innerEl = null;
+    // Manage first-visit state: show white text on hub if never typed
+    if (textEl) {
+      if (!hasPlayed() && currentMode === 'presentation') {
+        // Instant switch (no transition) so mode changes don't slowly fade
+        textEl.style.transition = 'none';
+        textEl.classList.add('typing-game__text--first-visit');
+        void textEl.offsetHeight; // force reflow
+        textEl.style.transition = '';
+      } else {
+        textEl.style.transition = 'none';
+        textEl.classList.remove('typing-game__text--first-visit');
+        void textEl.offsetHeight;
+        textEl.style.transition = '';
+      }
+    }
     // Remove hardcore/finished states first so display:none overrides are cleared
     container.classList.remove('typing-game--finished');
     container.classList.remove('typing-game--hardcore-memorize', 'typing-game--hardcore-typing', 'typing-game--hardcore-fail', 'typing-game--hardcore-success');
@@ -1055,8 +1070,6 @@
         btn.classList.add('typing-game__option--active');
         onChange(opt.key);
         saveSettings(currentLang, currentMode, showErrors);
-        // Clicking a mode marks as played
-        markAsPlayed();
       });
       group.appendChild(btn);
     });
@@ -1116,10 +1129,6 @@
 
     textEl = document.createElement('div');
     textEl.className = 'typing-game__text';
-    // First visit: white text if never played
-    if (!hasPlayed() && currentMode === 'presentation') {
-      textEl.classList.add('typing-game__text--first-visit');
-    }
 
     wpmEl = document.createElement('div');
     wpmEl.className = 'typing-game__wpm';

@@ -178,15 +178,6 @@
   color: var(--clr-text);
 }
 
-.typing-game__text--fading {
-  animation: first-visit-fade 1.8s ease forwards;
-}
-
-@keyframes first-visit-fade {
-  from { color: var(--clr-text); }
-  to   { color: var(--clr-text-muted); }
-}
-
 .typing-game__text-inner {
   position: relative;
   transition: transform 0.25s ease;
