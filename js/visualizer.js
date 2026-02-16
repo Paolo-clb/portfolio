@@ -107,11 +107,28 @@
       if (p.y < -10) p.y = h + 10;
       if (p.y > h + 10) p.y = -10;
 
+      // Dim particle when it sits behind a visualizer bar
+      let drawAlpha = Math.min(p.alpha, 1);
+      if (connected && dataArray) {
+        const usableBins = Math.min(BAR_COUNT, dataArray.length);
+        const totalBarW = (w - (usableBins - 1) * BAR_GAP) / usableBins;
+        const barW = Math.max(totalBarW, 1);
+        const barIdx = Math.floor(p.x / (barW + BAR_GAP));
+        if (barIdx >= 0 && barIdx < usableBins) {
+          const barH = Math.max((dataArray[barIdx] / 255) * h * 0.7, MIN_BAR_HEIGHT);
+          if (p.y >= h - barH) {
+            // The deeper inside the bar, the more we dim (0.3 at bar top → 0.15 at bottom)
+            const depth = (p.y - (h - barH)) / barH;
+            drawAlpha *= 0.30 - depth * 0.15;
+          }
+        }
+      }
+
       // Draw
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
       ctx.fillStyle = p.color;
-      ctx.globalAlpha = Math.min(p.alpha, 1);
+      ctx.globalAlpha = drawAlpha;
       ctx.fill();
     }
     ctx.globalAlpha = 1;
