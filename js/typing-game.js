@@ -884,7 +884,7 @@
     setCookie('typing_zen_seen', '1', 365);
     showInfoPopup('Mode Zen',
       'Tapez librement, sans limite de texte ni validation.<br>Tous les mots comptent pour le WPM.',
-      '<kbd>Shift</kbd> + <kbd>Espace</kbd> pour arrêter et voir les stats');
+      '<kbd>Shift</kbd> + <kbd>Espace</kbd> pour terminer.',);
   }
 
   /* ---- Hardcore popup (first time) ---- */
@@ -892,8 +892,8 @@
   function showHardcorePopup(onClose) {
     setCookie('typing_hardcore_seen', '1', 365);
     showInfoPopup('Mode Hardcore',
-      'Le texte s\'affiche pendant 3 secondes puis disparaît.<br>Écrivez tout de mémoire, et sans faute !',
-      'Pas de retour en arrière possible',
+      'Le texte s\'affiche pendant 3 secondes puis disparaît.<br>Écrivez tout de mémoire...',
+      'Une erreur et c\'est fini !',
       onClose);
   }
 
