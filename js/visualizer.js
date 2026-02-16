@@ -37,13 +37,13 @@
   function createParticle(w, h) {
     return {
       x: Math.random() * w,
-      y: Math.random() * h * 0.6,          // upper 60% of screen
+      y: Math.random() * h,                 // full screen
       baseY: 0,
-      radius: Math.random() * 3 + 2,
+      radius: Math.random() * 3.5 + 2.5,
       baseRadius: 0,
       vx: (Math.random() - 0.5) * 0.3,
       vy: (Math.random() - 0.5) * 0.15,
-      alpha: Math.random() * 0.5 + 0.3,
+      alpha: Math.random() * 0.4 + 0.5,
       baseAlpha: 0,
       color: [COLOR_PRIMARY, COLOR_ACCENT, COLOR_HOVER][Math.floor(Math.random() * 3)],
       freqBin: Math.floor(Math.random() * BAR_COUNT), // which frequency bin reacts to
@@ -98,14 +98,14 @@
 
       // React to music: size and brightness pulse
       const keyGlow = impulseIsClick ? impulse : impulse * 2.5;
-      p.radius = p.baseRadius + binVal * 6 + (impulseIsClick ? impulse * 2 : impulse * 5);
-      p.alpha  = p.baseAlpha + binVal * 0.6 + keyGlow * 0.5;
+      p.radius = p.baseRadius + binVal * 9 + (impulseIsClick ? impulse * 2 : impulse * 5);
+      p.alpha  = p.baseAlpha + binVal * 0.9 + keyGlow * 0.5;
 
       // Wrap around edges
       if (p.x < -10) p.x = w + 10;
       if (p.x > w + 10) p.x = -10;
-      if (p.y < -10) p.y = h * 0.6;
-      if (p.y > h * 0.6) p.y = -10;
+      if (p.y < -10) p.y = h + 10;
+      if (p.y > h + 10) p.y = -10;
 
       // Draw
       ctx.beginPath();
@@ -128,7 +128,7 @@
           ctx.beginPath();
           ctx.moveTo(particles[i].x, particles[i].y);
           ctx.lineTo(particles[j].x, particles[j].y);
-          ctx.strokeStyle = 'rgba(232, 227, 228, ' + ((1 - dist / maxDist) * 0.25) + ')';
+          ctx.strokeStyle = 'rgba(232, 227, 228, ' + ((1 - dist / maxDist) * 0.35) + ')';
           ctx.lineWidth = 1;
           ctx.stroke();
         }
