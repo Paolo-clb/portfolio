@@ -699,7 +699,168 @@ document.addEventListener('DOMContentLoaded', () => {
   setFooterYear();
   initScrollHint();
   initCvModal();
+  initCursorHalo();
 });
+
+// ---------------------------------------------------------------------------
+// Cursor Halo (follower) — smooth lerp follow
+// ---------------------------------------------------------------------------
+function initCursorHalo() {
+  // Skip on touch devices
+  if (window.matchMedia('(pointer: coarse)').matches) return;
+
+  // Build DOM
+  var halo = createElement('div', 'cursor-halo');
+  var ring = createElement('div', 'cursor-halo__ring');
+  var dot  = createElement('div', 'cursor-halo__dot');
+  halo.appendChild(ring);
+  halo.appendChild(dot);
+  document.body.appendChild(halo);
+
+  // ---- state ----
+  var mouseX = -200, mouseY = -200;
+  var ringX = -200, ringY = -200;
+  var dotX = -200, dotY = -200;
+  var started = false;
+  var raf = null;
+
+  // Opacity driven per-frame
+  var currentOpacity = 0;
+  var targetOpacity  = 0;
+  var opacitySpeed   = 0.07;
+
+  // Lerp speeds
+  var lerpRing = 0.15;
+  var lerpDot  = 0.30;
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  // ---- animation loop ----
+  function tick() {
+    ringX = lerp(ringX, mouseX, lerpRing);
+    ringY = lerp(ringY, mouseY, lerpRing);
+
+    dotX = lerp(dotX, mouseX, lerpDot);
+    dotY = lerp(dotY, mouseY, lerpDot);
+
+    // Clamp dot inside ring
+    var offX = dotX - ringX;
+    var offY = dotY - ringY;
+    var dist = Math.sqrt(offX * offX + offY * offY);
+    var maxR = 14;
+    if (dist > maxR) {
+      var s = maxR / dist;
+      dotX = ringX + offX * s;
+      dotY = ringY + offY * s;
+    }
+
+    ring.style.transform = 'translate(-50%,-50%) translate3d(' + ringX + 'px,' + ringY + 'px,0)';
+    dot.style.transform  = 'translate(-50%,-50%) translate3d(' + dotX  + 'px,' + dotY  + 'px,0)';
+
+    // Smooth opacity
+    if (currentOpacity !== targetOpacity) {
+      if (currentOpacity < targetOpacity) {
+        currentOpacity = Math.min(currentOpacity + opacitySpeed, targetOpacity);
+      } else {
+        currentOpacity = Math.max(currentOpacity - opacitySpeed, targetOpacity);
+      }
+      halo.style.opacity = String(Math.round(currentOpacity * 1000) / 1000);
+    }
+
+    // Pause RAF when fully hidden
+    if (currentOpacity <= 0 && targetOpacity <= 0) {
+      halo.style.opacity = '0';
+      cancelAnimationFrame(raf);
+      raf = null;
+      return;
+    }
+
+    raf = requestAnimationFrame(tick);
+  }
+
+  function ensureRunning() {
+    if (!raf) raf = requestAnimationFrame(tick);
+  }
+
+  // ---- first move: snap, start ----
+  document.addEventListener('mousemove', function onFirstMove(e) {
+    mouseX = e.clientX; mouseY = e.clientY;
+    ringX = mouseX; ringY = mouseY;
+    dotX  = mouseX; dotY  = mouseY;
+    started = true;
+    targetOpacity = 1;
+    ensureRunning();
+    document.removeEventListener('mousemove', onFirstMove);
+  });
+
+  // ---- track cursor ----
+  document.addEventListener('mousemove', function (e) {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  }, { passive: true });
+
+  // ---- hover on interactive elements ----
+  var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon';
+  var modalAllowedSelector = 'button, .modal__close, a, .btn';
+
+  document.addEventListener('mouseover', function (e) {
+    var inDetailModal = e.target.closest('.detail-modal');
+    if (inDetailModal) {
+      if (e.target.closest(modalAllowedSelector)) {
+        halo.classList.add('cursor-halo--hover');
+      }
+      return;
+    }
+    if (e.target.closest('.cv-modal__viewer')) {
+      targetOpacity = 0;
+      ensureRunning();
+      return;
+    }
+    if (e.target.closest(interactiveSelector)) {
+      halo.classList.add('cursor-halo--hover');
+    }
+  }, { passive: true });
+
+  document.addEventListener('mouseout', function (e) {
+    if (e.target.closest(interactiveSelector) || e.target.closest(modalAllowedSelector)) {
+      halo.classList.remove('cursor-halo--hover');
+    }
+    if (e.target.closest('.cv-modal__viewer')) {
+      targetOpacity = 1;
+      ensureRunning();
+    }
+  }, { passive: true });
+
+  // ---- click feedback ----
+  document.addEventListener('mousedown', function () {
+    halo.classList.add('cursor-halo--click');
+  });
+  document.addEventListener('mouseup', function () {
+    halo.classList.remove('cursor-halo--click');
+  });
+
+  // ---- hide/show on leave/enter ----
+  document.documentElement.addEventListener('mouseleave', function () {
+    if (!started) return;
+    targetOpacity = 0;
+    ensureRunning();
+  });
+
+  document.documentElement.addEventListener('mouseenter', function (e) {
+    if (!started) return;
+    mouseX = e.clientX; mouseY = e.clientY;
+    ringX = mouseX; ringY = mouseY;
+    dotX  = mouseX; dotY  = mouseY;
+    targetOpacity = 1;
+    ensureRunning();
+  });
+
+  window.addEventListener('blur', function () {
+    if (!started) return;
+    targetOpacity = 0;
+    ensureRunning();
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Scroll-hint chevron — hide after user scrolls

@@ -1070,6 +1070,104 @@ section.hero {
 }
 
 /* ==========================================================================
+   Cursor Halo (follower)
+   ========================================================================== */
+
+.cursor-halo {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+}
+
+/* ---- outer glow ring ---- */
+.cursor-halo__ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(242, 162, 133, 0.12) 0%,
+    rgba(191, 153, 160, 0.06) 50%,
+    transparent 70%
+  );
+  border: 1px solid rgba(242, 162, 133, 0.18);
+  transition:
+    width 0.24s ease,
+    height 0.24s ease,
+    background 0.24s ease,
+    border-color 0.24s ease,
+    box-shadow 0.24s ease;
+  will-change: transform;
+  animation: cursorPulse 3s ease-in-out infinite;
+}
+
+/* ---- inner dot ---- */
+.cursor-halo__dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(242, 162, 133, 0.8);
+  transition:
+    width 0.20s ease,
+    height 0.20s ease,
+    opacity 0.20s ease,
+    background 0.20s ease;
+  will-change: transform;
+}
+
+/* ---- hover on interactive elements ---- */
+.cursor-halo--hover .cursor-halo__ring {
+  width: 54px;
+  height: 54px;
+  border-color: rgba(242, 128, 128, 0.28);
+  background: rgba(242, 128, 128, 0.09);
+  box-shadow:
+    0 0 16px rgba(242, 162, 133, 0.10),
+    inset 0 0 10px rgba(242, 128, 128, 0.06);
+}
+
+.cursor-halo--hover .cursor-halo__dot {
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+/* ---- click / mousedown feedback ---- */
+.cursor-halo--click .cursor-halo__ring {
+  width: 30px;
+  height: 30px;
+  border-color: rgba(242, 128, 128, 0.45);
+  background: rgba(242, 128, 128, 0.14);
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+.cursor-halo--click .cursor-halo__dot {
+  width: 7px;
+  height: 7px;
+  opacity: 1;
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* ---- subtle breathing pulse ---- */
+@keyframes cursorPulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(242, 162, 133, 0.04); }
+  50%      { box-shadow: 0 0 14px rgba(242, 162, 133, 0.10); }
+}
+
+/* Hide cursor halo on touch / small screens */
+@media (pointer: coarse), (max-width: 768px) {
+  .cursor-halo { display: none !important; }
+}
+
+/* ==========================================================================
    Responsive
    ========================================================================== */
 
