@@ -1167,6 +1167,12 @@ section.hero {
   .cursor-halo { display: none !important; }
 }
 
+/* Hide native cursor while typing */
+.cursor-hidden,
+.cursor-hidden * {
+  cursor: none !important;
+}
+
 /* ==========================================================================
    Responsive
    ========================================================================== */

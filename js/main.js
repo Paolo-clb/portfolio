@@ -860,6 +860,29 @@ function initCursorHalo() {
     targetOpacity = 0;
     ensureRunning();
   });
+
+  // ---- hide while typing in the typing game ----
+  var typingContainer = document.getElementById('typing-game');
+  if (typingContainer) {
+    typingContainer.addEventListener('keydown', function (e) {
+      // Ignore modifier-only keys
+      if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
+      if (!started) return;
+      targetOpacity = 0;
+      opacitySpeed = 0.12; // faster fade-out
+      document.body.classList.add('cursor-hidden');
+      ensureRunning();
+    });
+
+    document.addEventListener('mousemove', function () {
+      if (document.body.classList.contains('cursor-hidden')) {
+        document.body.classList.remove('cursor-hidden');
+        opacitySpeed = 0.07; // normal fade-in
+        targetOpacity = 1;
+        ensureRunning();
+      }
+    }, { passive: true });
+  }
 }
 
 // ---------------------------------------------------------------------------
