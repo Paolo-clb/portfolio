@@ -1088,25 +1088,86 @@
     container.appendChild(introTextEl);
     container.appendChild(introButtonEl);
 
-    // Start typewriter animation
+    // Start typewriter animation with cursor + trail (zen-style rendering)
     var chars = INTRO_TEXT.split('');
     var idx = 0;
-    var speed = 22; // ms per character
+    var speed = 38; // ms per character (slower for readability)
+    var introCombo = 0;
+    var introTrailTimestamps = [];
+    var introTrailSpeed = 0;
+    var introFinished = false;
+    // Fixed trail color (primary only, no shift to hover)
+    var trailR = 242, trailG = 162, trailB = 133;
+
+    function calcIntroTrailSpeed() {
+      if (introTrailTimestamps.length < 2) { introTrailSpeed = 0; return; }
+      var recent = introTrailTimestamps.slice(-8);
+      var totalInterval = recent[recent.length - 1] - recent[0];
+      var avgInterval = totalInterval / (recent.length - 1);
+      introTrailSpeed = Math.max(0, Math.min(1, 1 - (avgInterval - 30) / 450));
+    }
+
+    function renderIntro() {
+      var html = '';
+
+      // Trail length from combo + speed
+      var trailLen = 0;
+      if (introCombo >= 10 && introTrailSpeed > 0.05) {
+        var comboFactor = Math.min(introCombo / 150, 1);
+        trailLen = Math.round(2 + comboFactor * 28);
+        trailLen = Math.round(trailLen * (0.15 + introTrailSpeed * 0.85));
+      }
+
+      for (var i = 0; i < idx; i++) {
+        var cls = 'typing-game__char typing-game__char--correct';
+        var trailAttr = '';
+
+        // Trail behind cursor
+        if (!introFinished && trailLen > 0) {
+          var distFromCursor = idx - i;
+          if (distFromCursor <= trailLen && distFromCursor >= 1) {
+            cls += ' typing-game__char--trail';
+            var trailOpacity = (1 - (distFromCursor - 1) / trailLen) * introTrailSpeed;
+            trailOpacity = Math.max(0.05, Math.min(1, trailOpacity));
+            trailAttr = ' style="--trail-opacity:' + trailOpacity.toFixed(3)
+              + ';--trail-r:' + trailR
+              + ';--trail-g:' + trailG
+              + ';--trail-b:' + trailB + '"';
+          }
+        }
+
+        var ch = chars[i] === ' ' ? ' ' : chars[i];
+        html += '<span class="' + cls + '"' + trailAttr + '>' + ch + '</span>';
+      }
+
+      // Cursor after typed chars
+      if (!introFinished) {
+        var cursorCls = 'typing-game__char typing-game__char--cursor';
+        if (introCombo >= 60) cursorCls += ' typing-game__char--combo-3';
+        else if (introCombo >= 30) cursorCls += ' typing-game__char--combo-2';
+        else if (introCombo >= 10) cursorCls += ' typing-game__char--combo-1';
+        html += '<span class="' + cursorCls + '">\u200B</span>';
+      }
+
+      introInner.innerHTML = html;
+    }
 
     function typeNext() {
       if (idx >= chars.length) {
+        introFinished = true;
+        renderIntro();
         // Typewriter finished — show button
         requestAnimationFrame(function () {
           introButtonEl.classList.add('typing-game__intro-btn--visible');
         });
         return;
       }
-      var ch = chars[idx] === ' ' ? ' ' : chars[idx];
-      var span = document.createElement('span');
-      span.className = 'typing-game__char typing-game__char--correct typing-game__intro-char';
-      span.textContent = ch;
-      introInner.appendChild(span);
+      introCombo++;
+      introTrailTimestamps.push(Date.now());
+      if (introTrailTimestamps.length > 20) introTrailTimestamps.shift();
+      calcIntroTrailSpeed();
       idx++;
+      renderIntro();
       setTimeout(typeNext, speed);
     }
 
