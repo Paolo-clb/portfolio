@@ -57,18 +57,14 @@
     };
   }
 
-  function hasPlayed() {
-    return getCookie('typing_played') === '1';
+  function isGameUnlocked() {
+    return getCookie('typing_game_unlocked') === '1';
   }
 
-  function markAsPlayed() {
-    if (!hasPlayed()) {
-      setCookie('typing_played', '1', 365);
-      // Remove first-visit white text — CSS transition on color handles the smooth fade
-      if (textEl) {
-        textEl.classList.remove('typing-game__text--first-visit');
-      }
-    }
+  function unlockGame() {
+    setCookie('typing_game_unlocked', '1', 365);
+    // Clean up old cookie that is no longer used
+    setCookie('typing_played', '', -1);
   }
 
   /* ---- Text data by language and mode ---- */
@@ -128,8 +124,13 @@
     },
   };
 
+  /* ---- Intro presentation text (shown before game is unlocked) ---- */
+
+  const INTRO_TEXT = 'Bienvenue sur mon portfolio ! Je suis Paolo Colombat, développeur full stack passionné, actuellement en 2ème année de BUT Informatique. Ici vous découvrirez mes projets, mes compétences techniques et un moyen de me contacter. Bonne visite !';
+
   /* ---- State ---- */
 
+  let introActive = false; // whether the intro typewriter is showing (game not yet unlocked)
   let currentLang = 'fr';
   let currentMode = 'presentation';
   let text = '';
@@ -161,6 +162,7 @@
   /* ---- DOM refs (set in init) ---- */
 
   let container, navbarEl, textEl, innerEl, wpmEl, accEl, timeEl, bestEl, restartEl, statsRow, focusHintEl, hardcoreCountdownEl;
+  let introTextEl, introButtonEl, heroTitleEl; // intro mode DOM refs
 
   /* ---- Helpers ---- */
 
@@ -581,21 +583,7 @@
       innerEl.remove();
     }
     innerEl = null;
-    // Manage first-visit state: show white text on hub if never typed
-    if (textEl) {
-      if (!hasPlayed() && currentMode === 'presentation') {
-        // Instant switch (no transition) so mode changes don't slowly fade
-        textEl.style.transition = 'none';
-        textEl.classList.add('typing-game__text--first-visit');
-        void textEl.offsetHeight; // force reflow
-        textEl.style.transition = '';
-      } else {
-        textEl.style.transition = 'none';
-        textEl.classList.remove('typing-game__text--first-visit');
-        void textEl.offsetHeight;
-        textEl.style.transition = '';
-      }
-    }
+
     // Remove hardcore/finished states first so display:none overrides are cleared
     container.classList.remove('typing-game--finished');
     container.classList.remove('typing-game--hardcore-memorize', 'typing-game--hardcore-typing', 'typing-game--hardcore-fail', 'typing-game--hardcore-success');
@@ -787,7 +775,6 @@
         wpmEl.classList.add('typing-game__wpm--visible');
         accEl.classList.add('typing-game__acc--visible');
         wpmInterval = setInterval(updateStats, 200);
-        markAsPlayed();
         var hint = document.getElementById('scroll-hint');
         if (hint) hint.classList.add('scroll-hint--hidden');
         // Show the Shift+Space hint while typing in zen mode
@@ -834,8 +821,6 @@
       wpmEl.classList.add('typing-game__wpm--visible');
       accEl.classList.add('typing-game__acc--visible');
       wpmInterval = setInterval(updateStats, 200);
-      // Mark as played (remove first-visit white text)
-      markAsPlayed();
       // Hide scroll hint while typing
       var hint = document.getElementById('scroll-hint');
       if (hint) hint.classList.add('scroll-hint--hidden');
@@ -917,7 +902,8 @@
 
     function close() {
       overlay.classList.remove('zen-popup-overlay--visible');
-      overlay.addEventListener('transitionend', function () {
+      overlay.addEventListener('transitionend', function handler() {
+        overlay.removeEventListener('transitionend', handler);
         overlay.remove();
         if (typeof onClose === 'function') onClose();
         container.focus();
@@ -1077,53 +1063,148 @@
     return group;
   }
 
-  /* ---- Initialisation ---- */
+  /* ---- Intro typewriter mode ---- */
 
-  function init() {
-    container = document.getElementById('typing-game');
-    if (!container) return;
+  function showIntro(isSmartphone) {
+    introActive = true;
+    heroTitleEl = document.querySelector('#hero .section__title');
+    if (heroTitleEl) heroTitleEl.textContent = 'Colombat Paolo';
 
-    // Detect smartphone: narrow screen + touch device
-    var isSmartphone = window.matchMedia('(max-width: 600px) and (pointer: coarse)').matches;
+    // Intro text container (reuses typing-game__text styling)
+    introTextEl = document.createElement('div');
+    introTextEl.className = 'typing-game__text typing-game__text--intro';
+    if (isSmartphone) introTextEl.classList.add('typing-game__text--mobile-display');
 
-    // Load saved settings from cookies
-    var saved = loadSettings();
-    if (saved.lang) currentLang = saved.lang;
-    if (saved.mode) currentMode = saved.mode;
-    if (typeof saved.showErrors !== 'undefined') showErrors = saved.showErrors;
-    if (saved.hardcore) hardcoreMode = true;
-    // If hardcore is on but mode is incompatible, force to presentation
-    if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
-      currentMode = 'presentation';
+    // Inner for typewriter chars
+    var introInner = document.createElement('div');
+    introInner.className = 'typing-game__text-inner typing-game__intro-inner';
+    introTextEl.appendChild(introInner);
+
+    // Button (hidden initially)
+    introButtonEl = document.createElement('button');
+    introButtonEl.className = 'btn btn--outline typing-game__intro-btn';
+    introButtonEl.textContent = isSmartphone ? 'Découvrir le Typing Game' : 'Jouer au Typing Game';
+
+    container.appendChild(introTextEl);
+    container.appendChild(introButtonEl);
+
+    // Start typewriter animation
+    var chars = INTRO_TEXT.split('');
+    var idx = 0;
+    var speed = 22; // ms per character
+
+    function typeNext() {
+      if (idx >= chars.length) {
+        // Typewriter finished — show button
+        requestAnimationFrame(function () {
+          introButtonEl.classList.add('typing-game__intro-btn--visible');
+        });
+        return;
+      }
+      var ch = chars[idx] === ' ' ? ' ' : chars[idx];
+      var span = document.createElement('span');
+      span.className = 'typing-game__char typing-game__char--correct typing-game__intro-char';
+      span.textContent = ch;
+      introInner.appendChild(span);
+      idx++;
+      setTimeout(typeNext, speed);
     }
 
-    // --- Mobile smartphone mode: show presentation text only ---
-    if (isSmartphone) {
-      // Change the title
-      var heroTitle = document.querySelector('#hero .section__title');
-      if (heroTitle) heroTitle.textContent = 'Colombat Paolo';
+    // Small delay before starting the typewriter
+    setTimeout(typeNext, 400);
 
-      // Build greyed-out navbar
-      var navbar = buildNavbar();
-      navbar.classList.add('typing-game__navbar--disabled');
+    // Button click → show popup, then reveal game
+    introButtonEl.addEventListener('click', function () {
+      if (isSmartphone) {
+        // On smartphone: just show the notice that the game is unavailable, then mark unlocked
+        unlockGame();
+        transitionToSmartphone();
+        return;
+      }
+      showIntroPopup();
+    });
+  }
 
-      // Unavailable notice
-      var notice = document.createElement('div');
-      notice.className = 'typing-game__mobile-notice';
-      notice.textContent = 'Typing test indisponible sur t\u00e9l\u00e9phone';
+  function showIntroPopup() {
+    showInfoPopup(
+      'Typing Game',
+      'Testez votre vitesse de frappe !<br>La barre de navigation au-dessus du texte vous permet de choisir la langue, le mode et les options du jeu.',
+      'Amusez-vous bien !',
+      function () {
+        unlockGame();
+        transitionToGame();
+      }
+    );
+  }
 
-      // Show full presentation text (not as a game)
-      textEl = document.createElement('div');
-      textEl.className = 'typing-game__text typing-game__text--mobile-display';
-      var presText = TEXTS[currentLang].presentation[0];
-      textEl.textContent = presText;
+  function transitionToGame() {
+    introActive = false;
 
-      container.appendChild(navbar);
-      container.appendChild(notice);
-      container.appendChild(textEl);
-      return;
-    }
+    // Update title
+    if (heroTitleEl) heroTitleEl.textContent = 'Colombat Paolo - Typing Game';
 
+    // Fade out intro elements
+    introTextEl.classList.add('typing-game__text--intro-out');
+    introButtonEl.classList.add('typing-game__intro-btn--out');
+
+    setTimeout(function () {
+      // Remove intro elements
+      if (introTextEl && introTextEl.parentNode) introTextEl.remove();
+      if (introButtonEl && introButtonEl.parentNode) introButtonEl.remove();
+
+      // Build and reveal the real game
+      buildGameDOM();
+      // Start with hidden state, then animate in
+      container.classList.add('typing-game--reveal');
+      void container.offsetHeight; // force reflow
+      container.classList.add('typing-game--reveal-active');
+
+      startGame();
+
+      // Clean up reveal classes after animation
+      setTimeout(function () {
+        container.classList.remove('typing-game--reveal', 'typing-game--reveal-active');
+      }, 700);
+    }, 400);
+  }
+
+  function transitionToSmartphone() {
+    introActive = false;
+    if (heroTitleEl) heroTitleEl.textContent = 'Colombat Paolo';
+
+    // Fade out intro elements
+    introTextEl.classList.add('typing-game__text--intro-out');
+    introButtonEl.classList.add('typing-game__intro-btn--out');
+
+    setTimeout(function () {
+      if (introTextEl && introTextEl.parentNode) introTextEl.remove();
+      if (introButtonEl && introButtonEl.parentNode) introButtonEl.remove();
+      buildSmartphoneDOM();
+    }, 400);
+  }
+
+  function buildSmartphoneDOM() {
+    // Build greyed-out navbar
+    var navbar = buildNavbar();
+    navbar.classList.add('typing-game__navbar--disabled');
+
+    // Unavailable notice
+    var notice = document.createElement('div');
+    notice.className = 'typing-game__mobile-notice';
+    notice.textContent = 'Typing test indisponible sur t\u00e9l\u00e9phone';
+
+    // Show full presentation text (not as a game)
+    textEl = document.createElement('div');
+    textEl.className = 'typing-game__text typing-game__text--mobile-display';
+    var presText = TEXTS[currentLang].presentation[0];
+    textEl.textContent = presText;
+
+    container.appendChild(navbar);
+    container.appendChild(notice);
+    container.appendChild(textEl);
+  }
+
+  function buildGameDOM() {
     // Build inner DOM
     var navbar = buildNavbar();
 
@@ -1189,9 +1270,7 @@
       }
       // Hide focus hint & scroll-hint on focus
       focusHintEl.classList.remove('typing-game__focus-hint--visible');
-      // Keep scroll-hint visible on first visit OR if the game hasn't started yet (e.g. page reload)
-      var firstVisit = textEl && textEl.classList.contains('typing-game__text--first-visit');
-      if (!firstVisit && startTime) {
+      if (startTime) {
         var hint = document.getElementById('scroll-hint');
         if (hint) hint.classList.add('scroll-hint--hidden');
       }
@@ -1232,7 +1311,44 @@
       }
       updateTextBackground(0);
     });
+  }
 
+  /* ---- Initialisation ---- */
+
+  function init() {
+    container = document.getElementById('typing-game');
+    if (!container) return;
+
+    // Detect smartphone: narrow screen + touch device
+    var isSmartphone = window.matchMedia('(max-width: 600px) and (pointer: coarse)').matches;
+
+    // Load saved settings from cookies
+    var saved = loadSettings();
+    if (saved.lang) currentLang = saved.lang;
+    if (saved.mode) currentMode = saved.mode;
+    if (typeof saved.showErrors !== 'undefined') showErrors = saved.showErrors;
+    if (saved.hardcore) hardcoreMode = true;
+    // If hardcore is on but mode is incompatible, force to presentation
+    if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
+      currentMode = 'presentation';
+    }
+
+    // --- If game has never been unlocked: show intro typewriter ---
+    if (!isGameUnlocked()) {
+      showIntro(isSmartphone);
+      return;
+    }
+
+    // --- Mobile smartphone mode (already unlocked): show presentation text ---
+    if (isSmartphone) {
+      heroTitleEl = document.querySelector('#hero .section__title');
+      if (heroTitleEl) heroTitleEl.textContent = 'Colombat Paolo';
+      buildSmartphoneDOM();
+      return;
+    }
+
+    // --- Desktop: full game ---
+    buildGameDOM();
     startGame();
   }
 

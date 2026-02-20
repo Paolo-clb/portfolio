@@ -66,7 +66,7 @@ const PROJECTS = [
   {
     title: 'SAE 2.04',
     description: 'Exploitation d\'une base de données open data sur les accidents de la route — démarche Data Science.',
-    image: 'assets/images/project-2.jpg',
+    image: 'assets/images/background.jpg',
     tags: ['PostgreSQL', 'SQL', 'Data Science', 'Visualisation'],
     demo: '#',
     repo: '#',
@@ -111,7 +111,7 @@ const PROJECTS = [
   {
     title: 'SAE 1.04',
     description: 'Conception et mise en place d\'une base de données complète pour le club de bowling SuperBall.',
-    image: 'assets/images/project-3.jpg',
+    image: 'assets/images/background.jpg',
     tags: ['PostgreSQL', 'SQL', 'Merise', 'Conception BD'],
     demo: '#',
     repo: '#',

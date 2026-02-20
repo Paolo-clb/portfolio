@@ -893,12 +893,6 @@ function initScrollHint() {
   if (!hint) return;
   let hidden = false;
   window.addEventListener('scroll', () => {
-    // Keep scroll-hint visible during first visit
-    const firstVisit = document.querySelector('.typing-game__text--first-visit');
-    if (firstVisit) {
-      if (hidden) { hint.classList.remove('scroll-hint--hidden'); hidden = false; }
-      return;
-    }
     if (!hidden && window.scrollY > 80) {
       hint.classList.add('scroll-hint--hidden');
       hidden = true;

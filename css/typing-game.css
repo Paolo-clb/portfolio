@@ -174,10 +174,6 @@
   box-sizing: border-box;
 }
 
-.typing-game__text--first-visit {
-  color: var(--clr-text);
-}
-
 .typing-game__text-inner {
   position: relative;
   transition: transform 0.25s ease;
@@ -836,4 +832,107 @@
   opacity: 0.2;
   pointer-events: none;
   filter: grayscale(1);
+}
+
+/* ==========================================================================
+   Intro Typewriter Mode (before game is unlocked)
+   ========================================================================== */
+
+/* Intro text container — auto height so it grows with content */
+.typing-game__text--intro {
+  height: auto;
+  min-height: calc(4.8em + 1.5rem);
+  overflow: visible;
+  background: rgba(27, 26, 39, 0.15);
+  border: 1px solid rgba(191, 153, 160, 0.1);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.typing-game__text--intro .typing-game__intro-inner {
+  transition: none;
+  transform: none;
+}
+
+/* Each typewriter char fades in */
+.typing-game__intro-char {
+  animation: intro-char-in 0.15s ease forwards;
+}
+
+@keyframes intro-char-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Fade out intro elements on transition */
+.typing-game__text--intro-out {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.typing-game__intro-btn--out {
+  opacity: 0 !important;
+  transform: translateY(10px) !important;
+}
+
+/* ---- "Jouer au Typing Game" button ---- */
+
+.typing-game__intro-btn {
+  margin-top: 2rem;
+  opacity: 0;
+  transform: translateY(15px);
+  transition: opacity 0.5s ease, transform 0.5s ease,
+              background 0.3s ease, color 0.3s ease;
+  pointer-events: none;
+}
+
+.typing-game__intro-btn--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  animation: intro-btn-glow 2s ease-in-out infinite;
+}
+
+@keyframes intro-btn-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 162, 133, 0); }
+  50%      { box-shadow: 0 0 20px rgba(242, 162, 133, 0.15), 0 0 40px rgba(242, 162, 133, 0.06); }
+}
+
+/* ---- Reveal animation (game appearing after intro) ---- */
+
+.typing-game--reveal .typing-game__navbar,
+.typing-game--reveal .typing-game__text,
+.typing-game--reveal .typing-game__stats,
+.typing-game--reveal .typing-game__restart,
+.typing-game--reveal .typing-game__hc-countdown {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.typing-game--reveal-active .typing-game__navbar {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.typing-game--reveal-active .typing-game__text {
+  transition: opacity 0.5s ease 0.1s, transform 0.5s ease 0.1s;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.typing-game--reveal-active .typing-game__stats {
+  transition: opacity 0.5s ease 0.2s, transform 0.5s ease 0.2s;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.typing-game--reveal-active .typing-game__restart {
+  transition: opacity 0.5s ease 0.3s, transform 0.5s ease 0.3s;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.typing-game--reveal-active .typing-game__hc-countdown {
+  opacity: 1;
+  transform: translateY(0);
 }
