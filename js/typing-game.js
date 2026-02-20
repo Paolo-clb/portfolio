@@ -51,7 +51,7 @@
     var showErrorsCookie = getCookie('typing_show_errors');
     return {
       lang: (lang === 'fr' || lang === 'en') ? lang : null,
-      mode: mode && ['presentation', '10', '25', '50', '100', 'zen'].indexOf(mode) !== -1 ? mode : null,
+      mode: mode && ['10', '25', '50', '100', 'zen'].indexOf(mode) !== -1 ? mode : null,
       showErrors: showErrorsCookie === '1',
       hardcore: false
     };
@@ -71,9 +71,6 @@
 
   const TEXTS = {
     fr: {
-      presentation: [
-        'Bienvenu, je suis developpeur full stack en 2eme année de BUT informatique. Scrollez pour voir mes projets, ou tapez pour jouer à mon Typing Game.',
-      ],
       '10': [
         'le midlaner a flash sous la tourelle ennemie facilement',
         'le jungler commence toujours par le buff rouge ce matin',
@@ -97,9 +94,6 @@
       ],
     },
     en: {
-      presentation: [
-        'hi i am paolo a full stack developer in my second year of a computer science degree passionate about code and always ready to take on new challenges',
-      ],
       '10': [
         'the midlaner flashed under the enemy turret very boldly today',
         'our jungler started red buff and ganked top lane early',
@@ -132,7 +126,7 @@
 
   let introActive = false; // whether the intro typewriter is showing (game not yet unlocked)
   let currentLang = 'fr';
-  let currentMode = 'presentation';
+  let currentMode = '10';
   let text = '';
   let typed = [];
   let startTime = null;
@@ -166,16 +160,36 @@
 
   /* ---- Helpers ---- */
 
+  var RESTART_ICON = '<svg class="typing-game__restart__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> ';
+
+  function setRestartText(msg) {
+    restartEl.innerHTML = RESTART_ICON + '<span>' + msg + '</span>';
+  }
+
+  function showRestart() {
+    restartEl.dataset.shouldShow = '1';
+    if (isFocused) restartEl.classList.add('typing-game__restart--visible');
+  }
+
+  function hideRestart() {
+    restartEl.dataset.shouldShow = '0';
+    restartEl.classList.remove('typing-game__restart--visible');
+  }
+
   function pickText() {
     if (currentMode === 'zen') return '';
     const pool = TEXTS[currentLang][currentMode];
+    // Replay same text after finishing (currentTextIndex preserved)
     if (currentTextIndex >= 0 && currentTextIndex < pool.length) {
-      // Use preserved index (e.g. after language switch)
-      var idx = currentTextIndex;
-      currentTextIndex = -1;
-      return pool[idx];
+      return pool[currentTextIndex];
     }
-    var idx = Math.floor(Math.random() * pool.length);
+    // Pick a new random text (different from previous if possible)
+    var idx;
+    if (pool.length > 1) {
+      do { idx = Math.floor(Math.random() * pool.length); } while (idx === currentTextIndex);
+    } else {
+      idx = 0;
+    }
     currentTextIndex = idx;
     return pool[idx];
   }
@@ -563,7 +577,9 @@
 
   /* ---- Game lifecycle ---- */
 
-  function startGame() {
+  function startGame(forceNewText) {
+    // Reset text index to pick a new random text unless replaying after finish
+    if (forceNewText) currentTextIndex = -1;
     text = pickText();
     typed = [];
     startTime = null;
@@ -614,6 +630,7 @@
       bestEl.style.transition = '';
     });
     restartEl.classList.remove('typing-game__restart--visible');
+    restartEl.dataset.shouldShow = '0';
     // Reset stats to centered position
     wpmEl.style.transform = '';
     accEl.style.transform = '';
@@ -625,10 +642,10 @@
     // Toggle zen-specific classes
     if (currentMode === 'zen') {
       container.classList.add('typing-game--zen');
-      restartEl.textContent = 'Shift + Espace pour arrêter';
+      setRestartText('Shift + Espace pour arrêter');
     } else {
       container.classList.remove('typing-game--zen');
-      restartEl.textContent = 'Entrée ou Espace pour recommencer';
+      setRestartText('Entrée ou Espace pour recommencer');
     }
     // Hardcore mode reset
     hardcorePhase = null;
@@ -636,7 +653,7 @@
     if (hardcoreTimer) { clearInterval(hardcoreTimer); hardcoreTimer = null; }
     if (hardcoreCountdownEl) hardcoreCountdownEl.classList.remove('typing-game__hc-countdown--visible');
     // If hardcore is active and mode is compatible, start memorize phase
-    if (hardcoreMode && currentMode !== 'zen' && ['presentation', '10'].indexOf(currentMode) !== -1) {
+    if (hardcoreMode && currentMode !== 'zen' && ['10'].indexOf(currentMode) !== -1) {
       hardcorePhase = 'memorize';
       hardcoreCountdown = 3;
       container.classList.add('typing-game--hardcore-memorize');
@@ -711,8 +728,8 @@
     }
 
     // Update restart hint for finished state
-    restartEl.textContent = 'Entrée ou Espace pour recommencer';
-    restartEl.classList.add('typing-game__restart--visible');
+    setRestartText('Entrée ou Espace pour recommencer');
+    showRestart();
     container.classList.add('typing-game--finished');
     render();
   }
@@ -730,11 +747,11 @@
     // Block all input during hardcore memorize phase
     if (hardcorePhase === 'memorize') return;
 
-    // Restart on Space or Enter when finished
+    // Restart on Space or Enter when finished (replay same text)
     if (finished) {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        startGame();
+        startGame(false);
       }
       return;
     }
@@ -746,10 +763,10 @@
       return;
     }
 
-    // Enter restarts even during gameplay
+    // Enter restarts with a new text during gameplay
     if (e.key === 'Enter') {
       e.preventDefault();
-      startGame();
+      startGame(true);
       return;
     }
 
@@ -778,7 +795,7 @@
         var hint = document.getElementById('scroll-hint');
         if (hint) hint.classList.add('scroll-hint--hidden');
         // Show the Shift+Space hint while typing in zen mode
-        restartEl.classList.add('typing-game__restart--visible');
+        showRestart();
       }
 
       typed.push(e.key);
@@ -926,9 +943,8 @@
       [{ key: 'fr', label: 'FR' }, { key: 'en', label: 'EN' }],
       currentLang,
       function (key) {
-        // Keep currentTextIndex so pickText uses the same position
         currentLang = key;
-        startGame();
+        startGame(true);
       }
     );
 
@@ -940,7 +956,6 @@
     // Mode selector
     const modeGroup = buildOptionGroup(
       [
-        { key: 'presentation', label: 'hub' },
         { key: '10', label: '10' },
         { key: '25', label: '25' },
         { key: '50', label: '50' },
@@ -950,7 +965,7 @@
       currentMode,
       function (key) {
         currentMode = key;
-        startGame();
+        startGame(true);
         // First time zen: show info popup
         if (key === 'zen' && !getCookie('typing_zen_seen')) {
           showZenPopup();
@@ -1013,9 +1028,9 @@
       hardcoreMode = !hardcoreMode;
       updateHardcoreUI();
       saveSettings(currentLang, currentMode, showErrors);
-      // If turning on and mode is incompatible, switch to presentation
+      // If turning on and mode is incompatible, switch to 10
       if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
-        currentMode = 'presentation';
+        currentMode = '10';
         // Update active class in mode group
         modeGroup.querySelectorAll('.typing-game__option').forEach(function(b) {
           b.classList.toggle('typing-game__option--active', b.getAttribute('data-key') === currentMode);
@@ -1023,9 +1038,9 @@
       }
       // First time popup — delay startGame until popup is closed
       if (hardcoreMode && !getCookie('typing_hardcore_seen')) {
-        showHardcorePopup(function() { startGame(); });
+        showHardcorePopup(function() { startGame(true); });
       } else {
-        startGame();
+        startGame(true);
       }
     });
 
@@ -1220,7 +1235,7 @@
       void container.offsetHeight; // force reflow
       container.classList.add('typing-game--reveal-active');
 
-      startGame();
+      startGame(true);
 
       // Clean up reveal classes after animation
       setTimeout(function () {
@@ -1257,8 +1272,7 @@
     // Show full presentation text (not as a game)
     textEl = document.createElement('div');
     textEl.className = 'typing-game__text typing-game__text--mobile-display';
-    var presText = TEXTS[currentLang].presentation[0];
-    textEl.textContent = presText;
+    textEl.textContent = INTRO_TEXT;
 
     container.appendChild(navbar);
     container.appendChild(notice);
@@ -1290,7 +1304,8 @@
 
     restartEl = document.createElement('div');
     restartEl.className = 'typing-game__restart';
-    restartEl.textContent = 'Entrée ou Espace pour recommencer';
+    restartEl.dataset.shouldShow = '0';
+    setRestartText('Entrée ou Espace pour recommencer');
 
     // Focus hint (visible when blurred)
     focusHintEl = document.createElement('div');
@@ -1312,9 +1327,9 @@
     container.appendChild(navbar);
     container.appendChild(textEl);
     container.appendChild(hardcoreCountdownEl);
+    container.appendChild(restartEl);
     container.appendChild(focusHintEl);
     container.appendChild(statsRow);
-    container.appendChild(restartEl);
 
     // Make it focusable & listen for keys
     container.setAttribute('tabindex', '0');
@@ -1331,6 +1346,10 @@
       }
       // Hide focus hint & scroll-hint on focus
       focusHintEl.classList.remove('typing-game__focus-hint--visible');
+      // Show restart hint if it was flagged visible
+      if (restartEl.dataset.shouldShow === '1') {
+        restartEl.classList.add('typing-game__restart--visible');
+      }
       if (startTime) {
         var hint = document.getElementById('scroll-hint');
         if (hint) hint.classList.add('scroll-hint--hidden');
@@ -1350,6 +1369,8 @@
       isFocused = false;
       container.classList.remove('typing-game--focused');
       container.classList.remove('typing-game--finished');
+      // Hide restart hint on blur
+      restartEl.classList.remove('typing-game__restart--visible');
       // Debounce focus hint to avoid flash on navbar clicks
       if (blurHintTimer) clearTimeout(blurHintTimer);
       blurHintTimer = setTimeout(function () {
@@ -1389,9 +1410,9 @@
     if (saved.mode) currentMode = saved.mode;
     if (typeof saved.showErrors !== 'undefined') showErrors = saved.showErrors;
     if (saved.hardcore) hardcoreMode = true;
-    // If hardcore is on but mode is incompatible, force to presentation
+    // If hardcore is on but mode is incompatible, force to 10
     if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
-      currentMode = 'presentation';
+      currentMode = '10';
     }
 
     // --- If game has never been unlocked: show intro typewriter ---
@@ -1410,7 +1431,7 @@
 
     // --- Desktop: full game ---
     buildGameDOM();
-    startGame();
+    startGame(true);
   }
 
   // Boot when DOM is ready

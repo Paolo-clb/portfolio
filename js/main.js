@@ -698,7 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initContactForm();
   setFooterYear();
   initScrollHint();
-  initCvModal();
+
   initCursorHalo();
 });
 
@@ -811,7 +811,7 @@ function initCursorHalo() {
       }
       return;
     }
-    if (e.target.closest('.cv-modal__viewer')) {
+    if (e.target.closest('.cv-section__viewer')) {
       targetOpacity = 0;
       ensureRunning();
       return;
@@ -825,7 +825,7 @@ function initCursorHalo() {
     if (e.target.closest(interactiveSelector) || e.target.closest(modalAllowedSelector)) {
       halo.classList.remove('cursor-halo--hover');
     }
-    if (e.target.closest('.cv-modal__viewer')) {
+    if (e.target.closest('.cv-section__viewer')) {
       targetOpacity = 1;
       ensureRunning();
     }
@@ -906,76 +906,4 @@ function initScrollHint() {
   }, { passive: true });
 }
 
-// ---------------------------------------------------------------------------
-// CV Modal
-// ---------------------------------------------------------------------------
-function createCvModal() {
-  var overlay = createElement('div', 'modal-overlay');
-  overlay.id = 'cv-modal';
 
-  var modal = createElement('div', 'modal cv-modal');
-
-  // Header
-  var header = createElement('div', 'cv-modal__header');
-  header.appendChild(createElement('h2', 'cv-modal__title', 'Curriculum Vitae'));
-  var closeBtn = createElement('button', 'modal__close', '\u00D7');
-  closeBtn.setAttribute('aria-label', 'Fermer');
-  header.appendChild(closeBtn);
-  modal.appendChild(header);
-
-  // PDF viewer
-  var viewer = createElement('div', 'cv-modal__viewer');
-  var iframe = document.createElement('iframe');
-  iframe.src = 'assets/doc/CV_Paolo.pdf';
-  iframe.title = 'CV Paolo';
-  viewer.appendChild(iframe);
-  modal.appendChild(viewer);
-
-  // Footer with download button
-  var footer = createElement('div', 'cv-modal__footer');
-  var dlBtn = document.createElement('a');
-  dlBtn.href = 'assets/doc/CV_Paolo.pdf';
-  dlBtn.download = 'CV_Paolo.pdf';
-  dlBtn.className = 'btn btn--primary';
-  dlBtn.textContent = 'T\u00e9l\u00e9charger le CV';
-  footer.appendChild(dlBtn);
-  modal.appendChild(footer);
-
-  overlay.appendChild(modal);
-  document.body.appendChild(overlay);
-
-  closeBtn.addEventListener('click', closeCvModal);
-  overlay.addEventListener('click', function (e) {
-    if (e.target === overlay) closeCvModal();
-  });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeCvModal();
-  });
-}
-
-function openCvModal() {
-  var overlay = document.getElementById('cv-modal');
-  if (!overlay) {
-    createCvModal();
-    overlay = document.getElementById('cv-modal');
-  }
-  void overlay.offsetWidth;
-  overlay.classList.add('modal-overlay--open');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeCvModal() {
-  var overlay = document.getElementById('cv-modal');
-  if (!overlay) return;
-  overlay.classList.remove('modal-overlay--open');
-  document.body.style.overflow = '';
-}
-
-function initCvModal() {
-  var link = document.getElementById('cv-link');
-  if (!link) return;
-  link.addEventListener('click', function (e) {
-    e.preventDefault();
-    openCvModal();
-  });
-}

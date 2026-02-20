@@ -443,18 +443,37 @@
   100% { transform: scale(1); }
 }
 
-/* ---- Restart hint ---- */
+/* ---- Restart hint (same position as focus hint, only when focused) ---- */
 
 .typing-game__restart {
-  margin-top: 1.2rem;
-  font-size: 1rem;
+  margin-top: 0.8rem;
+  font-size: 0.95rem;
   color: var(--clr-text-muted);
   opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  pointer-events: none;
+  height: 0;
+  overflow: visible;
   transition: opacity 0.3s ease;
 }
 
 .typing-game__restart--visible {
   opacity: 1;
+}
+
+.typing-game__restart__icon {
+  flex-shrink: 0;
+  animation: restart-icon-wobble 2.4s ease-in-out infinite;
+}
+
+@keyframes restart-icon-wobble {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-20deg); }
+  50%      { transform: rotate(0deg); }
+  75%      { transform: rotate(20deg); }
 }
 
 /* ---- Focus hint (click to start) ---- */
@@ -902,7 +921,6 @@
 .typing-game--reveal .typing-game__navbar,
 .typing-game--reveal .typing-game__text,
 .typing-game--reveal .typing-game__stats,
-.typing-game--reveal .typing-game__restart,
 .typing-game--reveal .typing-game__hc-countdown {
   opacity: 0;
   transform: translateY(20px);
@@ -926,10 +944,13 @@
   transform: translateY(0);
 }
 
+.typing-game--reveal .typing-game__restart {
+  opacity: 0;
+}
+
 .typing-game--reveal-active .typing-game__restart {
-  transition: opacity 0.5s ease 0.3s, transform 0.5s ease 0.3s;
-  opacity: 1;
-  transform: translateY(0);
+  transition: opacity 0.5s ease 0.3s;
+  opacity: 0;
 }
 
 .typing-game--reveal-active .typing-game__hc-countdown {
