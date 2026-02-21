@@ -287,7 +287,8 @@
       trailLen = Math.round(2 + comboFactor * 28);
       trailLen = Math.round(trailLen * (0.15 + trailSpeed * 0.85));
     }
-    var trailR = 242, trailG = 162, trailB = 133;
+    var zenDk = document.documentElement.dataset.theme === 'dark';
+    var trailR = zenDk ? 156 : 242, trailG = zenDk ? 39 : 162, trailB = zenDk ? 176 : 133;
 
     for (let i = 0; i < typed.length; i++) {
       let cls = 'typing-game__char typing-game__char--correct';
@@ -355,12 +356,17 @@
       trailLen = Math.round(trailLen * (0.15 + trailSpeed * 0.85));
     }
 
-    // Trail color shift: #F2A285 → #F28080 matching cursor combo shift
-    var trailR = 242, trailG = 162, trailB = 133;
+    // Trail color shift: primary → accent/hover matching cursor combo shift
+    var isDark = document.documentElement.dataset.theme === 'dark';
+    // Dark: #9c27b0 (156,39,176) → #ff4ecb (255,78,203)
+    // Light: #F2A285 (242,162,133) → #F28080 (242,128,128)
+    var trailR = isDark ? 156 : 242, trailG = isDark ? 39 : 162, trailB = isDark ? 176 : 133;
+    var trailHR = isDark ? 255 : 242, trailHG = isDark ? 78 : 128, trailHB = isDark ? 203 : 128;
     if (comboStreak >= 50) {
       var tc = Math.min((comboStreak - 50) / 50, 1);
-      trailG = Math.round(162 - tc * (162 - 128));
-      trailB = Math.round(133 - tc * (133 - 128));
+      trailR = Math.round(trailR + tc * (trailHR - trailR));
+      trailG = Math.round(trailG + tc * (trailHG - trailG));
+      trailB = Math.round(trailB + tc * (trailHB - trailB));
     }
 
     for (let i = 0; i < text.length; i++) {
@@ -397,12 +403,16 @@
         if (comboStreak >= 60) cls += ' typing-game__char--combo-3';
         else if (comboStreak >= 30) cls += ' typing-game__char--combo-2';
         else if (comboStreak >= 10) cls += ' typing-game__char--combo-1';
-        // Combo color shift: #F2A285 → #F28080 from 50–100 streak
+        // Combo color shift: primary → accent/hover from 50–100 streak
         if (comboStreak >= 50) {
           var cc = Math.min((comboStreak - 50) / 50, 1);
-          var cg = Math.round(162 - cc * (162 - 128));
-          var cb = Math.round(133 - cc * (133 - 128));
-          comboStyle = ' style="--combo-clr:rgb(242,' + cg + ',' + cb + ')"';
+          // Dark: #9c27b0 → #ff4ecb | Light: #F2A285 → #F28080
+          var cBaseR = isDark ? 156 : 242, cBaseG = isDark ? 39 : 162, cBaseB = isDark ? 176 : 133;
+          var cHoverR = isDark ? 255 : 242, cHoverG = isDark ? 78 : 128, cHoverB = isDark ? 203 : 128;
+          var cr = Math.round(cBaseR + cc * (cHoverR - cBaseR));
+          var cg = Math.round(cBaseG + cc * (cHoverG - cBaseG));
+          var cb = Math.round(cBaseB + cc * (cHoverB - cBaseB));
+          comboStyle = ' style="--combo-clr:rgb(' + cr + ',' + cg + ',' + cb + ')"';
         } else {
           comboStyle = '';
         }
@@ -516,10 +526,19 @@
 
   function updateTextBackground(wpm) {
     if (!textEl) return;
+    var isDark = document.documentElement.dataset.theme === 'dark';
+    // Theme-aware color channels
+    var bgR  = isDark ? 26  : 27,  bgG  = isDark ? 0   : 26,  bgB  = isDark ? 51  : 39;
+    var brR  = isDark ? 63  : 191, brG  = isDark ? 81  : 153, brB  = isDark ? 181 : 160;
+    // Dark: #9c27b0 (156,39,176) → #ff4ecb (255,78,203)
+    // Light: #F2A285 (242,162,133) → #F28080 (242,128,128)
+    var pR   = isDark ? 156 : 242, pG   = isDark ? 39  : 162, pB   = isDark ? 176 : 133;
+    var phR  = isDark ? 255 : 242, phG  = isDark ? 78  : 128, phB  = isDark ? 203 : 128;
+
     // If not focused (and not finished with focus), use fully transparent background
     if (!isFocused) {
-      textEl.style.background = 'rgba(27, 26, 39, 0)';
-      textEl.style.borderColor = 'rgba(191, 153, 160, 0.02)';
+      textEl.style.background = 'rgba(' + bgR + ', ' + bgG + ', ' + bgB + ', 0)';
+      textEl.style.borderColor = 'rgba(' + brR + ', ' + brG + ', ' + brB + ', 0.02)';
       textEl.style.boxShadow = '0 0 0 0 transparent';
       return;
     }
@@ -536,15 +555,16 @@
     var outerAlpha = 0.08 + t * 0.35;
     var outerSize = Math.round(30 + t * 90);
 
-    // Color transition: primary (#F2A285) → primary-hover (#F28080) from 60–130 WPM
-    var r = 242, g = 162, b = 133; // base #F2A285
+    // Color transition: primary → accent/hover from 60–130 WPM
+    var r = pR, g = pG, b = pB;
     if (wpm >= 60) {
-      var ct = Math.min((wpm - 60) / 70, 1); // 0 at 60, 1 at 130
-      g = Math.round(162 - ct * (162 - 128)); // 162 → 128
-      b = Math.round(133 - ct * (133 - 128)); // 133 → 128
+      var ct = Math.min((wpm - 60) / 70, 1);
+      r = Math.round(pR + ct * (phR - pR));
+      g = Math.round(pG + ct * (phG - pG));
+      b = Math.round(pB + ct * (phB - pB));
     }
 
-    textEl.style.background = 'rgba(27, 26, 39, ' + bgAlpha.toFixed(3) + ')';
+    textEl.style.background = 'rgba(' + bgR + ', ' + bgG + ', ' + bgB + ', ' + bgAlpha.toFixed(3) + ')';
     textEl.style.borderColor = 'rgba(' + r + ', ' + g + ', ' + b + ', ' + borderAlpha.toFixed(3) + ')';
     textEl.style.boxShadow = '0 0 ' + glowSize + 'px rgba(' + r + ', ' + g + ', ' + b + ', ' + glowAlpha.toFixed(3) + '), '
                            + '0 0 ' + outerSize + 'px rgba(' + r + ', ' + g + ', ' + b + ', ' + outerAlpha.toFixed(3) + ')';
@@ -1111,8 +1131,11 @@
     var introTrailTimestamps = [];
     var introTrailSpeed = 0;
     var introFinished = false;
-    // Fixed trail color (primary only, no shift to hover)
-    var trailR = 242, trailG = 162, trailB = 133;
+    // Fixed trail color (primary only, no shift) — theme-aware
+    function getIntroTrailColor() {
+      var dk = document.documentElement.dataset.theme === 'dark';
+      return { r: dk ? 156 : 242, g: dk ? 39 : 162, b: dk ? 176 : 133 };
+    }
 
     function calcIntroTrailSpeed() {
       if (introTrailTimestamps.length < 2) { introTrailSpeed = 0; return; }
@@ -1124,6 +1147,7 @@
 
     function renderIntro() {
       var html = '';
+      var tc = getIntroTrailColor();
 
       // Trail length from combo + speed
       var trailLen = 0;
@@ -1145,9 +1169,9 @@
             var trailOpacity = (1 - (distFromCursor - 1) / trailLen) * introTrailSpeed;
             trailOpacity = Math.max(0.05, Math.min(1, trailOpacity));
             trailAttr = ' style="--trail-opacity:' + trailOpacity.toFixed(3)
-              + ';--trail-r:' + trailR
-              + ';--trail-g:' + trailG
-              + ';--trail-b:' + trailB + '"';
+              + ';--trail-r:' + tc.r
+              + ';--trail-g:' + tc.g
+              + ';--trail-b:' + tc.b + '"';
           }
         }
 

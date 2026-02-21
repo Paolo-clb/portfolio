@@ -14,8 +14,6 @@ const PROJECTS = [
     description: 'Application JavaFX d\'organisation de banquets — gestion d\'événements, invités, menus et plans de table.',
     image: 'assets/images/background.jpg',
     tags: ['JavaFX', 'MVC', 'UML', 'Gestion de projet'],
-    demo: '#',
-    repo: '#',
     details: {
       overview: 'Le projet consiste à concevoir et développer une <em>application JavaFX</em> permettant à tout organisateur de gérer un événement. L\'application fonctionne <em>hors-ligne</em> (architecture lourde) et s\'appuie sur un <em>modèle MVC complet</em>. Projet réalisé en équipe de six, avec gestion de jalons, dépôt <em>GitLab</em> institutionnel et soutenance finale.',
       competences: [
@@ -68,8 +66,6 @@ const PROJECTS = [
     description: 'Exploitation d\'une base de données open data sur les accidents de la route — démarche Data Science.',
     image: 'assets/images/background.jpg',
     tags: ['PostgreSQL', 'SQL', 'Data Science', 'Visualisation'],
-    demo: '#',
-    repo: '#',
     details: {
       overview: 'Dans ce projet, réalisé en <em>binôme</em>, nous avons été placés dans la peau de membres d\'une association souhaitant sensibiliser le public aux <em>accidents de la route</em> en France. L\'objectif principal était de mener une première démarche de type <em>Data Science</em> à partir d\'une base de données publique fournie par l\'observatoire national interministériel de la sécurité routière. Cette base, très volumineuse et brute, couvre les accidents corporels survenus entre <em>2005 et 2023</em>.<br>Notre travail s\'est organisé en deux grandes phases : une première, orientée bases de données, consistait à explorer, nettoyer et transformer les données à l\'aide d\'outils comme <em>PostgreSQL</em> ; la seconde, plus statistique, visait à produire des <em>visualisations pertinentes</em> (graphiques, tableaux) pour répondre à une problématique précise que nous avons définie. En parallèle, nous avons également rédigé un <em>document de cadrage</em> du projet pour identifier les contraintes, les ressources nécessaires et les risques potentiels.',
       competences: [
@@ -113,8 +109,6 @@ const PROJECTS = [
     description: 'Conception et mise en place d\'une base de données complète pour le club de bowling SuperBall.',
     image: 'assets/images/background.jpg',
     tags: ['PostgreSQL', 'SQL', 'Merise', 'Conception BD'],
-    demo: '#',
-    repo: '#',
     details: {
       overview: 'La SAE 1.04 avait pour but de concevoir et de mettre en place, en <em>binôme</em>, une <em>base de données complète</em> pour le club de bowling <em>SuperBall</em>. À partir d\'un cahier des charges et d\'un SEA fournis, nous avons :<br><br>• Dérivé le <em>schéma relationnel</em> (SLR) en appliquant les règles de traduction vues en cours<br>• Écrit un script <em>create.sql</em> créant les tables, clés primaires / étrangères, CHECK, NOT NULL, contraintes d\'unicité<br>• Rédigé un script <em>test.sql</em> peuplant la base puis vérifiant l\'intégrité via des insertions invalides<br>• Développé des <em>requêtes SQL</em> répondant à six besoins métier (planning des pistes, stock de chaussures, disponibilité, etc.)<br>• Fait évoluer la base lors de l\'étape 3 : gestion du <em>remplacement d\'une piste</em>, extension du nombre maximum de parties et bilan critique du projet.',
       competences: [
@@ -144,8 +138,6 @@ const PROJECTS = [
     description: 'Classification automatique de dépêches — génération de lexiques par apprentissage et comparaison K-NN.',
     image: 'assets/images/project-4.jpg',
     tags: ['Java', 'Algorithmes', 'IA', 'IntelliJ'],
-    demo: '#',
-    repo: '#',
     details: {
       overview: 'Ce projet, intitulé « <em>Classification automatique</em> », visait à améliorer un système de tri de <em>dépêches d\'actualité</em> en développant une méthode de <em>génération automatique de lexiques</em>. Contrairement à la première partie où les lexiques étaient manuels, nous avons ici expérimenté l\' <em>apprentissage automatique</em> afin de générer des lexiques plus pertinents et d\'améliorer la précision du système de classification.<br><br><em>Binôme</em> : Paolo Colombat, Enzo Morello',
       competences: [
@@ -257,27 +249,33 @@ const SKILL_GROUPS = [
  */
 const MUSIC = [
   {
-    title: 'BloomChill',
-    artist: 'Artist Unknown',
-    cover: 'assets/images/chillblom.png',
-    src: 'assets/music/paulyudin-chill-silent-bloom-chill-481864.mp3',
+    title: 'Sunflower',
+    artist: 'Post Malone & Swae Lee',
+    cover: 'assets/images/Sunflower.jpg',
+    src: 'assets/music/Sunflower.mp3',
   },
   {
-    title: 'La Nuit',
-    artist: 'Ziak',
-    cover: 'assets/images/lanuit.jpg',
-    src: 'assets/music/lanuit.mp3',
-  },
-  {
-    title: 'ambatukam',
-    artist: 'DreamyBull',
-    cover: 'assets/images/dreamy.jpg',
-    src: 'assets/music/ambatukam choir extended.mp3',
+    title: 'On Melancholy Hill',
+    artist: 'Gorillaz',
+    cover: 'assets/images/Melancholy.jpg',
+    src: 'assets/music/Melancholy.mp3',
   },
     {
-    title: 'COUSINS',
-    artist: 'Kanye West',
-    cover: 'assets/images/kaynie.jpg',
-    src: 'assets/music/Kanye West - COUSINS (Lyrics).mp3',
+    title: 'The Line',
+    artist: 'Twenty One Pilots',
+    cover: 'assets/images/TheLine.jpg',
+    src: 'assets/music/TheLine.mp3',
+  },
+    {
+    title: 'Let You Down',
+    artist: 'Dawid Podsiadło',
+    cover: 'assets/images/LetYouDown.jpg',
+    src: 'assets/music/LetYouDown.mp3',
+  },
+      {
+    title: 'Sneaky Driver',
+    artist: 'Bill Kiley',
+    cover: 'assets/images/SneakyDriver.jpg',
+    src: 'assets/music/SneakyDriver.mp3',
   },
 ];

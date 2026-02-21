@@ -913,7 +913,7 @@
 
 @keyframes intro-btn-glow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(242, 162, 133, 0); }
-  50%      { box-shadow: 0 0 20px rgba(242, 162, 133, 0.15), 0 0 40px rgba(242, 162, 133, 0.06); }
+  50%      { box-shadow: 0 0 26px rgba(242, 162, 133, 0.25), 0 0 55px rgba(242, 162, 133, 0.12); }
 }
 
 /* ---- Reveal animation (game appearing after intro) ---- */
@@ -956,4 +956,149 @@
 .typing-game--reveal-active .typing-game__hc-countdown {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* ==========================================================================
+   Dark Theme — purple neon overrides
+   ========================================================================== */
+
+/* --- Dark: Blurred hover --- */
+[data-theme="dark"] .typing-game--blurred .typing-game__text:hover {
+  background: rgba(26, 0, 51, 0.18) !important;
+  border-color: rgba(156, 39, 176, 0.25) !important;
+  box-shadow: 0 0 18px rgba(156, 39, 176, 0.1),
+              inset 0 0 25px rgba(156, 39, 176, 0.04) !important;
+}
+
+/* --- Dark: Focused idle border --- */
+[data-theme="dark"] .typing-game--focused .typing-game__text {
+  border-color: rgba(156, 39, 176, 0.25);
+}
+
+/* --- Dark: Navbar --- */
+[data-theme="dark"] .typing-game__navbar {
+  background: rgba(26, 0, 51, 0.6);
+  border-color: rgba(63, 81, 181, 0.15);
+  backdrop-filter: none;
+}
+
+/* --- Dark: Option active --- */
+[data-theme="dark"] .typing-game__option--active {
+  background: rgba(156, 39, 176, 0.15);
+}
+
+/* --- Dark: Eye toggle active --- */
+[data-theme="dark"] .typing-game__eye--active {
+  background: rgba(156, 39, 176, 0.15);
+}
+
+/* --- Dark: Text display --- */
+[data-theme="dark"] .typing-game__text {
+  background: rgba(26, 0, 51, 0.25);
+  border-color: rgba(63, 81, 181, 0.1);
+  backdrop-filter: none;
+}
+
+/* --- Dark: Incorrect char underline --- */
+[data-theme="dark"] .typing-game__char--incorrect {
+  text-decoration-color: rgba(106, 13, 173, 0.45);
+}
+
+/* --- Dark: Combo glows --- */
+[data-theme="dark"] .typing-game__char--combo-1::after {
+  box-shadow: 0 0 8px rgba(156, 39, 176, 0.7),
+              0 0 16px rgba(156, 39, 176, 0.4),
+              0 0 24px rgba(156, 39, 176, 0.15);
+  animation-name: combo-pulse-1-dark;
+}
+
+[data-theme="dark"] .typing-game__char--combo-2::after {
+  box-shadow: 0 0 12px rgba(156, 39, 176, 0.9),
+              0 0 24px rgba(156, 39, 176, 0.5),
+              0 0 40px rgba(255, 78, 203, 0.25),
+              0 0 60px rgba(255, 78, 203, 0.1);
+  animation-name: combo-pulse-2-dark;
+}
+
+[data-theme="dark"] .typing-game__char--combo-3::after {
+  box-shadow: 0 0 14px rgba(255, 78, 203, 1),
+              0 0 30px rgba(255, 78, 203, 0.6),
+              0 0 50px rgba(156, 39, 176, 0.3),
+              0 0 80px rgba(255, 78, 203, 0.15);
+  animation-name: combo-pulse-3-dark;
+}
+
+@keyframes combo-pulse-1-dark {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(156,39,176,0.7), 0 0 16px rgba(156,39,176,0.4), 0 0 24px rgba(156,39,176,0.15); }
+  50%      { opacity: 0.85; box-shadow: 0 0 12px rgba(156,39,176,0.85), 0 0 22px rgba(156,39,176,0.5), 0 0 32px rgba(156,39,176,0.2); }
+}
+
+@keyframes combo-pulse-2-dark {
+  0%, 100% { opacity: 1; box-shadow: 0 0 12px rgba(156,39,176,0.9), 0 0 24px rgba(156,39,176,0.5), 0 0 40px rgba(255,78,203,0.25), 0 0 60px rgba(255,78,203,0.1); }
+  50%      { opacity: 0.8; box-shadow: 0 0 16px rgba(156,39,176,1), 0 0 32px rgba(156,39,176,0.6), 0 0 50px rgba(255,78,203,0.35), 0 0 70px rgba(255,78,203,0.15); }
+}
+
+@keyframes combo-pulse-3-dark {
+  0%, 100% { opacity: 1; box-shadow: 0 0 14px rgba(255,78,203,1), 0 0 30px rgba(255,78,203,0.6), 0 0 50px rgba(156,39,176,0.3), 0 0 80px rgba(255,78,203,0.15); }
+  50%      { opacity: 0.75; box-shadow: 0 0 20px rgba(255,78,203,1), 0 0 40px rgba(255,78,203,0.7), 0 0 65px rgba(156,39,176,0.4), 0 0 100px rgba(255,78,203,0.2); }
+}
+
+/* --- Dark: Mobile text display --- */
+[data-theme="dark"] .typing-game__text--mobile-display {
+  background: rgba(26, 0, 51, 0.2);
+  border-color: rgba(63, 81, 181, 0.12);
+}
+
+/* --- Dark: Zen popup --- */
+[data-theme="dark"] .zen-popup-overlay--visible {
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .zen-popup {
+  background: rgba(26, 0, 51, 0.94);
+  border-color: rgba(156, 39, 176, 0.3);
+  box-shadow: 0 0 40px rgba(156, 39, 176, 0.15),
+              0 0 80px rgba(156, 39, 176, 0.08);
+}
+
+[data-theme="dark"] .zen-popup__shortcut kbd {
+  background: rgba(156, 39, 176, 0.12);
+  border-color: rgba(156, 39, 176, 0.35);
+  box-shadow: 0 1px 0 rgba(156, 39, 176, 0.2);
+}
+
+/* --- Dark: Hardcore active --- */
+[data-theme="dark"] .typing-game__hardcore--active {
+  background: rgba(106, 13, 173, 0.15);
+}
+
+[data-theme="dark"] .typing-game__hardcore--active .typing-game__hardcore-icon {
+  filter: drop-shadow(0 0 4px rgba(106, 13, 173, 0.6));
+}
+
+/* --- Dark: HC countdown --- */
+[data-theme="dark"] .typing-game__hc-countdown {
+  text-shadow: 0 0 30px rgba(106, 13, 173, 0.5),
+               0 0 60px rgba(106, 13, 173, 0.25);
+}
+
+/* --- Dark: HC fail --- */
+[data-theme="dark"] .typing-game--hardcore-fail .typing-game__wpm {
+  text-shadow: 0 0 20px rgba(106, 13, 173, 0.5);
+}
+
+/* --- Dark: Intro text --- */
+[data-theme="dark"] .typing-game__text--intro {
+  background: rgba(26, 0, 51, 0.2);
+  border-color: rgba(63, 81, 181, 0.12);
+}
+
+/* --- Dark: Intro button glow --- */
+[data-theme="dark"] .typing-game__intro-btn--visible {
+  animation-name: intro-btn-glow-dark;
+}
+
+@keyframes intro-btn-glow-dark {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(156, 39, 176, 0); }
+  50%      { box-shadow: 0 0 28px rgba(156, 39, 176, 0.3), 0 0 60px rgba(156, 39, 176, 0.15); }
 }

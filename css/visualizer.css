@@ -12,3 +12,18 @@
   pointer-events: none;
   opacity: 1;
 }
+
+/* Tinted glass overlay — above canvas/bars/particles, below all content */
+.bg-tint-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: rgba(16, 15, 24, 0.30);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+}
+
+[data-theme="dark"] .bg-tint-overlay {
+  background: rgba(10, 10, 32, 0.35);
+}

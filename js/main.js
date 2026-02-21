@@ -39,20 +39,6 @@ function buildProjectCard(project) {
   project.tags.forEach((t) => tags.appendChild(createElement('span', 'tag', t)));
   body.appendChild(tags);
 
-  // Links
-  const links = createElement('div', 'project-card__links');
-  const demo = createElement('a', null, 'Live Demo');
-  demo.href = project.demo;
-  demo.target = '_blank';
-  demo.rel = 'noopener';
-  const repo = createElement('a', null, 'Source');
-  repo.href = project.repo;
-  repo.target = '_blank';
-  repo.rel = 'noopener';
-  links.appendChild(demo);
-  links.appendChild(repo);
-  body.appendChild(links);
-
   card.appendChild(imgWrap);
   card.appendChild(body);
 
@@ -260,24 +246,6 @@ function openProjectDetail(index) {
     chP.innerHTML = project.details.challenges;
     content.appendChild(chP);
   }
-
-  // Links
-  const links = createElement('div', 'detail-modal__links');
-  if (project.demo && project.demo !== '#') {
-    const demo = createElement('a', 'btn btn--primary', 'Live Demo');
-    demo.href = project.demo;
-    demo.target = '_blank';
-    demo.rel = 'noopener';
-    links.appendChild(demo);
-  }
-  if (project.repo && project.repo !== '#') {
-    const repo = createElement('a', 'btn btn--outline', 'Code source');
-    repo.href = project.repo;
-    repo.target = '_blank';
-    repo.rel = 'noopener';
-    links.appendChild(repo);
-  }
-  if (links.children.length) content.appendChild(links);
 
   modal.appendChild(content);
   overlay.appendChild(modal);
@@ -698,7 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initContactForm();
   setFooterYear();
   initScrollHint();
-
+  initThemeToggle();
   initCursorHalo();
 });
 
@@ -906,4 +874,31 @@ function initScrollHint() {
   }, { passive: true });
 }
 
+// ---------------------------------------------------------------------------
+// Theme Toggle — sun ↔ moon with animation
+// ---------------------------------------------------------------------------
+function initThemeToggle() {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+
+  var root = document.documentElement;
+  var STORAGE_KEY = 'portfolio_theme';
+
+  // Restore saved theme
+  var saved = localStorage.getItem(STORAGE_KEY);
+  if (saved === 'dark') {
+    root.setAttribute('data-theme', 'dark');
+  }
+
+  btn.addEventListener('click', function () {
+    var isDark = root.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      root.removeAttribute('data-theme');
+      localStorage.setItem(STORAGE_KEY, 'light');
+    } else {
+      root.setAttribute('data-theme', 'dark');
+      localStorage.setItem(STORAGE_KEY, 'dark');
+    }
+  });
+}
 

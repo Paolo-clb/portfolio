@@ -299,8 +299,9 @@ section.hero {
 
 .project-card:hover {
   transform: translateY(-6px) scale(1.015);
-  box-shadow: 0 12px 32px rgba(242, 162, 133, 0.12),
-              0 0 20px rgba(242, 162, 133, 0.06);
+  border-color: rgba(242, 162, 133, 0.35);
+  box-shadow: 0 12px 32px rgba(242, 162, 133, 0.20),
+              0 0 28px rgba(242, 162, 133, 0.12);
 }
 
 .project-card:hover::before {
@@ -321,7 +322,7 @@ section.hero {
 }
 
 .project-card__body {
-  padding: 1.25rem;
+  padding: 1rem 1.25rem 0.75rem;
 }
 
 .project-card__title {
@@ -338,7 +339,7 @@ section.hero {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .tag {
@@ -347,11 +348,6 @@ section.hero {
   padding: 0.2rem 0.6rem;
   border-radius: var(--radius);
   font-size: 0.85rem;
-}
-
-.project-card__links {
-  display: flex;
-  gap: 1rem;
 }
 
 .project-card__hint {
@@ -499,8 +495,9 @@ section.hero {
 }
 
 .modal__grid .project-card:hover {
-  border-color: var(--clr-accent);
-  box-shadow: 0 8px 24px rgba(191, 153, 160, 0.1);
+  border-color: rgba(242, 162, 133, 0.35);
+  box-shadow: 0 8px 24px rgba(242, 162, 133, 0.18),
+              0 0 20px rgba(242, 162, 133, 0.10);
 }
 
 /* ==========================================================================
@@ -619,12 +616,6 @@ section.hero {
   opacity: 0.7;
 }
 
-.detail-modal__links {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1.75rem;
-}
-
 /* Scrollbar styling for detail modal */
 .detail-modal::-webkit-scrollbar {
   width: 6px;
@@ -717,7 +708,8 @@ section.hero {
 .skill-item:hover {
   transform: translateY(-3px);
   border-color: var(--clr-accent);
-  box-shadow: 0 4px 16px rgba(191, 153, 160, 0.1);
+  box-shadow: 0 4px 14px rgba(191, 153, 160, 0.12),
+              0 0 8px rgba(242, 162, 133, 0.08);
 }
 
 .skill-item__icon {
@@ -1214,6 +1206,338 @@ section.hero {
 }
 
 /* ==========================================================================
+   Theme Toggle — sun ↔ moon
+   ========================================================================== */
+
+.theme-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--clr-text);
+  margin-left: 0.5rem;
+  border-radius: 50%;
+  transition: background 0.3s ease;
+}
+
+.theme-toggle:hover {
+  background: rgba(242, 162, 133, 0.12);
+}
+
+.theme-toggle__icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="dark"] .theme-toggle__icon {
+  transform: rotate(40deg);
+}
+
+.theme-toggle__body {
+  fill: currentColor;
+  stroke: none;
+  transition: r 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-toggle__cutout {
+  transition: r 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              cx 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              cy 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-toggle__rays line {
+  stroke: currentColor;
+  stroke-width: 2;
+  transform-origin: center;
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark mode: morph sun to crescent moon */
+[data-theme="dark"] .theme-toggle__body {
+  r: 8;
+}
+
+[data-theme="dark"] .theme-toggle__cutout {
+  r: 7;
+  cx: 17;
+  cy: 7;
+}
+
+[data-theme="dark"] .theme-toggle__rays line {
+  opacity: 0;
+  transform: scale(0);
+}
+
+/* ==========================================================================
+   Dark Theme — purple neon palette
+   ========================================================================== */
+
+[data-theme="dark"] {
+  --clr-bg: #0a0a20;
+  --clr-surface: #1a0033;
+  --clr-primary: #9c27b0;
+  --clr-primary-hover: #6a0dad;
+  --clr-accent: #ff4ecb;
+  --clr-text: #e0e0ff;
+  --clr-text-muted: #bbaadd;
+  --clr-border: #3f51b5;
+}
+
+[data-theme="dark"] body {
+  background-image: url('../assets/images/background2.gif');
+}
+
+/* --- Dark: Layout --- */
+[data-theme="dark"] .section {
+  background: rgba(10, 10, 32, 0.45);
+  backdrop-filter: none;
+}
+
+/* --- Dark: Header & Nav --- */
+[data-theme="dark"] .header {
+  background: rgba(10, 10, 32, 0.7);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .nav__indicator {
+  box-shadow: 0 0 6px rgba(156, 39, 176, 0.4);
+}
+
+/* --- Dark: Project cards --- */
+[data-theme="dark"] .project-card {
+  background: rgba(26, 0, 51, 0.7);
+  border-color: rgba(63, 81, 181, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .project-card:hover {
+  border-color: rgba(156, 39, 176, 0.45);
+  box-shadow: 0 12px 32px rgba(156, 39, 176, 0.25),
+              0 0 28px rgba(156, 39, 176, 0.16);
+}
+
+[data-theme="dark"] .tag {
+  background: rgba(156, 39, 176, 0.15);
+}
+
+/* --- Dark: Modal --- */
+[data-theme="dark"] .modal-overlay {
+  background: rgba(10, 10, 32, 0.55);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .modal {
+  background: rgba(26, 0, 51, 0.65);
+  border-color: rgba(63, 81, 181, 0.25);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .modal__header {
+  background: rgba(26, 0, 51, 0.7);
+  border-bottom-color: rgba(63, 81, 181, 0.12);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .modal__close {
+  background: rgba(63, 81, 181, 0.15);
+  border-color: rgba(63, 81, 181, 0.25);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .modal__grid .project-card {
+  background: rgba(26, 0, 51, 0.6);
+  border-color: rgba(63, 81, 181, 0.15);
+}
+
+[data-theme="dark"] .modal__grid .project-card:hover {
+  border-color: rgba(156, 39, 176, 0.45);
+  box-shadow: 0 8px 24px rgba(156, 39, 176, 0.22),
+              0 0 20px rgba(156, 39, 176, 0.12);
+}
+
+/* --- Dark: Detail modal --- */
+[data-theme="dark"] .detail-overlay {
+  background: rgba(10, 10, 32, 0.5);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .detail-modal {
+  background: rgba(26, 0, 51, 0.6);
+  border-color: rgba(63, 81, 181, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .detail-modal__close {
+  background: rgba(10, 10, 32, 0.6);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .detail-modal__image {
+  border-bottom-color: rgba(63, 81, 181, 0.15);
+}
+
+[data-theme="dark"] .detail-modal::-webkit-scrollbar-thumb {
+  background: rgba(63, 81, 181, 0.25);
+}
+
+[data-theme="dark"] .detail-modal::-webkit-scrollbar-thumb:hover {
+  background: rgba(63, 81, 181, 0.4);
+}
+
+/* --- Dark: Skills --- */
+[data-theme="dark"] .skills-group {
+  background: rgba(26, 0, 51, 0.3);
+  border-color: rgba(63, 81, 181, 0.12);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .skills-group:nth-child(even) {
+  border-left-color: rgba(63, 81, 181, 0.15);
+}
+
+[data-theme="dark"] .skill-item {
+  background: rgba(26, 0, 51, 0.7);
+  border-color: rgba(63, 81, 181, 0.15);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .skill-item:hover {
+  border-color: var(--clr-accent);
+  box-shadow: 0 4px 14px rgba(156, 39, 176, 0.15),
+              0 0 8px rgba(156, 39, 176, 0.10);
+}
+
+/* --- Dark: Skill popup --- */
+[data-theme="dark"] .skill-overlay {
+  background: rgba(10, 10, 32, 0.5);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .skill-popup {
+  background: rgba(26, 0, 51, 0.65);
+  border-color: rgba(63, 81, 181, 0.25);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .skill-popup__icon-wrap {
+  background: rgba(156, 39, 176, 0.1);
+  border-color: rgba(63, 81, 181, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .skill-popup__bar-track {
+  background: rgba(63, 81, 181, 0.15);
+}
+
+[data-theme="dark"] .skill-popup__bar-fill {
+  box-shadow: 0 0 8px rgba(156, 39, 176, 0.4);
+}
+
+[data-theme="dark"] .skill-popup__dot {
+  background: rgba(63, 81, 181, 0.2);
+  border-color: rgba(63, 81, 181, 0.25);
+}
+
+[data-theme="dark"] .skill-popup__dot--active {
+  box-shadow: 0 0 6px rgba(156, 39, 176, 0.5);
+}
+
+/* --- Dark: Contact form --- */
+[data-theme="dark"] .contact__form {
+  background: rgba(26, 0, 51, 0.6);
+  border-color: rgba(63, 81, 181, 0.15);
+  backdrop-filter: none;
+}
+
+/* --- Dark: Footer --- */
+[data-theme="dark"] .footer {
+  border-top-color: rgba(63, 81, 181, 0.2);
+  background: rgba(10, 10, 32, 0.7);
+  backdrop-filter: none;
+}
+
+/* --- Dark: CV --- */
+[data-theme="dark"] .cv-modal {
+  background: rgba(26, 0, 51, 0.6);
+  border-color: rgba(63, 81, 181, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .cv-modal__header {
+  border-bottom-color: rgba(63, 81, 181, 0.15);
+}
+
+[data-theme="dark"] .cv-modal__viewer iframe {
+  background: #1a0033;
+}
+
+[data-theme="dark"] .cv-modal__footer {
+  border-top-color: rgba(63, 81, 181, 0.15);
+}
+
+[data-theme="dark"] .cv-section__card {
+  background: rgba(26, 0, 51, 0.6);
+  border-color: rgba(63, 81, 181, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .cv-section__viewer iframe {
+  background: #1a0033;
+}
+
+/* --- Dark: Cursor halo --- */
+[data-theme="dark"] .cursor-halo__ring {
+  background: radial-gradient(
+    circle,
+    rgba(156, 39, 176, 0.15) 0%,
+    rgba(63, 81, 181, 0.08) 50%,
+    transparent 70%
+  );
+  border-color: rgba(156, 39, 176, 0.22);
+  animation-name: cursorPulse-dark;
+}
+
+[data-theme="dark"] .cursor-halo__dot {
+  background: rgba(156, 39, 176, 0.85);
+}
+
+[data-theme="dark"] .cursor-halo--hover .cursor-halo__ring {
+  border-color: rgba(106, 13, 173, 0.35);
+  background: rgba(106, 13, 173, 0.12);
+  box-shadow:
+    0 0 16px rgba(156, 39, 176, 0.15),
+    inset 0 0 10px rgba(106, 13, 173, 0.08);
+}
+
+[data-theme="dark"] .cursor-halo--click .cursor-halo__ring {
+  border-color: rgba(106, 13, 173, 0.5);
+  background: rgba(106, 13, 173, 0.18);
+}
+
+@keyframes cursorPulse-dark {
+  0%, 100% { box-shadow: 0 0 6px rgba(156, 39, 176, 0.06); }
+  50%      { box-shadow: 0 0 14px rgba(156, 39, 176, 0.15); }
+}
+
+/* --- Dark: Theme toggle hover --- */
+[data-theme="dark"] .theme-toggle:hover {
+  background: rgba(156, 39, 176, 0.15);
+}
+
+/* --- Dark: Mobile close (sticky) --- */
+[data-theme="dark"] .modal__close--sticky {
+  background: rgba(10, 10, 32, 0.7);
+  border-color: rgba(63, 81, 181, 0.3);
+}
+
+/* ==========================================================================
    Responsive
    ========================================================================== */
 
@@ -1326,5 +1650,22 @@ section.hero {
   .cv-section__viewer iframe {
     height: 50vh;
     min-height: 350px;
+  }
+}
+
+/* --- Dark: Responsive overrides --- */
+@media (max-width: 768px) {
+  [data-theme="dark"] .modal__header {
+    background: none;
+    border-bottom-color: rgba(63, 81, 181, 0.15);
+  }
+
+  [data-theme="dark"] .skills-group:nth-child(even) {
+    border-top-color: rgba(63, 81, 181, 0.2);
+  }
+
+  [data-theme="dark"] .modal__close--sticky {
+    background: rgba(10, 10, 32, 0.7);
+    border-color: rgba(63, 81, 181, 0.3);
   }
 }

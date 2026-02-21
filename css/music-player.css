@@ -333,3 +333,38 @@
     max-height: 240px;
   }
 }
+
+/* ==========================================================================
+   Dark Theme — purple neon overrides
+   ========================================================================== */
+
+[data-theme="dark"] .music-player {
+  border-color: rgba(63, 81, 181, 0.15);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .music-player__playlist {
+  background: rgba(26, 0, 51, 0.92);
+  border-color: rgba(63, 81, 181, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .music-player__playlist::-webkit-scrollbar-thumb {
+  background: rgba(63, 81, 181, 0.25);
+}
+
+[data-theme="dark"] .music-player__playlist-item {
+  border-bottom-color: rgba(63, 81, 181, 0.08);
+}
+
+[data-theme="dark"] .music-player__playlist-item:hover {
+  background: rgba(156, 39, 176, 0.1);
+}
+
+[data-theme="dark"] .music-player__playlist-item--active {
+  background: rgba(156, 39, 176, 0.15);
+}
+
+[data-theme="dark"] .music-player__playlist-item--active .music-player__playlist-cover {
+  box-shadow: 0 0 8px rgba(156, 39, 176, 0.5);
+}

@@ -26,6 +26,29 @@
         </ul>
         <div class="nav__indicator" id="nav-indicator"></div>
       </div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+        <svg class="theme-toggle__icon" viewBox="0 0 24 24" width="22" height="22">
+          <defs>
+            <mask id="moon-mask">
+              <rect x="0" y="0" width="24" height="24" fill="white"/>
+              <circle class="theme-toggle__cutout" cx="18" cy="6" r="0" fill="black"/>
+            </mask>
+          </defs>
+          <!-- Sun rays -->
+          <g class="theme-toggle__rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </g>
+          <!-- Sun/Moon body -->
+          <circle class="theme-toggle__body" cx="12" cy="12" r="5" fill="currentColor" mask="url(#moon-mask)"/>
+        </svg>
+      </button>
       <button class="nav__toggle" id="nav-toggle" aria-label="Toggle navigation">
         <span></span><span></span><span></span>
       </button>

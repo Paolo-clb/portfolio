@@ -18,10 +18,16 @@
   const BAR_GAP = 2;
   const MIN_BAR_HEIGHT = 2;
 
-  // Colors from the portfolio palette
-  const COLOR_PRIMARY = '#F2A285';   // --clr-primary
-  const COLOR_ACCENT  = '#BF99A0';  // --clr-accent
-  const COLOR_HOVER   = '#F28080';  // --clr-primary-hover
+  // Theme-aware colors — read current palette each frame
+  function getThemeColors() {
+    var isDark = document.documentElement.dataset.theme === 'dark';
+    return {
+      primary: isDark ? '#9c27b0' : '#F2A285',
+      accent:  isDark ? '#ff4ecb' : '#BF99A0',
+      hover:   isDark ? '#6a0dad' : '#F28080',
+      textRgba: isDark ? 'rgba(224, 224, 255, ' : 'rgba(232, 227, 228, '
+    };
+  }
 
   /* ---- Particles ---- */
 
@@ -35,6 +41,7 @@
   let impulseIsClick = false; // true = repel from point, false = random burst
 
   function createParticle(w, h) {
+    var colors = getThemeColors();
     return {
       x: Math.random() * w,
       y: Math.random() * h,                 // full screen
@@ -45,7 +52,7 @@
       vy: (Math.random() - 0.5) * 0.15,
       alpha: Math.random() * 0.4 + 0.5,
       baseAlpha: 0,
-      color: [COLOR_PRIMARY, COLOR_ACCENT, COLOR_HOVER][Math.floor(Math.random() * 3)],
+      color: [colors.primary, colors.accent, colors.hover][Math.floor(Math.random() * 3)],
       freqBin: Math.floor(Math.random() * BAR_COUNT), // which frequency bin reacts to
     };
   }
@@ -62,6 +69,10 @@
   }
 
   function updateAndDrawParticles(w, h) {
+    // Get current theme colors (may change mid-frame on toggle)
+    var colors = getThemeColors();
+    var colorArr = [colors.primary, colors.accent, colors.hover];
+
     // Get average energy for reactivity
     let avgEnergy = 0;
     if (dataArray) {
@@ -72,6 +83,8 @@
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
 
+      // Update color to match current theme
+      p.color = colorArr[i % 3];
       // Per-particle frequency reactivity
       let binVal = 0;
       if (dataArray && p.freqBin < dataArray.length) {
@@ -145,7 +158,7 @@
           ctx.beginPath();
           ctx.moveTo(particles[i].x, particles[i].y);
           ctx.lineTo(particles[j].x, particles[j].y);
-          ctx.strokeStyle = 'rgba(232, 227, 228, ' + ((1 - dist / maxDist) * 0.35) + ')';
+          ctx.strokeStyle = colors.textRgba + ((1 - dist / maxDist) * 0.35) + ')';
           ctx.lineWidth = 1;
           ctx.stroke();
         }
@@ -157,10 +170,11 @@
   /* ---- Gradient for bars ---- */
 
   function createBarGradient(x, w, h, barH) {
+    var colors = getThemeColors();
     const grad = ctx.createLinearGradient(x, h, x, h - barH);
-    grad.addColorStop(0, COLOR_PRIMARY);
-    grad.addColorStop(0.5, COLOR_ACCENT);
-    grad.addColorStop(1, COLOR_HOVER);
+    grad.addColorStop(0, colors.primary);
+    grad.addColorStop(0.5, colors.accent);
+    grad.addColorStop(1, colors.hover);
     return grad;
   }
 
@@ -255,6 +269,12 @@
     canvas.className = 'visualizer-canvas';
     canvas.setAttribute('aria-hidden', 'true');
     document.body.insertBefore(canvas, document.body.firstChild);
+
+    // Tinted glass overlay — sits above canvas, below all content
+    var tint = document.createElement('div');
+    tint.className = 'bg-tint-overlay';
+    tint.setAttribute('aria-hidden', 'true');
+    canvas.after(tint);
 
     ctx = canvas.getContext('2d');
 
