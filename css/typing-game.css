@@ -1075,8 +1075,8 @@
 
 /* --- Dark: Intro text --- */
 [data-theme="dark"] .typing-game__text--intro {
-  background: rgba(26, 0, 51, 0.2);
-  border-color: rgba(63, 81, 181, 0.12);
+  background: rgba(26, 0, 51, 0.55);
+  border-color: rgba(63, 81, 181, 0.15);
 }
 
 /* --- Dark: Intro button glow --- */

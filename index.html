@@ -51,6 +51,11 @@
           <circle class="theme-toggle__body" cx="12" cy="12" r="5" fill="currentColor" mask="url(#moon-mask)"/>
         </svg>
       </button>
+      <script>
+        (function(){if(document.documentElement.getAttribute('data-theme')!=='dark')return;
+        var b=document.querySelector('.theme-toggle__body'),c=document.querySelector('.theme-toggle__cutout');
+        if(b)b.setAttribute('r','8');if(c){c.setAttribute('r','7');c.setAttribute('cx','17');c.setAttribute('cy','7');}})();
+      </script>
       <button class="nav__toggle" id="nav-toggle" aria-label="Toggle navigation">
         <span></span><span></span><span></span>
       </button>

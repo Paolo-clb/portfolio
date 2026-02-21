@@ -569,27 +569,11 @@ section.hero {
   letter-spacing: 0.02em;
 }
 
-.detail-modal__subtitle:nth-of-type(odd) {
-  color: var(--clr-primary);
-}
-
-.detail-modal__subtitle:nth-of-type(even) {
-  color: var(--clr-accent);
-}
-
 .detail-modal__comp-title {
   font-size: 0.95rem;
   margin-top: 1rem;
   margin-bottom: 0.3rem;
   font-weight: 600;
-}
-
-.detail-modal__comp-title:nth-of-type(odd) {
-  color: var(--clr-accent);
-}
-
-.detail-modal__comp-title:nth-of-type(even) {
-  color: var(--clr-primary);
 }
 
 .detail-modal__text {
@@ -598,9 +582,12 @@ section.hero {
   margin-bottom: 0.5rem;
 }
 
+.detail-modal__subtitle { color: var(--clr-primary); }
+.detail-modal__comp-title { color: var(--clr-accent); }
+
 .detail-modal__text em,
 .detail-modal__list em {
-  color: var(--clr-primary);
+  color: var(--clr-accent);
   font-style: normal;
   font-weight: 500;
 }
@@ -1259,14 +1246,14 @@ section.hero {
 .theme-toggle__body {
   fill: currentColor;
   stroke: none;
-  r: 5;
+  r: 5px;
   transition: r 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .theme-toggle__cutout {
-  r: 0;
-  cx: 18;
-  cy: 6;
+  r: 0px;
+  cx: 18px;
+  cy: 6px;
   transition: r 0.5s cubic-bezier(0.4, 0, 0.2, 1),
               cx 0.5s cubic-bezier(0.4, 0, 0.2, 1),
               cy 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1281,13 +1268,13 @@ section.hero {
 
 /* Dark mode: morph sun to crescent moon */
 [data-theme="dark"] .theme-toggle__body {
-  r: 8;
+  r: 8px;
 }
 
 [data-theme="dark"] .theme-toggle__cutout {
-  r: 7;
-  cx: 17;
-  cy: 7;
+  r: 7px;
+  cx: 17px;
+  cy: 7px;
 }
 
 [data-theme="dark"] .theme-toggle__rays line {

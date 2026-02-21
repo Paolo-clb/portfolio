@@ -883,11 +883,24 @@ function initThemeToggle() {
 
   var root = document.documentElement;
   var STORAGE_KEY = 'portfolio_theme';
+  var svgBody = btn.querySelector('.theme-toggle__body');
+  var svgCutout = btn.querySelector('.theme-toggle__cutout');
+
+  // Directly set SVG attributes as fallback for browsers that don't
+  // support CSS geometry properties (r, cx, cy) on SVG elements.
+  function setIconAttrs(isDark) {
+    if (!svgBody || !svgCutout) return;
+    svgBody.setAttribute('r', isDark ? '8' : '5');
+    svgCutout.setAttribute('r', isDark ? '7' : '0');
+    svgCutout.setAttribute('cx', isDark ? '17' : '18');
+    svgCutout.setAttribute('cy', isDark ? '7' : '6');
+  }
 
   // Restore saved theme
   var saved = localStorage.getItem(STORAGE_KEY);
   if (saved === 'dark') {
     root.setAttribute('data-theme', 'dark');
+    setIconAttrs(true);
   }
 
   btn.addEventListener('click', function () {
@@ -899,6 +912,8 @@ function initThemeToggle() {
       root.setAttribute('data-theme', 'dark');
       localStorage.setItem(STORAGE_KEY, 'dark');
     }
+    // Set attrs after CSS transition completes (backup)
+    setTimeout(function () { setIconAttrs(!isDark); }, 550);
   });
 }
 
