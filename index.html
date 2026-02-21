@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="css/typing-game.css" />
   <link rel="stylesheet" href="css/music-player.css" />
   <link rel="stylesheet" href="css/visualizer.css" />
+  <!-- Restore dark theme before any IIFE to avoid light-color flash -->
+  <script>if(localStorage.getItem('portfolio_theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
 </head>
 <body>
   <!-- Navigation -->

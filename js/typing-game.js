@@ -535,17 +535,19 @@
     var pR   = isDark ? 156 : 242, pG   = isDark ? 39  : 162, pB   = isDark ? 176 : 133;
     var phR  = isDark ? 255 : 242, phG  = isDark ? 78  : 128, phB  = isDark ? 203 : 128;
 
-    // If not focused (and not finished with focus), use fully transparent background
+    // If not focused (and not finished with focus), use dim but visible background
     if (!isFocused) {
-      textEl.style.background = 'rgba(' + bgR + ', ' + bgG + ', ' + bgB + ', 0)';
-      textEl.style.borderColor = 'rgba(' + brR + ', ' + brG + ', ' + brB + ', 0.02)';
-      textEl.style.boxShadow = '0 0 0 0 transparent';
+      var unfocusedAlpha = isDark ? 0.35 : 0.15;
+      textEl.style.background = 'rgba(' + bgR + ', ' + bgG + ', ' + bgB + ', ' + unfocusedAlpha + ')';
+      textEl.style.borderColor = 'rgba(' + brR + ', ' + brG + ', ' + brB + ', 0.06)';
+      textEl.style.boxShadow = '0 0 0 0 rgba(' + pR + ', ' + pG + ', ' + pB + ', 0)';
       return;
     }
     // Linear 0–200 mapping, fully opaque at 200
     var t = Math.min(wpm / 200, 1);
-    // Background opacity: starts translucent, fully opaque at 200
-    var bgAlpha = 0.2 + t * 0.8;
+    // Background opacity: starts visible, fully opaque at 200
+    // Dark theme: higher base for readability
+    var bgAlpha = isDark ? (0.6 + t * 0.4) : (0.4 + t * 0.6);
     // Border: visible base, strong at high WPM
     var borderAlpha = 0.25 + t * 0.75;
     // Glow: strong base, intense scaling with WPM

@@ -230,7 +230,8 @@
       const totalBarWidth = (w - (usableBins - 1) * BAR_GAP) / usableBins;
       const barWidth = Math.max(totalBarWidth, 1);
 
-      ctx.globalAlpha = 0.4;
+      var isDarkTheme = document.documentElement.dataset.theme === 'dark';
+      ctx.globalAlpha = isDarkTheme ? 0.18 : 0.4;
       for (let i = 0; i < usableBins; i++) {
         const value = dataArray[i] / 255;
         const barH = Math.max(value * h * 0.7, MIN_BAR_HEIGHT);
