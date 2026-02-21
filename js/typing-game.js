@@ -126,7 +126,7 @@
 
   let introActive = false; // whether the intro typewriter is showing (game not yet unlocked)
   let currentLang = 'fr';
-  let currentMode = '10';
+  let currentMode = '25';
   let text = '';
   let typed = [];
   let startTime = null;
@@ -161,9 +161,10 @@
   /* ---- Helpers ---- */
 
   var RESTART_ICON = '<svg class="typing-game__restart__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> ';
+  var ZEN_STOP_ICON = '<svg class="typing-game__restart__icon typing-game__restart__icon--zen" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> ';
 
-  function setRestartText(msg) {
-    restartEl.innerHTML = RESTART_ICON + '<span>' + msg + '</span>';
+  function setRestartText(msg, icon) {
+    restartEl.innerHTML = (icon || RESTART_ICON) + '<span>' + msg + '</span>';
   }
 
   function showRestart() {
@@ -664,7 +665,7 @@
     // Toggle zen-specific classes
     if (currentMode === 'zen') {
       container.classList.add('typing-game--zen');
-      setRestartText('Shift + Espace pour arrêter');
+      setRestartText('Shift + Espace pour arrêter', ZEN_STOP_ICON);
     } else {
       container.classList.remove('typing-game--zen');
       setRestartText('Entrée ou Espace pour recommencer');
