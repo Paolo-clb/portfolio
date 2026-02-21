@@ -1653,6 +1653,12 @@ section.hero {
   }
 }
 
+@media (max-width: 600px) and (pointer: coarse) {
+  .scroll-hint {
+    bottom: 8rem;
+  }
+}
+
 /* --- Dark: Responsive overrides --- */
 @media (max-width: 768px) {
   [data-theme="dark"] .modal__header {

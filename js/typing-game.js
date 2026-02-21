@@ -1108,20 +1108,21 @@
     // Intro text container (reuses typing-game__text styling)
     introTextEl = document.createElement('div');
     introTextEl.className = 'typing-game__text typing-game__text--intro';
-    if (isSmartphone) introTextEl.classList.add('typing-game__text--mobile-display');
 
     // Inner for typewriter chars
     var introInner = document.createElement('div');
     introInner.className = 'typing-game__text-inner typing-game__intro-inner';
     introTextEl.appendChild(introInner);
 
-    // Button (hidden initially)
-    introButtonEl = document.createElement('button');
-    introButtonEl.className = 'btn btn--outline typing-game__intro-btn';
-    introButtonEl.textContent = isSmartphone ? 'Découvrir le Typing Game' : 'Jouer au Typing Game';
-
     container.appendChild(introTextEl);
-    container.appendChild(introButtonEl);
+
+    // Button (hidden initially) — desktop only
+    if (!isSmartphone) {
+      introButtonEl = document.createElement('button');
+      introButtonEl.className = 'btn btn--outline typing-game__intro-btn';
+      introButtonEl.textContent = 'Jouer au Typing Game';
+      container.appendChild(introButtonEl);
+    }
 
     // Start typewriter animation with cursor + trail (zen-style rendering)
     var chars = INTRO_TEXT.split('');
@@ -1195,6 +1196,12 @@
       if (idx >= chars.length) {
         introFinished = true;
         renderIntro();
+        if (isSmartphone) {
+          // On smartphone: auto-unlock, keep intro text visible
+          unlockGame();
+          introActive = false;
+          return;
+        }
         // Typewriter finished — show button
         requestAnimationFrame(function () {
           introButtonEl.classList.add('typing-game__intro-btn--visible');
@@ -1213,16 +1220,12 @@
     // Small delay before starting the typewriter
     setTimeout(typeNext, 400);
 
-    // Button click → show popup, then reveal game
-    introButtonEl.addEventListener('click', function () {
-      if (isSmartphone) {
-        // On smartphone: just show the notice that the game is unavailable, then mark unlocked
-        unlockGame();
-        transitionToSmartphone();
-        return;
-      }
-      showIntroPopup();
-    });
+    // Button click → show popup, then reveal game (desktop only)
+    if (introButtonEl) {
+      introButtonEl.addEventListener('click', function () {
+        showIntroPopup();
+      });
+    }
   }
 
   function showIntroPopup() {
@@ -1268,39 +1271,12 @@
     }, 400);
   }
 
-  function transitionToSmartphone() {
-    introActive = false;
-    if (heroTitleEl) heroTitleEl.textContent = 'Colombat Paolo';
-
-    // Fade out intro elements
-    introTextEl.classList.add('typing-game__text--intro-out');
-    introButtonEl.classList.add('typing-game__intro-btn--out');
-
-    setTimeout(function () {
-      if (introTextEl && introTextEl.parentNode) introTextEl.remove();
-      if (introButtonEl && introButtonEl.parentNode) introButtonEl.remove();
-      buildSmartphoneDOM();
-    }, 400);
-  }
-
-  function buildSmartphoneDOM() {
-    // Build greyed-out navbar
-    var navbar = buildNavbar();
-    navbar.classList.add('typing-game__navbar--disabled');
-
-    // Unavailable notice
-    var notice = document.createElement('div');
-    notice.className = 'typing-game__mobile-notice';
-    notice.textContent = 'Typing test indisponible sur t\u00e9l\u00e9phone';
-
-    // Show full presentation text (not as a game)
-    textEl = document.createElement('div');
-    textEl.className = 'typing-game__text typing-game__text--mobile-display';
-    textEl.textContent = INTRO_TEXT;
-
-    container.appendChild(navbar);
-    container.appendChild(notice);
-    container.appendChild(textEl);
+  function buildSmartphoneStaticDOM() {
+    // Show intro text statically (no game, no greyed navbar)
+    var staticText = document.createElement('div');
+    staticText.className = 'typing-game__text typing-game__text--intro';
+    staticText.textContent = INTRO_TEXT;
+    container.appendChild(staticText);
   }
 
   function buildGameDOM() {
@@ -1445,11 +1421,11 @@
       return;
     }
 
-    // --- Mobile smartphone mode (already unlocked): show presentation text ---
+    // --- Mobile smartphone mode (already unlocked): show static intro text ---
     if (isSmartphone) {
       heroTitleEl = document.querySelector('#hero .section__title');
       if (heroTitleEl) heroTitleEl.textContent = 'Colombat Paolo';
-      buildSmartphoneDOM();
+      buildSmartphoneStaticDOM();
       return;
     }
 
