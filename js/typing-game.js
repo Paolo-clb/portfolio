@@ -932,19 +932,19 @@
   /* ---- AI text generation (Gemini) ---- */
 
   function buildAiPrompt(theme) {
-    return 'Generate typing practice very informative texts on a specific theme. ' +
+    return 'Generate very informative typing practice texts on a specific theme. ' +
       'Output ONLY valid JSON (no markdown, no code fences, no explanation). ' +
       'The JSON must have this exact structure: ' +
       '{"fr":{"10":[...],"25":[...],"50":[...],"100":[...]},"en":{"10":[...],"25":[...],"50":[...],"100":[...]}}. ' +
       'Rules: ' +
-      '- "10" array: 20 sentences each ~10 words in lowercase, no punctuation ' +
-      '- "25" array: 15 paragraphs each ~25 words in lowercase, no punctuation ' +
-      '- "50" array: 10 paragraphs each ~50 words in lowercase, no punctuation ' +
-      '- "100" array: 5 paragraphs each ~100 words in lowercase, no punctuation ' +
+      '- "10" array: 20 sentences each ~10 words in lowercase, ' +
+      '- "25" array: 15 paragraphs each ~25 words in lowercase, ' +
+      '- "50" array: 10 paragraphs each ~50 words in lowercase, ' +
+      '- "100" array: 5 paragraphs each ~100 words in lowercase, ' +
       '- "fr" texts must be in French, "en" texts must be in English ' +
       '- All texts must be about this theme: "' + theme + '" ' +
       '- No accents in French texts except for common ones (é, è, ê, à, ù, ô, î, â, ç) ' +
-      '- No special characters, no apostrophes, no hyphens, only letters and spaces ' +
+      '- No special characters, only letters and spaces ' +
       '- Each text must flow naturally and be interesting to type';
   }
 
@@ -1049,7 +1049,7 @@
         aiLoading = false;
         confirmBtn.disabled = false;
         confirmBtn.textContent = 'Réessayer';
-        statusEl.textContent = 'Erreur de génération. Vérifiez votre clé API.';
+        statusEl.textContent = 'Erreur de génération. Réessayez plus tard.';
         statusEl.className = 'typing-game__ai-status typing-game__ai-status--error';
       });
     }
