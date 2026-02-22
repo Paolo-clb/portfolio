@@ -1470,27 +1470,17 @@
     aiBtn.className = 'typing-game__ai';
     aiBtn.setAttribute('tabindex', '-1');
     aiBtn.setAttribute('title', 'Mode IA');
-    // Sparkle/brain icon with two states
-    aiBtn.innerHTML = '<svg class="typing-game__ai-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-      '<g class="typing-game__ai-off">' +
-        '<path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.4V11h-4V9.4C8.8 8.8 8 7.5 8 6a4 4 0 0 1 4-4z"/>' +
-        '<path d="M10 11v2a2 2 0 1 0 4 0v-2"/>' +
-        '<line x1="12" y1="15" x2="12" y2="19"/>' +
-        '<line x1="8" y1="19" x2="16" y2="19"/>' +
-        '<line x1="7" y1="6" x2="5" y2="4"/>' +
-        '<line x1="17" y1="6" x2="19" y2="4"/>' +
-        '<line x1="12" y1="2" x2="12" y2="0"/>' +
-      '</g>' +
-      '<g class="typing-game__ai-on">' +
-        '<path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.4V11h-4V9.4C8.8 8.8 8 7.5 8 6a4 4 0 0 1 4-4z"/>' +
-        '<path d="M10 11v2a2 2 0 1 0 4 0v-2"/>' +
-        '<line x1="12" y1="15" x2="12" y2="19"/>' +
-        '<line x1="8" y1="19" x2="16" y2="19"/>' +
-        '<circle cx="6" cy="3" r="1" fill="currentColor" stroke="none" class="typing-game__ai-spark typing-game__ai-spark--1"/>' +
-        '<circle cx="19" cy="5" r="0.8" fill="currentColor" stroke="none" class="typing-game__ai-spark typing-game__ai-spark--2"/>' +
-        '<circle cx="12" cy="0" r="0.8" fill="currentColor" stroke="none" class="typing-game__ai-spark typing-game__ai-spark--3"/>' +
-      '</g>' +
-    '</svg>';
+    // Dual-star icon with floating mini-stars container
+    aiBtn.innerHTML = '<div class="typing-game__ai-wrap">' +
+      '<svg class="typing-game__ai-icon" viewBox="0 0 24 24" fill="none">' +
+        '<path class="typing-game__ai-star typing-game__ai-star--back" d="M14.5 3l1.3 4 4.2.5-3.1 2.6.8 4.2-3.7-2-3.7 2 .8-4.2-3.1-2.6 4.2-.5z" fill="currentColor" opacity="0.45"/>' +
+        '<path class="typing-game__ai-star typing-game__ai-star--front" d="M10 8.5l1.05 3.15 3.32.4-2.45 2.05.65 3.4L10 15.63 7.43 17.5l.65-3.4-2.45-2.05 3.32-.4z" fill="currentColor"/>' +
+      '</svg>' +
+      '<span class="typing-game__ai-mini typing-game__ai-mini--1"></span>' +
+      '<span class="typing-game__ai-mini typing-game__ai-mini--2"></span>' +
+      '<span class="typing-game__ai-mini typing-game__ai-mini--3"></span>' +
+      '<span class="typing-game__ai-mini typing-game__ai-mini--4"></span>' +
+    '</div>';
 
     // "Change theme" button — only visible when AI mode is active
     aiThemeBtn = document.createElement('button');

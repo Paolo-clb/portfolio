@@ -108,13 +108,12 @@
 }
 
 .typing-game__eye:hover .typing-game__eye-icon {
-  animation: eye-wink 0.5s ease;
+  animation: eye-wink 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes eye-wink {
   0%   { transform: scaleY(1); }
-  30%  { transform: scaleY(0.1); }
-  50%  { transform: scaleY(0.1); }
+  40%  { transform: scaleY(0.08); }
   100% { transform: scaleY(1); }
 }
 
@@ -1020,76 +1019,126 @@
   color: var(--clr-text);
 }
 
-.typing-game__ai:hover .typing-game__ai-icon {
-  animation: ai-hover-float 0.5s ease;
-}
-
-@keyframes ai-hover-float {
-  0%   { transform: translateY(0); }
-  40%  { transform: translateY(-2px); }
-  100% { transform: translateY(0); }
+/* AI icon wrapper — contains SVG + floating minis */
+.typing-game__ai-wrap {
+  position: relative;
+  width: 1.3rem;
+  height: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .typing-game__ai-icon {
   width: 1.3rem;
   height: 1.3rem;
-  transition: transform 0.3s ease, filter 0.3s ease;
+  transition: filter 0.35s ease;
 }
 
-/* Off state (default) — brain visible, sparks hidden */
-.typing-game__ai-off {
-  opacity: 1;
-  transition: opacity 0.25s ease;
+/* Dual star shapes */
+.typing-game__ai-star {
+  transition: opacity 0.3s ease;
 }
 
-.typing-game__ai-on {
+.typing-game__ai-star--back {
+  opacity: 0.4;
+}
+
+/* Hover: illuminate (glow pulse) */
+.typing-game__ai:hover .typing-game__ai-icon {
+  filter: drop-shadow(0 0 5px rgba(242, 162, 133, 0.55))
+          drop-shadow(0 0 10px rgba(242, 162, 133, 0.25));
+}
+
+.typing-game__ai:hover .typing-game__ai-star--back {
+  opacity: 0.7;
+}
+
+/* ---- Floating mini-stars (visible only when active) ---- */
+.typing-game__ai-mini {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: var(--clr-primary);
+  border-radius: 50%;
   opacity: 0;
-  transform-origin: center;
-  transition: opacity 0.25s ease, transform 0.3s ease;
-  transform: scale(0);
+  pointer-events: none;
+  box-shadow: 0 0 3px rgba(242, 162, 133, 0.5);
 }
 
-/* Active state: swap icons + glow */
+/* Clip-path 4-point star shape for minis */
+.typing-game__ai-mini::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: inherit;
+  clip-path: polygon(50% 0%, 61% 35%, 100% 50%, 61% 65%, 50% 100%, 39% 65%, 0% 50%, 39% 35%);
+}
+
+/* Active state */
 .typing-game__ai--active {
   color: var(--clr-primary);
   background: rgba(242, 162, 133, 0.12);
 }
 
 .typing-game__ai--active .typing-game__ai-icon {
-  filter: drop-shadow(0 0 4px rgba(242, 162, 133, 0.5));
+  filter: drop-shadow(0 0 4px rgba(242, 162, 133, 0.45));
 }
 
-.typing-game__ai--active .typing-game__ai-off {
-  opacity: 0;
+.typing-game__ai--active .typing-game__ai-star--back {
+  opacity: 0.65;
+  animation: ai-back-pulse 3s ease-in-out infinite;
 }
 
-.typing-game__ai--active .typing-game__ai-on {
-  opacity: 1;
-  transform: scale(1);
+@keyframes ai-back-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 0.8; }
 }
 
-/* Sparkle animations */
-.typing-game__ai-spark {
-  opacity: 0;
-  transition: opacity 0.3s ease;
+/* Floating orbits — each mini-star gets its own keyframe path */
+.typing-game__ai--active .typing-game__ai-mini { opacity: 1; }
+
+.typing-game__ai--active .typing-game__ai-mini--1 {
+  animation: ai-float-1 3.2s ease-in-out infinite;
+}
+.typing-game__ai--active .typing-game__ai-mini--2 {
+  animation: ai-float-2 3.8s ease-in-out infinite;
+}
+.typing-game__ai--active .typing-game__ai-mini--3 {
+  animation: ai-float-3 4.1s ease-in-out infinite;
+}
+.typing-game__ai--active .typing-game__ai-mini--4 {
+  animation: ai-float-4 3.5s ease-in-out infinite;
 }
 
-.typing-game__ai--active .typing-game__ai-spark {
-  opacity: 1;
-  animation: ai-spark-pulse 1.8s ease-in-out infinite;
+@keyframes ai-float-1 {
+  0%   { transform: translate(0, -9px) scale(0.7); opacity: 0.4; }
+  25%  { transform: translate(8px, -4px) scale(1);  opacity: 1; }
+  50%  { transform: translate(5px, 7px) scale(0.9);  opacity: 0.7; }
+  75%  { transform: translate(-6px, 4px) scale(0.6); opacity: 0.5; }
+  100% { transform: translate(0, -9px) scale(0.7); opacity: 0.4; }
 }
 
-.typing-game__ai--active .typing-game__ai-spark--2 {
-  animation-delay: 0.5s;
+@keyframes ai-float-2 {
+  0%   { transform: translate(9px, 2px) scale(0.6); opacity: 0.3; }
+  25%  { transform: translate(3px, 9px) scale(0.9);  opacity: 0.9; }
+  50%  { transform: translate(-8px, 3px) scale(1);   opacity: 0.6; }
+  75%  { transform: translate(-2px, -8px) scale(0.7); opacity: 0.8; }
+  100% { transform: translate(9px, 2px) scale(0.6); opacity: 0.3; }
 }
 
-.typing-game__ai--active .typing-game__ai-spark--3 {
-  animation-delay: 1s;
+@keyframes ai-float-3 {
+  0%   { transform: translate(-7px, -5px) scale(0.8); opacity: 0.5; }
+  30%  { transform: translate(-9px, 4px) scale(0.6);  opacity: 0.8; }
+  60%  { transform: translate(4px, 8px) scale(1);    opacity: 0.4; }
+  100% { transform: translate(-7px, -5px) scale(0.8); opacity: 0.5; }
 }
 
-@keyframes ai-spark-pulse {
-  0%, 100% { opacity: 0.3; transform: scale(0.6); }
-  50%      { opacity: 1; transform: scale(1.4); }
+@keyframes ai-float-4 {
+  0%   { transform: translate(6px, -7px) scale(0.5); opacity: 0.6; }
+  35%  { transform: translate(-5px, -9px) scale(0.9); opacity: 0.4; }
+  65%  { transform: translate(-7px, 5px) scale(0.7);  opacity: 1; }
+  100% { transform: translate(6px, -7px) scale(0.5); opacity: 0.6; }
 }
 
 /* AI "change theme" pencil button — hidden unless AI active */
@@ -1630,7 +1679,17 @@
 }
 
 [data-theme="dark"] .typing-game__ai--active .typing-game__ai-icon {
-  filter: drop-shadow(0 0 4px rgba(156, 39, 176, 0.6));
+  filter: drop-shadow(0 0 4px rgba(156, 39, 176, 0.5));
+}
+
+[data-theme="dark"] .typing-game__ai:hover .typing-game__ai-icon {
+  filter: drop-shadow(0 0 5px rgba(156, 39, 176, 0.55))
+          drop-shadow(0 0 10px rgba(156, 39, 176, 0.25));
+}
+
+[data-theme="dark"] .typing-game__ai-mini {
+  background: var(--clr-primary);
+  box-shadow: 0 0 3px rgba(156, 39, 176, 0.5);
 }
 
 [data-theme="dark"] .typing-game__ai-theme:hover {
