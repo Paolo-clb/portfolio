@@ -72,7 +72,7 @@
   const TEXTS = {
     fr: {
       '10': [
-        'le midlaner a flash sous la tourelle ennemie facilement',
+       'le midlaner a flash sous la tourelle ennemie facilement',
         'le jungler commence toujours par le buff rouge ce matin',
         'on doit prendre le dragon avant le prochain combat equipe',
         'le support a posé sa vision dans la rivière complètement',
@@ -425,12 +425,18 @@
       }
 
       // Show the original char (spaces wrap normally)
-      // In hardcore typing, cursor position shows a blank rather than the actual letter
-      const ch = (hideUntyped && i === typed.length) ? '\u00A0' : (text[i] === ' ' ? ' ' : text[i]);
+      const ch = text[i] === ' ' ? ' ' : text[i];
 
-      // In hardcore typing phase, hide untyped characters (except cursor position)
+      // In hardcore typing phase, hide untyped characters (use real chars for consistent layout)
       if (hideUntyped && i > typed.length) {
-        html += '<span class="typing-game__char typing-game__char--hidden">\u00A0</span>';
+        html += '<span class="typing-game__char typing-game__char--hidden">' + ch + '</span>';
+        continue;
+      }
+      // In hardcore typing, cursor position also uses hidden class so letter is invisible
+      if (hideUntyped && i === typed.length) {
+        // Cursor span with hidden text — cls already includes --cursor
+        var extraAttrCursor = comboStyle;
+        html += '<span class="' + cls + ' typing-game__char--hidden"' + extraAttrCursor + '>' + ch + '</span>';
         continue;
       }
 
@@ -454,10 +460,6 @@
       textEl.appendChild(innerEl);
     }
     innerEl.innerHTML = html;
-
-    // In hardcore typing phase, push text down by one line so cursor starts on 2nd visible line
-    var lh = parseFloat(getComputedStyle(textEl).fontSize) * 1.6;
-    innerEl.style.paddingTop = (hardcoreMode && hardcorePhase === 'typing') ? lh + 'px' : '';
 
     // Scroll so the cursor stays on the middle visible line
     requestAnimationFrame(scrollToCursor);
@@ -732,9 +734,8 @@
         wpmEl.classList.add('typing-game__wpm--visible');
         accEl.textContent = '';
         accEl.classList.remove('typing-game__acc--visible');
-        // Remove the extra padding so all lines (including the first) are visible
+        // Reset scroll so all lines (including the first) are visible
         if (innerEl) {
-          innerEl.style.paddingTop = '';
           innerEl.style.transform = '';
           var spans = innerEl.children;
           for (var si = 0; si < spans.length; si++) {
