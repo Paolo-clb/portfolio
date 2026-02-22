@@ -162,11 +162,11 @@
   /* 3 lines + top/bottom padding */
   height: calc(4.8em + 1.5rem);
   /* Translucent background */
-  background: rgba(27, 26, 39, 0.35);
+  background: rgba(27, 26, 39, 0.3);
   border: 1px solid rgba(191, 153, 160, 0.08);
   border-radius: calc(var(--radius) * 1.5);
   padding: 0.75rem 1.25rem;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(10px);
   box-shadow: 0 0 0 0 rgba(242, 162, 133, 0);
   transition: background 0.8s ease,
               border-color 0.8s ease,
@@ -943,23 +943,17 @@
   cursor: pointer;
   padding: 0;
   border-radius: calc(var(--radius) * 0.7);
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
-  transition: color 0.3s ease, background 0.3s ease, opacity 0.3s ease, transform 0.3s ease, width 0.3s ease, padding 0.3s ease, margin 0.3s ease;
-  opacity: 0;
-  width: 0;
-  overflow: hidden;
-  pointer-events: none;
+  transition: color 0.3s ease, background 0.3s ease, opacity 0.3s ease;
   flex-shrink: 0;
 }
 
 .typing-game__ai-theme--visible {
-  opacity: 1;
-  width: 1.7rem;
+  display: flex;
   padding: 0.3rem;
   margin-left: 0.1rem;
-  pointer-events: auto;
 }
 
 .typing-game__ai-theme:hover {
