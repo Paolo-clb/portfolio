@@ -789,7 +789,7 @@ function initCursorHalo() {
   }, { passive: true });
 
   // ---- hover on interactive elements ----
-  var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon';
+  var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option';
   var modalAllowedSelector = 'button, .modal__close, a, .btn';
 
   document.addEventListener('mouseover', function (e) {
