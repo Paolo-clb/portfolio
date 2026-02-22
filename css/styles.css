@@ -1467,7 +1467,7 @@ section.hero {
 /* --- Dark: Footer --- */
 [data-theme="dark"] .footer {
   border-top-color: rgba(63, 81, 181, 0.2);
-  background: rgb(10, 10, 32);
+  background: rgba(10, 10, 32, 0.825);
   backdrop-filter: none;
 }
 

@@ -114,6 +114,8 @@
   let aiTheme = ''; // current AI theme description
   let aiLoading = false; // whether an AI request is in-flight
   let aiThemeBtn = null; // reference to the "change theme" button in navbar
+  let charSpans = []; // pre-built span elements (one per character in text)
+  let cachedLH = 0; // cached line-height in px for scroll calculations
 
   /* ---- DOM refs (set in init) ---- */
 
@@ -195,9 +197,9 @@
         correctInBatch++;
         // Include the space after if typed correctly
         if (wordEnd < text.length && typed.length > wordEnd && typed[wordEnd] === ' ') {
-          lastCorrect_end = wordEnd + 1;
+          lastCorrectEnd = wordEnd + 1;
         } else {
-          lastCorrect_end = wordEnd;
+          lastCorrectEnd = wordEnd;
         }
       }
 
@@ -208,9 +210,9 @@
     }
 
     // If we found at least one correct word, lock everything up to it
-    if (lastCorrect_end > lockedIndex) {
+    if (lastCorrectEnd > lockedIndex) {
       correctWords += correctInBatch;
-      lockedIndex = lastCorrect_end;
+      lockedIndex = lastCorrectEnd;
     }
   }
 
@@ -244,6 +246,35 @@
     var avgInterval = totalInterval / (recent.length - 1);
     // Map: 50ms (very fast) → 1.0, 500ms (slow) → 0.0
     trailSpeed = Math.max(0, Math.min(1, 1 - (avgInterval - 50) / 450));
+  }
+
+  /* ---- DOM span builder (runs once per game start) ---- */
+
+  function buildCharSpans() {
+    charSpans = [];
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < text.length; i++) {
+      var span = document.createElement('span');
+      span.className = 'typing-game__char';
+      span.textContent = text[i] === ' ' ? ' ' : text[i];
+      span._cls = 'typing-game__char';
+      span._sty = '';
+      span._err = false;
+      span._wc = null;
+      frag.appendChild(span);
+      charSpans.push(span);
+    }
+    if (!innerEl) {
+      innerEl = document.createElement('div');
+      innerEl.className = 'typing-game__text-inner';
+      textEl.textContent = '';
+      textEl.appendChild(innerEl);
+    } else {
+      innerEl.textContent = '';
+    }
+    innerEl.appendChild(frag);
+    // Cache line-height once the spans are in the DOM
+    cachedLH = parseFloat(getComputedStyle(textEl).fontSize) * 1.6;
   }
 
   /* ---- Zen mode rendering ---- */
@@ -310,28 +341,23 @@
 
   function render() {
     if (currentMode === 'zen') { renderZen(); return; }
-    let html = '';
-    let comboStyle = '';
+
+    // Build span elements once per game; reuse on every keystroke
+    if (charSpans.length === 0) buildCharSpans();
 
     // In hardcore typing phase, untyped chars are hidden
     var hideUntyped = hardcoreMode && hardcorePhase === 'typing' && !finished;
 
-    // Trail: compute how many chars behind the cursor to highlight
-    // Trail length depends on combo streak AND speed
+    // Trail length from combo streak + speed
     var trailLen = 0;
     if (comboStreak >= 10 && trailSpeed > 0.05) {
-      // Base trail from combo: scales slower, much longer max
-      // 2 at streak 3, up to 30 at streak 150+
       var comboFactor = Math.min(comboStreak / 150, 1);
       trailLen = Math.round(2 + comboFactor * 28);
-      // Speed amplifies trail length significantly
       trailLen = Math.round(trailLen * (0.15 + trailSpeed * 0.85));
     }
 
-    // Trail color shift: primary → accent/hover matching cursor combo shift
+    // Trail color shift: primary → accent/hover
     var isDark = document.documentElement.dataset.theme === 'dark';
-    // Dark: #9c27b0 (156,39,176) → #ff4ecb (255,78,203)
-    // Light: #F2A285 (242,162,133) → #F28080 (242,128,128)
     var trailR = isDark ? 156 : 242, trailG = isDark ? 39 : 162, trailB = isDark ? 176 : 133;
     var trailHR = isDark ? 255 : 242, trailHG = isDark ? 78 : 128, trailHB = isDark ? 203 : 128;
     if (comboStreak >= 50) {
@@ -341,96 +367,90 @@
       trailB = Math.round(trailB + tc * (trailHB - trailB));
     }
 
-    for (let i = 0; i < text.length; i++) {
-      let cls = 'typing-game__char';
-      var trailAttr = '';
+    // Combo cursor color
+    var comboStyleStr = '';
+    if (comboStreak >= 50) {
+      var cc = Math.min((comboStreak - 50) / 50, 1);
+      var cBaseR = isDark ? 156 : 242, cBaseG = isDark ? 39 : 162, cBaseB = isDark ? 176 : 133;
+      var cHoverR = isDark ? 255 : 242, cHoverG = isDark ? 78 : 128, cHoverB = isDark ? 203 : 128;
+      var cr = Math.round(cBaseR + cc * (cHoverR - cBaseR));
+      var cg = Math.round(cBaseG + cc * (cHoverG - cBaseG));
+      var cb = Math.round(cBaseB + cc * (cHoverB - cBaseB));
+      comboStyleStr = '--combo-clr:rgb(' + cr + ',' + cg + ',' + cb + ')';
+    }
+
+    for (var i = 0; i < charSpans.length; i++) {
+      var span = charSpans[i];
+      var cls = 'typing-game__char';
+      var styleStr = '';
 
       if (i < typed.length) {
-        const isLocked = i < lockedIndex;
+        // Typed character
         cls += typed[i] === text[i]
           ? ' typing-game__char--correct'
           : ' typing-game__char--incorrect';
-        if (isLocked) cls += ' typing-game__char--locked';
+        if (i < lockedIndex) cls += ' typing-game__char--locked';
 
-        // Trail: apply to correct chars near cursor
+        // Trail on correct chars near cursor
         if (!finished && trailLen > 0 && typed[i] === text[i]) {
           var distFromCursor = typed.length - i;
           if (distFromCursor <= trailLen && distFromCursor >= 1) {
             cls += ' typing-game__char--trail';
-            // Opacity: closer to cursor = brighter, further = dimmer
             var trailOpacity = (1 - (distFromCursor - 1) / trailLen) * trailSpeed;
             trailOpacity = Math.max(0.05, Math.min(1, trailOpacity));
-            trailAttr = ' style="--trail-opacity:' + trailOpacity.toFixed(3)
+            styleStr = '--trail-opacity:' + trailOpacity.toFixed(3)
               + ';--trail-r:' + trailR
               + ';--trail-g:' + trailG
-              + ';--trail-b:' + trailB + '"';
+              + ';--trail-b:' + trailB;
           }
         }
-      }
-
-      // Cursor sits on the next character to type
-      if (i === typed.length && !finished) {
+      } else if (i === typed.length && !finished) {
+        // Cursor
         cls += ' typing-game__char--cursor';
-        // Combo streak tier classes
         if (comboStreak >= 60) cls += ' typing-game__char--combo-3';
         else if (comboStreak >= 30) cls += ' typing-game__char--combo-2';
         else if (comboStreak >= 10) cls += ' typing-game__char--combo-1';
-        // Combo color shift: primary → accent/hover from 50–100 streak
-        if (comboStreak >= 50) {
-          var cc = Math.min((comboStreak - 50) / 50, 1);
-          // Dark: #9c27b0 → #ff4ecb | Light: #F2A285 → #F28080
-          var cBaseR = isDark ? 156 : 242, cBaseG = isDark ? 39 : 162, cBaseB = isDark ? 176 : 133;
-          var cHoverR = isDark ? 255 : 242, cHoverG = isDark ? 78 : 128, cHoverB = isDark ? 203 : 128;
-          var cr = Math.round(cBaseR + cc * (cHoverR - cBaseR));
-          var cg = Math.round(cBaseG + cc * (cHoverG - cBaseG));
-          var cb = Math.round(cBaseB + cc * (cHoverB - cBaseB));
-          comboStyle = ' style="--combo-clr:rgb(' + cr + ',' + cg + ',' + cb + ')"';
-        } else {
-          comboStyle = '';
-        }
+        if (comboStyleStr) styleStr = comboStyleStr;
+        // Hardcore: cursor is hidden too
+        if (hideUntyped) cls += ' typing-game__char--hidden';
+      } else {
+        // Untyped characters
+        if (hideUntyped) cls += ' typing-game__char--hidden';
       }
 
-      // When finished, put a static cursor AFTER the last character
+      // Finished: static cursor after last char
       if (finished && i === text.length - 1) {
         cls += ' typing-game__char--cursor typing-game__char--cursor-end';
       }
 
-      // Show the original char (spaces wrap normally)
-      const ch = text[i] === ' ' ? ' ' : text[i];
-
-      // In hardcore typing phase, hide untyped characters (use real chars for consistent layout)
-      if (hideUntyped && i > typed.length) {
-        html += '<span class="typing-game__char typing-game__char--hidden">' + ch + '</span>';
-        continue;
+      // --- Update DOM only when state changed ---
+      if (span._cls !== cls) {
+        span.className = cls;
+        span._cls = cls;
       }
-      // In hardcore typing, cursor position also uses hidden class so letter is invisible
-      if (hideUntyped && i === typed.length) {
-        // Cursor span with hidden text — cls already includes --cursor
-        var extraAttrCursor = comboStyle;
-        html += '<span class="' + cls + ' typing-game__char--hidden"' + extraAttrCursor + '>' + ch + '</span>';
-        continue;
+      if (span._sty !== styleStr) {
+        if (styleStr) span.style.cssText = styleStr;
+        else if (span._sty) { span.style.cssText = ''; }
+        span._sty = styleStr;
       }
 
-      // Use comboStyle on cursor span, trailAttr on trail spans
-      var extraAttr = (i === typed.length && !finished) ? comboStyle : trailAttr;
-
-      // If incorrect, show the mistyped letter below
+      // Error display: swap innerHTML only for incorrect chars
       if (i < typed.length && typed[i] !== text[i]) {
-        const wrong = typed[i] === ' ' ? '␣' : typed[i];
-        html += `<span class="${cls}"${extraAttr}><span class="typing-game__char-expected">${ch}</span><span class="typing-game__char-wrong">${wrong}</span></span>`;
-      } else {
-        html += `<span class="${cls}"${extraAttr}>${ch}</span>`;
+        if (!span._err || span._wc !== typed[i]) {
+          var ch = text[i] === ' ' ? ' ' : text[i];
+          var wrong = typed[i] === ' ' ? '␣' : typed[i];
+          span.innerHTML = '<span class="typing-game__char-expected">' + ch +
+            '</span><span class="typing-game__char-wrong">' + wrong + '</span>';
+          span._err = true;
+          span._wc = typed[i];
+        }
+      } else if (span._err) {
+        // Revert to normal character display
+        span.textContent = text[i] === ' ' ? ' ' : text[i];
+        span._err = false;
+        span._wc = null;
       }
     }
-
-    // Wrap in inner div for scrolling
-    if (!innerEl) {
-      innerEl = document.createElement('div');
-      innerEl.className = 'typing-game__text-inner';
-      textEl.textContent = '';
-      textEl.appendChild(innerEl);
-    }
-    innerEl.innerHTML = html;
 
     // Scroll so the cursor stays on the middle visible line
     requestAnimationFrame(scrollToCursor);
@@ -440,36 +460,28 @@
     if (!innerEl) return;
     // After hardcore fail, don't scroll — keep all lines visible
     if (hardcoreFailed && finished) return;
-    const cursorSpan = innerEl.querySelector('.typing-game__char--cursor');
-    if (!cursorSpan) return;
+
+    // Direct access to cursor span instead of querySelector
+    var cursorSpanEl = null;
+    if (finished && charSpans.length > 0) {
+      cursorSpanEl = charSpans[text.length - 1];
+    } else if (typed.length < charSpans.length) {
+      cursorSpanEl = charSpans[typed.length];
+    }
+    if (!cursorSpanEl) return;
+
+    // Use cached line-height (computed once in buildCharSpans)
+    var lh = cachedLH || parseFloat(getComputedStyle(textEl).fontSize) * 1.6;
 
     var innerRect = innerEl.getBoundingClientRect();
-    var cursorRect = cursorSpan.getBoundingClientRect();
+    var cursorRect = cursorSpanEl.getBoundingClientRect();
 
-    // Line height in px
-    var lh = parseFloat(getComputedStyle(textEl).fontSize) * 1.6;
-
-    // Cursor position within content (getBoundingClientRect already accounts for transform)
     var cursorY = cursorRect.top - innerRect.top;
     var cursorLine = Math.floor(cursorY / lh);
 
-    // Keep cursor on line 1 (middle of 3)
+    // Keep cursor on line 1 (middle of 3 visible lines)
     var scrollLines = Math.max(0, cursorLine - 1);
     innerEl.style.transform = 'translateY(' + -(scrollLines * lh) + 'px)';
-
-    // Hide characters on lines that scrolled above the visible area
-    // (overflow:hidden clips at padding-box, so chars in the padding zone stay visible otherwise)
-    if (scrollLines > 0) {
-      var cutoffY = scrollLines * lh;
-      var spans = innerEl.children;
-      for (var i = 0; i < spans.length; i++) {
-        if (spans[i].offsetTop < cutoffY - 2) {
-          spans[i].style.visibility = 'hidden';
-        } else {
-          break;
-        }
-      }
-    }
   }
 
   function updateStats() {
@@ -595,6 +607,8 @@
       innerEl.remove();
     }
     innerEl = null;
+    charSpans = [];
+    cachedLH = 0;
 
     // Remove hardcore/finished states first so display:none overrides are cleared
     container.classList.remove('typing-game--finished');
@@ -708,10 +722,6 @@
         // Reset scroll so all lines (including the first) are visible
         if (innerEl) {
           innerEl.style.transform = '';
-          var spans = innerEl.children;
-          for (var si = 0; si < spans.length; si++) {
-            spans[si].style.visibility = '';
-          }
         }
       } else {
         container.classList.add('typing-game--hardcore-success');
@@ -1327,7 +1337,7 @@
   function showIntro(isSmartphone) {
     introActive = true;
     heroTitleEl = document.querySelector('#hero .section__title');
-    if (heroTitleEl) heroTitleEl.textContent = 'Colombat Paolo';
+    if (heroTitleEl) heroTitleEl.textContent = 'Paolo Colombat';
 
     // Intro text container (reuses typing-game__text styling)
     introTextEl = document.createElement('div');
@@ -1468,7 +1478,7 @@
     introActive = false;
 
     // Update title
-    if (heroTitleEl) heroTitleEl.textContent = 'Colombat Paolo - Typing Game';
+    if (heroTitleEl) heroTitleEl.textContent = 'Paolo Colombat : Typing Game';
 
     // Fade out intro elements
     introTextEl.classList.add('typing-game__text--intro-out');
@@ -1652,7 +1662,7 @@
     // --- Mobile smartphone mode (already unlocked): show static intro text ---
     if (isSmartphone) {
       heroTitleEl = document.querySelector('#hero .section__title');
-      if (heroTitleEl) heroTitleEl.textContent = 'Colombat Paolo';
+      if (heroTitleEl) heroTitleEl.textContent = 'Paolo Colombat';
       buildSmartphoneStaticDOM();
       return;
     }

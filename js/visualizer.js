@@ -146,21 +146,24 @@
     }
     ctx.globalAlpha = 1;
 
-    // Draw connections between nearby particles
-    for (let i = 0; i < particles.length; i++) {
-      for (let j = i + 1; j < particles.length; j++) {
-        const dx = particles[i].x - particles[j].x;
-        const dy = particles[i].y - particles[j].y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const maxDist = 180 + avgEnergy * 80;
+    // Draw connections between nearby particles (skip when idle — no audio & no impulse)
+    var hasActivity = impulse > 0.05 || avgEnergy > 0.02;
+    if (hasActivity) {
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const maxDist = 180 + avgEnergy * 80;
 
-        if (dist < maxDist) {
-          ctx.beginPath();
-          ctx.moveTo(particles[i].x, particles[i].y);
-          ctx.lineTo(particles[j].x, particles[j].y);
-          ctx.strokeStyle = colors.textRgba + ((1 - dist / maxDist) * 0.35) + ')';
-          ctx.lineWidth = 1;
-          ctx.stroke();
+          if (dist < maxDist) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = colors.textRgba + ((1 - dist / maxDist) * 0.35) + ')';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
         }
       }
     }
