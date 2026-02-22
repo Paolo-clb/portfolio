@@ -986,16 +986,21 @@ section.hero {
 .modal-scroll-hint {
   position: sticky;
   bottom: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  color: var(--clr-text-muted);
-  opacity: 0.6;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  color: var(--clr-text);
+  opacity: 0.85;
   animation: modal-scroll-bounce 2s ease-in-out infinite;
   transition: opacity 0.4s ease;
   z-index: 15;
-  display: block;
-  text-align: center;
   pointer-events: none;
+}
+
+.modal-scroll-hint svg {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
 }
 
 .modal-scroll-hint--hidden {
@@ -1004,8 +1009,8 @@ section.hero {
 }
 
 @keyframes modal-scroll-bounce {
-  0%, 100% { transform: translateX(-50%) translateY(0); }
-  50%      { transform: translateX(-50%) translateY(5px); }
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(5px); }
 }
 
 @keyframes scroll-bounce {
@@ -1698,8 +1703,10 @@ section.hero {
 /* ---- Mobile backgrounds ---- */
 @media (max-width: 768px) {
   body {
-    background-attachment: scroll;
+    background-attachment: fixed;
     background-image: url('../assets/images/backgroundMobile.jpg');
+    background-size: cover;
+    background-position: center top;
   }
   [data-theme="dark"] body {
     background-image: url('../assets/images/background2Mobile.gif');

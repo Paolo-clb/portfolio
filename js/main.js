@@ -129,6 +129,7 @@ function createProjectsModal() {
 
 function createScrollHint(modalEl, storageKey) {
   if (localStorage.getItem(storageKey)) return;
+  if (modalEl.querySelector('.modal-scroll-hint')) return;
   var hint = document.createElement('div');
   hint.className = 'modal-scroll-hint';
   hint.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';

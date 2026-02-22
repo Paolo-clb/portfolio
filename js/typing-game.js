@@ -1033,6 +1033,10 @@
       '<p class="zen-popup__text">Que souhaitez-vous taper aujourd\'hui ?</p>' +
       '<input class="typing-game__ai-input typing-game__ai-theme-input" type="text" placeholder="Ex: l\'espace, la cuisine, les chats..." maxlength="100" />' +
       '<div class="typing-game__ai-status"></div>' +
+      '<div class="typing-game__ai-loader">' +
+        '<div class="typing-game__ai-loader-spinner"></div>' +
+        '<div class="typing-game__ai-loader-text">Génération en cours\u2026</div>' +
+      '</div>' +
       '<button class="zen-popup__btn typing-game__ai-confirm">Générer les textes</button>';
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
@@ -1040,6 +1044,7 @@
     var themeInput = popup.querySelector('.typing-game__ai-theme-input');
     var confirmBtn = popup.querySelector('.typing-game__ai-confirm');
     var statusEl = popup.querySelector('.typing-game__ai-status');
+    var loaderEl = popup.querySelector('.typing-game__ai-loader');
 
     // Pre-fill theme
     if (aiTheme) themeInput.value = aiTheme;
@@ -1076,20 +1081,26 @@
       }
       // Loading state
       confirmBtn.disabled = true;
-      confirmBtn.textContent = 'Génération en cours...';
+      confirmBtn.style.display = 'none';
+      themeInput.disabled = true;
       statusEl.textContent = '';
       statusEl.className = 'typing-game__ai-status';
+      loaderEl.classList.add('typing-game__ai-loader--active');
       aiLoading = true;
 
       fetchAiTexts(theme, function(texts) {
         aiLoading = false;
+        loaderEl.classList.remove('typing-game__ai-loader--active');
         aiTheme = theme;
         aiTexts = texts;
         close();
         if (typeof onConfirm === 'function') onConfirm();
       }, function(err) {
         aiLoading = false;
+        loaderEl.classList.remove('typing-game__ai-loader--active');
         confirmBtn.disabled = false;
+        confirmBtn.style.display = '';
+        themeInput.disabled = false;
         confirmBtn.textContent = 'Réessayer';
         statusEl.textContent = getErrorMsg(err);
         statusEl.className = 'typing-game__ai-status typing-game__ai-status--error';
@@ -1341,6 +1352,37 @@
     heroTitleEl = document.querySelector('#hero .section__title');
     if (heroTitleEl) heroTitleEl.textContent = 'Paolo Colombat';
 
+    // --- Loading screen (shown until page fully loads) ---
+    var loadingEl = document.createElement('div');
+    loadingEl.className = 'typing-game__loading';
+    loadingEl.innerHTML = '<div class="typing-game__loading-spinner"></div>' +
+      '<div class="typing-game__loading-text">Chargement du site en cours\u2026</div>';
+    container.appendChild(loadingEl);
+
+    // Prepare intro elements but don't add to DOM yet
+    function startTypewriter() {
+      // Fade out loading
+      loadingEl.classList.add('typing-game__loading--hidden');
+      setTimeout(function () {
+        if (loadingEl.parentNode) loadingEl.remove();
+      }, 400);
+
+      // Build intro DOM
+      buildIntroDOM(isSmartphone);
+    }
+
+    // Wait for full page load (images, fonts, etc.)
+    if (document.readyState === 'complete') {
+      // Already loaded — small delay so loading screen is visible briefly
+      setTimeout(startTypewriter, 300);
+    } else {
+      window.addEventListener('load', function () {
+        setTimeout(startTypewriter, 200);
+      });
+    }
+  }
+
+  function buildIntroDOM(isSmartphone) {
     // Intro text container (reuses typing-game__text styling)
     introTextEl = document.createElement('div');
     introTextEl.className = 'typing-game__text typing-game__text--intro';

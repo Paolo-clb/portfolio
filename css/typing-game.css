@@ -1037,6 +1037,44 @@
   transform: none !important;
 }
 
+/* ---- AI loading indicator ---- */
+.typing-game__ai-loader {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.2rem 0 0.6rem;
+}
+
+.typing-game__ai-loader--active {
+  display: flex;
+}
+
+.typing-game__ai-loader-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(191, 153, 160, 0.15);
+  border-top-color: var(--clr-primary);
+  border-radius: 50%;
+  animation: ai-loader-spin 0.8s linear infinite;
+}
+
+@keyframes ai-loader-spin {
+  to { transform: rotate(360deg); }
+}
+
+.typing-game__ai-loader-text {
+  font-size: 0.85rem;
+  color: var(--clr-text-muted);
+  letter-spacing: 0.02em;
+  animation: ai-loader-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ai-loader-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
 /* ==========================================================================
    Intro Typewriter Mode (before game is unlocked)
    ========================================================================== */
@@ -1049,6 +1087,45 @@
   background: rgba(27, 26, 39, 0.15);
   border: 1px solid rgba(191, 153, 160, 0.1);
   transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* ---- Intro loading screen ---- */
+.typing-game__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  min-height: calc(4.8em + 1.5rem);
+  padding: 2rem;
+  background: rgba(27, 26, 39, 0.15);
+  border: 1px solid rgba(191, 153, 160, 0.1);
+  border-radius: var(--radius);
+  transition: opacity 0.4s ease;
+}
+
+.typing-game__loading--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.typing-game__loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(191, 153, 160, 0.15);
+  border-top-color: var(--clr-primary);
+  border-radius: 50%;
+  animation: typing-loading-spin 0.8s linear infinite;
+}
+
+@keyframes typing-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+.typing-game__loading-text {
+  font-size: 0.9rem;
+  color: var(--clr-text-muted);
+  letter-spacing: 0.02em;
 }
 
 .typing-game__text--intro .typing-game__intro-inner {
@@ -1288,6 +1365,11 @@
 
 /* --- Dark: Intro text --- */
 [data-theme="dark"] .typing-game__text--intro {
+  background: rgba(26, 0, 51, 0.55);
+  border-color: rgba(63, 81, 181, 0.15);
+}
+
+[data-theme="dark"] .typing-game__loading {
   background: rgba(26, 0, 51, 0.55);
   border-color: rgba(63, 81, 181, 0.15);
 }
