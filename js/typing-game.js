@@ -967,7 +967,7 @@
       currentLang,
       function (key) {
         currentLang = key;
-        startGame(true);
+        startGame(false);
       }
     );
 
@@ -1357,6 +1357,8 @@
         var hint = document.getElementById('scroll-hint');
         if (hint) hint.classList.add('scroll-hint--hidden');
       }
+      // Clear fast-blur transition so CSS classes govern focus-in speed
+      if (textEl) textEl.style.transition = '';
       // If the game was paused due to blur, resume timing and stats updates
       if (paused && startTime && !finished) {
         // accumulate paused duration
@@ -1394,6 +1396,8 @@
           wpmInterval = null;
         }
       }
+      // Faster transition when unfocusing
+      if (textEl) textEl.style.transition = 'background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease';
       updateTextBackground(0);
     });
   }

@@ -20,9 +20,9 @@
   background: rgba(27, 26, 39, 0.15) !important;
   border-color: rgba(191, 153, 160, 0.06) !important;
   box-shadow: 0 0 0 0 transparent !important;
-  transition: background 0.28s ease,
-              border-color 0.28s ease,
-              box-shadow 0.28s ease;
+  transition: background 0.20s ease,
+              border-color 0.20s ease,
+              box-shadow 0.20s ease;
 }
 
 .typing-game--blurred .typing-game__text:hover {
@@ -818,6 +818,19 @@
               0 0 60px rgba(46, 204, 113, 0.08) !important;
 }
 
+/* Hide green glow when unfocused (light theme — dark already handled by specificity) */
+.typing-game--blurred.typing-game--hardcore-success .typing-game__text {
+  border-color: rgba(191, 153, 160, 0.06) !important;
+  box-shadow: 0 0 0 0 transparent !important;
+}
+
+/* Hardcore memorize: themed background */
+.typing-game--hardcore-memorize .typing-game__text {
+  background: rgba(27, 26, 39, 0.45) !important;
+  border-color: rgba(242, 128, 128, 0.15) !important;
+  box-shadow: 0 0 12px rgba(242, 128, 128, 0.06) !important;
+}
+
 @keyframes hc-success-glow {
   0%   { text-shadow: none; }
   30%  { text-shadow: 0 0 20px rgba(46, 204, 113, 0.6), 0 0 40px rgba(46, 204, 113, 0.3); }
@@ -947,9 +960,9 @@
   box-shadow: 0 0 0 0 rgba(156, 39, 176, 0) !important;
 }
 
-/* --- Dark: Blurred hover --- */
+/* --- Dark: Blurred hover — slightly lighter purple for visibility --- */
 [data-theme="dark"] .typing-game--blurred .typing-game__text:hover {
-  background: rgba(26, 0, 51, 0.45) !important;
+  background: rgba(35, 8, 62, 0.45) !important;
   border-color: rgba(156, 39, 176, 0.25) !important;
   box-shadow: 0 0 18px rgba(156, 39, 176, 0.1),
               inset 0 0 25px rgba(156, 39, 176, 0.04) !important;
@@ -1066,6 +1079,13 @@
 [data-theme="dark"] .typing-game__hc-countdown {
   text-shadow: 0 0 30px rgba(106, 13, 173, 0.5),
                0 0 60px rgba(106, 13, 173, 0.25);
+}
+
+/* --- Dark: HC memorize --- */
+[data-theme="dark"] .typing-game--hardcore-memorize .typing-game__text {
+  background: rgba(26, 0, 51, 0.65) !important;
+  border-color: rgba(106, 13, 173, 0.2) !important;
+  box-shadow: 0 0 12px rgba(106, 13, 173, 0.08) !important;
 }
 
 /* --- Dark: HC fail --- */
