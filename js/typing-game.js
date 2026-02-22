@@ -1003,13 +1003,12 @@
 
   function buildAiPrompt(theme) {
     var caseRule = settingsUppercase
-      ? 'Use natural capitalization (sentence starts, proper nouns).'
+      ? 'Use natural capitalization (capitalize the first letter of each sentence and proper nouns).'
       : 'All text must be strictly lowercase — no capital letters at all.';
 
-    var allowed = ['letters', 'spaces', 'hyphens', 'apostrophes (\')'];
-    if (settingsPunctuation) allowed.push('punctuation (. , ; : ! ?)');
-    if (settingsNumbers) allowed.push('numbers (0-9)');
-    if (settingsSpecial) allowed.push('special characters (@ # $ % & * + = ~ / \\ | _ < > ^ " ( ) [ ] { })');
+    var punctRule = settingsPunctuation
+      ? 'Use natural punctuation: periods, commas, semicolons, colons, exclamation marks, question marks.'
+      : 'Do NOT use any punctuation marks at all — no periods, no commas, no semicolons, no colons, no exclamation marks, no question marks.';
 
     return 'Generate very informative typing practice texts on a specific theme. ' +
       'Output ONLY valid JSON (no markdown, no code fences, no explanation). ' +
@@ -1022,7 +1021,8 @@
       '- "100" array: 3 paragraphs each ~100 words, ' +
       '- "fr" texts must be in French, "en" texts must be in English, ' +
       '- ' + caseRule + ' ' +
-      '- Allowed characters: ' + allowed.join(', ') + ' — no other characters, ' +
+      '- ' + punctRule + ' ' +
+      '- Allowed characters: letters, spaces, hyphens, apostrophes (\')' + (settingsPunctuation ? ', punctuation (. , ; : ! ?)' : '') + ' — no other characters, ' +
       '- French accents allowed: é è ê à ù ô î â ç, ' +
       '- All texts must be about this theme: "' + theme + '", ' +
       '- Each text must flow naturally and be interesting to type';
@@ -1109,31 +1109,19 @@
       '<div class="zen-popup__title">Mode IA</div>' +
       '<p class="zen-popup__text">Que souhaitez-vous taper aujourd\'hui ?</p>' +
       '<input class="typing-game__ai-input typing-game__ai-theme-input" type="text" placeholder="Ex: l\'espace, la cuisine, les chats..." maxlength="100" />' +
-      '<div class="typing-game__ai-settings-row">' +
-        '<button type="button" class="typing-game__ai-settings-gear" title="Options du texte généré">' +
-          '<svg class="typing-game__settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-            '<circle cx="12" cy="12" r="3"/>' +
-            '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>' +
-          '</svg>' +
-        '</button>' +
-        '<div class="typing-game__ai-settings-panel">' +
-          '<label class="typing-game__ai-settings-chip">' +
-            '<input type="checkbox" class="typing-game__ai-settings-chip-input" data-key="uppercase"' + (settingsUppercase ? ' checked' : '') + '/>' +
-            '<span class="typing-game__ai-settings-chip-label">ABC</span>' +
-          '</label>' +
-          '<label class="typing-game__ai-settings-chip">' +
-            '<input type="checkbox" class="typing-game__ai-settings-chip-input" data-key="punctuation"' + (settingsPunctuation ? ' checked' : '') + '/>' +
-            '<span class="typing-game__ai-settings-chip-label">.,;!?</span>' +
-          '</label>' +
-          '<label class="typing-game__ai-settings-chip">' +
-            '<input type="checkbox" class="typing-game__ai-settings-chip-input" data-key="numbers"' + (settingsNumbers ? ' checked' : '') + '/>' +
-            '<span class="typing-game__ai-settings-chip-label">123</span>' +
-          '</label>' +
-          '<label class="typing-game__ai-settings-chip">' +
-            '<input type="checkbox" class="typing-game__ai-settings-chip-input" data-key="special"' + (settingsSpecial ? ' checked' : '') + '/>' +
-            '<span class="typing-game__ai-settings-chip-label">@#$</span>' +
-          '</label>' +
-        '</div>' +
+      '<div class="typing-game__ai-options">' +
+        '<label class="typing-game__ai-opt">' +
+          '<input type="checkbox" class="typing-game__ai-opt-check" data-key="uppercase"' + (settingsUppercase ? ' checked' : '') + '/>' +
+          '<span class="typing-game__ai-opt-toggle"></span>' +
+          '<span class="typing-game__ai-opt-label">Majuscules</span>' +
+          '<span class="typing-game__ai-opt-hint">ABC</span>' +
+        '</label>' +
+        '<label class="typing-game__ai-opt">' +
+          '<input type="checkbox" class="typing-game__ai-opt-check" data-key="punctuation"' + (settingsPunctuation ? ' checked' : '') + '/>' +
+          '<span class="typing-game__ai-opt-toggle"></span>' +
+          '<span class="typing-game__ai-opt-label">Ponctuation</span>' +
+          '<span class="typing-game__ai-opt-hint">.,;!?</span>' +
+        '</label>' +
       '</div>' +
       '<div class="typing-game__ai-status"></div>' +
       '<div class="typing-game__ai-loader">' +
@@ -1148,24 +1136,12 @@
     var confirmBtn = popup.querySelector('.typing-game__ai-confirm');
     var statusEl = popup.querySelector('.typing-game__ai-status');
     var loaderEl = popup.querySelector('.typing-game__ai-loader');
-    var gearBtn = popup.querySelector('.typing-game__ai-settings-gear');
-    var panel = popup.querySelector('.typing-game__ai-settings-panel');
-
-    // Gear toggle: expand/collapse settings panel
-    gearBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      var isOpen = panel.classList.toggle('typing-game__ai-settings-panel--open');
-      gearBtn.classList.toggle('typing-game__ai-settings-gear--active', isOpen);
-    });
-
-    // Chip checkboxes sync to settings state
-    popup.querySelectorAll('.typing-game__ai-settings-chip-input').forEach(function(chk) {
+    // Toggle checkboxes sync to settings state
+    popup.querySelectorAll('.typing-game__ai-opt-check').forEach(function(chk) {
       chk.addEventListener('change', function() {
         var key = chk.getAttribute('data-key');
         if (key === 'uppercase') settingsUppercase = chk.checked;
         if (key === 'punctuation') settingsPunctuation = chk.checked;
-        if (key === 'numbers') settingsNumbers = chk.checked;
-        if (key === 'special') settingsSpecial = chk.checked;
         saveSettingsOptions();
       });
     });
@@ -1370,7 +1346,7 @@
     '</svg>';
 
     function updateSettingsUI() {
-      var anyActive = settingsUppercase || settingsNumbers || settingsPunctuation || settingsSpecial;
+      var anyActive = settingsUppercase || settingsPunctuation || settingsNumbers || settingsSpecial;
       settingsGearBtn.classList.toggle('typing-game__settings--active', anyActive);
     }
 

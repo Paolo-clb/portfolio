@@ -1022,16 +1022,16 @@
 /* AI icon wrapper — contains SVG + floating minis */
 .typing-game__ai-wrap {
   position: relative;
-  width: 1.3rem;
-  height: 1.3rem;
+  width: 2rem;
+  height: 2rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .typing-game__ai-icon {
-  width: 1.3rem;
-  height: 1.3rem;
+  width: 2rem;
+  height: 2rem;
   transition: filter 0.35s ease;
 }
 
@@ -1044,14 +1044,15 @@
   opacity: 0.4;
 }
 
-/* Hover: illuminate (glow pulse) */
+/* Hover: illuminate (heavy glow) */
 .typing-game__ai:hover .typing-game__ai-icon {
-  filter: drop-shadow(0 0 5px rgba(242, 162, 133, 0.55))
-          drop-shadow(0 0 10px rgba(242, 162, 133, 0.25));
+  filter: drop-shadow(0 0 4px rgba(242, 162, 133, 0.6))
+          drop-shadow(0 0 9px rgba(242, 162, 133, 0.4))
+          drop-shadow(0 0 16px rgba(242, 162, 133, 0.2));
 }
 
 .typing-game__ai:hover .typing-game__ai-star--back {
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 /* ---- Floating mini-stars (visible only when active) ---- */
@@ -1193,63 +1194,30 @@
   box-sizing: border-box;
 }
 
-/* ---- AI popup settings row ---- */
+/* ---- AI popup options (toggles) ---- */
 
-.typing-game__ai-settings-row {
+.typing-game__ai-options {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.15rem;
   margin-bottom: 0.8rem;
 }
 
-.typing-game__ai-settings-gear {
-  background: none;
-  border: none;
-  color: var(--clr-text-muted);
-  cursor: pointer;
-  padding: 0.3rem;
-  border-radius: calc(var(--radius) * 0.7);
+.typing-game__ai-opt {
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: color 0.3s ease, background 0.3s ease;
-  flex-shrink: 0;
-}
-
-.typing-game__ai-settings-gear:hover {
-  color: var(--clr-text);
-}
-
-.typing-game__ai-settings-gear:hover .typing-game__settings-icon {
-  transform: rotate(45deg);
-}
-
-.typing-game__ai-settings-gear--active {
-  color: var(--clr-primary);
-  background: rgba(242, 162, 133, 0.12);
-}
-
-.typing-game__ai-settings-panel {
-  display: flex;
-  gap: 0.35rem;
-  overflow: hidden;
-  max-width: 0;
-  opacity: 0;
-  transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.25s ease;
-}
-
-.typing-game__ai-settings-panel--open {
-  max-width: 300px;
-  opacity: 1;
-}
-
-.typing-game__ai-settings-chip {
+  gap: 0.7rem;
   cursor: pointer;
-  user-select: none;
+  padding: 0.45rem 0.7rem;
+  border-radius: calc(var(--radius) * 0.7);
+  transition: background 0.2s ease;
 }
 
-.typing-game__ai-settings-chip-input {
+.typing-game__ai-opt:hover {
+  background: rgba(242, 162, 133, 0.06);
+}
+
+.typing-game__ai-opt-check {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -1257,28 +1225,50 @@
   pointer-events: none;
 }
 
-.typing-game__ai-settings-chip-label {
-  display: inline-block;
-  padding: 0.2rem 0.55rem;
-  font-family: 'Courier New', Courier, monospace;
+.typing-game__ai-opt-toggle {
+  position: relative;
+  width: 2.2rem;
+  height: 1.2rem;
+  background: rgba(161, 161, 166, 0.25);
+  border-radius: 0.6rem;
+  flex-shrink: 0;
+  transition: background 0.3s ease;
+}
+
+.typing-game__ai-opt-toggle::after {
+  content: '';
+  position: absolute;
+  top: 0.13rem;
+  left: 0.13rem;
+  width: 0.94rem;
+  height: 0.94rem;
+  background: var(--clr-text-muted);
+  border-radius: 50%;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
+}
+
+.typing-game__ai-opt-check:checked + .typing-game__ai-opt-toggle {
+  background: rgba(242, 162, 133, 0.35);
+}
+
+.typing-game__ai-opt-check:checked + .typing-game__ai-opt-toggle::after {
+  transform: translateX(1rem);
+  background: var(--clr-primary);
+}
+
+.typing-game__ai-opt-label {
+  font-size: 0.88rem;
+  color: var(--clr-text);
+  font-weight: 500;
+}
+
+.typing-game__ai-opt-hint {
   font-size: 0.75rem;
-  font-weight: 600;
   color: var(--clr-text-muted);
-  background: rgba(161, 161, 166, 0.1);
-  border: 1px solid rgba(161, 161, 166, 0.2);
-  border-radius: 2rem;
-  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
-  white-space: nowrap;
-}
-
-.typing-game__ai-settings-chip-label:hover {
-  border-color: rgba(242, 162, 133, 0.3);
-}
-
-.typing-game__ai-settings-chip-input:checked + .typing-game__ai-settings-chip-label {
-  color: var(--clr-primary);
-  background: rgba(242, 162, 133, 0.15);
-  border-color: rgba(242, 162, 133, 0.4);
+  margin-left: auto;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 600;
+  opacity: 0.6;
 }
 
 .typing-game__ai-input::placeholder {
@@ -1683,8 +1673,9 @@
 }
 
 [data-theme="dark"] .typing-game__ai:hover .typing-game__ai-icon {
-  filter: drop-shadow(0 0 5px rgba(156, 39, 176, 0.55))
-          drop-shadow(0 0 10px rgba(156, 39, 176, 0.25));
+  filter: drop-shadow(0 0 4px rgba(156, 39, 176, 0.6))
+          drop-shadow(0 0 9px rgba(156, 39, 176, 0.45))
+          drop-shadow(0 0 16px rgba(156, 39, 176, 0.2));
 }
 
 [data-theme="dark"] .typing-game__ai-mini {
@@ -1706,20 +1697,17 @@
   box-shadow: 0 0 12px rgba(156, 39, 176, 0.15);
 }
 
-/* --- Dark: AI popup settings --- */
-[data-theme="dark"] .typing-game__ai-settings-gear--active {
-  color: var(--clr-primary);
-  background: rgba(156, 39, 176, 0.15);
+/* --- Dark: AI popup options --- */
+[data-theme="dark"] .typing-game__ai-opt:hover {
+  background: rgba(156, 39, 176, 0.08);
 }
 
-[data-theme="dark"] .typing-game__ai-settings-chip-label:hover {
-  border-color: rgba(156, 39, 176, 0.3);
+[data-theme="dark"] .typing-game__ai-opt-check:checked + .typing-game__ai-opt-toggle {
+  background: rgba(156, 39, 176, 0.35);
 }
 
-[data-theme="dark"] .typing-game__ai-settings-chip-input:checked + .typing-game__ai-settings-chip-label {
-  color: var(--clr-primary);
-  background: rgba(156, 39, 176, 0.18);
-  border-color: rgba(156, 39, 176, 0.45);
+[data-theme="dark"] .typing-game__ai-opt-check:checked + .typing-game__ai-opt-toggle::after {
+  background: var(--clr-primary);
 }
 
 /* --- Dark: Settings gear --- */
