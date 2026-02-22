@@ -107,6 +107,17 @@
   color: var(--clr-text);
 }
 
+.typing-game__eye:hover .typing-game__eye-icon {
+  animation: eye-wink 0.5s ease;
+}
+
+@keyframes eye-wink {
+  0%   { transform: scaleY(1); }
+  30%  { transform: scaleY(0.1); }
+  50%  { transform: scaleY(0.1); }
+  100% { transform: scaleY(1); }
+}
+
 .typing-game__eye-icon {
   width: 1.3rem;
   height: 1.3rem;
@@ -143,6 +154,128 @@
 .typing-game__eye--active .typing-game__eye-pupil {
   opacity: 1;
   transform: scale(1);
+}
+
+/* ---- Settings gear ---- */
+
+.typing-game__settings {
+  background: none;
+  border: none;
+  color: var(--clr-text-muted);
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: calc(var(--radius) * 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease, background 0.3s ease;
+  margin-left: 0.2rem;
+}
+
+.typing-game__settings:hover {
+  color: var(--clr-text);
+}
+
+.typing-game__settings-icon {
+  width: 1.3rem;
+  height: 1.3rem;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.typing-game__settings:hover .typing-game__settings-icon {
+  transform: rotate(45deg);
+}
+
+.typing-game__settings--active {
+  color: var(--clr-primary);
+  background: rgba(242, 162, 133, 0.12);
+}
+
+.typing-game__settings--active .typing-game__settings-icon {
+  filter: drop-shadow(0 0 3px rgba(242, 162, 133, 0.4));
+}
+
+/* ---- Settings popup ---- */
+
+.typing-game__settings-popup {
+  max-width: 340px;
+}
+
+.typing-game__settings-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 1.2rem 0 1.5rem;
+}
+
+.typing-game__settings-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.55rem 0.8rem;
+  border-radius: calc(var(--radius) * 0.7);
+  transition: background 0.2s ease;
+}
+
+.typing-game__settings-option:hover {
+  background: rgba(242, 162, 133, 0.06);
+}
+
+/* Hide native checkbox */
+.typing-game__settings-check {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Custom toggle track */
+.typing-game__settings-toggle {
+  position: relative;
+  width: 2.4rem;
+  height: 1.3rem;
+  background: rgba(161, 161, 166, 0.25);
+  border-radius: 0.65rem;
+  flex-shrink: 0;
+  transition: background 0.3s ease;
+}
+
+.typing-game__settings-toggle::after {
+  content: '';
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1rem;
+  height: 1rem;
+  background: var(--clr-text-muted);
+  border-radius: 50%;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
+}
+
+.typing-game__settings-check:checked + .typing-game__settings-toggle {
+  background: rgba(242, 162, 133, 0.35);
+}
+
+.typing-game__settings-check:checked + .typing-game__settings-toggle::after {
+  transform: translateX(1.1rem);
+  background: var(--clr-primary);
+}
+
+.typing-game__settings-label {
+  font-size: 0.95rem;
+  color: var(--clr-text);
+  font-weight: 500;
+}
+
+.typing-game__settings-desc {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--clr-text-muted);
+  opacity: 0.5;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.03em;
 }
 
 /* ---- Text display ---- */
@@ -558,8 +691,9 @@
 
 /* ---- Zen mode ---- */
 
-/* Hide eye toggle and language group in zen mode */
+/* Hide eye toggle, settings, and language group in zen mode */
 .typing-game--zen .typing-game__eye,
+.typing-game--zen .typing-game__settings,
 .typing-game--zen .typing-game__navbar-sep:last-of-type,
 .typing-game--zen .typing-game__option-group:first-child,
 .typing-game--zen .typing-game__navbar-sep:first-of-type {
@@ -687,6 +821,19 @@
 
 .typing-game__hardcore:hover {
   color: var(--clr-text);
+}
+
+.typing-game__hardcore:hover .typing-game__hardcore-icon {
+  animation: hc-tremble 0.4s ease;
+}
+
+@keyframes hc-tremble {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(-8deg); }
+  40%  { transform: rotate(8deg); }
+  60%  { transform: rotate(-5deg); }
+  80%  { transform: rotate(5deg); }
+  100% { transform: rotate(0deg); }
 }
 
 .typing-game__hardcore-icon {
@@ -873,6 +1020,16 @@
   color: var(--clr-text);
 }
 
+.typing-game__ai:hover .typing-game__ai-icon {
+  animation: ai-hover-float 0.5s ease;
+}
+
+@keyframes ai-hover-float {
+  0%   { transform: translateY(0); }
+  40%  { transform: translateY(-2px); }
+  100% { transform: translateY(0); }
+}
+
 .typing-game__ai-icon {
   width: 1.3rem;
   height: 1.3rem;
@@ -982,9 +1139,97 @@
   border: 1px solid rgba(191, 153, 160, 0.2);
   border-radius: var(--radius);
   outline: none;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.6rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   box-sizing: border-box;
+}
+
+/* ---- AI popup settings row ---- */
+
+.typing-game__ai-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.typing-game__ai-settings-gear {
+  background: none;
+  border: none;
+  color: var(--clr-text-muted);
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: calc(var(--radius) * 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease, background 0.3s ease;
+  flex-shrink: 0;
+}
+
+.typing-game__ai-settings-gear:hover {
+  color: var(--clr-text);
+}
+
+.typing-game__ai-settings-gear:hover .typing-game__settings-icon {
+  transform: rotate(45deg);
+}
+
+.typing-game__ai-settings-gear--active {
+  color: var(--clr-primary);
+  background: rgba(242, 162, 133, 0.12);
+}
+
+.typing-game__ai-settings-panel {
+  display: flex;
+  gap: 0.35rem;
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s ease;
+}
+
+.typing-game__ai-settings-panel--open {
+  max-width: 300px;
+  opacity: 1;
+}
+
+.typing-game__ai-settings-chip {
+  cursor: pointer;
+  user-select: none;
+}
+
+.typing-game__ai-settings-chip-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.typing-game__ai-settings-chip-label {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  background: rgba(161, 161, 166, 0.1);
+  border: 1px solid rgba(161, 161, 166, 0.2);
+  border-radius: 2rem;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.typing-game__ai-settings-chip-label:hover {
+  border-color: rgba(242, 162, 133, 0.3);
+}
+
+.typing-game__ai-settings-chip-input:checked + .typing-game__ai-settings-chip-label {
+  color: var(--clr-primary);
+  background: rgba(242, 162, 133, 0.15);
+  border-color: rgba(242, 162, 133, 0.4);
 }
 
 .typing-game__ai-input::placeholder {
@@ -1400,4 +1645,41 @@
 [data-theme="dark"] .typing-game__ai-input:focus {
   border-color: rgba(156, 39, 176, 0.4);
   box-shadow: 0 0 12px rgba(156, 39, 176, 0.15);
+}
+
+/* --- Dark: AI popup settings --- */
+[data-theme="dark"] .typing-game__ai-settings-gear--active {
+  color: var(--clr-primary);
+  background: rgba(156, 39, 176, 0.15);
+}
+
+[data-theme="dark"] .typing-game__ai-settings-chip-label:hover {
+  border-color: rgba(156, 39, 176, 0.3);
+}
+
+[data-theme="dark"] .typing-game__ai-settings-chip-input:checked + .typing-game__ai-settings-chip-label {
+  color: var(--clr-primary);
+  background: rgba(156, 39, 176, 0.18);
+  border-color: rgba(156, 39, 176, 0.45);
+}
+
+/* --- Dark: Settings gear --- */
+[data-theme="dark"] .typing-game__settings--active {
+  background: rgba(156, 39, 176, 0.15);
+}
+
+[data-theme="dark"] .typing-game__settings--active .typing-game__settings-icon {
+  filter: drop-shadow(0 0 3px rgba(156, 39, 176, 0.5));
+}
+
+[data-theme="dark"] .typing-game__settings-option:hover {
+  background: rgba(156, 39, 176, 0.08);
+}
+
+[data-theme="dark"] .typing-game__settings-check:checked + .typing-game__settings-toggle {
+  background: rgba(156, 39, 176, 0.35);
+}
+
+[data-theme="dark"] .typing-game__settings-check:checked + .typing-game__settings-toggle::after {
+  background: var(--clr-primary);
 }

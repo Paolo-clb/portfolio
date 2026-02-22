@@ -45,6 +45,13 @@
     }
   }
 
+  function saveSettingsOptions() {
+    setCookie('typing_opt_uppercase', settingsUppercase ? '1' : '0', 365);
+    setCookie('typing_opt_numbers', settingsNumbers ? '1' : '0', 365);
+    setCookie('typing_opt_punctuation', settingsPunctuation ? '1' : '0', 365);
+    setCookie('typing_opt_special', settingsSpecial ? '1' : '0', 365);
+  }
+
   function loadSettings() {
     var lang = getCookie('typing_lang');
     var mode = getCookie('typing_mode');
@@ -53,7 +60,11 @@
       lang: (lang === 'fr' || lang === 'en') ? lang : null,
       mode: mode && ['10', '25', '50', '100', 'zen'].indexOf(mode) !== -1 ? mode : null,
       showErrors: showErrorsCookie === '1',
-      hardcore: false
+      hardcore: false,
+      uppercase: getCookie('typing_opt_uppercase') === '1',
+      numbers: getCookie('typing_opt_numbers') === '1',
+      punctuation: getCookie('typing_opt_punctuation') === '1',
+      special: getCookie('typing_opt_special') === '1'
     };
   }
 
@@ -114,6 +125,10 @@
   let aiTheme = ''; // current AI theme description
   let aiLoading = false; // whether an AI request is in-flight
   let aiThemeBtn = null; // reference to the "change theme" button in navbar
+  let settingsUppercase = false; // text setting: add uppercase letters
+  let settingsNumbers = false; // text setting: add numbers
+  let settingsPunctuation = false; // text setting: add punctuation
+  let settingsSpecial = false; // text setting: add special characters
   let charSpans = []; // pre-built span elements (one per character in text)
   let cachedLH = 0; // cached line-height in px for scroll calculations
 
@@ -167,6 +182,50 @@
     }
     currentTextIndex = idx;
     return pool[idx];
+  }
+
+  /* ---- Text variant selection (settings: uppercase, punctuation, numbers, specials) ---- */
+
+  function transformText(rawText) {
+    // Zen mode: no transformation
+    if (currentMode === 'zen') {
+      return (typeof rawText === 'string') ? rawText : (rawText ? rawText[0] : '');
+    }
+
+    // AI texts are plain strings — return as-is (no enriched variant)
+    if (typeof rawText === 'string') return rawText;
+
+    // Hardcoded texts are [base, full] arrays
+    if (!rawText) return '';
+    var base = rawText[0];
+    var full = rawText[1];
+    if (!full) return base; // safety fallback
+
+    // If no settings active, use base text directly
+    if (!settingsUppercase && !settingsPunctuation && !settingsNumbers && !settingsSpecial) {
+      return base;
+    }
+
+    // Start from fully enriched text and strip disabled layers
+    var result = full;
+
+    if (!settingsUppercase) {
+      result = result.toLowerCase();
+    }
+    if (!settingsPunctuation) {
+      result = result.replace(/[.,;!?:]/g, '');
+    }
+    if (!settingsNumbers) {
+      result = result.replace(/\d+/g, '');
+    }
+    if (!settingsSpecial) {
+      result = result.replace(/[@#$%]/g, '');
+    }
+
+    // Normalize whitespace (collapse multiple spaces, trim)
+    result = result.replace(/\s+/g, ' ').trim();
+
+    return result;
   }
 
   /**
@@ -591,6 +650,7 @@
     var prevTextIndex = currentTextIndex;
     if (forceNewText) currentTextIndex = -1;
     text = pickText(forceNewText ? prevTextIndex : undefined);
+    text = transformText(text);
     typed = [];
     startTime = null;
     paused = false;
@@ -942,19 +1002,29 @@
   /* ---- AI text generation (Gemini) ---- */
 
   function buildAiPrompt(theme) {
+    var caseRule = settingsUppercase
+      ? 'Use natural capitalization (sentence starts, proper nouns).'
+      : 'All text must be strictly lowercase — no capital letters at all.';
+
+    var allowed = ['letters', 'spaces', 'hyphens', 'apostrophes (\')'];
+    if (settingsPunctuation) allowed.push('punctuation (. , ; : ! ?)');
+    if (settingsNumbers) allowed.push('numbers (0-9)');
+    if (settingsSpecial) allowed.push('special characters (@ # $ % & * + = ~ / \\ | _ < > ^ " ( ) [ ] { })');
+
     return 'Generate very informative typing practice texts on a specific theme. ' +
       'Output ONLY valid JSON (no markdown, no code fences, no explanation). ' +
       'The JSON must have this exact structure: ' +
       '{"fr":{"10":[...],"25":[...],"50":[...],"100":[...]},"en":{"10":[...],"25":[...],"50":[...],"100":[...]}}. ' +
       'Rules: ' +
-      '- "10" array: 10 sentences each 10 words in lowercase, ' +
-      '- "25" array: 8 paragraphs each 25 words in lowercase, ' +
-      '- "50" array: 5 paragraphs each 50 words in lowercase, ' +
-      '- "100" array: 3 paragraphs each 100 words in lowercase, ' +
-      '- "fr" texts must be in French, "en" texts must be in English ' +
-      '- All texts must be about this theme: "' + theme + '" ' +
-      '- Allowed characters: apostrophes (\'), letters, spaces, hyphens  — no other special characters ' +
-      '- French accents allowed: é è ê à ù ô î â ç ' +
+      '- "10" array: 10 sentences each ~10 words, ' +
+      '- "25" array: 8 paragraphs each ~25 words, ' +
+      '- "50" array: 5 paragraphs each ~50 words, ' +
+      '- "100" array: 3 paragraphs each ~100 words, ' +
+      '- "fr" texts must be in French, "en" texts must be in English, ' +
+      '- ' + caseRule + ' ' +
+      '- Allowed characters: ' + allowed.join(', ') + ' — no other characters, ' +
+      '- French accents allowed: é è ê à ù ô î â ç, ' +
+      '- All texts must be about this theme: "' + theme + '", ' +
       '- Each text must flow naturally and be interesting to type';
   }
 
@@ -963,7 +1033,8 @@
       contents: [{ parts: [{ text: buildAiPrompt(theme) }] }],
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 8192
+        maxOutputTokens: 8192,
+        responseMimeType: 'application/json'
       }
     });
 
@@ -984,21 +1055,27 @@
     })
     .then(function(data) {
       try {
-        var raw = data.candidates &&
-                  data.candidates[0] &&
-                  data.candidates[0].content &&
-                  data.candidates[0].content.parts &&
-                  data.candidates[0].content.parts[0] &&
-                  data.candidates[0].content.parts[0].text;
+        var candidate = data.candidates && data.candidates[0];
+        if (!candidate) throw new Error('No candidates');
+
+        // Check finish reason
+        if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+          console.warn('[AI] finishReason:', candidate.finishReason);
+          if (candidate.finishReason === 'MAX_TOKENS') throw new Error('TRUNCATED');
+        }
+
+        var raw = candidate.content &&
+                  candidate.content.parts &&
+                  candidate.content.parts[0] &&
+                  candidate.content.parts[0].text;
 
         if (!raw) throw new Error('Empty response from Gemini');
 
-        // Strip markdown code fences if present
-        raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+        // Strip markdown code fences if present (greedy, handles mid-text fences)
+        raw = raw.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
 
         // Detect truncation
         if (!raw.endsWith('}')) {
-          console.warn('[AI] Truncated (finishReason:', data.candidates[0].finishReason, ')');
           throw new Error('TRUNCATED');
         }
 
@@ -1032,6 +1109,32 @@
       '<div class="zen-popup__title">Mode IA</div>' +
       '<p class="zen-popup__text">Que souhaitez-vous taper aujourd\'hui ?</p>' +
       '<input class="typing-game__ai-input typing-game__ai-theme-input" type="text" placeholder="Ex: l\'espace, la cuisine, les chats..." maxlength="100" />' +
+      '<div class="typing-game__ai-settings-row">' +
+        '<button type="button" class="typing-game__ai-settings-gear" title="Options du texte généré">' +
+          '<svg class="typing-game__settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<circle cx="12" cy="12" r="3"/>' +
+            '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>' +
+          '</svg>' +
+        '</button>' +
+        '<div class="typing-game__ai-settings-panel">' +
+          '<label class="typing-game__ai-settings-chip">' +
+            '<input type="checkbox" class="typing-game__ai-settings-chip-input" data-key="uppercase"' + (settingsUppercase ? ' checked' : '') + '/>' +
+            '<span class="typing-game__ai-settings-chip-label">ABC</span>' +
+          '</label>' +
+          '<label class="typing-game__ai-settings-chip">' +
+            '<input type="checkbox" class="typing-game__ai-settings-chip-input" data-key="punctuation"' + (settingsPunctuation ? ' checked' : '') + '/>' +
+            '<span class="typing-game__ai-settings-chip-label">.,;!?</span>' +
+          '</label>' +
+          '<label class="typing-game__ai-settings-chip">' +
+            '<input type="checkbox" class="typing-game__ai-settings-chip-input" data-key="numbers"' + (settingsNumbers ? ' checked' : '') + '/>' +
+            '<span class="typing-game__ai-settings-chip-label">123</span>' +
+          '</label>' +
+          '<label class="typing-game__ai-settings-chip">' +
+            '<input type="checkbox" class="typing-game__ai-settings-chip-input" data-key="special"' + (settingsSpecial ? ' checked' : '') + '/>' +
+            '<span class="typing-game__ai-settings-chip-label">@#$</span>' +
+          '</label>' +
+        '</div>' +
+      '</div>' +
       '<div class="typing-game__ai-status"></div>' +
       '<div class="typing-game__ai-loader">' +
         '<div class="typing-game__ai-loader-spinner"></div>' +
@@ -1045,6 +1148,27 @@
     var confirmBtn = popup.querySelector('.typing-game__ai-confirm');
     var statusEl = popup.querySelector('.typing-game__ai-status');
     var loaderEl = popup.querySelector('.typing-game__ai-loader');
+    var gearBtn = popup.querySelector('.typing-game__ai-settings-gear');
+    var panel = popup.querySelector('.typing-game__ai-settings-panel');
+
+    // Gear toggle: expand/collapse settings panel
+    gearBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var isOpen = panel.classList.toggle('typing-game__ai-settings-panel--open');
+      gearBtn.classList.toggle('typing-game__ai-settings-gear--active', isOpen);
+    });
+
+    // Chip checkboxes sync to settings state
+    popup.querySelectorAll('.typing-game__ai-settings-chip-input').forEach(function(chk) {
+      chk.addEventListener('change', function() {
+        var key = chk.getAttribute('data-key');
+        if (key === 'uppercase') settingsUppercase = chk.checked;
+        if (key === 'punctuation') settingsPunctuation = chk.checked;
+        if (key === 'numbers') settingsNumbers = chk.checked;
+        if (key === 'special') settingsSpecial = chk.checked;
+        saveSettingsOptions();
+      });
+    });
 
     // Pre-fill theme
     if (aiTheme) themeInput.value = aiTheme;
@@ -1120,6 +1244,80 @@
     });
   }
 
+  /* ---- Settings popup ---- */
+
+  function showSettingsPopup(onChanged) {
+    var overlay = document.createElement('div');
+    overlay.className = 'zen-popup-overlay';
+    var popup = document.createElement('div');
+    popup.className = 'zen-popup typing-game__settings-popup';
+    var changed = false;
+
+    var options = [
+      { key: 'uppercase', label: 'Majuscules', desc: 'ABC', get: function() { return settingsUppercase; }, set: function(v) { settingsUppercase = v; } },
+      { key: 'punctuation', label: 'Ponctuation', desc: '.,;!?', get: function() { return settingsPunctuation; }, set: function(v) { settingsPunctuation = v; } },
+      { key: 'numbers', label: 'Nombres', desc: '123', get: function() { return settingsNumbers; }, set: function(v) { settingsNumbers = v; } },
+      { key: 'special', label: 'Caract\u00e8res sp\u00e9ciaux', desc: '@#$%', get: function() { return settingsSpecial; }, set: function(v) { settingsSpecial = v; } }
+    ];
+
+    var html = '<div class="zen-popup__title">Param\u00e8tres du texte</div>' +
+      '<p class="zen-popup__text">Ajoutez des \u00e9l\u00e9ments au texte pour varier la difficult\u00e9.</p>' +
+      '<div class="typing-game__settings-options">';
+
+    options.forEach(function(opt) {
+      html += '<label class="typing-game__settings-option">' +
+        '<input type="checkbox" class="typing-game__settings-check" data-key="' + opt.key + '"' + (opt.get() ? ' checked' : '') + '/>' +
+        '<span class="typing-game__settings-toggle"></span>' +
+        '<span class="typing-game__settings-label">' + opt.label + '</span>' +
+        '<span class="typing-game__settings-desc">' + opt.desc + '</span>' +
+        '</label>';
+    });
+
+    html += '</div>' +
+      '<button class="zen-popup__btn typing-game__settings-confirm">Valider</button>';
+    popup.innerHTML = html;
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    // Bind checkbox toggle events
+    var checks = popup.querySelectorAll('.typing-game__settings-check');
+    checks.forEach(function(check) {
+      check.addEventListener('change', function() {
+        var key = check.getAttribute('data-key');
+        options.forEach(function(o) {
+          if (o.key === key) o.set(check.checked);
+        });
+        changed = true;
+      });
+    });
+
+    // Animate in
+    overlay.offsetHeight;
+    overlay.classList.add('zen-popup-overlay--visible');
+
+    function close() {
+      overlay.classList.remove('zen-popup-overlay--visible');
+      overlay.addEventListener('transitionend', function handler() {
+        overlay.removeEventListener('transitionend', handler);
+        overlay.remove();
+        if (changed) {
+          saveSettingsOptions();
+          if (typeof onChanged === 'function') onChanged();
+        }
+        container.focus();
+      });
+    }
+
+    popup.querySelector('.typing-game__settings-confirm').addEventListener('click', close);
+    overlay.addEventListener('click', function(ev) {
+      if (ev.target === overlay) close();
+    });
+    popup.addEventListener('keydown', function(e) {
+      e.stopPropagation();
+      if (e.key === 'Escape') close();
+    });
+  }
+
   /* ---- Navbar builder ---- */
 
   function buildNavbar() {
@@ -1160,6 +1358,32 @@
         }
       }
     );
+
+    // Settings gear button (inside mode group, after zen)
+    var settingsGearBtn = document.createElement('button');
+    settingsGearBtn.className = 'typing-game__settings';
+    settingsGearBtn.setAttribute('tabindex', '-1');
+    settingsGearBtn.setAttribute('title', 'Param\u00e8tres du texte');
+    settingsGearBtn.innerHTML = '<svg class="typing-game__settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="12" cy="12" r="3"/>' +
+      '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>' +
+    '</svg>';
+
+    function updateSettingsUI() {
+      var anyActive = settingsUppercase || settingsNumbers || settingsPunctuation || settingsSpecial;
+      settingsGearBtn.classList.toggle('typing-game__settings--active', anyActive);
+    }
+
+    settingsGearBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      showSettingsPopup(function() {
+        updateSettingsUI();
+        startGame(true);
+      });
+    });
+
+    updateSettingsUI();
+    modeGroup.appendChild(settingsGearBtn);
 
     navbarEl.appendChild(langGroup);
     navbarEl.appendChild(sep);
@@ -1692,6 +1916,10 @@
     if (saved.mode) currentMode = saved.mode;
     if (typeof saved.showErrors !== 'undefined') showErrors = saved.showErrors;
     if (saved.hardcore) hardcoreMode = true;
+    settingsUppercase = saved.uppercase;
+    settingsNumbers = saved.numbers;
+    settingsPunctuation = saved.punctuation;
+    settingsSpecial = saved.special;
     // If hardcore is on but mode is incompatible, force to 10
     if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
       currentMode = '10';
