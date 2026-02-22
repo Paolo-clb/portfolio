@@ -67,56 +67,15 @@
     setCookie('typing_played', '', -1);
   }
 
-  /* ---- Text data by language and mode ---- */
+  /* ---- Text data by language and mode (loaded from typing-texts.js) ---- */
 
-  const TEXTS = {
-    fr: {
-      '10': [
-       'le midlaner a flash sous la tourelle ennemie facilement',
-        'le jungler commence toujours par le buff rouge ce matin',
-        'on doit prendre le dragon avant le prochain combat equipe',
-        'le support a posé sa vision dans la rivière complètement',
-        'il faut push la botlane avant de faire le baron nashor',
-        'le toplaner split push pendant que son equipe defend milieu',
-        'premier sang pour le midlaner grâce au gank du jungler',
-        'flash et ignite sont en cooldown il faut reculer maintenant',
-      ],
-      '25': [
-        'le jungler a pris le dragon infernal en solo pendant que le midlaner roam en botlane pour aider le support a poser la vision dans la riviere et preparer le prochain objectif',
-        'le toplaner a teleporte en botlane pour un gank surprise qui a donne un double kill a notre adc maintenant on peut push la tour et prendre le herald pour accelerer la partie',
-        'notre composition est faite pour les teamfight en fin de partie il faut eviter les escarmouches en debut de game et farmer tranquillement jusqu a avoir nos objets cles pour combattre',
-      ],
-      '50': [
-        'la partie commence et le jungler decide de faire un full clear en commencant par le buff rouge il enchaine les camps rapidement et arrive au scuttle en meme temps que le jungler ennemi un duel eclate dans la riviere et grace a l aide du midlaner on remporte le premier sang le moral de l equipe est au plus haut et on decide de mettre la pression sur toutes les lanes en meme temps pour snowball notre avantage le plus vite possible',
-      ],
-      '100': [
-        'le match commence par une invade sur le buff bleu ennemi toute l equipe se regroupe dans le bush et attend le jungler adverse des qu il apparait le support engage avec son ultime et le combat eclate on recupere le buff et le premier sang sans aucune perte le jungler ennemi est en retard sur ses camps et notre jungler en profite pour faire un gank en toplaner qui reussit parfaitement le toplaner ennemi est force de rappeler et on prend la premiere tour de la partie la botlane joue de maniere aggressive et notre adc farm parfaitement atteignant deux cents cs en vingt minutes le support roam en midlane pour aider a poser de la vision autour du dragon notre midlaner controle bien la lane et empeche le midlaner adverse de roam le dragon infernal spawn et on le prend sans contestation grace au controle de vision que le support a mis en place le jungler ennemi tente un vol mais il se fait repousser par toute l equipe',
-      ],
-    },
-    en: {
-      '10': [
-        'the midlaner flashed under the enemy turret very boldly today',
-        'our jungler started red buff and ganked top lane early',
-        'we need to secure dragon before the next big team fight',
-        'the support placed deep vision wards inside the enemy jungle',
-        'push the bot lane before starting the baron nashor fight',
-        'the toplaner is split pushing while the team defends mid',
-        'first blood goes to mid thanks to a jungle gank',
-        'flash and ignite are on cooldown we should play safe',
-      ],
-      '25': [
-        'the jungler took the infernal dragon solo while the midlaner roamed to bot lane to help the support place deep wards in the river and set up vision control for the next major objective on the map',
-        'the toplaner teleported to bot lane for a surprise gank that gave our adc a double kill now we can push the tower and take the rift herald to accelerate the pace of the entire game',
-        'our team composition is designed for late game teamfights we need to avoid early skirmishes and farm safely until we reach our core item power spikes then group and force fights around objectives',
-      ],
-      '50': [
-        'the game starts and the jungler decides to do a full clear starting from red buff he clears the camps quickly and arrives at the scuttle crab at the same time as the enemy jungler a duel breaks out in the river and thanks to the midlaner roaming we secure first blood the team morale is high and we decide to put pressure on every lane at the same time to snowball our advantage as quickly as possible before the enemy team can recover',
-      ],
-      '100': [
-        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaer takes advantage by ganking top lane which succeeds perfectly the enemy toplaner is forced to recall and we take the first tower of the game the bot lane plays aggressively and our adc farms perfectly reaching two hundred cs in twenty minutes the support roams to midlane to help place vision around the dragon pit our midlaner controls the lane well and prevents the enemy midlaner from roaming the infernal dragon spawns and we take it without contest thanks to the vision control the support set up the enemy jungler attempts a steal but gets pushed back by the entire team we rotate to the mid lane and siege the tower slowly poking the enemies under turret until they are too low to defend',
-      ],
-    },
-  };
+  const TEXTS = window.TYPING_TEXTS;
+
+  /* ---- Gemini AI config ---- */
+
+  var GEMINI_API_KEY = 'AIzaSyACpBeIy-9DC-UbjLoXiltfKHbQHqdJPSE';
+  var GEMINI_MODEL = 'gemini-2.5-flash';
+  var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=';
 
   /* ---- Intro presentation text (shown before game is unlocked) ---- */
 
@@ -152,6 +111,11 @@
   let hardcoreCountdown = 0; // countdown seconds remaining
   let hardcoreTimer = null; // setInterval id for countdown
   let hardcoreFailed = false; // whether the player made an error
+  let aiMode = false; // AI text generation toggle
+  let aiTexts = null; // generated texts when AI mode is active: { fr: { '10': [...], ... }, en: { ... } }
+  let aiTheme = ''; // current AI theme description
+  let aiLoading = false; // whether an AI request is in-flight
+  let aiThemeBtn = null; // reference to the "change theme" button in navbar
 
   /* ---- DOM refs (set in init) ---- */
 
@@ -177,9 +141,18 @@
     restartEl.classList.remove('typing-game__restart--visible');
   }
 
+  function getActiveTexts() {
+    return (aiMode && aiTexts) ? aiTexts : TEXTS;
+  }
+
   function pickText() {
     if (currentMode === 'zen') return '';
-    const pool = TEXTS[currentLang][currentMode];
+    var source = getActiveTexts();
+    if (!source[currentLang] || !source[currentLang][currentMode] || source[currentLang][currentMode].length === 0) {
+      // Fallback to default texts if AI texts missing for this lang/mode
+      source = TEXTS;
+    }
+    const pool = source[currentLang][currentMode];
     // Replay same text after finishing (currentTextIndex preserved)
     if (currentTextIndex >= 0 && currentTextIndex < pool.length) {
       return pool[currentTextIndex];
@@ -956,6 +929,145 @@
     });
   }
 
+  /* ---- AI text generation (Gemini) ---- */
+
+  function buildAiPrompt(theme) {
+    return 'Generate typing practice very informative texts on a specific theme. ' +
+      'Output ONLY valid JSON (no markdown, no code fences, no explanation). ' +
+      'The JSON must have this exact structure: ' +
+      '{"fr":{"10":[...],"25":[...],"50":[...],"100":[...]},"en":{"10":[...],"25":[...],"50":[...],"100":[...]}}. ' +
+      'Rules: ' +
+      '- "10" array: 20 sentences each ~10 words in lowercase, no punctuation ' +
+      '- "25" array: 15 paragraphs each ~25 words in lowercase, no punctuation ' +
+      '- "50" array: 10 paragraphs each ~50 words in lowercase, no punctuation ' +
+      '- "100" array: 5 paragraphs each ~100 words in lowercase, no punctuation ' +
+      '- "fr" texts must be in French, "en" texts must be in English ' +
+      '- All texts must be about this theme: "' + theme + '" ' +
+      '- No accents in French texts except for common ones (é, è, ê, à, ù, ô, î, â, ç) ' +
+      '- No special characters, no apostrophes, no hyphens, only letters and spaces ' +
+      '- Each text must flow naturally and be interesting to type';
+  }
+
+  function fetchAiTexts(theme, onSuccess, onError) {
+    var body = JSON.stringify({
+      contents: [{ parts: [{ text: buildAiPrompt(theme) }] }],
+      generationConfig: {
+        temperature: 0.9,
+        maxOutputTokens: 4096
+      }
+    });
+
+    fetch(GEMINI_URL + GEMINI_API_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('API error: ' + res.status);
+      return res.json();
+    })
+    .then(function(data) {
+      var raw = data.candidates[0].content.parts[0].text;
+      // Strip markdown code fences if present
+      raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+      var parsed = JSON.parse(raw);
+      // Validate structure
+      if (!parsed.fr || !parsed.en) throw new Error('Missing fr/en keys');
+      ['10', '25', '50', '100'].forEach(function(m) {
+        if (!Array.isArray(parsed.fr[m]) || !Array.isArray(parsed.en[m])) {
+          throw new Error('Missing mode ' + m);
+        }
+      });
+      onSuccess(parsed);
+    })
+    .catch(function(err) {
+      console.error('[AI] Generation failed:', err);
+      onError(err);
+    });
+  }
+
+  /* ---- AI popup ---- */
+
+  function showAiPopup(onConfirm) {
+    var overlay = document.createElement('div');
+    overlay.className = 'zen-popup-overlay';
+    var popup = document.createElement('div');
+    popup.className = 'zen-popup typing-game__ai-popup';
+    popup.innerHTML =
+      '<div class="zen-popup__title">\uD83E\uDD16 Mode IA</div>' +
+      '<p class="zen-popup__text">Que souhaitez-vous taper aujourd\'hui ?</p>' +
+      '<input class="typing-game__ai-input" type="text" placeholder="Ex: l\'espace, la cuisine, les chats..." maxlength="100" autofocus />' +
+      '<div class="typing-game__ai-status"></div>' +
+      '<button class="zen-popup__btn typing-game__ai-confirm">Générer les textes</button>';
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    var input = popup.querySelector('.typing-game__ai-input');
+    var confirmBtn = popup.querySelector('.typing-game__ai-confirm');
+    var statusEl = popup.querySelector('.typing-game__ai-status');
+
+    // Pre-fill with current theme if any
+    if (aiTheme) input.value = aiTheme;
+
+    // Force reflow then animate in
+    overlay.offsetHeight;
+    overlay.classList.add('zen-popup-overlay--visible');
+
+    // Focus input after animation
+    setTimeout(function() { input.focus(); }, 350);
+
+    function close() {
+      overlay.classList.remove('zen-popup-overlay--visible');
+      overlay.addEventListener('transitionend', function handler() {
+        overlay.removeEventListener('transitionend', handler);
+        overlay.remove();
+        container.focus();
+      });
+    }
+
+    function doGenerate() {
+      var theme = input.value.trim();
+      if (!theme) {
+        input.classList.add('typing-game__ai-input--error');
+        setTimeout(function() { input.classList.remove('typing-game__ai-input--error'); }, 600);
+        return;
+      }
+      // Show loading state
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Génération en cours...';
+      statusEl.textContent = '';
+      statusEl.className = 'typing-game__ai-status';
+      aiLoading = true;
+
+      fetchAiTexts(theme, function(texts) {
+        aiLoading = false;
+        aiTheme = theme;
+        aiTexts = texts;
+        close();
+        if (typeof onConfirm === 'function') onConfirm();
+      }, function(err) {
+        aiLoading = false;
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Réessayer';
+        statusEl.textContent = 'Erreur de génération. Vérifiez votre clé API.';
+        statusEl.className = 'typing-game__ai-status typing-game__ai-status--error';
+      });
+    }
+
+    confirmBtn.addEventListener('click', doGenerate);
+    input.addEventListener('keydown', function(e) {
+      // Block game key handlers while popup is open
+      e.stopPropagation();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doGenerate();
+      }
+    });
+    overlay.addEventListener('click', function(ev) {
+      if (ev.target === overlay && !aiLoading) close();
+    });
+  }
+
   /* ---- Navbar builder ---- */
 
   function buildNavbar() {
@@ -1070,6 +1182,85 @@
 
     updateHardcoreUI();
     navbarEl.appendChild(hcBtn);
+
+    // ---- AI mode sub-section ----
+    var sep3 = document.createElement('span');
+    sep3.className = 'typing-game__navbar-sep';
+    sep3.textContent = '|';
+    navbarEl.appendChild(sep3);
+
+    // AI toggle button
+    var aiBtn = document.createElement('button');
+    aiBtn.className = 'typing-game__ai';
+    aiBtn.setAttribute('tabindex', '-1');
+    aiBtn.setAttribute('title', 'Mode IA');
+    // Sparkle/brain icon with two states
+    aiBtn.innerHTML = '<svg class="typing-game__ai-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<g class="typing-game__ai-off">' +
+        '<path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.4V11h-4V9.4C8.8 8.8 8 7.5 8 6a4 4 0 0 1 4-4z"/>' +
+        '<path d="M10 11v2a2 2 0 1 0 4 0v-2"/>' +
+        '<line x1="12" y1="15" x2="12" y2="19"/>' +
+        '<line x1="8" y1="19" x2="16" y2="19"/>' +
+        '<line x1="7" y1="6" x2="5" y2="4"/>' +
+        '<line x1="17" y1="6" x2="19" y2="4"/>' +
+        '<line x1="12" y1="2" x2="12" y2="0"/>' +
+      '</g>' +
+      '<g class="typing-game__ai-on">' +
+        '<path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.4V11h-4V9.4C8.8 8.8 8 7.5 8 6a4 4 0 0 1 4-4z"/>' +
+        '<path d="M10 11v2a2 2 0 1 0 4 0v-2"/>' +
+        '<line x1="12" y1="15" x2="12" y2="19"/>' +
+        '<line x1="8" y1="19" x2="16" y2="19"/>' +
+        '<circle cx="6" cy="3" r="1" fill="currentColor" stroke="none" class="typing-game__ai-spark typing-game__ai-spark--1"/>' +
+        '<circle cx="19" cy="5" r="0.8" fill="currentColor" stroke="none" class="typing-game__ai-spark typing-game__ai-spark--2"/>' +
+        '<circle cx="12" cy="0" r="0.8" fill="currentColor" stroke="none" class="typing-game__ai-spark typing-game__ai-spark--3"/>' +
+      '</g>' +
+    '</svg>';
+
+    // "Change theme" button — only visible when AI mode is active
+    aiThemeBtn = document.createElement('button');
+    aiThemeBtn.className = 'typing-game__ai-theme';
+    aiThemeBtn.setAttribute('tabindex', '-1');
+    aiThemeBtn.setAttribute('title', 'Changer le thème IA');
+    aiThemeBtn.innerHTML = '<svg class="typing-game__ai-theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>' +
+    '</svg>';
+
+    function updateAiUI() {
+      aiBtn.classList.toggle('typing-game__ai--active', aiMode);
+      container.classList.toggle('typing-game--ai', aiMode);
+      aiThemeBtn.classList.toggle('typing-game__ai-theme--visible', aiMode);
+    }
+
+    aiBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (aiMode) {
+        // Deactivate AI mode — revert to default texts
+        aiMode = false;
+        aiTexts = null;
+        aiTheme = '';
+        updateAiUI();
+        startGame(true);
+      } else {
+        // Activate — show popup
+        showAiPopup(function() {
+          aiMode = true;
+          updateAiUI();
+          startGame(true);
+        });
+      }
+    });
+
+    aiThemeBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      // Reopen popup to change theme while keeping AI mode on
+      showAiPopup(function() {
+        startGame(true);
+      });
+    });
+
+    updateAiUI();
+    navbarEl.appendChild(aiBtn);
+    navbarEl.appendChild(aiThemeBtn);
 
     return navbarEl;
   }

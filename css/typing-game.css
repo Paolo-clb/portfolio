@@ -844,6 +844,200 @@
   filter: grayscale(1);
 }
 
+/* Zen mode: also hide AI btns */
+.typing-game--zen .typing-game__ai,
+.typing-game--zen .typing-game__ai-theme {
+  opacity: 0.2;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+
+/* ---- AI mode ---- */
+
+/* AI toggle button */
+.typing-game__ai {
+  background: none;
+  border: none;
+  color: var(--clr-text-muted);
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: calc(var(--radius) * 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease, background 0.3s ease, transform 0.15s ease;
+  margin-left: 0.15rem;
+}
+
+.typing-game__ai:hover {
+  color: var(--clr-text);
+}
+
+.typing-game__ai-icon {
+  width: 1.3rem;
+  height: 1.3rem;
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+/* Off state (default) — brain visible, sparks hidden */
+.typing-game__ai-off {
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.typing-game__ai-on {
+  opacity: 0;
+  transform-origin: center;
+  transition: opacity 0.25s ease, transform 0.3s ease;
+  transform: scale(0);
+}
+
+/* Active state: swap icons + glow */
+.typing-game__ai--active {
+  color: var(--clr-primary);
+  background: rgba(242, 162, 133, 0.12);
+}
+
+.typing-game__ai--active .typing-game__ai-icon {
+  filter: drop-shadow(0 0 4px rgba(242, 162, 133, 0.5));
+}
+
+.typing-game__ai--active .typing-game__ai-off {
+  opacity: 0;
+}
+
+.typing-game__ai--active .typing-game__ai-on {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Sparkle animations */
+.typing-game__ai-spark {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.typing-game__ai--active .typing-game__ai-spark {
+  opacity: 1;
+  animation: ai-spark-pulse 1.8s ease-in-out infinite;
+}
+
+.typing-game__ai--active .typing-game__ai-spark--2 {
+  animation-delay: 0.5s;
+}
+
+.typing-game__ai--active .typing-game__ai-spark--3 {
+  animation-delay: 1s;
+}
+
+@keyframes ai-spark-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.6); }
+  50%      { opacity: 1; transform: scale(1.4); }
+}
+
+/* AI "change theme" pencil button — hidden unless AI active */
+.typing-game__ai-theme {
+  background: none;
+  border: none;
+  color: var(--clr-text-muted);
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: calc(var(--radius) * 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease, background 0.3s ease, opacity 0.3s ease, transform 0.3s ease, max-width 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+  opacity: 0;
+  max-width: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.typing-game__ai-theme--visible {
+  opacity: 1;
+  max-width: 2.5rem;
+  padding: 0.3rem;
+  margin-left: 0.1rem;
+  pointer-events: auto;
+}
+
+.typing-game__ai-theme:hover {
+  color: var(--clr-primary);
+  background: rgba(242, 162, 133, 0.12);
+}
+
+.typing-game__ai-theme-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  transition: transform 0.2s ease;
+}
+
+.typing-game__ai-theme:hover .typing-game__ai-theme-icon {
+  transform: rotate(-12deg) scale(1.1);
+}
+
+/* AI popup — input field */
+.typing-game__ai-input {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  font-family: var(--ff-body);
+  font-size: 0.95rem;
+  color: var(--clr-text);
+  background: rgba(27, 26, 39, 0.6);
+  border: 1px solid rgba(191, 153, 160, 0.2);
+  border-radius: var(--radius);
+  outline: none;
+  margin-bottom: 0.8rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  box-sizing: border-box;
+}
+
+.typing-game__ai-input::placeholder {
+  color: var(--clr-text-muted);
+  opacity: 0.6;
+}
+
+.typing-game__ai-input:focus {
+  border-color: rgba(242, 162, 133, 0.4);
+  box-shadow: 0 0 12px rgba(242, 162, 133, 0.1);
+}
+
+.typing-game__ai-input--error {
+  animation: ai-input-shake 0.4s ease;
+  border-color: rgba(242, 128, 128, 0.5) !important;
+}
+
+@keyframes ai-input-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+/* AI status / error message */
+.typing-game__ai-status {
+  font-size: 0.85rem;
+  min-height: 1.2rem;
+  margin-bottom: 0.6rem;
+  color: var(--clr-text-muted);
+  text-align: center;
+  transition: color 0.2s ease;
+}
+
+.typing-game__ai-status--error {
+  color: var(--clr-primary-hover);
+}
+
+/* Disabled confirm button during loading */
+.typing-game__ai-confirm:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none !important;
+}
+
 /* ==========================================================================
    Intro Typewriter Mode (before game is unlocked)
    ========================================================================== */
@@ -1107,4 +1301,28 @@
 @keyframes intro-btn-glow-dark {
   0%, 100% { box-shadow: 0 0 0 0 rgba(156, 39, 176, 0); }
   50%      { box-shadow: 0 0 28px rgba(156, 39, 176, 0.3), 0 0 60px rgba(156, 39, 176, 0.15); }
+}
+
+/* --- Dark: AI active --- */
+[data-theme="dark"] .typing-game__ai--active {
+  color: var(--clr-primary);
+  background: rgba(156, 39, 176, 0.15);
+}
+
+[data-theme="dark"] .typing-game__ai--active .typing-game__ai-icon {
+  filter: drop-shadow(0 0 4px rgba(156, 39, 176, 0.6));
+}
+
+[data-theme="dark"] .typing-game__ai-theme:hover {
+  background: rgba(156, 39, 176, 0.15);
+}
+
+[data-theme="dark"] .typing-game__ai-input {
+  background: rgba(26, 0, 51, 0.7);
+  border-color: rgba(63, 81, 181, 0.2);
+}
+
+[data-theme="dark"] .typing-game__ai-input:focus {
+  border-color: rgba(156, 39, 176, 0.4);
+  box-shadow: 0 0 12px rgba(156, 39, 176, 0.15);
 }
