@@ -47,8 +47,8 @@ body {
   font-family: var(--ff-body);
   font-size: var(--fs-base);
   color: var(--clr-text);
-  background: var(--clr-bg) url('../assets/images/background.jpg') no-repeat center center fixed;
-  background-size: cover;
+  background: var(--clr-bg) url('../assets/images/background.jpg') no-repeat center center / cover;
+  background-attachment: scroll;
   line-height: 1.6;
   min-height: 100vh;
 }
@@ -86,7 +86,6 @@ ul {
 .section {
   padding: var(--section-padding);
   background: rgba(16, 15, 24, 0.35);
-  backdrop-filter: blur(2px);
   position: relative;
   z-index: 1;
 }
@@ -982,6 +981,33 @@ section.hero {
   pointer-events: none;
 }
 
+/* ---- Modal scroll hints (smaller, inside modals) ---- */
+
+.modal-scroll-hint {
+  position: sticky;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--clr-text-muted);
+  opacity: 0.6;
+  animation: modal-scroll-bounce 2s ease-in-out infinite;
+  transition: opacity 0.4s ease;
+  z-index: 15;
+  display: block;
+  text-align: center;
+  pointer-events: none;
+}
+
+.modal-scroll-hint--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes modal-scroll-bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(5px); }
+}
+
 @keyframes scroll-bounce {
   0%, 100% { transform: translateX(-50%) translateY(0); }
   50%      { transform: translateX(-50%) translateY(8px); }
@@ -1454,6 +1480,8 @@ section.hero {
 }
 
 [data-theme="dark"] .skill-popup__dot--active {
+  background: #9c27b0;
+  border-color: #9c27b0;
   box-shadow: 0 0 6px rgba(156, 39, 176, 0.5);
 }
 

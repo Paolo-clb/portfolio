@@ -211,9 +211,15 @@
 
   /* ---- Draw one frame ---- */
 
-  function draw() {
-    animId = requestAnimationFrame(draw);
+  let idleFrames = 0;
+  const IDLE_THRESHOLD = 120; // ~2 seconds at 60fps
 
+  function wake() {
+    idleFrames = 0;
+    if (!animId) draw();
+  }
+
+  function draw() {
     const w = canvas.width;
     const h = canvas.height;
 
@@ -226,15 +232,18 @@
     updateAndDrawParticles(w, h);
 
     // Try connecting each frame until successful
+    let avgEnergy = 0;
     if (tryConnect()) {
       analyser.getByteFrequencyData(dataArray);
+      for (let i = 0; i < dataArray.length; i++) avgEnergy += dataArray[i];
+      avgEnergy /= dataArray.length * 255;
 
       const usableBins = Math.min(BAR_COUNT, dataArray.length);
       const totalBarWidth = (w - (usableBins - 1) * BAR_GAP) / usableBins;
       const barWidth = Math.max(totalBarWidth, 1);
 
       var isDarkTheme = document.documentElement.dataset.theme === 'dark';
-      ctx.globalAlpha = isDarkTheme ? 0.18 : 0.4;
+      ctx.globalAlpha = isDarkTheme ? 0.3 : 0.4;
       for (let i = 0; i < usableBins; i++) {
         const value = dataArray[i] / 255;
         const barH = Math.max(value * h * 0.7, MIN_BAR_HEIGHT);
@@ -256,6 +265,19 @@
       }
       ctx.globalAlpha = 1;
     }
+
+    // Idle detection: pause RAF when no audio and no interaction
+    if (impulse < 0.01 && avgEnergy < 0.005) {
+      idleFrames++;
+      if (idleFrames >= IDLE_THRESHOLD) {
+        animId = null;
+        return;
+      }
+    } else {
+      idleFrames = 0;
+    }
+
+    animId = requestAnimationFrame(draw);
   }
 
   /* ---- Resize handler ---- */
@@ -291,6 +313,7 @@
       impulseX = e.clientX;
       impulseY = e.clientY;
       impulseIsClick = true;
+      wake();
     });
 
     // Keypress: random burst
@@ -298,7 +321,13 @@
       if (e.repeat) return;
       impulse = Math.min(impulse + 0.5, 1);
       impulseIsClick = false;
+      wake();
     });
+
+    // Periodic check to wake when audio becomes available while idle
+    setInterval(function () {
+      if (!animId && window.__musicPlayerAudioCtx) wake();
+    }, 2000);
 
     draw();
   }

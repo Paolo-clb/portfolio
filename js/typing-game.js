@@ -145,7 +145,7 @@
     return (aiMode && aiTexts) ? aiTexts : TEXTS;
   }
 
-  function pickText() {
+  function pickText(avoidIndex) {
     if (currentMode === 'zen') return '';
     var source = getActiveTexts();
     if (!source[currentLang] || !source[currentLang][currentMode] || source[currentLang][currentMode].length === 0) {
@@ -158,9 +158,10 @@
       return pool[currentTextIndex];
     }
     // Pick a new random text (different from previous if possible)
+    var avoid = avoidIndex !== undefined ? avoidIndex : currentTextIndex;
     var idx;
     if (pool.length > 1) {
-      do { idx = Math.floor(Math.random() * pool.length); } while (idx === currentTextIndex);
+      do { idx = Math.floor(Math.random() * pool.length); } while (idx === avoid);
     } else {
       idx = 0;
     }
@@ -587,8 +588,9 @@
 
   function startGame(forceNewText) {
     // Reset text index to pick a new random text unless replaying after finish
+    var prevTextIndex = currentTextIndex;
     if (forceNewText) currentTextIndex = -1;
-    text = pickText();
+    text = pickText(forceNewText ? prevTextIndex : undefined);
     typed = [];
     startTime = null;
     paused = false;
@@ -945,10 +947,10 @@
       'The JSON must have this exact structure: ' +
       '{"fr":{"10":[...],"25":[...],"50":[...],"100":[...]},"en":{"10":[...],"25":[...],"50":[...],"100":[...]}}. ' +
       'Rules: ' +
-      '- "10" array: 10 sentences each ~10 words in lowercase, ' +
-      '- "25" array: 8 paragraphs each ~25 words in lowercase, ' +
-      '- "50" array: 5 paragraphs each ~50 words in lowercase, ' +
-      '- "100" array: 3 paragraphs each ~100 words in lowercase, ' +
+      '- "10" array: 10 sentences each 10 words in lowercase, ' +
+      '- "25" array: 8 paragraphs each 25 words in lowercase, ' +
+      '- "50" array: 5 paragraphs each 50 words in lowercase, ' +
+      '- "100" array: 3 paragraphs each 100 words in lowercase, ' +
       '- "fr" texts must be in French, "en" texts must be in English ' +
       '- All texts must be about this theme: "' + theme + '" ' +
       '- Allowed characters: apostrophes (\'), letters, spaces, hyphens  — no other special characters ' +
@@ -1027,7 +1029,7 @@
     popup.className = 'zen-popup typing-game__ai-popup';
 
     popup.innerHTML =
-      '<div class="zen-popup__title">\uD83E\uDD16 Mode IA</div>' +
+      '<div class="zen-popup__title">Mode IA</div>' +
       '<p class="zen-popup__text">Que souhaitez-vous taper aujourd\'hui ?</p>' +
       '<input class="typing-game__ai-input typing-game__ai-theme-input" type="text" placeholder="Ex: l\'espace, la cuisine, les chats..." maxlength="100" />' +
       '<div class="typing-game__ai-status"></div>' +
@@ -1670,6 +1672,11 @@
     // --- Desktop: full game ---
     buildGameDOM();
     startGame(true);
+
+    // Re-render on theme change to update trail/combo colors
+    new MutationObserver(function () {
+      if (!finished && typed.length > 0) render();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
   // Boot when DOM is ready

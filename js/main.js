@@ -127,6 +127,20 @@ function createProjectsModal() {
   });
 }
 
+function createScrollHint(modalEl, storageKey) {
+  if (localStorage.getItem(storageKey)) return;
+  var hint = document.createElement('div');
+  hint.className = 'modal-scroll-hint';
+  hint.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
+  modalEl.appendChild(hint);
+  var onScroll = function () {
+    hint.classList.add('modal-scroll-hint--hidden');
+    localStorage.setItem(storageKey, '1');
+    modalEl.removeEventListener('scroll', onScroll);
+  };
+  modalEl.addEventListener('scroll', onScroll, { passive: true });
+}
+
 function openProjectsModal() {
   let overlay = document.getElementById('projects-modal');
   if (!overlay) {
@@ -137,6 +151,9 @@ function openProjectsModal() {
   void overlay.offsetWidth;
   overlay.classList.add('modal-overlay--open');
   document.body.style.overflow = 'hidden';
+  // Scroll hint (first visit only)
+  var modal = overlay.querySelector('.modal');
+  if (modal) createScrollHint(modal, 'modal_projects_hint_seen');
 }
 
 function closeProjectsModal() {
@@ -255,6 +272,9 @@ function openProjectDetail(index) {
   void overlay.offsetWidth;
   overlay.classList.add('modal-overlay--open');
   document.body.style.overflow = 'hidden';
+
+  // Scroll hint (first visit only)
+  createScrollHint(modal, 'modal_detail_hint_seen');
 
   // Close handlers
   closeBtn.addEventListener('click', () => closeProjectDetail());

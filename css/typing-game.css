@@ -941,23 +941,22 @@
   border: none;
   color: var(--clr-text-muted);
   cursor: pointer;
-  padding: 0.3rem;
+  padding: 0;
   border-radius: calc(var(--radius) * 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.3s ease, background 0.3s ease, opacity 0.3s ease, transform 0.3s ease, max-width 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+  transition: color 0.3s ease, background 0.3s ease, opacity 0.3s ease, transform 0.3s ease, width 0.3s ease, padding 0.3s ease, margin 0.3s ease;
   opacity: 0;
-  max-width: 0;
-  padding: 0;
-  margin: 0;
+  width: 0;
   overflow: hidden;
   pointer-events: none;
+  flex-shrink: 0;
 }
 
 .typing-game__ai-theme--visible {
   opacity: 1;
-  max-width: 2.5rem;
+  width: 1.7rem;
   padding: 0.3rem;
   margin-left: 0.1rem;
   pointer-events: auto;
