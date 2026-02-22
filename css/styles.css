@@ -48,7 +48,7 @@ body {
   font-size: var(--fs-base);
   color: var(--clr-text);
   background: var(--clr-bg) url('../assets/images/background.jpg') no-repeat center center / cover;
-  background-attachment: scroll;
+  background-attachment: fixed;
   line-height: 1.6;
   min-height: 100vh;
 }
@@ -1692,6 +1692,17 @@ section.hero {
 @media (max-width: 600px) and (pointer: coarse) {
   .scroll-hint {
     bottom: 8rem;
+  }
+}
+
+/* ---- Mobile backgrounds ---- */
+@media (max-width: 768px) {
+  body {
+    background-attachment: scroll;
+    background-image: url('../assets/images/backgroundMobile.jpg');
+  }
+  [data-theme="dark"] body {
+    background-image: url('../assets/images/background2Mobile.gif');
   }
 }
 
