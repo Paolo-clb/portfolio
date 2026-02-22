@@ -71,11 +71,9 @@
 
   const TEXTS = window.TYPING_TEXTS;
 
-  /* ---- Gemini AI config ---- */
+  /* ---- AI config (Cloudflare Worker proxy) ---- */
 
-  var GEMINI_API_KEY = 'AIzaSyACpBeIy-9DC-UbjLoXiltfKHbQHqdJPSE';
-  var GEMINI_MODEL = 'gemini-2.5-flash';
-  var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=';
+  var WORKER_URL = 'https://gemini-proxy.colombatpaolo.workers.dev'; // <-- remplace par ton URL worker
 
   /* ---- Intro presentation text (shown before game is unlocked) ---- */
 
@@ -953,22 +951,27 @@
       contents: [{ parts: [{ text: buildAiPrompt(theme) }] }],
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 16384
+        maxOutputTokens: 8192
       }
     });
 
-    fetch(GEMINI_URL + GEMINI_API_KEY, {
+    fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: body
     })
     .then(function(res) {
+      if (res.status === 403) {
+        throw new Error('ORIGIN_BLOCKED');
+      }
+      if (res.status === 429) {
+        throw new Error('RATE_LIMIT');
+      }
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
     })
     .then(function(data) {
       try {
-        // Gemini response structure: candidates[0].content.parts[0].text
         var raw = data.candidates &&
                   data.candidates[0] &&
                   data.candidates[0].content &&
@@ -978,24 +981,30 @@
 
         if (!raw) throw new Error('Empty response from Gemini');
 
-        // Strip markdown code fences if model added them despite instructions
+        // Strip markdown code fences if present
         raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
-        // Detect truncation before parsing
+        // Detect truncation
         if (!raw.endsWith('}')) {
-          console.warn('[AI] Response appears truncated (finishReason:', 
-            data.candidates[0].finishReason, ')');
-          throw new Error('Response truncated — increase maxOutputTokens or reduce requested texts');
+          console.warn('[AI] Truncated (finishReason:', data.candidates[0].finishReason, ')');
+          throw new Error('TRUNCATED');
         }
 
         var parsed = JSON.parse(raw);
+        // Validate structure
+        if (!parsed.fr || !parsed.en) throw new Error('Missing fr/en');
+        ['10', '25', '50', '100'].forEach(function(m) {
+          if (!Array.isArray(parsed.fr[m]) || !Array.isArray(parsed.en[m])) {
+            throw new Error('Missing mode ' + m);
+          }
+        });
         onSuccess(parsed);
       } catch (err) {
-        onError && onError(err);
+        onError(err);
       }
     })
     .catch(function(err) {
-      onError && onError(err);
+      onError(err);
     });
   }
 
@@ -1006,28 +1015,28 @@
     overlay.className = 'zen-popup-overlay';
     var popup = document.createElement('div');
     popup.className = 'zen-popup typing-game__ai-popup';
+
     popup.innerHTML =
       '<div class="zen-popup__title">\uD83E\uDD16 Mode IA</div>' +
       '<p class="zen-popup__text">Que souhaitez-vous taper aujourd\'hui ?</p>' +
-      '<input class="typing-game__ai-input" type="text" placeholder="Ex: l\'espace, la cuisine, les chats..." maxlength="100" autofocus />' +
+      '<input class="typing-game__ai-input typing-game__ai-theme-input" type="text" placeholder="Ex: l\'espace, la cuisine, les chats..." maxlength="100" />' +
       '<div class="typing-game__ai-status"></div>' +
       '<button class="zen-popup__btn typing-game__ai-confirm">Générer les textes</button>';
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
 
-    var input = popup.querySelector('.typing-game__ai-input');
+    var themeInput = popup.querySelector('.typing-game__ai-theme-input');
     var confirmBtn = popup.querySelector('.typing-game__ai-confirm');
     var statusEl = popup.querySelector('.typing-game__ai-status');
 
-    // Pre-fill with current theme if any
-    if (aiTheme) input.value = aiTheme;
+    // Pre-fill theme
+    if (aiTheme) themeInput.value = aiTheme;
 
     // Force reflow then animate in
     overlay.offsetHeight;
     overlay.classList.add('zen-popup-overlay--visible');
 
-    // Focus input after animation
-    setTimeout(function() { input.focus(); }, 350);
+    setTimeout(function() { themeInput.focus(); }, 350);
 
     function close() {
       overlay.classList.remove('zen-popup-overlay--visible');
@@ -1038,14 +1047,22 @@
       });
     }
 
+    function getErrorMsg(err) {
+      var msg = err && err.message || '';
+      if (msg === 'ORIGIN_BLOCKED') return 'Origine non autorisée.';
+      if (msg === 'RATE_LIMIT') return 'Trop de requêtes. Attendez un moment.';
+      if (msg === 'TRUNCATED') return 'Réponse tronquée. Réessayez.';
+      return 'Erreur de génération. Réessayez.';
+    }
+
     function doGenerate() {
-      var theme = input.value.trim();
+      var theme = themeInput.value.trim();
       if (!theme) {
-        input.classList.add('typing-game__ai-input--error');
-        setTimeout(function() { input.classList.remove('typing-game__ai-input--error'); }, 600);
+        themeInput.classList.add('typing-game__ai-input--error');
+        setTimeout(function() { themeInput.classList.remove('typing-game__ai-input--error'); }, 600);
         return;
       }
-      // Show loading state
+      // Loading state
       confirmBtn.disabled = true;
       confirmBtn.textContent = 'Génération en cours...';
       statusEl.textContent = '';
@@ -1062,14 +1079,13 @@
         aiLoading = false;
         confirmBtn.disabled = false;
         confirmBtn.textContent = 'Réessayer';
-        statusEl.textContent = 'Erreur de génération. Réessayez plus tard.';
+        statusEl.textContent = getErrorMsg(err);
         statusEl.className = 'typing-game__ai-status typing-game__ai-status--error';
       });
     }
 
     confirmBtn.addEventListener('click', doGenerate);
-    input.addEventListener('keydown', function(e) {
-      // Block game key handlers while popup is open
+    popup.addEventListener('keydown', function(e) {
       e.stopPropagation();
       if (e.key === 'Enter') {
         e.preventDefault();
