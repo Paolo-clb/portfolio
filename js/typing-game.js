@@ -197,9 +197,9 @@
         correctInBatch++;
         // Include the space after if typed correctly
         if (wordEnd < text.length && typed.length > wordEnd && typed[wordEnd] === ' ') {
-          lastCorrectEnd = wordEnd + 1;
+          lastCorrect_end = wordEnd + 1;
         } else {
-          lastCorrectEnd = wordEnd;
+          lastCorrect_end = wordEnd;
         }
       }
 
@@ -210,9 +210,9 @@
     }
 
     // If we found at least one correct word, lock everything up to it
-    if (lastCorrectEnd > lockedIndex) {
+    if (lastCorrect_end > lockedIndex) {
       correctWords += correctInBatch;
-      lockedIndex = lastCorrectEnd;
+      lockedIndex = lastCorrect_end;
     }
   }
 
@@ -275,15 +275,15 @@
           cls += ' typing-game__char--trail';
           var trailOpacity = (1 - (distFromCursor - 1) / trailLen) * trailSpeed;
           trailOpacity = Math.max(0.05, Math.min(1, trailOpacity));
-          trailAttr = ' style=\"--trail-opacity:' + trailOpacity.toFixed(3)
+          trailAttr = ' style="--trail-opacity:' + trailOpacity.toFixed(3)
             + ';--trail-r:' + trailR
             + ';--trail-g:' + trailG
-            + ';--trail-b:' + trailB + '\"';
+            + ';--trail-b:' + trailB + '"';
         }
       }
 
       var ch = typed[i] === ' ' ? ' ' : typed[i];
-      html += '<span class=\"' + cls + '\"' + trailAttr + '>' + ch + '</span>';
+      html += '<span class="' + cls + '"' + trailAttr + '>' + ch + '</span>';
     }
 
     // Cursor after all typed chars
@@ -937,10 +937,10 @@
       'The JSON must have this exact structure: ' +
       '{"fr":{"10":[...],"25":[...],"50":[...],"100":[...]},"en":{"10":[...],"25":[...],"50":[...],"100":[...]}}. ' +
       'Rules: ' +
-      '- "10" array: 20 sentences each ~10 words in lowercase, ' +
-      '- "25" array: 15 paragraphs each ~25 words in lowercase, ' +
-      '- "50" array: 10 paragraphs each ~50 words in lowercase, ' +
-      '- "100" array: 5 paragraphs each ~100 words in lowercase, ' +
+      '- "10" array: 10 sentences each ~10 words in lowercase, ' +
+      '- "25" array: 8 paragraphs each ~25 words in lowercase, ' +
+      '- "50" array: 5 paragraphs each ~50 words in lowercase, ' +
+      '- "100" array: 3 paragraphs each ~100 words in lowercase, ' +
       '- "fr" texts must be in French, "en" texts must be in English ' +
       '- All texts must be about this theme: "' + theme + '" ' +
       '- No accents in French texts except for common ones (é, è, ê, à, ù, ô, î, â, ç) ' +
@@ -953,7 +953,7 @@
       contents: [{ parts: [{ text: buildAiPrompt(theme) }] }],
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 4096
+        maxOutputTokens: 16384
       }
     });
 
@@ -963,26 +963,39 @@
       body: body
     })
     .then(function(res) {
-      if (!res.ok) throw new Error('API error: ' + res.status);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
     })
     .then(function(data) {
-      var raw = data.candidates[0].content.parts[0].text;
-      // Strip markdown code fences if present
-      raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-      var parsed = JSON.parse(raw);
-      // Validate structure
-      if (!parsed.fr || !parsed.en) throw new Error('Missing fr/en keys');
-      ['10', '25', '50', '100'].forEach(function(m) {
-        if (!Array.isArray(parsed.fr[m]) || !Array.isArray(parsed.en[m])) {
-          throw new Error('Missing mode ' + m);
+      try {
+        // Gemini response structure: candidates[0].content.parts[0].text
+        var raw = data.candidates &&
+                  data.candidates[0] &&
+                  data.candidates[0].content &&
+                  data.candidates[0].content.parts &&
+                  data.candidates[0].content.parts[0] &&
+                  data.candidates[0].content.parts[0].text;
+
+        if (!raw) throw new Error('Empty response from Gemini');
+
+        // Strip markdown code fences if model added them despite instructions
+        raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+        // Detect truncation before parsing
+        if (!raw.endsWith('}')) {
+          console.warn('[AI] Response appears truncated (finishReason:', 
+            data.candidates[0].finishReason, ')');
+          throw new Error('Response truncated — increase maxOutputTokens or reduce requested texts');
         }
-      });
-      onSuccess(parsed);
+
+        var parsed = JSON.parse(raw);
+        onSuccess(parsed);
+      } catch (err) {
+        onError && onError(err);
+      }
     })
     .catch(function(err) {
-      console.error('[AI] Generation failed:', err);
-      onError(err);
+      onError && onError(err);
     });
   }
 
