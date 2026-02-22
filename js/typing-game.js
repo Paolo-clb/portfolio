@@ -943,8 +943,8 @@
       '- "100" array: 3 paragraphs each ~100 words in lowercase, ' +
       '- "fr" texts must be in French, "en" texts must be in English ' +
       '- All texts must be about this theme: "' + theme + '" ' +
-      '- No accents in French texts except for common ones (é, è, ê, à, ù, ô, î, â, ç) ' +
-      '- No special characters, only letters and spaces ' +
+      '- Allowed characters: apostrophes (\'), letters, spaces, hyphens  — no other special characters ' +
+      '- French accents allowed: é è ê à ù ô î â ç ' +
       '- Each text must flow naturally and be interesting to type';
   }
 
