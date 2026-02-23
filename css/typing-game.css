@@ -1291,6 +1291,77 @@
   opacity: 0.6;
 }
 
+/* ---- AI popup slider (word length) ---- */
+
+.typing-game__ai-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: calc(var(--radius) * 0.7);
+}
+
+.typing-game__ai-options--loading .typing-game__ai-slider-row {
+  opacity: 0.25;
+  pointer-events: none;
+  filter: grayscale(1);
+  transition: opacity 0.35s ease, filter 0.35s ease;
+}
+
+.typing-game__ai-slider {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(161, 161, 166, 0.25);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.typing-game__ai-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: var(--clr-primary);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 4px rgba(242, 162, 133, 0.3);
+  transition: box-shadow 0.2s ease;
+}
+
+.typing-game__ai-slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 8px rgba(242, 162, 133, 0.5);
+}
+
+.typing-game__ai-slider::-moz-range-thumb {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: var(--clr-primary);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 4px rgba(242, 162, 133, 0.3);
+}
+
+.typing-game__ai-slider::-moz-range-track {
+  height: 4px;
+  background: rgba(161, 161, 166, 0.25);
+  border-radius: 2px;
+  border: none;
+}
+
+.typing-game__ai-slider-val {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--clr-primary);
+  min-width: 1.5rem;
+  text-align: center;
+  font-family: 'Courier New', Courier, monospace;
+}
+
 .typing-game__ai-input::placeholder {
   color: var(--clr-text-muted);
   opacity: 0.6;
@@ -1728,6 +1799,18 @@
 
 [data-theme="dark"] .typing-game__ai-opt-check:checked + .typing-game__ai-opt-toggle::after {
   background: var(--clr-primary);
+}
+
+[data-theme="dark"] .typing-game__ai-slider::-webkit-slider-thumb {
+  box-shadow: 0 0 4px rgba(156, 39, 176, 0.4);
+}
+
+[data-theme="dark"] .typing-game__ai-slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 8px rgba(156, 39, 176, 0.6);
+}
+
+[data-theme="dark"] .typing-game__ai-slider::-moz-range-thumb {
+  box-shadow: 0 0 4px rgba(156, 39, 176, 0.4);
 }
 
 /* --- Dark: Settings gear --- */

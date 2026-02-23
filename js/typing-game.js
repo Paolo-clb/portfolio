@@ -55,6 +55,7 @@
   function saveAiOptions() {
     setCookie('typing_ai_uppercase', aiUppercase ? '1' : '0', 365);
     setCookie('typing_ai_punctuation', aiPunctuation ? '1' : '0', 365);
+    setCookie('typing_ai_wordlen', String(aiWordLength), 365);
   }
 
   function loadSettings() {
@@ -72,6 +73,7 @@
       special: getCookie('typing_opt_special') === '1',
       aiUppercase: getCookie('typing_ai_uppercase') === '1',
       aiPunctuation: getCookie('typing_ai_punctuation') === '1',
+      aiWordLength: parseInt(getCookie('typing_ai_wordlen')) || 0,
     };
   }
 
@@ -134,6 +136,7 @@
   let aiThemeBtn = null; // reference to the "change theme" button in navbar
   let aiUppercase = false; // AI popup setting: uppercase (independent from settings gear)
   let aiPunctuation = false; // AI popup setting: punctuation (independent from settings gear)
+  let aiWordLength = 0; // AI popup setting: max word length (0 = unlimited)
   let settingsUppercase = false; // text setting: add uppercase letters
   let settingsNumbers = false; // text setting: add numbers
   let settingsPunctuation = false; // text setting: add punctuation
@@ -1020,26 +1023,10 @@
   /* ---- AI text generation (Gemini) ---- */
 
   function buildAiPrompt(theme) {
-    var caseRule, caseReminder;
-    if (aiUppercase) {
-      caseRule = 'CAPITALIZATION: ON — Use natural capitalization. Capitalize the first letter of each sentence and proper nouns.';
-      caseReminder = 'Capitalize naturally.';
-    } else {
-      caseRule = 'CAPITALIZATION: OFF — Every single letter must be lowercase. No capital letters whatsoever, not even at the start of sentences or for proper nouns.';
-      caseReminder = 'ALL LOWERCASE, zero capital letters.';
+    var wordLenRule = '';
+    if (aiWordLength > 0) {
+      wordLenRule = '\n5. WORD LENGTH: Every word must be ' + aiWordLength + ' characters or fewer.';
     }
-
-    var punctRule, punctReminder;
-    if (aiPunctuation) {
-      punctRule = 'PUNCTUATION: ON — Use natural punctuation marks: periods (.), commas (,), semicolons (;), colons (:), exclamation marks (!), question marks (?).';
-      punctReminder = 'Include natural punctuation.';
-    } else {
-      punctRule = 'PUNCTUATION: OFF — Do NOT include any punctuation marks. No periods, no commas, no semicolons, no colons, no exclamation marks, no question marks. Zero punctuation.';
-      punctReminder = 'ZERO punctuation marks anywhere.';
-    }
-
-    var allowedChars = 'letters, spaces, hyphens, apostrophes (\')';
-    if (aiPunctuation) allowedChars += ', periods, commas, semicolons, colons, exclamation marks, question marks';
 
     return 'You are a typing practice text generator. Output ONLY valid JSON.\n\n' +
       'JSON structure (strict): {"fr":{"10":[...],"25":[...],"50":[...],"100":[...]},"en":{"10":[...],"25":[...],"50":[...],"100":[...]}}\n\n' +
@@ -1048,15 +1035,34 @@
       '- "25": 8 paragraphs, each ~25 words\n' +
       '- "50": 5 paragraphs, each ~50 words\n' +
       '- "100": 3 paragraphs, each ~100 words\n\n' +
-      'CRITICAL FORMATTING RULES (must follow exactly):\n' +
-      '1. ' + caseRule + '\n' +
-      '2. ' + punctRule + '\n' +
-      '3. Allowed characters ONLY: ' + allowedChars + '. No other special characters.\n' +
-      '4. French accents allowed: é è ê à ù ô î â ç\n' +
-      '5. "fr" texts in French, "en" texts in English\n\n' +
-      'REMINDER: ' + caseReminder + ' ' + punctReminder + '\n\n' +
+      'FORMATTING RULES:\n' +
+      '1. Use natural capitalization (capitalize first letter of sentences and proper nouns)\n' +
+      '2. Use natural punctuation (periods, commas, semicolons, colons, exclamation marks, question marks)\n' +
+      '3. Allowed characters: letters, spaces, hyphens, apostrophes (\'), periods, commas, semicolons, colons, exclamation marks, question marks\n' +
+      '4. French accents allowed: é è ê à ù ô î â ç' + wordLenRule + '\n\n' +
+      '"fr" texts in French, "en" texts in English.\n' +
       'Theme: "' + theme + '"\n' +
-      'Make texts informative, varied, and interesting to type.';
+      'Make texts very informative, varied, and interesting to type.';
+  }
+
+  function postProcessAiTexts(parsed) {
+    var langs = ['fr', 'en'];
+    var modes = ['10', '25', '50', '100'];
+    langs.forEach(function(lang) {
+      if (!parsed[lang]) return;
+      modes.forEach(function(mode) {
+        if (!Array.isArray(parsed[lang][mode])) return;
+        parsed[lang][mode] = parsed[lang][mode].map(function(text) {
+          if (typeof text !== 'string') return text;
+          if (!aiUppercase) text = text.toLowerCase();
+          if (!aiPunctuation) {
+            text = text.replace(/[.,;:!?]/g, '');
+            text = text.replace(/ {2,}/g, ' ').trim();
+          }
+          return text;
+        });
+      });
+    });
   }
 
   function fetchAiTexts(theme, onSuccess, onError) {
@@ -1156,6 +1162,11 @@
           '<span class="typing-game__ai-opt-label">Ponctuation</span>' +
           '<span class="typing-game__ai-opt-hint">.,;!?</span>' +
         '</label>' +
+        '<div class="typing-game__ai-slider-row">' +
+          '<span class="typing-game__ai-opt-label">Long. max des mots</span>' +
+          '<input type="range" class="typing-game__ai-slider" min="4" max="16" step="1" value="16" />' +
+          '<span class="typing-game__ai-slider-val">\u221E</span>' +
+        '</div>' +
       '</div>' +
       '<div class="typing-game__ai-status"></div>' +
       '<div class="typing-game__ai-loader">' +
@@ -1175,6 +1186,7 @@
     // Local copies — only committed on successful generate
     var localUppercase = aiUppercase;
     var localPunctuation = aiPunctuation;
+    var localWordLength = aiWordLength;
 
     popup.querySelectorAll('.typing-game__ai-opt-check').forEach(function(chk) {
       chk.addEventListener('change', function() {
@@ -1182,6 +1194,17 @@
         if (key === 'uppercase') localUppercase = chk.checked;
         if (key === 'punctuation') localPunctuation = chk.checked;
       });
+    });
+
+    // Slider for word length
+    var sliderEl = popup.querySelector('.typing-game__ai-slider');
+    var sliderValEl = popup.querySelector('.typing-game__ai-slider-val');
+    sliderEl.value = localWordLength === 0 ? '16' : String(localWordLength);
+    sliderValEl.textContent = localWordLength === 0 ? '\u221E' : String(localWordLength);
+    sliderEl.addEventListener('input', function() {
+      var v = parseInt(sliderEl.value);
+      localWordLength = v >= 16 ? 0 : v;
+      sliderValEl.textContent = localWordLength === 0 ? '\u221E' : String(localWordLength);
     });
 
     // Pre-fill theme
@@ -1202,6 +1225,7 @@
         if (!generated && !isReopen) {
           aiUppercase = localUppercase;
           aiPunctuation = localPunctuation;
+          aiWordLength = localWordLength;
           aiTheme = themeInput.value.trim();
           saveAiOptions();
         }
@@ -1241,8 +1265,10 @@
         // Commit AI toggle values on successful generation
         aiUppercase = localUppercase;
         aiPunctuation = localPunctuation;
+        aiWordLength = localWordLength;
         aiTheme = theme;
         saveAiOptions();
+        postProcessAiTexts(texts);
         aiTexts = texts;
         close(true);
         if (typeof onConfirm === 'function') onConfirm();
@@ -1940,6 +1966,7 @@
     settingsSpecial = saved.special;
     aiUppercase = saved.aiUppercase;
     aiPunctuation = saved.aiPunctuation;
+    aiWordLength = saved.aiWordLength || 0;
     // If hardcore is on but mode is incompatible, force to 10
     if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
       currentMode = '10';
