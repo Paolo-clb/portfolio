@@ -1040,61 +1040,22 @@
   }
 
   function fetchAiTexts(theme, onSuccess, onError) {
-    var body = JSON.stringify({ theme: theme });
-
     fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: body
+      body: JSON.stringify({ theme: theme })
     })
     .then(function(res) {
-      if (res.status === 403) {
-        throw new Error('ORIGIN_BLOCKED');
+      if (!res.ok) {
+        return res.json().then(function(d) {
+          throw new Error(d.error || 'HTTP ' + res.status);
+        });
       }
-      if (res.status === 429) {
-        throw new Error('RATE_LIMIT');
-      }
-      if (!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
     })
-    .then(function(data) {
-      try {
-        var candidate = data.candidates && data.candidates[0];
-        if (!candidate) throw new Error('No candidates');
-
-        // Check finish reason
-        if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-          console.warn('[AI] finishReason:', candidate.finishReason);
-          if (candidate.finishReason === 'MAX_TOKENS') throw new Error('TRUNCATED');
-        }
-
-        var raw = candidate.content &&
-                  candidate.content.parts &&
-                  candidate.content.parts[0] &&
-                  candidate.content.parts[0].text;
-
-        if (!raw) throw new Error('Empty response from Gemini');
-
-        // Strip markdown code fences if present (greedy, handles mid-text fences)
-        raw = raw.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
-
-        // Detect truncation
-        if (!raw.endsWith('}')) {
-          throw new Error('TRUNCATED');
-        }
-
-        var parsed = JSON.parse(raw);
-        // Validate structure
-        if (!parsed.fr || !parsed.en) throw new Error('Missing fr/en');
-        ['10', '25', '50', '100'].forEach(function(m) {
-          if (!Array.isArray(parsed.fr[m]) || !Array.isArray(parsed.en[m])) {
-            throw new Error('Missing mode ' + m);
-          }
-        });
-        onSuccess(parsed);
-      } catch (err) {
-        onError(err);
-      }
+    .then(function(parsed) {
+      if (parsed.error) throw new Error(parsed.error);
+      onSuccess(parsed);
     })
     .catch(function(err) {
       onError(err);
@@ -1185,8 +1146,9 @@
     function getErrorMsg(err) {
       var msg = err && err.message || '';
       if (msg === 'ORIGIN_BLOCKED') return 'Origine non autorisée.';
-      if (msg === 'RATE_LIMIT') return 'Trop de requêtes. Attendez un moment.';
+      if (msg === 'RATE_LIMIT') return 'Trop de requêtes aujourd\'hui. Attendez demain !';
       if (msg === 'TRUNCATED') return 'Réponse tronquée. Réessayez.';
+      if (msg === 'TIMEOUT') return 'Délai dépassé. Réessayez.';
       return 'Erreur de génération. Réessayez.';
     }
 
