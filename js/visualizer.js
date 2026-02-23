@@ -10,7 +10,6 @@
   let canvas, ctx;
   let analyser = null;
   let dataArray = null;
-  let animId = null;
   let connected = false;
 
   // Bar appearance
@@ -211,14 +210,6 @@
 
   /* ---- Draw one frame ---- */
 
-  let idleFrames = 0;
-  const IDLE_THRESHOLD = 120; // ~2 seconds at 60fps
-
-  function wake() {
-    idleFrames = 0;
-    if (!animId) draw();
-  }
-
   function draw() {
     const w = canvas.width;
     const h = canvas.height;
@@ -266,18 +257,7 @@
       ctx.globalAlpha = 1;
     }
 
-    // Idle detection: pause RAF when no audio and no interaction
-    if (impulse < 0.01 && avgEnergy < 0.005) {
-      idleFrames++;
-      if (idleFrames >= IDLE_THRESHOLD) {
-        animId = null;
-        return;
-      }
-    } else {
-      idleFrames = 0;
-    }
-
-    animId = requestAnimationFrame(draw);
+    requestAnimationFrame(draw);
   }
 
   /* ---- Resize handler ---- */
@@ -313,7 +293,6 @@
       impulseX = e.clientX;
       impulseY = e.clientY;
       impulseIsClick = true;
-      wake();
     });
 
     // Keypress: random burst
@@ -321,13 +300,7 @@
       if (e.repeat) return;
       impulse = Math.min(impulse + 0.5, 1);
       impulseIsClick = false;
-      wake();
     });
-
-    // Periodic check to wake when audio becomes available while idle
-    setInterval(function () {
-      if (!animId && window.__musicPlayerAudioCtx) wake();
-    }, 2000);
 
     draw();
   }

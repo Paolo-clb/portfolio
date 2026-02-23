@@ -1146,7 +1146,7 @@
     function getErrorMsg(err) {
       var msg = err && err.message || '';
       if (msg === 'ORIGIN_BLOCKED') return 'Origine non autorisée.';
-      if (msg === 'RATE_LIMIT') return 'Trop de requêtes aujourd\'hui. Attendez demain !';
+      if (msg === 'RATE_LIMIT') return 'Quota journalier atteint. Réessayez demain !';
       if (msg === 'TRUNCATED') return 'Réponse tronquée. Réessayez.';
       if (msg === 'TIMEOUT') return 'Délai dépassé. Réessayez.';
       return 'Erreur de génération. Réessayez.';
