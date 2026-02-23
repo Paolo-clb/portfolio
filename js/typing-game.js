@@ -1140,7 +1140,7 @@
     popup.className = 'zen-popup typing-game__ai-popup';
 
     popup.innerHTML =
-      '<div class="zen-popup__title">Mode IA</div>' +
+      '<div class="zen-popup__title">Générateur IA</div>' +
       '<p class="zen-popup__text">Que souhaitez-vous taper aujourd\'hui ?</p>' +
       '<input class="typing-game__ai-input typing-game__ai-theme-input" type="text" placeholder="Ex: l\'espace, la cuisine, les chats..." maxlength="100" />' +
       '<div class="typing-game__ai-options">' +

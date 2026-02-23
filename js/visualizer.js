@@ -243,7 +243,7 @@
       const barWidth = Math.max(totalBarWidth, 1);
 
       var isDarkTheme = document.documentElement.dataset.theme === 'dark';
-      ctx.globalAlpha = isDarkTheme ? 0.3 : 0.4;
+      ctx.globalAlpha = isDarkTheme ? 0.35 : 0.4;
       for (let i = 0; i < usableBins; i++) {
         const value = dataArray[i] / 255;
         const barH = Math.max(value * h * 0.7, MIN_BAR_HEIGHT);
