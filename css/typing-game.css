@@ -1295,10 +1295,16 @@
 
 .typing-game__ai-slider-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.3rem 0.7rem;
   padding: 0.45rem 0.7rem;
   border-radius: calc(var(--radius) * 0.7);
+}
+
+.typing-game__ai-slider-row > .typing-game__ai-opt-label {
+  width: 100%;
+  margin-bottom: 0.05rem;
 }
 
 .typing-game__ai-options--loading .typing-game__ai-slider-row {
@@ -1348,7 +1354,7 @@
 
 .typing-game__ai-slider::-moz-range-track {
   height: 4px;
-  background: rgba(161, 161, 166, 0.25);
+  background: transparent;
   border-radius: 2px;
   border: none;
 }

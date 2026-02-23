@@ -110,10 +110,16 @@
 
   /* ---- Volume ---- */
 
+  function updateSliderFill() {
+    var pct = (parseFloat(volumeSlider.value) / parseFloat(volumeSlider.max)) * 100;
+    volumeSlider.style.background = 'linear-gradient(to right, var(--clr-primary) ' + pct + '%, var(--clr-border) ' + pct + '%)';
+  }
+
   function setVolume(val) {
     audio.volume = val;
     if (gainNode) gainNode.gain.value = val;
     updateVolumeIcon(val);
+    updateSliderFill();
   }
 
   function toggleMute() {
@@ -330,6 +336,7 @@
     volumeSlider.addEventListener('input', () => {
       setVolume(parseFloat(volumeSlider.value));
     });
+    updateSliderFill();
 
     volumeIcon.addEventListener('click', toggleMute);
 
