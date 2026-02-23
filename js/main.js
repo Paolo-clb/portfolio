@@ -880,19 +880,23 @@ function initCursorHalo() {
 function initScrollHint() {
   const hint = document.querySelector('.scroll-hint');
   if (!hint) return;
-  let hidden = false;
-  window.addEventListener('scroll', () => {
-    if (!hidden && window.scrollY > 80) {
+  const game = document.getElementById('typing-game');
+
+  function update() {
+    var playing = game && game.dataset.playing === '1';
+    var scrolledDown = window.scrollY > 80;
+    if (playing || scrolledDown) {
       hint.classList.add('scroll-hint--hidden');
-      hidden = true;
-    } else if (hidden && window.scrollY <= 80) {
-      // Don't re-show scroll-hint if the typing game is focused
-      const game = document.getElementById('typing-game');
-      if (game && game.classList.contains('typing-game--focused')) return;
+    } else {
       hint.classList.remove('scroll-hint--hidden');
-      hidden = false;
     }
-  }, { passive: true });
+  }
+
+  window.addEventListener('scroll', update, { passive: true });
+  // Re-evaluate when typing game state changes
+  if (game) {
+    new MutationObserver(update).observe(game, { attributes: true, attributeFilter: ['data-playing'] });
+  }
 }
 
 // ---------------------------------------------------------------------------

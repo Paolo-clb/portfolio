@@ -671,6 +671,7 @@
     text = transformText(text);
     typed = [];
     startTime = null;
+    delete container.dataset.playing;
     paused = false;
     pauseStart = null;
     totalPaused = 0;
@@ -782,6 +783,7 @@
 
   function finishGame() {
     finished = true;
+    delete container.dataset.playing;
     // If the user finished while paused, include paused time
     if (paused && pauseStart) {
       totalPaused += Date.now() - pauseStart;
@@ -874,11 +876,10 @@
       // Start timer on first keypress
       if (!startTime) {
         startTime = Date.now();
+        container.dataset.playing = '1';
         wpmEl.classList.add('typing-game__wpm--visible');
         accEl.classList.add('typing-game__acc--visible');
         wpmInterval = setInterval(updateStats, 200);
-        var hint = document.getElementById('scroll-hint');
-        if (hint) hint.classList.add('scroll-hint--hidden');
         // Show the Shift+Space hint while typing in zen mode
         showRestart();
       }
@@ -920,12 +921,10 @@
     // Start timer on first keypress
     if (!startTime) {
       startTime = Date.now();
+      container.dataset.playing = '1';
       wpmEl.classList.add('typing-game__wpm--visible');
       accEl.classList.add('typing-game__acc--visible');
       wpmInterval = setInterval(updateStats, 200);
-      // Hide scroll hint while typing
-      var hint = document.getElementById('scroll-hint');
-      if (hint) hint.classList.add('scroll-hint--hidden');
     }
 
     totalKeystrokes++;
@@ -1288,6 +1287,67 @@
     navbarEl = document.createElement('div');
     navbarEl.className = 'typing-game__navbar';
 
+    /* ---- Tooltip system ---- */
+    var TOOLTIP_TEXTS = {
+      fr: {
+        fr: 'Passe en français',
+        en: 'Passe en anglais',
+        '10': 'Lance le mode 10 mots',
+        '25': 'Lance le mode 25 mots',
+        '50': 'Lance le mode 50 mots',
+        '100': 'Lance le mode 100 mots',
+        zen: 'Lance le mode zen (infini)',
+        eye: 'Afficher / masquer les erreurs',
+        hardcore: 'Mode hardcore (mémorisation)',
+        ai: 'Générer des textes avec l\'IA',
+        aiTheme: 'Changer le thème IA',
+        settings: 'Paramètres du texte'
+      },
+      en: {
+        fr: 'Switch to French',
+        en: 'Switch to English',
+        '10': 'Start 10-word mode',
+        '25': 'Start 25-word mode',
+        '50': 'Start 50-word mode',
+        '100': 'Start 100-word mode',
+        zen: 'Start zen mode (infinite)',
+        eye: 'Show / hide errors',
+        hardcore: 'Hardcore mode (memorize)',
+        ai: 'Generate texts with AI',
+        aiTheme: 'Change AI theme',
+        settings: 'Text settings'
+      }
+    };
+
+    var tooltipEl = document.createElement('div');
+    tooltipEl.className = 'typing-game__tooltip';
+    var tooltipTimer = null;
+
+    function showTooltip(anchor, key) {
+      clearTimeout(tooltipTimer);
+      var texts = TOOLTIP_TEXTS[currentLang] || TOOLTIP_TEXTS.fr;
+      tooltipEl.textContent = texts[key] || '';
+      if (!tooltipEl.textContent) return;
+      anchor.style.position = 'relative';
+      anchor.appendChild(tooltipEl);
+      // Force reflow then show
+      void tooltipEl.offsetWidth;
+      tooltipEl.classList.add('typing-game__tooltip--visible');
+    }
+
+    function hideTooltip() {
+      tooltipEl.classList.remove('typing-game__tooltip--visible');
+      tooltipTimer = setTimeout(function() {
+        if (tooltipEl.parentNode) tooltipEl.parentNode.removeChild(tooltipEl);
+      }, 200);
+    }
+
+    function attachTooltip(el, key) {
+      el.addEventListener('mouseenter', function() { showTooltip(el, key); });
+      el.addEventListener('mouseleave', hideTooltip);
+      el.addEventListener('click', hideTooltip);
+    }
+
     // Language selector
     const langGroup = buildOptionGroup(
       [{ key: 'fr', label: 'FR' }, { key: 'en', label: 'EN' }],
@@ -1297,6 +1357,10 @@
         startGame(false);
       }
     );
+    // Attach tooltips to lang buttons
+    langGroup.querySelectorAll('.typing-game__option').forEach(function(btn) {
+      attachTooltip(btn, btn.getAttribute('data-key'));
+    });
 
     // Separator
     const sep = document.createElement('span');
@@ -1322,6 +1386,10 @@
         }
       }
     );
+    // Attach tooltips to mode buttons
+    modeGroup.querySelectorAll('.typing-game__option').forEach(function(btn) {
+      attachTooltip(btn, btn.getAttribute('data-key'));
+    });
 
     // Settings gear button (inside mode group, after zen)
     var settingsGearBtn = document.createElement('button');
@@ -1347,6 +1415,7 @@
     });
 
     updateSettingsUI();
+    attachTooltip(settingsGearBtn, 'settings');
     modeGroup.appendChild(settingsGearBtn);
 
     navbarEl.appendChild(langGroup);
@@ -1367,6 +1436,7 @@
     // Appliquer l'état initial de showErrors
     eyeBtn.classList.toggle('typing-game__eye--active', showErrors);
     container.classList.toggle('typing-game--show-errors', showErrors);
+    attachTooltip(eyeBtn, 'eye');
     eyeBtn.addEventListener('click', function(e) {
       e.preventDefault();
       showErrors = !showErrors;
@@ -1421,6 +1491,7 @@
     });
 
     updateHardcoreUI();
+    attachTooltip(hcBtn, 'hardcore');
     navbarEl.appendChild(hcBtn);
 
     // ---- AI mode sub-section ----
@@ -1489,6 +1560,8 @@
     });
 
     updateAiUI();
+    attachTooltip(aiBtn, 'ai');
+    attachTooltip(aiThemeBtn, 'aiTheme');
     navbarEl.appendChild(aiBtn);
     navbarEl.appendChild(aiThemeBtn);
 
@@ -1805,10 +1878,6 @@
       // Show restart hint if it was flagged visible
       if (restartEl.dataset.shouldShow === '1') {
         restartEl.classList.add('typing-game__restart--visible');
-      }
-      if (startTime) {
-        var hint = document.getElementById('scroll-hint');
-        if (hint) hint.classList.add('scroll-hint--hidden');
       }
       // Clear fast-blur transition so CSS classes govern focus-in speed
       if (textEl) textEl.style.transition = '';

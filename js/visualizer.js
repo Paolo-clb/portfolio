@@ -38,6 +38,7 @@
   let impulseX = 0;         // click position
   let impulseY = 0;
   let impulseIsClick = false; // true = repel from point, false = random burst
+  let musicActive = false;     // true when music is audibly playing
 
   function createParticle(w, h) {
     var colors = getThemeColors();
@@ -45,11 +46,11 @@
       x: Math.random() * w,
       y: Math.random() * h,                 // full screen
       baseY: 0,
-      radius: Math.random() * 3.5 + 2.5,
+      radius: Math.random() * 3 + 3,
       baseRadius: 0,
       vx: (Math.random() - 0.5) * 0.3,
       vy: (Math.random() - 0.5) * 0.15,
-      alpha: Math.random() * 0.4 + 0.5,
+      alpha: Math.random() * 0.2 + 0.7,
       baseAlpha: 0,
       color: [colors.primary, colors.accent, colors.hover][Math.floor(Math.random() * 3)],
       freqBin: Math.floor(Math.random() * BAR_COUNT), // which frequency bin reacts to
@@ -67,51 +68,55 @@
     }
   }
 
-  function updateAndDrawParticles(w, h) {
-    // Get current theme colors (may change mid-frame on toggle)
+  function updateAndDrawParticles(w, h, avgEnergy) {
     var colors = getThemeColors();
     var colorArr = [colors.primary, colors.accent, colors.hover];
-
-    // Get average energy for reactivity
-    let avgEnergy = 0;
-    if (dataArray) {
-      for (let i = 0; i < dataArray.length; i++) avgEnergy += dataArray[i];
-      avgEnergy /= dataArray.length * 255;
-    }
+    var now = Date.now() * 0.001;
 
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
-
-      // Update color to match current theme
       p.color = colorArr[i % 3];
+
       // Per-particle frequency reactivity
       let binVal = 0;
       if (dataArray && p.freqBin < dataArray.length) {
         binVal = dataArray[p.freqBin] / 255;
       }
 
-      // Movement
-      p.x += p.vx + (binVal * (Math.random() - 0.5) * 4);
-      p.y += p.vy + (Math.sin(Date.now() * 0.001 + i) * 0.2) + (binVal * (Math.random() - 0.5) * 3);
+      // Base drifting movement (always active)
+      p.x += p.vx;
+      p.y += p.vy + Math.sin(now + i) * 0.2;
 
-      // React to impulse (click or keypress)
-      if (impulse > 0.01) {
-        if (impulseIsClick) {
-          // Repel from click point
-          const dx = p.x - impulseX;
-          const dy = p.y - impulseY;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const force = impulse * 300 / (dist + 50);
-          p.x += (dx / dist) * force;
-          p.y += (dy / dist) * force;
-        }
-        // Keypress: no movement, only glow (handled below)
+      // Start from base values
+      let r = p.baseRadius;
+      let a = p.baseAlpha;
+
+      if (musicActive) {
+        // Music: smooth sinusoidal displacement scaled by frequency (no random jitter)
+        var phase = now * 1.5 + i * 0.41;
+        p.x += Math.cos(phase) * binVal * 2.5;
+        p.y += Math.sin(phase * 0.7 + i) * binVal * 2;
+        r += binVal * 11;
+        a += binVal * 0.6;
+      } else if (!impulseIsClick && impulse > 0.01) {
+        // Keyboard glow (only without music)
+        r += impulse * 3;
+        a += impulse * 0.3;
       }
 
-      // React to music: size and brightness pulse
-      const keyGlow = impulseIsClick ? impulse : impulse * 2.5;
-      p.radius = p.baseRadius + binVal * 9 + (impulseIsClick ? impulse * 2 : impulse * 5);
-      p.alpha  = p.baseAlpha + binVal * 0.9 + keyGlow * 0.5;
+      // Click repel (always active)
+      if (impulse > 0.01 && impulseIsClick) {
+        const dx = p.x - impulseX;
+        const dy = p.y - impulseY;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const force = impulse * 600 / (dist + 25);
+        p.x += (dx / dist) * force;
+        p.y += (dy / dist) * force;
+        r += impulse * 3;
+      }
+
+      p.radius = r;
+      p.alpha = a;
 
       // Wrap around edges
       if (p.x < -10) p.x = w + 10;
@@ -129,7 +134,6 @@
         if (barIdx >= 0 && barIdx < usableBins) {
           const barH = Math.max((dataArray[barIdx] / 255) * h * 0.7, MIN_BAR_HEIGHT);
           if (p.y >= h - barH) {
-            // The deeper inside the bar, the more we dim (0.3 at bar top → 0.15 at bottom)
             const depth = (p.y - (h - barH)) / barH;
             drawAlpha *= 0.30 - depth * 0.15;
           }
@@ -145,21 +149,22 @@
     }
     ctx.globalAlpha = 1;
 
-    // Draw connections between nearby particles (skip when idle — no audio & no impulse)
+    // Connection lines (active during music or interaction)
     var hasActivity = impulse > 0.05 || avgEnergy > 0.02;
     if (hasActivity) {
+      var connectAlpha = musicActive ? 0.45 : 0.35;
+      var maxDist = 180 + avgEnergy * 120;
       for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
           const dx = particles[i].x - particles[j].x;
           const dy = particles[i].y - particles[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const maxDist = 180 + avgEnergy * 80;
 
           if (dist < maxDist) {
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = colors.textRgba + ((1 - dist / maxDist) * 0.35) + ')';
+            ctx.strokeStyle = colors.textRgba + ((1 - dist / maxDist) * connectAlpha) + ')';
             ctx.lineWidth = 1;
             ctx.stroke();
           }
@@ -216,19 +221,23 @@
 
     ctx.clearRect(0, 0, w, h);
 
-    // Decay impulse
-    impulse *= 0.92;
+    // Decay impulse (slower for clicks → more satisfying spread)
+    impulse *= impulseIsClick ? 0.93 : 0.88;
 
-    // Particles (always drawn, react to audio when connected)
-    updateAndDrawParticles(w, h);
-
-    // Try connecting each frame until successful
+    // Fetch audio data before drawing particles
     let avgEnergy = 0;
     if (tryConnect()) {
       analyser.getByteFrequencyData(dataArray);
       for (let i = 0; i < dataArray.length; i++) avgEnergy += dataArray[i];
       avgEnergy /= dataArray.length * 255;
+    }
+    musicActive = connected && avgEnergy > 0.015;
 
+    // Particles (react to audio or keyboard depending on musicActive)
+    updateAndDrawParticles(w, h, avgEnergy);
+
+    // Frequency bars (drawn on top of particles)
+    if (connected && avgEnergy > 0) {
       const usableBins = Math.min(BAR_COUNT, dataArray.length);
       const totalBarWidth = (w - (usableBins - 1) * BAR_GAP) / usableBins;
       const barWidth = Math.max(totalBarWidth, 1);
@@ -243,7 +252,6 @@
 
         ctx.fillStyle = createBarGradient(x, barWidth, h, barH);
         ctx.beginPath();
-        // Rounded top corners
         const radius = Math.min(barWidth / 2, 4);
         ctx.moveTo(x, h);
         ctx.lineTo(x, y + radius);
@@ -295,9 +303,9 @@
       impulseIsClick = true;
     });
 
-    // Keypress: random burst
+    // Keypress: glow burst (skipped when music is playing)
     document.addEventListener('keydown', function (e) {
-      if (e.repeat) return;
+      if (e.repeat || musicActive) return;
       impulse = Math.min(impulse + 0.5, 1);
       impulseIsClick = false;
     });
