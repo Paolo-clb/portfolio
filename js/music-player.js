@@ -112,7 +112,7 @@
 
   function updateSliderFill() {
     var pct = (parseFloat(volumeSlider.value) / parseFloat(volumeSlider.max)) * 100;
-    volumeSlider.style.background = 'linear-gradient(to right, var(--clr-primary) ' + pct + '%, var(--clr-border) ' + pct + '%)';
+    volumeSlider.style.background = 'linear-gradient(to right, var(--clr-primary) 0%, var(--clr-accent) ' + pct + '%, var(--clr-border) ' + pct + '%)';
   }
 
   function setVolume(val) {

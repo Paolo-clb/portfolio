@@ -55,7 +55,6 @@
   function saveAiOptions() {
     setCookie('typing_ai_uppercase', aiUppercase ? '1' : '0', 365);
     setCookie('typing_ai_punctuation', aiPunctuation ? '1' : '0', 365);
-    setCookie('typing_ai_difficulty', String(aiDifficulty), 365);
   }
 
   function loadSettings() {
@@ -73,7 +72,6 @@
       special: getCookie('typing_opt_special') === '1',
       aiUppercase: getCookie('typing_ai_uppercase') === '1',
       aiPunctuation: getCookie('typing_ai_punctuation') === '1',
-      aiDifficulty: parseInt(getCookie('typing_ai_difficulty')) || 3,
     };
   }
 
@@ -136,7 +134,6 @@
   let aiThemeBtn = null; // reference to the "change theme" button in navbar
   let aiUppercase = false; // AI popup setting: uppercase (independent from settings gear)
   let aiPunctuation = false; // AI popup setting: punctuation (independent from settings gear)
-  let aiDifficulty = 3; // AI popup setting: vocabulary difficulty 1-5 (1=easy, 5=hard)
   let settingsUppercase = false; // text setting: add uppercase letters
   let settingsNumbers = false; // text setting: add numbers
   let settingsPunctuation = false; // text setting: add punctuation
@@ -1022,34 +1019,6 @@
 
   /* ---- AI text generation (Gemini) ---- */
 
-  function buildAiPrompt(theme) {
-    var difficultyMap = {
-      1: 'VOCABULARY: Use only very simple, everyday words. Short words (3-6 letters). Language a child could understand.',
-      2: 'VOCABULARY: Use simple, common words. Mostly short words. Easy to read and type.',
-      3: 'VOCABULARY: Use standard vocabulary. A natural mix of common and slightly advanced words.',
-      4: 'VOCABULARY: Use rich, varied vocabulary. Include some longer and more sophisticated words.',
-      5: 'VOCABULARY: Use advanced, complex vocabulary. Long and technical words. Challenging to type.'
-    };
-    var diffRule = difficultyMap[aiDifficulty] || difficultyMap[3];
-
-    return 'You are a typing practice text generator. Output ONLY valid JSON.\n\n' +
-      'JSON structure (strict): {"fr":{"10":[...],"25":[...],"50":[...],"100":[...]},"en":{"10":[...],"25":[...],"50":[...],"100":[...]}}\n\n' +
-      'Array sizes:\n' +
-      '- "10": 10 sentences, each ~10 words\n' +
-      '- "25": 8 paragraphs, each ~25 words\n' +
-      '- "50": 5 paragraphs, each ~50 words\n' +
-      '- "100": 3 paragraphs, each ~100 words\n\n' +
-      'FORMATTING RULES:\n' +
-      '1. Use natural capitalization (capitalize first letter of sentences and proper nouns)\n' +
-      '2. Use natural punctuation (periods, commas, semicolons, colons, exclamation marks, question marks)\n' +
-      '3. Allowed characters: letters, spaces, hyphens, apostrophes (\'), periods, commas, semicolons, colons, exclamation marks, question marks\n' +
-      '4. French accents allowed: é è ê à ù ô î â ç\n' +
-      '5. ' + diffRule + '\n\n' +
-      '"fr" texts in French, "en" texts in English.\n' +
-      'Theme: "' + theme + '"\n' +
-      'Make texts very informative, varied, and interesting to type.';
-  }
-
   function postProcessAiTexts(parsed) {
     var langs = ['fr', 'en'];
     var modes = ['10', '25', '50', '100'];
@@ -1071,14 +1040,7 @@
   }
 
   function fetchAiTexts(theme, onSuccess, onError) {
-    var body = JSON.stringify({
-      contents: [{ parts: [{ text: buildAiPrompt(theme) }] }],
-      generationConfig: {
-        temperature: 0.9,
-        maxOutputTokens: 16384,
-        responseMimeType: 'application/json'
-      }
-    });
+    var body = JSON.stringify({ theme: theme });
 
     fetch(WORKER_URL, {
       method: 'POST',
@@ -1167,11 +1129,6 @@
           '<span class="typing-game__ai-opt-label">Ponctuation</span>' +
           '<span class="typing-game__ai-opt-hint">.,;!?</span>' +
         '</label>' +
-        '<div class="typing-game__ai-slider-row">' +
-          '<span class="typing-game__ai-opt-label">Difficult\u00e9 du texte :</span>' +
-          '<input type="range" class="typing-game__ai-slider" min="1" max="5" step="1" value="3" />' +
-          '<span class="typing-game__ai-slider-val">3</span>' +
-        '</div>' +
       '</div>' +
       '<div class="typing-game__ai-status"></div>' +
       '<div class="typing-game__ai-loader">' +
@@ -1191,7 +1148,6 @@
     // Local copies — only committed on successful generate
     var localUppercase = aiUppercase;
     var localPunctuation = aiPunctuation;
-    var localDifficulty = aiDifficulty;
 
     popup.querySelectorAll('.typing-game__ai-opt-check').forEach(function(chk) {
       chk.addEventListener('change', function() {
@@ -1200,21 +1156,6 @@
         if (key === 'punctuation') localPunctuation = chk.checked;
       });
     });
-
-    // Slider for difficulty
-    var sliderEl = popup.querySelector('.typing-game__ai-slider');
-    var sliderValEl = popup.querySelector('.typing-game__ai-slider-val');
-    sliderEl.value = String(localDifficulty);
-    sliderValEl.textContent = String(localDifficulty);
-    function updateAiSlider() {
-      var v = parseInt(sliderEl.value);
-      localDifficulty = v;
-      sliderValEl.textContent = String(v);
-      var pct = ((v - 1) / (5 - 1)) * 100;
-      sliderEl.style.background = 'linear-gradient(to right, var(--clr-primary) ' + pct + '%, rgba(161,161,166,0.25) ' + pct + '%)';
-    }
-    sliderEl.addEventListener('input', updateAiSlider);
-    updateAiSlider();
 
     // Pre-fill theme
     if (aiTheme) themeInput.value = aiTheme;
@@ -1234,7 +1175,6 @@
         if (!generated && !isReopen) {
           aiUppercase = localUppercase;
           aiPunctuation = localPunctuation;
-          aiDifficulty = localDifficulty;
           aiTheme = themeInput.value.trim();
           saveAiOptions();
         }
@@ -1274,7 +1214,6 @@
         // Commit AI toggle values on successful generation
         aiUppercase = localUppercase;
         aiPunctuation = localPunctuation;
-        aiDifficulty = localDifficulty;
         aiTheme = theme;
         saveAiOptions();
         postProcessAiTexts(texts);
@@ -1975,7 +1914,6 @@
     settingsSpecial = saved.special;
     aiUppercase = saved.aiUppercase;
     aiPunctuation = saved.aiPunctuation;
-    aiDifficulty = saved.aiDifficulty || 3;
     // If hardcore is on but mode is incompatible, force to 10
     if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
       currentMode = '10';
