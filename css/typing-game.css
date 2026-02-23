@@ -1230,6 +1230,13 @@
   background: rgba(242, 162, 133, 0.06);
 }
 
+.typing-game__ai-options--loading .typing-game__ai-opt {
+  opacity: 0.25;
+  pointer-events: none;
+  filter: grayscale(1);
+  transition: opacity 0.35s ease, filter 0.35s ease;
+}
+
 .typing-game__ai-opt-check {
   position: absolute;
   opacity: 0;

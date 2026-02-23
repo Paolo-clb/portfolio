@@ -1145,6 +1145,7 @@
     var confirmBtn = popup.querySelector('.typing-game__ai-confirm');
     var statusEl = popup.querySelector('.typing-game__ai-status');
     var loaderEl = popup.querySelector('.typing-game__ai-loader');
+    var optionsEl = popup.querySelector('.typing-game__ai-options');
 
     // Local copies — only committed on generate
     var localUppercase = settingsUppercase;
@@ -1198,11 +1199,13 @@
       statusEl.textContent = '';
       statusEl.className = 'typing-game__ai-status';
       loaderEl.classList.add('typing-game__ai-loader--active');
+      optionsEl.classList.add('typing-game__ai-options--loading');
       aiLoading = true;
 
       fetchAiTexts(theme, function(texts) {
         aiLoading = false;
         loaderEl.classList.remove('typing-game__ai-loader--active');
+        optionsEl.classList.remove('typing-game__ai-options--loading');
         // Commit toggle values only on successful generation
         settingsUppercase = localUppercase;
         settingsPunctuation = localPunctuation;
@@ -1214,6 +1217,7 @@
       }, function(err) {
         aiLoading = false;
         loaderEl.classList.remove('typing-game__ai-loader--active');
+        optionsEl.classList.remove('typing-game__ai-options--loading');
         confirmBtn.disabled = false;
         confirmBtn.style.display = '';
         themeInput.disabled = false;
