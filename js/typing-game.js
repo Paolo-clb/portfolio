@@ -1020,30 +1020,43 @@
   /* ---- AI text generation (Gemini) ---- */
 
   function buildAiPrompt(theme) {
-    var caseRule = aiUppercase
-      ? 'Use natural capitalization (capitalize the first letter of each sentence and proper nouns).'
-      : 'All text must be strictly lowercase — no capital letters at all.';
+    var caseRule, caseReminder;
+    if (aiUppercase) {
+      caseRule = 'CAPITALIZATION: ON — Use natural capitalization. Capitalize the first letter of each sentence and proper nouns.';
+      caseReminder = 'Capitalize naturally.';
+    } else {
+      caseRule = 'CAPITALIZATION: OFF — Every single letter must be lowercase. No capital letters whatsoever, not even at the start of sentences or for proper nouns.';
+      caseReminder = 'ALL LOWERCASE, zero capital letters.';
+    }
 
-    var punctRule = aiPunctuation
-      ? 'Use natural punctuation: periods, commas, semicolons, colons, exclamation marks, question marks.'
-      : 'Do NOT use any punctuation marks at all — no periods, no commas, no semicolons, no colons, no exclamation marks, no question marks.';
+    var punctRule, punctReminder;
+    if (aiPunctuation) {
+      punctRule = 'PUNCTUATION: ON — Use natural punctuation marks: periods (.), commas (,), semicolons (;), colons (:), exclamation marks (!), question marks (?).';
+      punctReminder = 'Include natural punctuation.';
+    } else {
+      punctRule = 'PUNCTUATION: OFF — Do NOT include any punctuation marks. No periods, no commas, no semicolons, no colons, no exclamation marks, no question marks. Zero punctuation.';
+      punctReminder = 'ZERO punctuation marks anywhere.';
+    }
 
-    return 'Generate very informative typing practice texts on a specific theme. ' +
-      'Output ONLY valid JSON (no markdown, no code fences, no explanation). ' +
-      'The JSON must have this exact structure: ' +
-      '{"fr":{"10":[...],"25":[...],"50":[...],"100":[...]},"en":{"10":[...],"25":[...],"50":[...],"100":[...]}}. ' +
-      'Rules: ' +
-      '- "10" array: 10 sentences each ~10 words, ' +
-      '- "25" array: 8 paragraphs each ~25 words, ' +
-      '- "50" array: 5 paragraphs each ~50 words, ' +
-      '- "100" array: 3 paragraphs each ~100 words, ' +
-      '- "fr" texts must be in French, "en" texts must be in English, ' +
-      '- ' + caseRule + ' ' +
-      '- ' + punctRule + ' ' +
-      '- Allowed characters: letters, spaces, hyphens, apostrophes (\')' + (aiPunctuation ? ', punctuation (. , ; : ! ?)' : '') + ' — no other characters, ' +
-      '- French accents allowed: é è ê à ù ô î â ç, ' +
-      '- All texts must be about this theme: "' + theme + '", ' +
-      '- Each text must flow naturally and be interesting to type';
+    var allowedChars = 'letters, spaces, hyphens, apostrophes (\')';
+    if (aiPunctuation) allowedChars += ', periods, commas, semicolons, colons, exclamation marks, question marks';
+
+    return 'You are a typing practice text generator. Output ONLY valid JSON.\n\n' +
+      'JSON structure (strict): {"fr":{"10":[...],"25":[...],"50":[...],"100":[...]},"en":{"10":[...],"25":[...],"50":[...],"100":[...]}}\n\n' +
+      'Array sizes:\n' +
+      '- "10": 10 sentences, each ~10 words\n' +
+      '- "25": 8 paragraphs, each ~25 words\n' +
+      '- "50": 5 paragraphs, each ~50 words\n' +
+      '- "100": 3 paragraphs, each ~100 words\n\n' +
+      'CRITICAL FORMATTING RULES (must follow exactly):\n' +
+      '1. ' + caseRule + '\n' +
+      '2. ' + punctRule + '\n' +
+      '3. Allowed characters ONLY: ' + allowedChars + '. No other special characters.\n' +
+      '4. French accents allowed: é è ê à ù ô î â ç\n' +
+      '5. "fr" texts in French, "en" texts in English\n\n' +
+      'REMINDER: ' + caseReminder + ' ' + punctReminder + '\n\n' +
+      'Theme: "' + theme + '"\n' +
+      'Make texts informative, varied, and interesting to type.';
   }
 
   function fetchAiTexts(theme, onSuccess, onError) {
@@ -1051,7 +1064,7 @@
       contents: [{ parts: [{ text: buildAiPrompt(theme) }] }],
       generationConfig: {
         temperature: 0.9,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 16384,
         responseMimeType: 'application/json'
       }
     });
