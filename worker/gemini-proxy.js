@@ -16,7 +16,7 @@ Rules:
 - Allowed: letters, spaces, hyphens, apostrophes, punctuation above
 - French accents allowed (é è ê à ù ô î â ç)
 - "fr" in French, "en" in English
-- Texts must be informative, varied, interesting and smooth to type`;
+- Texts must be very informative, varied, interesting and smooth to type`;
 
 export default {
   async fetch(request, env) {
