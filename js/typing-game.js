@@ -328,7 +328,10 @@
       innerEl = document.createElement('div');
       innerEl.className = 'typing-game__text-inner';
       textEl.textContent = '';
-      textEl.appendChild(innerEl);
+      var clipEl = document.createElement('div');
+      clipEl.className = 'typing-game__text-clip';
+      clipEl.appendChild(innerEl);
+      textEl.appendChild(clipEl);
     } else {
       innerEl.textContent = '';
     }
@@ -390,7 +393,10 @@
       innerEl = document.createElement('div');
       innerEl.className = 'typing-game__text-inner';
       textEl.textContent = '';
-      textEl.appendChild(innerEl);
+      var clipEl = document.createElement('div');
+      clipEl.className = 'typing-game__text-clip';
+      clipEl.appendChild(innerEl);
+      textEl.appendChild(clipEl);
     }
     innerEl.innerHTML = html;
 
@@ -523,7 +529,10 @@
 
     // Direct access to cursor span instead of querySelector
     var cursorSpanEl = null;
-    if (finished && charSpans.length > 0) {
+    if (currentMode === 'zen') {
+      // Zen uses innerHTML — find cursor via DOM query
+      cursorSpanEl = innerEl.querySelector('.typing-game__char--cursor');
+    } else if (finished && charSpans.length > 0) {
       cursorSpanEl = charSpans[text.length - 1];
     } else if (typed.length < charSpans.length) {
       cursorSpanEl = charSpans[typed.length];
@@ -1136,13 +1145,16 @@
     var confirmBtn = popup.querySelector('.typing-game__ai-confirm');
     var statusEl = popup.querySelector('.typing-game__ai-status');
     var loaderEl = popup.querySelector('.typing-game__ai-loader');
-    // Toggle checkboxes sync to settings state
+
+    // Local copies — only committed on generate
+    var localUppercase = settingsUppercase;
+    var localPunctuation = settingsPunctuation;
+
     popup.querySelectorAll('.typing-game__ai-opt-check').forEach(function(chk) {
       chk.addEventListener('change', function() {
         var key = chk.getAttribute('data-key');
-        if (key === 'uppercase') settingsUppercase = chk.checked;
-        if (key === 'punctuation') settingsPunctuation = chk.checked;
-        saveSettingsOptions();
+        if (key === 'uppercase') localUppercase = chk.checked;
+        if (key === 'punctuation') localPunctuation = chk.checked;
       });
     });
 
@@ -1191,6 +1203,10 @@
       fetchAiTexts(theme, function(texts) {
         aiLoading = false;
         loaderEl.classList.remove('typing-game__ai-loader--active');
+        // Commit toggle values only on successful generation
+        settingsUppercase = localUppercase;
+        settingsPunctuation = localPunctuation;
+        saveSettingsOptions();
         aiTheme = theme;
         aiTexts = texts;
         close();

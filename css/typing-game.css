@@ -306,6 +306,12 @@
   box-sizing: border-box;
 }
 
+.typing-game__text-clip {
+  overflow: hidden;
+  height: 100%;
+  position: relative;
+}
+
 .typing-game__text-inner {
   position: relative;
   transition: transform 0.25s ease;
@@ -339,7 +345,7 @@
 .typing-game__char-wrong {
   position: absolute;
   left: 50%;
-  top: 85%;
+  top: 80%;
   transform: translateX(-50%);
   font-size: 0.55em;
   color: var(--clr-primary-hover);
