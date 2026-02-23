@@ -52,6 +52,11 @@
     setCookie('typing_opt_special', settingsSpecial ? '1' : '0', 365);
   }
 
+  function saveAiOptions() {
+    setCookie('typing_ai_uppercase', aiUppercase ? '1' : '0', 365);
+    setCookie('typing_ai_punctuation', aiPunctuation ? '1' : '0', 365);
+  }
+
   function loadSettings() {
     var lang = getCookie('typing_lang');
     var mode = getCookie('typing_mode');
@@ -64,7 +69,9 @@
       uppercase: getCookie('typing_opt_uppercase') === '1',
       numbers: getCookie('typing_opt_numbers') === '1',
       punctuation: getCookie('typing_opt_punctuation') === '1',
-      special: getCookie('typing_opt_special') === '1'
+      special: getCookie('typing_opt_special') === '1',
+      aiUppercase: getCookie('typing_ai_uppercase') === '1',
+      aiPunctuation: getCookie('typing_ai_punctuation') === '1',
     };
   }
 
@@ -1183,6 +1190,7 @@
           aiUppercase = localUppercase;
           aiPunctuation = localPunctuation;
           aiTheme = themeInput.value.trim();
+          saveAiOptions();
         }
         container.focus();
       });
@@ -1221,6 +1229,7 @@
         aiUppercase = localUppercase;
         aiPunctuation = localPunctuation;
         aiTheme = theme;
+        saveAiOptions();
         aiTexts = texts;
         close(true);
         if (typeof onConfirm === 'function') onConfirm();
@@ -1916,6 +1925,8 @@
     settingsNumbers = saved.numbers;
     settingsPunctuation = saved.punctuation;
     settingsSpecial = saved.special;
+    aiUppercase = saved.aiUppercase;
+    aiPunctuation = saved.aiPunctuation;
     // If hardcore is on but mode is incompatible, force to 10
     if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
       currentMode = '10';
