@@ -125,6 +125,8 @@
   let aiTheme = ''; // current AI theme description
   let aiLoading = false; // whether an AI request is in-flight
   let aiThemeBtn = null; // reference to the "change theme" button in navbar
+  let aiUppercase = false; // AI popup setting: uppercase (independent from settings gear)
+  let aiPunctuation = false; // AI popup setting: punctuation (independent from settings gear)
   let settingsUppercase = false; // text setting: add uppercase letters
   let settingsNumbers = false; // text setting: add numbers
   let settingsPunctuation = false; // text setting: add punctuation
@@ -1011,11 +1013,11 @@
   /* ---- AI text generation (Gemini) ---- */
 
   function buildAiPrompt(theme) {
-    var caseRule = settingsUppercase
+    var caseRule = aiUppercase
       ? 'Use natural capitalization (capitalize the first letter of each sentence and proper nouns).'
       : 'All text must be strictly lowercase — no capital letters at all.';
 
-    var punctRule = settingsPunctuation
+    var punctRule = aiPunctuation
       ? 'Use natural punctuation: periods, commas, semicolons, colons, exclamation marks, question marks.'
       : 'Do NOT use any punctuation marks at all — no periods, no commas, no semicolons, no colons, no exclamation marks, no question marks.';
 
@@ -1031,7 +1033,7 @@
       '- "fr" texts must be in French, "en" texts must be in English, ' +
       '- ' + caseRule + ' ' +
       '- ' + punctRule + ' ' +
-      '- Allowed characters: letters, spaces, hyphens, apostrophes (\')' + (settingsPunctuation ? ', punctuation (. , ; : ! ?)' : '') + ' — no other characters, ' +
+      '- Allowed characters: letters, spaces, hyphens, apostrophes (\')' + (aiPunctuation ? ', punctuation (. , ; : ! ?)' : '') + ' — no other characters, ' +
       '- French accents allowed: é è ê à ù ô î â ç, ' +
       '- All texts must be about this theme: "' + theme + '", ' +
       '- Each text must flow naturally and be interesting to type';
@@ -1109,6 +1111,9 @@
   /* ---- AI popup ---- */
 
   function showAiPopup(onConfirm) {
+    // Track whether AI texts already exist (reopen via pencil vs first activation)
+    var isReopen = !!(aiTexts);
+
     var overlay = document.createElement('div');
     overlay.className = 'zen-popup-overlay';
     var popup = document.createElement('div');
@@ -1120,13 +1125,13 @@
       '<input class="typing-game__ai-input typing-game__ai-theme-input" type="text" placeholder="Ex: l\'espace, la cuisine, les chats..." maxlength="100" />' +
       '<div class="typing-game__ai-options">' +
         '<label class="typing-game__ai-opt">' +
-          '<input type="checkbox" class="typing-game__ai-opt-check" data-key="uppercase"' + (settingsUppercase ? ' checked' : '') + '/>' +
+          '<input type="checkbox" class="typing-game__ai-opt-check" data-key="uppercase"' + (aiUppercase ? ' checked' : '') + '/>' +
           '<span class="typing-game__ai-opt-toggle"></span>' +
           '<span class="typing-game__ai-opt-label">Majuscules</span>' +
           '<span class="typing-game__ai-opt-hint">ABC</span>' +
         '</label>' +
         '<label class="typing-game__ai-opt">' +
-          '<input type="checkbox" class="typing-game__ai-opt-check" data-key="punctuation"' + (settingsPunctuation ? ' checked' : '') + '/>' +
+          '<input type="checkbox" class="typing-game__ai-opt-check" data-key="punctuation"' + (aiPunctuation ? ' checked' : '') + '/>' +
           '<span class="typing-game__ai-opt-toggle"></span>' +
           '<span class="typing-game__ai-opt-label">Ponctuation</span>' +
           '<span class="typing-game__ai-opt-hint">.,;!?</span>' +
@@ -1147,9 +1152,9 @@
     var loaderEl = popup.querySelector('.typing-game__ai-loader');
     var optionsEl = popup.querySelector('.typing-game__ai-options');
 
-    // Local copies — only committed on generate
-    var localUppercase = settingsUppercase;
-    var localPunctuation = settingsPunctuation;
+    // Local copies — only committed on successful generate
+    var localUppercase = aiUppercase;
+    var localPunctuation = aiPunctuation;
 
     popup.querySelectorAll('.typing-game__ai-opt-check').forEach(function(chk) {
       chk.addEventListener('change', function() {
@@ -1168,11 +1173,17 @@
 
     setTimeout(function() { themeInput.focus(); }, 350);
 
-    function close() {
+    function close(generated) {
       overlay.classList.remove('zen-popup-overlay--visible');
       overlay.addEventListener('transitionend', function handler() {
         overlay.removeEventListener('transitionend', handler);
         overlay.remove();
+        // Persist AI popup state on dismiss (not reopen): theme input + toggles
+        if (!generated && !isReopen) {
+          aiUppercase = localUppercase;
+          aiPunctuation = localPunctuation;
+          aiTheme = themeInput.value.trim();
+        }
         container.focus();
       });
     }
@@ -1206,13 +1217,12 @@
         aiLoading = false;
         loaderEl.classList.remove('typing-game__ai-loader--active');
         optionsEl.classList.remove('typing-game__ai-options--loading');
-        // Commit toggle values only on successful generation
-        settingsUppercase = localUppercase;
-        settingsPunctuation = localPunctuation;
-        saveSettingsOptions();
+        // Commit AI toggle values on successful generation
+        aiUppercase = localUppercase;
+        aiPunctuation = localPunctuation;
         aiTheme = theme;
         aiTexts = texts;
-        close();
+        close(true);
         if (typeof onConfirm === 'function') onConfirm();
       }, function(err) {
         aiLoading = false;
