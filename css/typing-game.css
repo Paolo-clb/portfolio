@@ -290,7 +290,6 @@
   text-align: left;
   color: var(--clr-text-muted);
   position: relative;
-  overflow: hidden;
   /* 3 lines + top/bottom padding */
   height: calc(4.8em + 1.5rem);
   /* Translucent background */
@@ -307,7 +306,7 @@
 }
 
 .typing-game__text-clip {
-  overflow: hidden;
+  clip-path: inset(0 -1.5rem 0 -1.5rem);
   height: 100%;
   position: relative;
 }
@@ -344,9 +343,10 @@
 
 .typing-game__char-wrong {
   position: absolute;
-  left: 50%;
+  left: 0;
+  right: 0;
   top: 80%;
-  transform: translateX(-50%);
+  text-align: center;
   font-size: 0.55em;
   color: var(--clr-primary-hover);
   opacity: 0;
