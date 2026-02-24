@@ -789,7 +789,7 @@ function initCursorHalo() {
   }, { passive: true });
 
   // ---- hover on interactive elements ----
-  var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option';
+  var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay';
   var modalAllowedSelector = 'button, .modal__close, a, .btn';
 
   document.addEventListener('mouseover', function (e) {
@@ -806,6 +806,18 @@ function initCursorHalo() {
       return;
     }
     if (e.target.closest(interactiveSelector)) {
+      // Don't show hover on typing text when game is focused or intro is playing
+      if (e.target.closest('.typing-game__text')) {
+        var game = document.getElementById('typing-game');
+        var gameFocused = game && game.dataset.focused === '1';
+        var isIntro = e.target.closest('.typing-game__text--intro');
+        if (gameFocused || isIntro) return;
+      }
+      // Don't show hover on popup overlay content — only on the backdrop itself
+      if (e.target.closest('.zen-popup-overlay') && e.target.closest('.zen-popup')) return;
+      // Don't show hover on modal overlay content — only on the backdrop itself
+      // Exceptions: project cards and interactive controls remain hoverable
+      if (e.target.closest('.modal-overlay') && e.target.closest('.modal, .detail-modal, .skill-popup') && !e.target.closest('.project-card') && !e.target.closest('button, .modal__close, a, .btn')) return;
       halo.classList.add('cursor-halo--hover');
     }
   }, { passive: true });
@@ -821,12 +833,37 @@ function initCursorHalo() {
   }, { passive: true });
 
   // ---- click feedback ----
-  document.addEventListener('mousedown', function () {
+  document.addEventListener('mousedown', function (e) {
     halo.classList.add('cursor-halo--click');
+    // Instantly remove hover when clicking the typing game (gains focus)
+    if (e.target.closest('#typing-game')) {
+      halo.classList.remove('cursor-halo--hover');
+    }
   });
   document.addEventListener('mouseup', function () {
     halo.classList.remove('cursor-halo--click');
   });
+
+  // ---- remove hover when a popup/modal overlay closes ----
+  new MutationObserver(function (mutations) {
+    mutations.forEach(function (m) {
+      // Case 1: zen/AI/settings popups are removed from DOM entirely
+      m.removedNodes.forEach(function (node) {
+        if (node.nodeType === 1 &&
+            (node.classList.contains('zen-popup-overlay') ||
+             node.classList.contains('modal-overlay') ||
+             node.classList.contains('skill-overlay'))) {
+          halo.classList.remove('cursor-halo--hover');
+        }
+      });
+      // Case 2: projects/detail modals stay in DOM but lose modal-overlay--open class
+      if (m.type === 'attributes' &&
+          m.target.classList.contains('modal-overlay') &&
+          !m.target.classList.contains('modal-overlay--open')) {
+        halo.classList.remove('cursor-halo--hover');
+      }
+    });
+  }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 
   // ---- hide/show on leave/enter ----
   document.documentElement.addEventListener('mouseleave', function () {
