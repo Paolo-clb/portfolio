@@ -883,9 +883,12 @@ function initScrollHint() {
   const game = document.getElementById('typing-game');
 
   function update() {
-    var playing = game && game.dataset.playing === '1';
+    var playing  = game && game.dataset.playing  === '1';
+    var focused  = game && game.dataset.focused  === '1';
     var scrolledDown = window.scrollY > 80;
-    if (playing || scrolledDown) {
+    // Hide: scrolled down OR (typing active AND game has focus)
+    // Show: at the top AND (not typing OR game lost focus)
+    if (scrolledDown || (playing && focused)) {
       hint.classList.add('scroll-hint--hidden');
     } else {
       hint.classList.remove('scroll-hint--hidden');
@@ -893,9 +896,9 @@ function initScrollHint() {
   }
 
   window.addEventListener('scroll', update, { passive: true });
-  // Re-evaluate when typing game state changes
+  // Re-evaluate when typing game focus/play state changes
   if (game) {
-    new MutationObserver(update).observe(game, { attributes: true, attributeFilter: ['data-playing'] });
+    new MutationObserver(update).observe(game, { attributes: true, attributeFilter: ['data-playing', 'data-focused'] });
   }
 }
 

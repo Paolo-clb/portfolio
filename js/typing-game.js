@@ -725,9 +725,6 @@
     // Reset stats to centered position
     wpmEl.style.transform = '';
     accEl.style.transform = '';
-    // Show scroll hint again on reset
-    var hint = document.getElementById('scroll-hint');
-    if (hint) hint.classList.remove('scroll-hint--hidden');
     if (wpmInterval) clearInterval(wpmInterval);
     wpmInterval = null;
     // Toggle zen-specific classes
@@ -1001,7 +998,11 @@
     overlay.offsetHeight;
     overlay.classList.add('zen-popup-overlay--visible');
 
+    function onKeyDown(e) {
+      if (e.key === 'Escape') close();
+    }
     function close() {
+      document.removeEventListener('keydown', onKeyDown);
       overlay.classList.remove('zen-popup-overlay--visible');
       overlay.addEventListener('transitionend', function handler() {
         overlay.removeEventListener('transitionend', handler);
@@ -1014,6 +1015,7 @@
     overlay.addEventListener('click', function (ev) {
       if (ev.target === overlay) close();
     });
+    document.addEventListener('keydown', onKeyDown);
   }
 
   /* ---- AI text generation (Gemini) ---- */
@@ -1201,6 +1203,7 @@
         e.preventDefault();
         doGenerate();
       }
+      if (e.key === 'Escape' && !aiLoading) close();
     });
     overlay.addEventListener('click', function(ev) {
       if (ev.target === overlay && !aiLoading) close();
@@ -1258,7 +1261,11 @@
     overlay.offsetHeight;
     overlay.classList.add('zen-popup-overlay--visible');
 
+    function onKeyDown(e) {
+      if (e.key === 'Escape') close();
+    }
     function close() {
+      document.removeEventListener('keydown', onKeyDown);
       overlay.classList.remove('zen-popup-overlay--visible');
       overlay.addEventListener('transitionend', function handler() {
         overlay.removeEventListener('transitionend', handler);
@@ -1279,6 +1286,7 @@
       e.stopPropagation();
       if (e.key === 'Escape') close();
     });
+    document.addEventListener('keydown', onKeyDown);
   }
 
   /* ---- Navbar builder ---- */
@@ -1643,14 +1651,11 @@
     introInner.className = 'typing-game__text-inner typing-game__intro-inner';
     introTextEl.appendChild(introInner);
 
-    container.appendChild(introTextEl);
-
     // Button (hidden initially) — desktop only
     if (!isSmartphone) {
       introButtonEl = document.createElement('button');
       introButtonEl.className = 'btn btn--outline typing-game__intro-btn';
       introButtonEl.textContent = 'Jouer au Typing Game';
-      container.appendChild(introButtonEl);
     }
 
     // Start typewriter animation with cursor + trail (zen-style rendering)
@@ -1746,8 +1751,13 @@
       setTimeout(typeNext, speed);
     }
 
-    // Small delay before starting the typewriter
-    setTimeout(typeNext, 400);
+    // Small delay before starting the typewriter — insert elements here so
+    // the container background never flashes between loading and intro
+    setTimeout(function () {
+      container.appendChild(introTextEl);
+      if (introButtonEl) container.appendChild(introButtonEl);
+      typeNext();
+    }, 400);
 
     // Button click → show popup, then reveal game (desktop only)
     if (introButtonEl) {
@@ -1867,6 +1877,7 @@
     // Focus / blur detection
     container.addEventListener('focus', function () {
       isFocused = true;
+      container.dataset.focused = '1';
       if (blurHintTimer) { clearTimeout(blurHintTimer); blurHintTimer = null; }
       container.classList.remove('typing-game--blurred');
       container.classList.add('typing-game--focused');
@@ -1904,8 +1915,7 @@
         if (!isFocused && hardcorePhase !== 'memorize') {
           container.classList.add('typing-game--blurred');
           focusHintEl.classList.add('typing-game__focus-hint--visible');
-          var hint = document.getElementById('scroll-hint');
-          if (hint && window.scrollY <= 80) hint.classList.remove('scroll-hint--hidden');
+          delete container.dataset.focused;
         }
         blurHintTimer = null;
       }, 120);

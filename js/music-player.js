@@ -180,7 +180,6 @@
     // Cover
     coverImg = document.createElement('img');
     coverImg.className = 'music-player__cover';
-    container.appendChild(coverImg);
 
     // Info
     const info = document.createElement('div');
@@ -191,7 +190,6 @@
     artistEl.className = 'music-player__artist';
     info.appendChild(titleEl);
     info.appendChild(artistEl);
-    container.appendChild(info);
 
     // Controls
     const controls = document.createElement('div');
@@ -219,6 +217,12 @@
     controls.appendChild(btnPlay);
     controls.appendChild(btnNext);
     container.appendChild(controls);
+
+    // Cover (after controls)
+    container.appendChild(coverImg);
+
+    // Info (after cover)
+    container.appendChild(info);
 
     // Volume
     const volWrap = document.createElement('div');
