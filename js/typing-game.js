@@ -55,8 +55,6 @@
   function saveAiOptions() {
     setCookie('typing_ai_uppercase', aiUppercase ? '1' : '0', 365);
     setCookie('typing_ai_punctuation', aiPunctuation ? '1' : '0', 365);
-    setCookie('typing_ai_wordlength', String(aiWordLength), 365);
-    setCookie('typing_ai_difficulty', String(aiDifficulty), 365);
   }
 
   function loadSettings() {
@@ -74,8 +72,6 @@
       special: getCookie('typing_opt_special') === '1',
       aiUppercase: getCookie('typing_ai_uppercase') === '1',
       aiPunctuation: getCookie('typing_ai_punctuation') === '1',
-      aiWordLength: parseInt(getCookie('typing_ai_wordlength'), 10) || 16,
-      aiDifficulty: parseInt(getCookie('typing_ai_difficulty'), 10) || 3,
     };
   }
 
@@ -138,8 +134,6 @@
   let aiThemeBtn = null; // reference to the "change theme" button in navbar
   let aiUppercase = false; // AI popup setting: uppercase (independent from settings gear)
   let aiPunctuation = false; // AI popup setting: punctuation (independent from settings gear)
-  let aiWordLength = 16; // AI popup setting: max word length (5–15, 16 = no limit)
-  let aiDifficulty = 3; // AI popup setting: vocabulary difficulty (1–5)
   let settingsUppercase = false; // text setting: add uppercase letters
   let settingsNumbers = false; // text setting: add numbers
   let settingsPunctuation = false; // text setting: add punctuation
@@ -1048,7 +1042,7 @@
     fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme: theme, maxWordLen: aiWordLength, difficulty: aiDifficulty })
+      body: JSON.stringify({ theme: theme })
     })
     .then(function(res) {
       if (!res.ok) {
@@ -1095,16 +1089,6 @@
           '<span class="typing-game__ai-opt-label">Ponctuation</span>' +
           '<span class="typing-game__ai-opt-hint">.,;!?</span>' +
         '</label>' +
-        '<div class="typing-game__ai-slider-row">' +
-          '<span class="typing-game__ai-slider-label">Longueur des mots</span>' +
-          '<input type="range" class="typing-game__ai-slider" data-key="wordlength" min="5" max="16" value="' + aiWordLength + '" />' +
-          '<span class="typing-game__ai-slider-value" data-for="wordlength">' + (aiWordLength >= 16 ? '∞' : aiWordLength) + '</span>' +
-        '</div>' +
-        '<div class="typing-game__ai-slider-row">' +
-          '<span class="typing-game__ai-slider-label">Difficulté</span>' +
-          '<input type="range" class="typing-game__ai-slider" data-key="difficulty" min="1" max="5" value="' + aiDifficulty + '" />' +
-          '<span class="typing-game__ai-slider-value" data-for="difficulty">' + aiDifficulty + '</span>' +
-        '</div>' +
       '</div>' +
       '<div class="typing-game__ai-status"></div>' +
       '<div class="typing-game__ai-loader">' +
@@ -1124,39 +1108,12 @@
     // Local copies — only committed on successful generate
     var localUppercase = aiUppercase;
     var localPunctuation = aiPunctuation;
-    var localWordLength = aiWordLength;
-    var localDifficulty = aiDifficulty;
 
     popup.querySelectorAll('.typing-game__ai-opt-check').forEach(function(chk) {
       chk.addEventListener('change', function() {
         var key = chk.getAttribute('data-key');
         if (key === 'uppercase') localUppercase = chk.checked;
         if (key === 'punctuation') localPunctuation = chk.checked;
-      });
-    });
-
-    // Slider gradient fill helper
-    function updateAiSliderFill(slider) {
-      var min = parseFloat(slider.min), max = parseFloat(slider.max);
-      var pct = ((parseFloat(slider.value) - min) / (max - min)) * 100;
-      slider.style.background = 'linear-gradient(to right, var(--clr-primary) 0%, var(--clr-accent) ' + pct + '%, var(--clr-border) ' + pct + '%)';
-    }
-
-    popup.querySelectorAll('.typing-game__ai-slider').forEach(function(slider) {
-      updateAiSliderFill(slider);
-      slider.addEventListener('input', function() {
-        var key = slider.getAttribute('data-key');
-        var val = parseInt(slider.value, 10);
-        var display = popup.querySelector('.typing-game__ai-slider-value[data-for="' + key + '"]');
-        if (key === 'wordlength') {
-          localWordLength = val;
-          if (display) display.textContent = val >= 16 ? '∞' : val;
-        }
-        if (key === 'difficulty') {
-          localDifficulty = val;
-          if (display) display.textContent = val;
-        }
-        updateAiSliderFill(slider);
       });
     });
 
@@ -1178,8 +1135,6 @@
         if (!generated && !isReopen) {
           aiUppercase = localUppercase;
           aiPunctuation = localPunctuation;
-          aiWordLength = localWordLength;
-          aiDifficulty = localDifficulty;
           aiTheme = themeInput.value.trim();
           saveAiOptions();
         }
@@ -1220,8 +1175,6 @@
         // Commit AI toggle values on successful generation
         aiUppercase = localUppercase;
         aiPunctuation = localPunctuation;
-        aiWordLength = localWordLength;
-        aiDifficulty = localDifficulty;
         aiTheme = theme;
         saveAiOptions();
         postProcessAiTexts(texts);
@@ -1992,8 +1945,6 @@
     settingsSpecial = saved.special;
     aiUppercase = saved.aiUppercase;
     aiPunctuation = saved.aiPunctuation;
-    aiWordLength = saved.aiWordLength;
-    aiDifficulty = saved.aiDifficulty;
     // If hardcore is on but mode is incompatible, force to 10
     if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
       currentMode = '10';

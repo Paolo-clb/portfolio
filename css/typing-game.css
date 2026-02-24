@@ -1291,75 +1291,6 @@
   opacity: 0.6;
 }
 
-/* ---- AI popup sliders ---- */
-
-.typing-game__ai-slider-row {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.45rem 0.7rem;
-  border-radius: calc(var(--radius) * 0.7);
-}
-
-.typing-game__ai-slider-label {
-  font-size: 0.88rem;
-  color: var(--clr-text);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.typing-game__ai-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  flex: 1;
-  height: 4px;
-  background: var(--clr-border);
-  border-radius: 2px;
-  outline: none;
-  cursor: pointer;
-}
-
-.typing-game__ai-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--clr-primary);
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.typing-game__ai-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.25);
-  box-shadow: 0 0 6px rgba(242, 162, 133, 0.4);
-}
-
-.typing-game__ai-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--clr-primary);
-  border: none;
-  cursor: pointer;
-}
-
-.typing-game__ai-slider-value {
-  min-width: 1.5rem;
-  text-align: center;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--clr-primary);
-  font-family: 'Courier New', Courier, monospace;
-}
-
-.typing-game__ai-options--loading .typing-game__ai-slider-row {
-  opacity: 0.25;
-  pointer-events: none;
-  filter: grayscale(1);
-  transition: opacity 0.35s ease, filter 0.35s ease;
-}
-
 .typing-game__ai-input::placeholder {
   color: var(--clr-text-muted);
   opacity: 0.6;
@@ -1797,23 +1728,6 @@
 
 [data-theme="dark"] .typing-game__ai-opt-check:checked + .typing-game__ai-opt-toggle::after {
   background: var(--clr-primary);
-}
-
-[data-theme="dark"] .typing-game__ai-slider::-webkit-slider-thumb {
-  background: var(--clr-primary);
-  box-shadow: 0 0 4px rgba(156, 39, 176, 0.5);
-}
-
-[data-theme="dark"] .typing-game__ai-slider::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 8px rgba(156, 39, 176, 0.6);
-}
-
-[data-theme="dark"] .typing-game__ai-slider::-moz-range-thumb {
-  background: var(--clr-primary);
-}
-
-[data-theme="dark"] .typing-game__ai-slider-value {
-  color: var(--clr-primary);
 }
 
 /* --- Dark: Settings gear --- */

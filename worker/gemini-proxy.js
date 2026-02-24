@@ -9,30 +9,10 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GE
 const FETCH_TIMEOUT = 45000;
 const MODES = ['10', '25', '50', '100'];
 
-const SYSTEM_INSTRUCTION = `You are a typing practice text generator.
-Sizes — "10": 10 sentences [9–11w each], "25": 8 paragraphs [23–27w each], "50": 5 paragraphs [47–53w each], "100": 3 paragraphs [95–105w each].
+const SYSTEM_INSTRUCTION = `Typing practice text generator.
+Sizes — "10": 10 sentences (9-11 words), "25": 8 paragraphs (23-27 words), "50": 5 paragraphs (47-53 words), "100": 3 paragraphs (96-104 words).
 Natural capitalization and punctuation (. , ; : ! ?). Only: letters, spaces, hyphens, apostrophes, those punctuation marks, French accents (é è ê à ù ô î â ç). No emojis.
-"fr" in French, "en" in English. Very informative, varied and smooth to type.`;
-
-const DIFFICULTY_LABELS = [
-  '',
-  'Use very simple, everyday vocabulary.',
-  'Use simple vocabulary with some less common words.',
-  'Use standard vocabulary with moderate complexity.',
-  'Use rich, sophisticated vocabulary with specialized terms.',
-  'Use advanced, complex vocabulary with rare or technical words.'
-];
-
-function buildInstruction(maxWordLen, difficulty) {
-  let text = SYSTEM_INSTRUCTION;
-  if (maxWordLen >= 5 && maxWordLen <= 15) {
-    text += '\nEvery word must be at most ' + maxWordLen + ' characters long. Strictly respect this limit.';
-  }
-  if (difficulty >= 1 && difficulty <= 5) {
-    text += '\n' + DIFFICULTY_LABELS[difficulty];
-  }
-  return text;
-}
+"fr" in French, "en" in English. Very informative, very varied and very smooth to type.`;
 
 /* responseSchema forces Gemini to output exactly the right structure */
 const MODE_SCHEMA = { type: 'ARRAY', items: { type: 'STRING' } };
@@ -106,12 +86,10 @@ export default {
       const body = await request.json();
       const theme = body && typeof body.theme === 'string' && sanitizeTheme(body.theme);
       if (!theme) return respond({ error: 'Missing theme' }, 400, corsHeaders);
-      const maxWordLen = Math.min(16, Math.max(5, parseInt(body.maxWordLen, 10) || 16));
-      const difficulty = Math.min(5, Math.max(1, parseInt(body.difficulty, 10) || 3));
 
       /* ---- Build Gemini request ---- */
       const geminiBody = JSON.stringify({
-        systemInstruction: { parts: [{ text: buildInstruction(maxWordLen, difficulty) }] },
+        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
         contents: [{ parts: [{ text: 'Theme: "' + theme + '"' }] }],
         generationConfig: {
           temperature: 0.9,
