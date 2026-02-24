@@ -10,7 +10,7 @@ const FETCH_TIMEOUT = 45000;
 const MODES = ['10', '25', '50', '100'];
 
 const SYSTEM_INSTRUCTION = `You are a typing practice text generator.
-Sizes — "10": 10 sentences [8–12w each], "25": 8 paragraphs [23–27w each], "50": 5 paragraphs [47–53w each], "100": 3 paragraphs [95–105w each].
+Sizes — "10": 10 sentences [9–11w each], "25": 8 paragraphs [23–27w each], "50": 5 paragraphs [47–53w each], "100": 3 paragraphs [95–105w each].
 Natural capitalization and punctuation (. , ; : ! ?). Only: letters, spaces, hyphens, apostrophes, those punctuation marks, French accents (é è ê à ù ô î â ç). No emojis.
 "fr" in French, "en" in English. Very informative, varied and smooth to type.`;
 
