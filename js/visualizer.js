@@ -100,8 +100,8 @@
         a += binVal * 0.6;
       } else if (!impulseIsClick && impulse > 0.01) {
         // Keyboard glow (only without music)
-        r += impulse * 3;
-        a += impulse * 0.3;
+        r += impulse * 6;
+        a += impulse * 0.6;
       }
 
       // Click repel (always active)
