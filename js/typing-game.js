@@ -607,8 +607,18 @@
       textEl.style.boxShadow = '0 0 0 0 rgba(' + pR + ', ' + pG + ', ' + pB + ', 0)';
       return;
     }
+
+    // Ramp-up factor: dampen glow intensity during the first 2 seconds
+    // to avoid a flash when WPM is artificially inflated at the start
+    var ramp = 1;
+    if (startTime && !finished) {
+      var elapsed = (Date.now() - startTime - totalPaused) / 1000; // seconds
+      ramp = Math.min(elapsed / 2, 1); // 0→1 over 2 seconds
+      ramp = ramp * ramp; // ease-in curve for smoother buildup
+    }
+
     // Linear 0–200 mapping, fully opaque at 200
-    var t = Math.min(wpm / 200, 1);
+    var t = Math.min(wpm / 200, 1) * ramp;
     // Background opacity: starts visible, fully opaque at 200
     // Dark theme: higher base for readability
     var bgAlpha = isDark ? (0.6 + t * 0.4) : (0.4 + t * 0.6);
@@ -621,10 +631,11 @@
     var outerAlpha = 0.08 + t * 0.35;
     var outerSize = Math.round(30 + t * 90);
 
-    // Color transition: primary → accent/hover from 60–130 WPM
+    // Color transition: primary → accent/hover from 60–130 WPM (also dampened by ramp)
+    var effectiveWpm = wpm * ramp;
     var r = pR, g = pG, b = pB;
-    if (wpm >= 60) {
-      var ct = Math.min((wpm - 60) / 70, 1);
+    if (effectiveWpm >= 60) {
+      var ct = Math.min((effectiveWpm - 60) / 70, 1);
       r = Math.round(pR + ct * (phR - pR));
       g = Math.round(pG + ct * (phG - pG));
       b = Math.round(pB + ct * (phB - pB));
