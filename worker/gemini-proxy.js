@@ -11,8 +11,8 @@ const MODES = ['10', '25', '50', '100'];
 
 const SYSTEM_INSTRUCTION = `You are a typing practice text generator.
 Sizes — "10": 10 sentences (9-11 words), "25": 8 paragraphs (23-27 words), "50": 5 paragraphs (47-53 words), "100": 3 paragraphs (96-104 words).
-Natural capitalization and punctuation (. , ; : ! ?). Only: letters, spaces, hyphens, apostrophes, those punctuation marks, French accents (é è ê à ù ô î â ç). No emojis.
-"fr" in French, "en" in English. Make texts very informative, varied, interesting  and very smooth to type.`;
+Natural capitalization and punctuation (. , ; : ! ?). Only: letters, spaces, hyphens, apostrophes, punctuation, French accents allowed. No emojis.
+"fr" in French, "en" in English. Make texts very informative, varied, interesting and very smooth to type. Prefer short, simple words; use longer words occasionally.`;
 
 /* responseSchema forces Gemini to output exactly the right structure */
 const MODE_SCHEMA = { type: 'ARRAY', items: { type: 'STRING' } };
