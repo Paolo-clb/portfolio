@@ -890,9 +890,15 @@
       if (trailTimestamps.length > 20) trailTimestamps.shift();
       updateTrailSpeed();
 
-      // Count words on space
+      // Count words on space — only if at least one non-space char precedes it
       if (e.key === ' ') {
-        zenWordCount++;
+        var lastNonSpace = false;
+        for (var ti = typed.length - 2; ti >= 0; ti--) {
+          if (typed[ti] === ' ') break;
+          lastNonSpace = true;
+          break;
+        }
+        if (lastNonSpace) zenWordCount++;
       }
 
       render();
