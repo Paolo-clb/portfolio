@@ -828,6 +828,9 @@
     // Ignore modifier combos (Ctrl+C, etc.) except Shift
     if (e.ctrlKey || e.altKey || e.metaKey) return;
 
+    // Block all input during AI inline loading
+    if (aiInlineEl) return;
+
     // Block all input during hardcore memorize phase
     if (hardcorePhase === 'memorize') return;
 
@@ -1063,6 +1066,93 @@
     });
   }
 
+  /* ---- AI inline loader (replaces popup after 3s) ---- */
+
+  var aiInlineEl = null;
+
+  function showAiInlineLoader(theme, uppercase, punctuation) {
+    // Grey out the navbar
+    if (navbarEl) navbarEl.classList.add('typing-game__navbar--disabled');
+
+    // Build inline overlay positioned over the text area
+    aiInlineEl = document.createElement('div');
+    aiInlineEl.className = 'typing-game__ai-inline';
+
+    // Summary: theme + settings
+    var settingsHtml = '';
+    if (uppercase) settingsHtml += '<span class="typing-game__ai-inline-tag">ABC</span>';
+    if (punctuation) settingsHtml += '<span class="typing-game__ai-inline-tag">.,;!?</span>';
+
+    aiInlineEl.innerHTML =
+      '<div class="typing-game__ai-inline-content">' +
+        '<div class="typing-game__ai-inline-spinner"></div>' +
+        '<div class="typing-game__ai-inline-info">' +
+          '<div class="typing-game__ai-inline-theme">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ' +
+            theme +
+          '</div>' +
+          (settingsHtml ? '<div class="typing-game__ai-inline-tags">' + settingsHtml + '</div>' : '') +
+        '</div>' +
+        '<div class="typing-game__ai-inline-text">Génération en cours\u2026</div>' +
+      '</div>' +
+      '<div class="typing-game__ai-inline-result"></div>';
+
+    // Insert inside textEl so absolute positioning covers it exactly
+    if (textEl) {
+      textEl.appendChild(aiInlineEl);
+    } else {
+      container.appendChild(aiInlineEl);
+    }
+
+    // Animate in
+    aiInlineEl.offsetHeight;
+    aiInlineEl.classList.add('typing-game__ai-inline--visible');
+  }
+
+  function finishAiInlineLoader(success, message, onDone) {
+    if (!aiInlineEl) return;
+
+    var resultEl = aiInlineEl.querySelector('.typing-game__ai-inline-result');
+    var contentEl = aiInlineEl.querySelector('.typing-game__ai-inline-content');
+
+    // Fade out spinner content
+    contentEl.classList.add('typing-game__ai-inline-content--hidden');
+
+    setTimeout(function() {
+      // Show result message
+      resultEl.innerHTML =
+        '<div class="typing-game__ai-inline-result-icon">' +
+          (success
+            ? '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+            : '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+          ) +
+        '</div>' +
+        '<div class="typing-game__ai-inline-result-msg">' + message + '</div>';
+      resultEl.classList.add('typing-game__ai-inline-result--visible');
+      resultEl.classList.add(success ? 'typing-game__ai-inline-result--success' : 'typing-game__ai-inline-result--error');
+
+      // After a moment, dismiss the inline overlay
+      setTimeout(function() {
+        dismissAiInlineLoader(onDone);
+      }, success ? 1000 : 2000);
+    }, 300);
+  }
+
+  function dismissAiInlineLoader(onDone) {
+    if (!aiInlineEl) { if (typeof onDone === 'function') onDone(); return; }
+    aiInlineEl.classList.remove('typing-game__ai-inline--visible');
+    aiInlineEl.addEventListener('transitionend', function handler() {
+      aiInlineEl.removeEventListener('transitionend', handler);
+      if (aiInlineEl.parentNode) aiInlineEl.remove();
+      aiInlineEl = null;
+      if (typeof onDone === 'function') onDone();
+    });
+    // Ungrey navbar
+    if (navbarEl) navbarEl.classList.remove('typing-game__navbar--disabled');
+    aiLoading = false;
+    container.focus();
+  }
+
   /* ---- AI popup ---- */
 
   function showAiPopup(onConfirm) {
@@ -1170,10 +1260,24 @@
       optionsEl.classList.add('typing-game__ai-options--loading');
       aiLoading = true;
 
+      var resolved = false;
+      var movedInline = false;
+
+      // After 3s, close popup and show inline loader on the typing text
+      var inlineTimer = setTimeout(function() {
+        if (resolved) return;
+        movedInline = true;
+        // Close the popup smoothly
+        close(true); // generated=true prevents persisting partial state
+        // Build the inline loader overlay
+        showAiInlineLoader(theme, localUppercase, localPunctuation);
+      }, 3000);
+
       fetchAiTexts(theme, function(texts) {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(inlineTimer);
         aiLoading = false;
-        loaderEl.classList.remove('typing-game__ai-loader--active');
-        optionsEl.classList.remove('typing-game__ai-options--loading');
         // Commit AI toggle values on successful generation
         aiUppercase = localUppercase;
         aiPunctuation = localPunctuation;
@@ -1181,18 +1285,36 @@
         saveAiOptions();
         postProcessAiTexts(texts);
         aiTexts = texts;
-        close(true);
-        if (typeof onConfirm === 'function') onConfirm();
+
+        if (movedInline) {
+          // Result goes to the inline loader; onConfirm fires after dismiss
+          finishAiInlineLoader(true, 'Textes générés !', function() {
+            if (typeof onConfirm === 'function') onConfirm();
+          });
+        } else {
+          loaderEl.classList.remove('typing-game__ai-loader--active');
+          optionsEl.classList.remove('typing-game__ai-options--loading');
+          close(true);
+          if (typeof onConfirm === 'function') onConfirm();
+        }
       }, function(err) {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(inlineTimer);
         aiLoading = false;
-        loaderEl.classList.remove('typing-game__ai-loader--active');
-        optionsEl.classList.remove('typing-game__ai-options--loading');
-        confirmBtn.disabled = false;
-        confirmBtn.style.display = '';
-        themeInput.disabled = false;
-        confirmBtn.textContent = 'Réessayer';
-        statusEl.textContent = getErrorMsg(err);
-        statusEl.className = 'typing-game__ai-status typing-game__ai-status--error';
+
+        if (movedInline) {
+          finishAiInlineLoader(false, getErrorMsg(err));
+        } else {
+          loaderEl.classList.remove('typing-game__ai-loader--active');
+          optionsEl.classList.remove('typing-game__ai-options--loading');
+          confirmBtn.disabled = false;
+          confirmBtn.style.display = '';
+          themeInput.disabled = false;
+          confirmBtn.textContent = 'Réessayer';
+          statusEl.textContent = getErrorMsg(err);
+          statusEl.className = 'typing-game__ai-status typing-game__ai-status--error';
+        }
       });
     }
 
