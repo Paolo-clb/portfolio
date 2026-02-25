@@ -732,6 +732,7 @@
 }
 
 .zen-popup {
+  position: relative;
   background: rgba(27, 26, 39, 0.92);
   border: 1px solid rgba(242, 162, 133, 0.25);
   border-radius: var(--radius);
@@ -748,6 +749,12 @@
 .zen-popup-overlay--visible .zen-popup {
   transform: scale(1) translateY(0);
   opacity: 1;
+}
+
+.zen-popup__close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
 }
 
 .zen-popup__title {

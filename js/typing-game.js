@@ -1199,6 +1199,7 @@
     popup.className = 'zen-popup typing-game__ai-popup';
 
     popup.innerHTML =
+      '<button class="modal__close zen-popup__close" aria-label="Fermer">&times;</button>' +
       '<div class="zen-popup__title">Générateur IA</div>' +
       '<p class="zen-popup__text">Que souhaitez-vous taper aujourd\'hui ?</p>' +
       '<input class="typing-game__ai-input typing-game__ai-theme-input" type="text" placeholder="Ex: l\'espace, la cuisine, les chats..." maxlength="100" />' +
@@ -1355,6 +1356,9 @@
       });
     }
 
+    popup.querySelector('.zen-popup__close').addEventListener('click', function() {
+      if (!aiLoading) close();
+    });
     confirmBtn.addEventListener('click', doGenerate);
     popup.addEventListener('keydown', function(e) {
       e.stopPropagation();
@@ -1385,7 +1389,8 @@
       { key: 'special', label: 'Caract\u00e8res sp\u00e9ciaux', desc: '@#$%', get: function() { return settingsSpecial; }, set: function(v) { settingsSpecial = v; } }
     ];
 
-    var html = '<div class="zen-popup__title">Param\u00e8tres du texte</div>' +
+    var html = '<button class="modal__close zen-popup__close" aria-label="Fermer">&times;</button>' +
+      '<div class="zen-popup__title">Param\u00e8tres du texte</div>' +
       '<p class="zen-popup__text">Ajoutez des \u00e9l\u00e9ments au texte pour varier la difficult\u00e9.</p>' +
       '<div class="typing-game__settings-options">';
 
@@ -1437,6 +1442,7 @@
       });
     }
 
+    popup.querySelector('.zen-popup__close').addEventListener('click', close);
     popup.querySelector('.typing-game__settings-confirm').addEventListener('click', close);
     overlay.addEventListener('click', function(ev) {
       if (ev.target === overlay) close();

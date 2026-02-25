@@ -1572,6 +1572,11 @@ section.hero {
   background: rgba(156, 39, 176, 0.15);
 }
 
+/* --- Dark: Modal close button hover text color fix --- */
+[data-theme="dark"] .modal__close:hover {
+  color: var(--clr-text);
+}
+
 /* --- Dark: Mobile close (sticky) --- */
 [data-theme="dark"] .modal__close--sticky {
   background: rgba(10, 10, 32, 0.7);
