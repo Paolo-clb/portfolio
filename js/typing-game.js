@@ -95,7 +95,7 @@
 
   /* ---- Intro presentation text (shown before game is unlocked) ---- */
 
-  const INTRO_TEXT = 'Bienvenue sur mon portfolio ! Je suis Paolo Colombat, développeur full stack passionné, actuellement en 2ème année de BUT Informatique. Ici vous découvrirez mes projets, mes compétences techniques et un moyen de me contacter. Bonne visite !';
+  const INTRO_TEXT = 'Bienvenue sur mon portfolio ! Je suis Paolo Colombat, développeur full stack passionné, actuellement en 2ème année de BUT Informatique. Ici vous découvrirez mes projets et mes compétences, ainsi qu\'un Typing Game. Bonne visite !';
 
   /* ---- State ---- */
 
