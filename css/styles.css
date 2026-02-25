@@ -39,10 +39,6 @@
   box-sizing: border-box;
 }
 
-html {
-  /* scroll-behavior: smooth removed — smooth scrolling handled via JS for anchor links only */
-}
-
 body {
   font-family: var(--ff-body);
   font-size: var(--fs-base);
