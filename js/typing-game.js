@@ -842,8 +842,14 @@
     // Block all input during AI inline loading
     if (aiInlineEl) return;
 
-    // Block all input during hardcore memorize phase
-    if (hardcorePhase === 'memorize') return;
+    // Allow restarting during hardcore memorize phase with Space/Enter
+    if (hardcorePhase === 'memorize') {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        startGame(true);
+      }
+      return;
+    }
 
     // Restart on Space or Enter when finished (replay same text)
     if (finished) {
@@ -1451,6 +1457,7 @@
         eye: 'Afficher / masquer les erreurs',
         hardcore: 'Mode hardcore (mémorisation)',
         ai: 'Générer des textes avec l\'IA',
+        'ai-active': 'Désactiver les textes IA',
         aiTheme: 'Changer le thème IA',
         settings: 'Paramètres du texte'
       },
@@ -1465,6 +1472,7 @@
         eye: 'Show / hide errors',
         hardcore: 'Hardcore mode (memorize)',
         ai: 'Generate texts with AI',
+        'ai-active': 'Disable AI texts',
         aiTheme: 'Change AI theme',
         settings: 'Text settings'
       }
@@ -1477,7 +1485,8 @@
     function showTooltip(anchor, key) {
       clearTimeout(tooltipTimer);
       var texts = TOOLTIP_TEXTS[currentLang] || TOOLTIP_TEXTS.fr;
-      tooltipEl.textContent = texts[key] || '';
+      var resolvedKey = (key === 'ai' && aiMode) ? 'ai-active' : key;
+      tooltipEl.textContent = texts[resolvedKey] || '';
       if (!tooltipEl.textContent) return;
       anchor.style.position = 'relative';
       anchor.appendChild(tooltipEl);
