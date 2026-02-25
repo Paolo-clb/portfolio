@@ -85,7 +85,7 @@ ul {
 
 .section {
   padding: var(--section-padding);
-  background: rgba(16, 15, 24, 0.35);
+  background: rgba(16, 15, 24, 0.25);
   position: relative;
   z-index: 1;
 }
@@ -1574,7 +1574,8 @@ section.hero {
 
 /* --- Dark: Modal close button hover text color fix --- */
 [data-theme="dark"] .modal__close:hover {
-  color: var(--clr-text);
+  background: var(--clr-accent);
+  color: var(--clr-bg);
 }
 
 /* --- Dark: Mobile close (sticky) --- */
