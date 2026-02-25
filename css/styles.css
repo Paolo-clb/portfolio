@@ -40,7 +40,7 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  /* scroll-behavior: smooth removed — smooth scrolling handled via JS for anchor links only */
 }
 
 body {
@@ -85,7 +85,7 @@ ul {
 
 .section {
   padding: var(--section-padding);
-  background: rgba(16, 15, 24, 0.25);
+  background: rgba(16, 15, 24, 0.24);
   position: relative;
   z-index: 1;
 }

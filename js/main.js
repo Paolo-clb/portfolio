@@ -499,13 +499,37 @@ function initNavToggle() {
     toggle.classList.toggle('nav__toggle--active');
   });
 
-  // Close menu when a link is clicked
+  // Close menu when a link is clicked, and smooth-scroll to target
   navList.querySelectorAll('.nav__link').forEach((link) => {
-    link.addEventListener('click', () => {
+    link.addEventListener('click', (e) => {
       navList.classList.remove('nav__list--open');
       toggle.classList.remove('nav__toggle--active');
+      var href = link.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        var target = document.querySelector(href);
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
     });
   });
+
+  // Smooth-scroll for the scroll-hint anchor
+  var scrollHint = document.getElementById('scroll-hint');
+  if (scrollHint) {
+    scrollHint.addEventListener('click', function(e) {
+      var href = scrollHint.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        var target = document.querySelector(href);
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    });
+  }
+
 }
 
 // ---------------------------------------------------------------------------
