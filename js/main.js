@@ -550,15 +550,28 @@ function initScrollSpy() {
   }
 
   function onScroll() {
-    var scrollY = window.scrollY + 100;
+    var viewportH = window.innerHeight;
+    var bestSection = null;
+    var bestVisible = -1;
+
+    sections.forEach(function (section) {
+      var rect = section.getBoundingClientRect();
+      // Visible height = intersection of section with viewport
+      var visibleTop = Math.max(rect.top, 0);
+      var visibleBottom = Math.min(rect.bottom, viewportH);
+      var visiblePx = Math.max(0, visibleBottom - visibleTop);
+      if (visiblePx > bestVisible) {
+        bestVisible = visiblePx;
+        bestSection = section;
+      }
+    });
+
     var activeLink = null;
     sections.forEach(function (section) {
-      var top = section.offsetTop;
-      var height = section.offsetHeight;
       var id = section.getAttribute('id');
       var link = document.querySelector('.nav__link[href="#' + id + '"]');
       if (link) {
-        var isActive = scrollY >= top && scrollY < top + height;
+        var isActive = section === bestSection && bestVisible > 0;
         link.classList.toggle('nav__link--active', isActive);
         if (isActive) activeLink = link;
       }
