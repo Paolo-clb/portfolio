@@ -813,8 +813,14 @@ function initCursorHalo() {
         var isIntro = e.target.closest('.typing-game__text--intro');
         if (gameFocused || isIntro) return;
       }
-      // Don't show hover on popup overlay content — only on the backdrop itself
-      if (e.target.closest('.zen-popup-overlay') && e.target.closest('.zen-popup')) return;
+      // Don't show hover on popup overlay content — only on the backdrop itself,
+      // but allow interactive children (buttons, inputs, labels) inside the popup
+      if (e.target.closest('.zen-popup-overlay') && e.target.closest('.zen-popup') &&
+          !e.target.closest('button, input, label, a, .typing-game__ai-opt, .typing-game__settings-option')) return;
+      // While AI is generating (popup still open, can't be closed), don't show
+      // hover on the backdrop — clicking it does nothing during that phase
+      if (e.target.closest('.zen-popup-overlay') && !e.target.closest('.zen-popup') &&
+          document.body.dataset.aiLoading === '1') return;
       // Don't show hover on modal overlay content — only on the backdrop itself
       // Exceptions: project cards and interactive controls remain hoverable
       if (e.target.closest('.modal-overlay') && e.target.closest('.modal, .detail-modal, .skill-popup') && !e.target.closest('.project-card') && !e.target.closest('button, .modal__close, a, .btn')) return;

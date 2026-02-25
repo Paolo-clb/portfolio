@@ -1398,7 +1398,7 @@
   align-items: center;
   justify-content: center;
   border-radius: calc(var(--radius) * 1.5);
-  background: rgba(27, 26, 39, 0.85);
+  background: rgba(27, 26, 39, 1);
   border: 1px solid rgba(191, 153, 160, 0.15);
   backdrop-filter: blur(14px);
   opacity: 0;
@@ -1532,7 +1532,7 @@
 
 /* ---- Dark theme overrides ---- */
 [data-theme="dark"] .typing-game__ai-inline {
-  background: rgba(26, 0, 51, 0.88);
+  background: rgba(26, 0, 51, 1);
   border-color: rgba(156, 39, 176, 0.2);
 }
 

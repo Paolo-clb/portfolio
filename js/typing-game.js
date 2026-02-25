@@ -1167,6 +1167,7 @@
     // Ungrey navbar
     if (navbarEl) navbarEl.classList.remove('typing-game__navbar--disabled');
     aiLoading = false;
+    delete document.body.dataset.aiLoading;
     container.focus();
   }
 
@@ -1276,6 +1277,7 @@
       loaderEl.classList.add('typing-game__ai-loader--active');
       optionsEl.classList.add('typing-game__ai-options--loading');
       aiLoading = true;
+      document.body.dataset.aiLoading = '1';
 
       var resolved = false;
       var movedInline = false;
@@ -1309,6 +1311,7 @@
             if (typeof onConfirm === 'function') onConfirm();
           });
         } else {
+          delete document.body.dataset.aiLoading;
           loaderEl.classList.remove('typing-game__ai-loader--active');
           optionsEl.classList.remove('typing-game__ai-options--loading');
           close(true);
@@ -1323,6 +1326,7 @@
         if (movedInline) {
           finishAiInlineLoader(false, getErrorMsg(err));
         } else {
+          delete document.body.dataset.aiLoading;
           loaderEl.classList.remove('typing-game__ai-loader--active');
           optionsEl.classList.remove('typing-game__ai-options--loading');
           confirmBtn.disabled = false;
