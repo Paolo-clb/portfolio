@@ -43,10 +43,19 @@ body {
   font-family: var(--ff-body);
   font-size: var(--fs-base);
   color: var(--clr-text);
-  background: var(--clr-bg) url('../assets/images/background.jpg') no-repeat center center / cover;
-  background-attachment: fixed;
+  background: var(--clr-bg);
   line-height: 1.6;
   min-height: 100vh;
+}
+
+/* Fixed background via pseudo-element — GPU-accelerated, avoids Firefox scroll jank
+   (background-attachment: fixed causes repaint on every scroll frame in Firefox) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: url('../assets/images/background.jpg') no-repeat center center / cover;
 }
 
 img {
@@ -1324,7 +1333,7 @@ section.hero {
   --clr-border: #3f51b5;
 }
 
-[data-theme="dark"] body {
+[data-theme="dark"] body::before {
   background-image: url('../assets/images/background2.gif');
 }
 
@@ -1704,13 +1713,11 @@ section.hero {
 
 /* ---- Mobile backgrounds ---- */
 @media (max-width: 768px) {
-  body {
-    background-attachment: fixed;
+  body::before {
     background-image: url('../assets/images/backgroundMobile.jpg');
-    background-size: cover;
     background-position: center top;
   }
-  [data-theme="dark"] body {
+  [data-theme="dark"] body::before {
     background-image: url('../assets/images/background2Mobile.gif');
   }
 }
