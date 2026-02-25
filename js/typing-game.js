@@ -1389,8 +1389,7 @@
       { key: 'special', label: 'Caract\u00e8res sp\u00e9ciaux', desc: '@#$%', get: function() { return settingsSpecial; }, set: function(v) { settingsSpecial = v; } }
     ];
 
-    var html = '<button class="modal__close zen-popup__close" aria-label="Fermer">&times;</button>' +
-      '<div class="zen-popup__title">Param\u00e8tres du texte</div>' +
+    var html = '<div class="zen-popup__title">Param\u00e8tres du texte</div>' +
       '<p class="zen-popup__text">Ajoutez des \u00e9l\u00e9ments au texte pour varier la difficult\u00e9.</p>' +
       '<div class="typing-game__settings-options">';
 
@@ -1442,7 +1441,6 @@
       });
     }
 
-    popup.querySelector('.zen-popup__close').addEventListener('click', close);
     popup.querySelector('.typing-game__settings-confirm').addEventListener('click', close);
     overlay.addEventListener('click', function(ev) {
       if (ev.target === overlay) close();
