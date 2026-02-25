@@ -741,10 +741,10 @@
     // Toggle zen-specific classes
     if (currentMode === 'zen') {
       container.classList.add('typing-game--zen');
-      setRestartText('Shift + Espace pour arrêter', ZEN_STOP_ICON);
+      setRestartText('Shift + Espace pour arrêter · Entrée pour recommencer', ZEN_STOP_ICON);
     } else {
       container.classList.remove('typing-game--zen');
-      setRestartText('Entrée ou Espace pour recommencer');
+      setRestartText('Entrée : nouveau texte · Espace : même texte');
     }
     // Hardcore mode reset
     hardcorePhase = null;
@@ -823,7 +823,11 @@
     }
 
     // Update restart hint for finished state
-    setRestartText('Entrée ou Espace pour recommencer');
+    if (currentMode === 'zen') {
+      setRestartText('Entrée ou Espace pour recommencer');
+    } else {
+      setRestartText('Entrée : nouveau texte · Espace : même texte');
+    }
     showRestart();
     container.classList.add('typing-game--finished');
     render();
@@ -842,20 +846,26 @@
     // Block all input during AI inline loading
     if (aiInlineEl) return;
 
-    // Allow restarting during hardcore memorize phase with Space/Enter
+    // Allow restarting during hardcore memorize phase
     if (hardcorePhase === 'memorize') {
-      if (e.key === ' ' || e.key === 'Enter') {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        startGame(true);
+        startGame(true);  // Enter: new text
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        startGame(false); // Space: same text
       }
       return;
     }
 
-    // Restart on Space or Enter when finished (replay same text)
+    // Restart when finished: Enter = new text, Space = same text (zen: both restart)
     if (finished) {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        startGame(false);
+        startGame(currentMode === 'zen' ? false : true);  // new text (or zen restart)
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        startGame(false); // same text (or zen restart)
       }
       return;
     }
@@ -1996,7 +2006,7 @@
     restartEl = document.createElement('div');
     restartEl.className = 'typing-game__restart';
     restartEl.dataset.shouldShow = '0';
-    setRestartText('Entrée ou Espace pour recommencer');
+    setRestartText('Entrée : nouveau texte · Espace : même texte');
 
     // Focus hint (visible when blurred)
     focusHintEl = document.createElement('div');

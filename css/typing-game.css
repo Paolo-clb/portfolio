@@ -709,8 +709,7 @@
 
 /* Zen mode restart hint (always visible during gameplay) */
 .typing-game--zen .typing-game__restart--visible {
-  opacity: 0.45;
-  font-size: 0.85rem;
+  opacity: 1;
 }
 
 /* ---- Zen popup ---- */
