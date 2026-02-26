@@ -1461,15 +1461,17 @@
     /* ---- Tooltip system ---- */
     var TOOLTIP_TEXTS = {
       fr: {
-        fr: 'Passe en français',
-        en: 'Passe en anglais',
+        fr: 'Passer en français',
+        en: 'Passer en anglais',
         '10': 'Texte de mode 10 mots',
         '25': 'Texte de mode 25 mots',
         '50': 'Texte de mode 50 mots',
         '100': 'Texte de mode 100 mots',
-        zen: 'Lance le mode zen',
+        zen: 'Lancer le mode zen',
+        'zen-active': 'Quitter le mode zen',
         eye: 'Afficher / masquer les erreurs',
-        hardcore: 'Lance le mode hardcore',
+        hardcore: 'Lancer le mode hardcore',
+        'hardcore-active': 'Quitter le mode hardcore',
         ai: 'Générer des textes avec l\'IA',
         'ai-active': 'Désactiver les textes IA',
         aiTheme: 'Changer le thème IA',
@@ -1483,8 +1485,10 @@
         '50': 'Text of 50-word mode',
         '100': 'Text of 100-word mode',
         zen: 'Start zen mode ',
+        'zen-active': 'Quit zen mode',
         eye: 'Show / hide errors',
         hardcore: 'Start hardcore mode',
+        'hardcore-active': 'Quit hardcore mode',
         ai: 'Generate texts with AI',
         'ai-active': 'Disable AI texts',
         aiTheme: 'Change AI theme',
@@ -1499,7 +1503,10 @@
     function showTooltip(anchor, key) {
       clearTimeout(tooltipTimer);
       var texts = TOOLTIP_TEXTS[currentLang] || TOOLTIP_TEXTS.fr;
-      var resolvedKey = (key === 'ai' && aiMode) ? 'ai-active' : key;
+      var resolvedKey = key;
+      if (key === 'ai' && aiMode) resolvedKey = 'ai-active';
+      if (key === 'zen' && currentMode === 'zen') resolvedKey = 'zen-active';
+      if (key === 'hardcore' && hardcoreMode) resolvedKey = 'hardcore-active';
       tooltipEl.textContent = texts[resolvedKey] || '';
       if (!tooltipEl.textContent) return;
       anchor.style.position = 'relative';
