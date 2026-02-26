@@ -10,10 +10,18 @@
   <link rel="stylesheet" href="css/typing-game.css" />
   <link rel="stylesheet" href="css/music-player.css" />
   <link rel="stylesheet" href="css/visualizer.css" />
-  <!-- Restore dark theme before any IIFE to avoid light-color flash -->
-  <script>if(localStorage.getItem('portfolio_theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
+  <!-- Restore saved theme before any IIFE to avoid light-color flash -->
+  <script>(function(){var t=localStorage.getItem('portfolio_theme');if(t==='dark'||t==='nature')document.documentElement.setAttribute('data-theme',t);})()</script>
 </head>
 <body>
+  <!-- Video backgrounds for dark & nature themes -->
+  <video class="bg-video bg-video--dark" id="bg-video-dark" autoplay muted loop playsinline preload="none">
+    <source src="assets/images/backgroundKatana.mp4" type="video/mp4">
+  </video>
+  <video class="bg-video bg-video--nature" id="bg-video-nature" autoplay muted loop playsinline preload="none">
+    <source src="assets/images/hollowbackground.mp4" type="video/mp4">
+  </video>
+
   <!-- Navigation -->
   <header class="header" id="header">
     <nav class="nav container">
@@ -49,12 +57,19 @@
           </g>
           <!-- Sun/Moon body -->
           <circle class="theme-toggle__body" cx="12" cy="12" r="5" fill="currentColor" mask="url(#moon-mask)"/>
+          <!-- Leaf (nature theme) -->
+          <path class="theme-toggle__leaf" d="M12 3C8 7 6 11 6 14.5C6 18.1 8.7 21 12 21C15.3 21 18 18.1 18 14.5C18 11 16 7 12 3Z" fill="currentColor"/>
+          <line class="theme-toggle__vein" x1="12" y1="8" x2="12" y2="18"/>
+          <line class="theme-toggle__vein theme-toggle__vein--left" x1="12" y1="12" x2="9" y2="10"/>
+          <line class="theme-toggle__vein theme-toggle__vein--right" x1="12" y1="14" x2="15" y2="12"/>
         </svg>
       </button>
       <script>
-        (function(){if(document.documentElement.getAttribute('data-theme')!=='dark')return;
+        (function(){var t=document.documentElement.getAttribute('data-theme');
+        if(!t)return;
         var b=document.querySelector('.theme-toggle__body'),c=document.querySelector('.theme-toggle__cutout');
-        if(b)b.setAttribute('r','8');if(c){c.setAttribute('r','7');c.setAttribute('cx','17');c.setAttribute('cy','7');}})();
+        if(t==='dark'){if(b)b.setAttribute('r','8');if(c){c.setAttribute('r','7');c.setAttribute('cx','17');c.setAttribute('cy','7');}}
+        else if(t==='nature'){if(b)b.setAttribute('r','0');if(c)c.setAttribute('r','0');}})();
       </script>
       <button class="nav__toggle" id="nav-toggle" aria-label="Toggle navigation">
         <span></span><span></span><span></span>

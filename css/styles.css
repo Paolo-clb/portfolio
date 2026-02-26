@@ -58,6 +58,27 @@ body::before {
   background: url('../assets/images/background.jpg') no-repeat center center / cover;
 }
 
+/* Video backgrounds for dark & nature themes */
+.bg-video {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+  pointer-events: none;
+  display: none;
+}
+
+[data-theme="dark"] .bg-video--dark {
+  display: block;
+}
+
+[data-theme="nature"] .bg-video--nature {
+  display: block;
+}
+
 img {
   max-width: 100%;
   height: auto;
@@ -1318,6 +1339,52 @@ section.hero {
   transform: scale(0);
 }
 
+/* ---- Leaf icon (nature theme) ---- */
+
+.theme-toggle__leaf {
+  fill: currentColor;
+  opacity: 0;
+  transform: scale(0);
+  transform-origin: 12px 12px;
+  transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-toggle__vein {
+  stroke: var(--clr-bg);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+/* Nature mode: show leaf, hide sun/moon */
+[data-theme="nature"] .theme-toggle__icon {
+  transform: rotate(-15deg);
+}
+
+[data-theme="nature"] .theme-toggle__leaf {
+  opacity: 1;
+  transform: scale(1);
+}
+
+[data-theme="nature"] .theme-toggle__vein {
+  opacity: 1;
+}
+
+[data-theme="nature"] .theme-toggle__body {
+  r: 0px;
+}
+
+[data-theme="nature"] .theme-toggle__cutout {
+  r: 0px;
+}
+
+[data-theme="nature"] .theme-toggle__rays line {
+  opacity: 0;
+  transform: scale(0);
+}
+
 /* ==========================================================================
    Dark Theme — purple neon palette
    ========================================================================== */
@@ -1334,7 +1401,8 @@ section.hero {
 }
 
 [data-theme="dark"] body::before {
-  background-image: url('../assets/images/background2.gif');
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* --- Dark: Layout --- */
@@ -1590,6 +1658,278 @@ section.hero {
 }
 
 /* ==========================================================================
+   Nature Theme — forest green palette
+   ========================================================================== */
+
+[data-theme="nature"] {
+  --clr-bg: #0a1208;
+  --clr-surface: #152210;
+  --clr-primary: #5eb83a;
+  --clr-primary-hover: #7bda4e;
+  --clr-accent: #4ab5d6;
+  --clr-text: #dff0d8;
+  --clr-text-muted: #89a87c;
+  --clr-border: #2a4522;
+}
+
+[data-theme="nature"] body::before {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* --- Nature: Layout --- */
+[data-theme="nature"] .section {
+  background: rgba(10, 18, 8, 0.45);
+  backdrop-filter: none;
+}
+
+/* --- Nature: Header & Nav --- */
+[data-theme="nature"] .header {
+  background: rgba(10, 18, 8, 0.7);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .nav__indicator {
+  box-shadow: 0 0 6px rgba(94, 184, 58, 0.4);
+}
+
+/* --- Nature: Project cards --- */
+[data-theme="nature"] .project-card {
+  background: rgba(21, 34, 16, 0.85);
+  border-color: rgba(42, 69, 34, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .project-card:hover {
+  border-color: rgba(94, 184, 58, 0.6);
+  box-shadow: 0 12px 32px rgba(94, 184, 58, 0.30),
+              0 0 28px rgba(94, 184, 58, 0.20);
+}
+
+[data-theme="nature"] .tag {
+  background: rgba(94, 184, 58, 0.15);
+  color: var(--clr-accent);
+}
+
+/* --- Nature: Modal --- */
+[data-theme="nature"] .modal-overlay {
+  background: rgba(10, 18, 8, 0.4);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .modal {
+  background: rgba(21, 34, 16, 0.75);
+  border-color: rgba(42, 69, 34, 0.25);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .modal__header {
+  background: rgba(21, 34, 16, 0.7);
+  border-bottom-color: rgba(42, 69, 34, 0.12);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .modal__close {
+  background: rgba(42, 69, 34, 0.15);
+  border-color: rgba(42, 69, 34, 0.25);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .modal__grid .project-card {
+  background: rgba(21, 34, 16, 0.8);
+  border-color: rgba(42, 69, 34, 0.15);
+}
+
+[data-theme="nature"] .modal__grid .project-card:hover {
+  border-color: rgba(94, 184, 58, 0.6);
+  box-shadow: 0 8px 24px rgba(94, 184, 58, 0.28),
+              0 0 20px rgba(94, 184, 58, 0.18);
+}
+
+/* --- Nature: Detail modal --- */
+[data-theme="nature"] .detail-overlay {
+  background: rgba(10, 18, 8, 0.5);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .detail-modal {
+  background: rgba(21, 34, 16, 0.88);
+  border-color: rgba(42, 69, 34, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .detail-modal__close {
+  background: rgba(10, 18, 8, 0.6);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .detail-modal__image {
+  border-bottom-color: rgba(42, 69, 34, 0.15);
+}
+
+[data-theme="nature"] .detail-modal::-webkit-scrollbar-thumb {
+  background: rgba(42, 69, 34, 0.25);
+}
+
+[data-theme="nature"] .detail-modal::-webkit-scrollbar-thumb:hover {
+  background: rgba(42, 69, 34, 0.4);
+}
+
+/* --- Nature: Skills --- */
+[data-theme="nature"] .skills-group {
+  background: rgba(21, 34, 16, 0.55);
+  border-color: rgba(42, 69, 34, 0.12);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .skills-group:nth-child(even) {
+  border-left-color: rgba(42, 69, 34, 0.15);
+}
+
+[data-theme="nature"] .skill-item {
+  background: rgba(21, 34, 16, 0.7);
+  border-color: rgba(42, 69, 34, 0.15);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .skill-item:hover {
+  border-color: var(--clr-accent);
+  box-shadow: 0 8px 24px rgba(94, 184, 58, 0.25),
+              0 0 18px rgba(94, 184, 58, 0.16);
+}
+
+/* --- Nature: Skill popup --- */
+[data-theme="nature"] .skill-overlay {
+  background: rgba(10, 18, 8, 0.5);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .skill-popup {
+  background: rgba(21, 34, 16, 0.9);
+  border-color: rgba(42, 69, 34, 0.25);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .skill-popup__icon-wrap {
+  background: rgba(94, 184, 58, 0.1);
+  border-color: rgba(42, 69, 34, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .skill-popup__bar-track {
+  background: rgba(42, 69, 34, 0.15);
+}
+
+[data-theme="nature"] .skill-popup__bar-fill {
+  box-shadow: 0 0 8px rgba(94, 184, 58, 0.4);
+}
+
+[data-theme="nature"] .skill-popup__dot {
+  background: rgba(42, 69, 34, 0.2);
+  border-color: rgba(42, 69, 34, 0.25);
+}
+
+[data-theme="nature"] .skill-popup__dot--active {
+  background: #5eb83a;
+  border-color: #5eb83a;
+  box-shadow: 0 0 6px rgba(94, 184, 58, 0.5);
+}
+
+/* --- Nature: Contact form --- */
+[data-theme="nature"] .contact__form {
+  background: rgba(21, 34, 16, 0.6);
+  border-color: rgba(42, 69, 34, 0.15);
+  backdrop-filter: none;
+}
+
+/* --- Nature: Footer --- */
+[data-theme="nature"] .footer {
+  border-top-color: rgba(42, 69, 34, 0.2);
+  background: rgba(10, 18, 8, 0.825);
+  backdrop-filter: none;
+}
+
+/* --- Nature: CV --- */
+[data-theme="nature"] .cv-modal {
+  background: rgba(21, 34, 16, 0.6);
+  border-color: rgba(42, 69, 34, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .cv-modal__header {
+  border-bottom-color: rgba(42, 69, 34, 0.15);
+}
+
+[data-theme="nature"] .cv-modal__viewer iframe {
+  background: #152210;
+}
+
+[data-theme="nature"] .cv-modal__footer {
+  border-top-color: rgba(42, 69, 34, 0.15);
+}
+
+[data-theme="nature"] .cv-section__card {
+  background: rgba(21, 34, 16, 0.6);
+  border-color: rgba(42, 69, 34, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .cv-section__viewer iframe {
+  background: #152210;
+}
+
+/* --- Nature: Cursor halo --- */
+[data-theme="nature"] .cursor-halo__ring {
+  background: radial-gradient(
+    circle,
+    rgba(94, 184, 58, 0.15) 0%,
+    rgba(42, 69, 34, 0.08) 50%,
+    transparent 70%
+  );
+  border-color: rgba(94, 184, 58, 0.22);
+  animation-name: cursorPulse-nature;
+}
+
+[data-theme="nature"] .cursor-halo__dot {
+  background: rgba(94, 184, 58, 0.85);
+}
+
+[data-theme="nature"] .cursor-halo--hover .cursor-halo__ring {
+  border-color: rgba(123, 218, 78, 0.35);
+  background: rgba(123, 218, 78, 0.12);
+  box-shadow:
+    0 0 16px rgba(94, 184, 58, 0.15),
+    inset 0 0 10px rgba(123, 218, 78, 0.08);
+}
+
+[data-theme="nature"] .cursor-halo--click .cursor-halo__ring {
+  border-color: rgba(123, 218, 78, 0.5);
+  background: rgba(123, 218, 78, 0.18);
+}
+
+@keyframes cursorPulse-nature {
+  0%, 100% { box-shadow: 0 0 6px rgba(94, 184, 58, 0.06); }
+  50%      { box-shadow: 0 0 14px rgba(94, 184, 58, 0.15); }
+}
+
+/* --- Nature: Theme toggle hover --- */
+[data-theme="nature"] .theme-toggle:hover {
+  background: rgba(94, 184, 58, 0.15);
+}
+
+/* --- Nature: Modal close button hover --- */
+[data-theme="nature"] .modal__close:hover {
+  background: var(--clr-accent);
+  color: var(--clr-bg);
+}
+
+/* --- Nature: Mobile close (sticky) --- */
+[data-theme="nature"] .modal__close--sticky {
+  background: rgba(10, 18, 8, 0.7);
+  border-color: rgba(42, 69, 34, 0.3);
+}
+
+/* ==========================================================================
    Responsive
    ========================================================================== */
 
@@ -1717,8 +2057,9 @@ section.hero {
     background-image: url('../assets/images/backgroundMobile.jpg');
     background-position: center top;
   }
-  [data-theme="dark"] body::before {
-    background-image: url('../assets/images/background2Mobile.gif');
+  [data-theme="dark"] body::before,
+  [data-theme="nature"] body::before {
+    opacity: 0;
   }
 }
 
@@ -1736,5 +2077,22 @@ section.hero {
   [data-theme="dark"] .modal__close--sticky {
     background: rgba(10, 10, 32, 0.7);
     border-color: rgba(63, 81, 181, 0.3);
+  }
+}
+
+/* --- Nature: Responsive overrides --- */
+@media (max-width: 768px) {
+  [data-theme="nature"] .modal__header {
+    background: none;
+    border-bottom-color: rgba(42, 69, 34, 0.15);
+  }
+
+  [data-theme="nature"] .skills-group:nth-child(even) {
+    border-top-color: rgba(42, 69, 34, 0.2);
+  }
+
+  [data-theme="nature"] .modal__close--sticky {
+    background: rgba(10, 18, 8, 0.7);
+    border-color: rgba(42, 69, 34, 0.3);
   }
 }

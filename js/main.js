@@ -983,7 +983,7 @@ function initScrollHint() {
 }
 
 // ---------------------------------------------------------------------------
-// Theme Toggle — sun ↔ moon with animation
+// Theme Toggle — sun ↔ moon ↔ leaf with animation (light → dark → nature)
 // ---------------------------------------------------------------------------
 function initThemeToggle() {
   var btn = document.getElementById('theme-toggle');
@@ -994,34 +994,71 @@ function initThemeToggle() {
   var svgBody = btn.querySelector('.theme-toggle__body');
   var svgCutout = btn.querySelector('.theme-toggle__cutout');
 
+  // Cycle order: light → dark → nature → light
+  var THEMES = ['light', 'dark', 'nature'];
+
   // Directly set SVG attributes as fallback for browsers that don't
   // support CSS geometry properties (r, cx, cy) on SVG elements.
-  function setIconAttrs(isDark) {
+  function setIconAttrs(theme) {
     if (!svgBody || !svgCutout) return;
-    svgBody.setAttribute('r', isDark ? '8' : '5');
-    svgCutout.setAttribute('r', isDark ? '7' : '0');
-    svgCutout.setAttribute('cx', isDark ? '17' : '18');
-    svgCutout.setAttribute('cy', isDark ? '7' : '6');
+    if (theme === 'dark') {
+      svgBody.setAttribute('r', '8');
+      svgCutout.setAttribute('r', '7');
+      svgCutout.setAttribute('cx', '17');
+      svgCutout.setAttribute('cy', '7');
+    } else if (theme === 'nature') {
+      svgBody.setAttribute('r', '0');
+      svgCutout.setAttribute('r', '0');
+      svgCutout.setAttribute('cx', '18');
+      svgCutout.setAttribute('cy', '6');
+    } else {
+      // light
+      svgBody.setAttribute('r', '5');
+      svgCutout.setAttribute('r', '0');
+      svgCutout.setAttribute('cx', '18');
+      svgCutout.setAttribute('cy', '6');
+    }
+  }
+
+  // Manage video playback based on theme
+  function manageVideos(theme) {
+    var darkVideo = document.getElementById('bg-video-dark');
+    var natureVideo = document.getElementById('bg-video-nature');
+    if (darkVideo) {
+      if (theme === 'dark') { darkVideo.play().catch(function(){}); }
+      else { darkVideo.pause(); }
+    }
+    if (natureVideo) {
+      if (theme === 'nature') { natureVideo.play().catch(function(){}); }
+      else { natureVideo.pause(); }
+    }
   }
 
   // Restore saved theme
   var saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === 'dark') {
-    root.setAttribute('data-theme', 'dark');
-    setIconAttrs(true);
+  if (saved === 'dark' || saved === 'nature') {
+    root.setAttribute('data-theme', saved);
+    setIconAttrs(saved);
+    manageVideos(saved);
+  } else {
+    manageVideos('light');
   }
 
   btn.addEventListener('click', function () {
-    var isDark = root.getAttribute('data-theme') === 'dark';
-    if (isDark) {
+    var current = root.getAttribute('data-theme') || 'light';
+    var idx = THEMES.indexOf(current);
+    var next = THEMES[(idx + 1) % THEMES.length];
+
+    if (next === 'light') {
       root.removeAttribute('data-theme');
-      localStorage.setItem(STORAGE_KEY, 'light');
     } else {
-      root.setAttribute('data-theme', 'dark');
-      localStorage.setItem(STORAGE_KEY, 'dark');
+      root.setAttribute('data-theme', next);
     }
+    localStorage.setItem(STORAGE_KEY, next);
+    manageVideos(next);
+
     // Set attrs after CSS transition completes (backup)
-    setTimeout(function () { setIconAttrs(!isDark); }, 550);
+    setTimeout(function () { setIconAttrs(next); }, 550);
   });
 }
 

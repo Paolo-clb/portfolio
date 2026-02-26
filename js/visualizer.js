@@ -19,12 +19,14 @@
 
   // Theme-aware colors — read current palette each frame
   function getThemeColors() {
-    var isDark = document.documentElement.dataset.theme === 'dark';
+    var theme = document.documentElement.dataset.theme;
+    var isDark = theme === 'dark';
+    var isNature = theme === 'nature';
     return {
-      primary: isDark ? '#9c27b0' : '#F2A285',
-      accent:  isDark ? '#ff4ecb' : '#BF99A0',
-      hover:   isDark ? '#6a0dad' : '#F28080',
-      textRgba: isDark ? 'rgba(224, 224, 255, ' : 'rgba(232, 227, 228, '
+      primary: isNature ? '#5eb83a' : isDark ? '#9c27b0' : '#F2A285',
+      accent:  isNature ? '#4ab5d6' : isDark ? '#ff4ecb' : '#BF99A0',
+      hover:   isNature ? '#7bda4e' : isDark ? '#6a0dad' : '#F28080',
+      textRgba: isNature ? 'rgba(223, 240, 216, ' : isDark ? 'rgba(224, 224, 255, ' : 'rgba(232, 227, 228, '
     };
   }
 
@@ -243,7 +245,8 @@
       const barWidth = Math.max(totalBarWidth, 1);
 
       var isDarkTheme = document.documentElement.dataset.theme === 'dark';
-      ctx.globalAlpha = isDarkTheme ? 0.35 : 0.4;
+      var isNatureTheme = document.documentElement.dataset.theme === 'nature';
+      ctx.globalAlpha = (isDarkTheme || isNatureTheme) ? 0.35 : 0.4;
       for (let i = 0; i < usableBins; i++) {
         const value = dataArray[i] / 255;
         const barH = Math.max(value * h * 0.7, MIN_BAR_HEIGHT);

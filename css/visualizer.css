@@ -27,3 +27,7 @@
 [data-theme="dark"] .bg-tint-overlay {
   background: rgba(10, 10, 32, 0.35);
 }
+
+[data-theme="nature"] .bg-tint-overlay {
+  background: rgba(10, 18, 8, 0.30);
+}

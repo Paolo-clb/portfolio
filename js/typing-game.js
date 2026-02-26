@@ -363,7 +363,8 @@
       trailLen = Math.round(trailLen * (0.15 + trailSpeed * 0.85));
     }
     var zenDk = document.documentElement.dataset.theme === 'dark';
-    var trailR = zenDk ? 156 : 242, trailG = zenDk ? 39 : 162, trailB = zenDk ? 176 : 133;
+    var zenNat = document.documentElement.dataset.theme === 'nature';
+    var trailR = zenNat ? 94 : zenDk ? 156 : 242, trailG = zenNat ? 184 : zenDk ? 39 : 162, trailB = zenNat ? 58 : zenDk ? 176 : 133;
 
     for (let i = 0; i < typed.length; i++) {
       let cls = 'typing-game__char typing-game__char--correct';
@@ -433,8 +434,9 @@
 
     // Trail color shift: primary → accent/hover
     var isDark = document.documentElement.dataset.theme === 'dark';
-    var trailR = isDark ? 156 : 242, trailG = isDark ? 39 : 162, trailB = isDark ? 176 : 133;
-    var trailHR = isDark ? 255 : 242, trailHG = isDark ? 78 : 128, trailHB = isDark ? 203 : 128;
+    var isNature = document.documentElement.dataset.theme === 'nature';
+    var trailR = isNature ? 94 : isDark ? 156 : 242, trailG = isNature ? 184 : isDark ? 39 : 162, trailB = isNature ? 58 : isDark ? 176 : 133;
+    var trailHR = isNature ? 74 : isDark ? 255 : 242, trailHG = isNature ? 181 : isDark ? 78 : 128, trailHB = isNature ? 214 : isDark ? 203 : 128;
     if (comboStreak >= 50) {
       var tc = Math.min((comboStreak - 50) / 50, 1);
       trailR = Math.round(trailR + tc * (trailHR - trailR));
@@ -446,8 +448,8 @@
     var comboStyleStr = '';
     if (comboStreak >= 50) {
       var cc = Math.min((comboStreak - 50) / 50, 1);
-      var cBaseR = isDark ? 156 : 242, cBaseG = isDark ? 39 : 162, cBaseB = isDark ? 176 : 133;
-      var cHoverR = isDark ? 255 : 242, cHoverG = isDark ? 78 : 128, cHoverB = isDark ? 203 : 128;
+      var cBaseR = isNature ? 94 : isDark ? 156 : 242, cBaseG = isNature ? 184 : isDark ? 39 : 162, cBaseB = isNature ? 58 : isDark ? 176 : 133;
+      var cHoverR = isNature ? 74 : isDark ? 255 : 242, cHoverG = isNature ? 181 : isDark ? 78 : 128, cHoverB = isNature ? 214 : isDark ? 203 : 128;
       var cr = Math.round(cBaseR + cc * (cHoverR - cBaseR));
       var cg = Math.round(cBaseG + cc * (cHoverG - cBaseG));
       var cb = Math.round(cBaseB + cc * (cHoverB - cBaseB));
@@ -591,17 +593,19 @@
   function updateTextBackground(wpm) {
     if (!textEl) return;
     var isDark = document.documentElement.dataset.theme === 'dark';
+    var isNature = document.documentElement.dataset.theme === 'nature';
     // Theme-aware color channels
-    var bgR  = isDark ? 26  : 27,  bgG  = isDark ? 0   : 26,  bgB  = isDark ? 51  : 39;
-    var brR  = isDark ? 63  : 191, brG  = isDark ? 81  : 153, brB  = isDark ? 181 : 160;
+    var bgR  = isNature ? 21  : isDark ? 26  : 27,  bgG  = isNature ? 34  : isDark ? 0   : 26,  bgB  = isNature ? 16  : isDark ? 51  : 39;
+    var brR  = isNature ? 42  : isDark ? 63  : 191, brG  = isNature ? 69  : isDark ? 81  : 153, brB  = isNature ? 34  : isDark ? 181 : 160;
     // Dark: #9c27b0 (156,39,176) → #ff4ecb (255,78,203)
     // Light: #F2A285 (242,162,133) → #F28080 (242,128,128)
-    var pR   = isDark ? 156 : 242, pG   = isDark ? 39  : 162, pB   = isDark ? 176 : 133;
-    var phR  = isDark ? 255 : 242, phG  = isDark ? 78  : 128, phB  = isDark ? 203 : 128;
+    // Nature: #5eb83a (94,184,58) → #7bda4e (123,218,78)
+    var pR   = isNature ? 94  : isDark ? 156 : 242, pG   = isNature ? 184 : isDark ? 39  : 162, pB   = isNature ? 58  : isDark ? 176 : 133;
+    var phR  = isNature ? 123 : isDark ? 255 : 242, phG  = isNature ? 218 : isDark ? 78  : 128, phB  = isNature ? 78  : isDark ? 203 : 128;
 
     // If not focused (and not finished with focus), use dim but visible background
     if (!isFocused) {
-      var unfocusedAlpha = isDark ? 0.35 : 0.15;
+      var unfocusedAlpha = (isDark || isNature) ? 0.35 : 0.15;
       textEl.style.background = 'rgba(' + bgR + ', ' + bgG + ', ' + bgB + ', ' + unfocusedAlpha + ')';
       textEl.style.borderColor = 'rgba(' + brR + ', ' + brG + ', ' + brB + ', 0.06)';
       textEl.style.boxShadow = '0 0 0 0 rgba(' + pR + ', ' + pG + ', ' + pB + ', 0)';
@@ -620,8 +624,8 @@
     // Linear 0–200 mapping, fully opaque at 200
     var t = Math.min(wpm / 200, 1) * ramp;
     // Background opacity: starts visible, fully opaque at 200
-    // Dark theme: higher base for readability
-    var bgAlpha = isDark ? (0.6 + t * 0.4) : (0.4 + t * 0.6);
+    // Dark/Nature theme: higher base for readability
+    var bgAlpha = (isDark || isNature) ? (0.6 + t * 0.4) : (0.4 + t * 0.6);
     // Border: visible base, strong at high WPM
     var borderAlpha = 0.25 + t * 0.75;
     // Glow: strong base, intense scaling with WPM
@@ -1839,7 +1843,8 @@
     // Fixed trail color (primary only, no shift) — theme-aware
     function getIntroTrailColor() {
       var dk = document.documentElement.dataset.theme === 'dark';
-      return { r: dk ? 156 : 242, g: dk ? 39 : 162, b: dk ? 176 : 133 };
+      var nt = document.documentElement.dataset.theme === 'nature';
+      return { r: nt ? 94 : dk ? 156 : 242, g: nt ? 184 : dk ? 39 : 162, b: nt ? 58 : dk ? 176 : 133 };
     }
 
     function calcIntroTrailSpeed() {

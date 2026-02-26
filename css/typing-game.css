@@ -1944,6 +1944,281 @@
   background: var(--clr-primary);
 }
 
+/* ==========================================================================
+   Nature Theme — forest green overrides
+   ========================================================================== */
+
+/* --- Nature: Blurred base --- */
+[data-theme="nature"] .typing-game--blurred .typing-game__text {
+  background: rgba(21, 34, 16, 0.35) !important;
+  border-color: rgba(42, 69, 34, 0.08) !important;
+  box-shadow: 0 0 0 0 rgba(94, 184, 58, 0) !important;
+}
+
+/* --- Nature: Blurred hover --- */
+[data-theme="nature"] .typing-game--blurred .typing-game__text:hover {
+  background: rgba(30, 48, 22, 0.45) !important;
+  border-color: rgba(94, 184, 58, 0.25) !important;
+  box-shadow: 0 0 18px rgba(94, 184, 58, 0.1),
+              inset 0 0 25px rgba(94, 184, 58, 0.04) !important;
+}
+
+/* --- Nature: Focused idle border --- */
+[data-theme="nature"] .typing-game--focused .typing-game__text {
+  border-color: rgba(94, 184, 58, 0.25);
+}
+
+/* --- Nature: Navbar --- */
+[data-theme="nature"] .typing-game__navbar {
+  background: rgba(21, 34, 16, 0.6);
+  border-color: rgba(42, 69, 34, 0.15);
+  backdrop-filter: none;
+}
+
+/* --- Nature: Option active --- */
+[data-theme="nature"] .typing-game__option--active {
+  background: rgba(94, 184, 58, 0.15);
+}
+
+/* --- Nature: Eye toggle active --- */
+[data-theme="nature"] .typing-game__eye--active {
+  background: rgba(94, 184, 58, 0.15);
+}
+
+/* --- Nature: Text display --- */
+[data-theme="nature"] .typing-game__text {
+  background: rgba(21, 34, 16, 0.55);
+  border-color: rgba(42, 69, 34, 0.1);
+  box-shadow: 0 0 0 0 rgba(94, 184, 58, 0);
+  backdrop-filter: none;
+}
+
+/* --- Nature: Incorrect char underline --- */
+[data-theme="nature"] .typing-game__char--incorrect {
+  text-decoration-color: rgba(123, 218, 78, 0.45);
+}
+
+/* --- Nature: Combo glows --- */
+[data-theme="nature"] .typing-game__char--combo-1::after {
+  box-shadow: 0 0 8px rgba(94, 184, 58, 0.7),
+              0 0 16px rgba(94, 184, 58, 0.4),
+              0 0 24px rgba(94, 184, 58, 0.15);
+  animation-name: combo-pulse-1-nature;
+}
+
+[data-theme="nature"] .typing-game__char--combo-2::after {
+  box-shadow: 0 0 12px rgba(94, 184, 58, 0.9),
+              0 0 24px rgba(94, 184, 58, 0.5),
+              0 0 40px rgba(74, 181, 214, 0.25),
+              0 0 60px rgba(74, 181, 214, 0.1);
+  animation-name: combo-pulse-2-nature;
+}
+
+[data-theme="nature"] .typing-game__char--combo-3::after {
+  box-shadow: 0 0 14px rgba(74, 181, 214, 1),
+              0 0 30px rgba(74, 181, 214, 0.6),
+              0 0 50px rgba(94, 184, 58, 0.3),
+              0 0 80px rgba(74, 181, 214, 0.15);
+  animation-name: combo-pulse-3-nature;
+}
+
+@keyframes combo-pulse-1-nature {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(94,184,58,0.7), 0 0 16px rgba(94,184,58,0.4), 0 0 24px rgba(94,184,58,0.15); }
+  50%      { opacity: 0.85; box-shadow: 0 0 12px rgba(94,184,58,0.85), 0 0 22px rgba(94,184,58,0.5), 0 0 32px rgba(94,184,58,0.2); }
+}
+
+@keyframes combo-pulse-2-nature {
+  0%, 100% { opacity: 1; box-shadow: 0 0 12px rgba(94,184,58,0.9), 0 0 24px rgba(94,184,58,0.5), 0 0 40px rgba(74,181,214,0.25), 0 0 60px rgba(74,181,214,0.1); }
+  50%      { opacity: 0.8; box-shadow: 0 0 16px rgba(94,184,58,1), 0 0 32px rgba(94,184,58,0.6), 0 0 50px rgba(74,181,214,0.35), 0 0 70px rgba(74,181,214,0.15); }
+}
+
+@keyframes combo-pulse-3-nature {
+  0%, 100% { opacity: 1; box-shadow: 0 0 14px rgba(74,181,214,1), 0 0 30px rgba(74,181,214,0.6), 0 0 50px rgba(94,184,58,0.3), 0 0 80px rgba(74,181,214,0.15); }
+  50%      { opacity: 0.75; box-shadow: 0 0 20px rgba(74,181,214,1), 0 0 40px rgba(74,181,214,0.7), 0 0 65px rgba(94,184,58,0.4), 0 0 100px rgba(74,181,214,0.2); }
+}
+
+/* --- Nature: Mobile text display --- */
+[data-theme="nature"] .typing-game__text--mobile-display {
+  background: rgba(21, 34, 16, 0.2);
+  border-color: rgba(42, 69, 34, 0.12);
+}
+
+/* --- Nature: Zen popup --- */
+[data-theme="nature"] .zen-popup-overlay--visible {
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .zen-popup {
+  background: rgba(21, 34, 16, 0.94);
+  border-color: rgba(94, 184, 58, 0.3);
+  box-shadow: 0 0 40px rgba(94, 184, 58, 0.15),
+              0 0 80px rgba(94, 184, 58, 0.08);
+}
+
+[data-theme="nature"] .zen-popup__shortcut kbd {
+  background: rgba(94, 184, 58, 0.12);
+  border-color: rgba(94, 184, 58, 0.35);
+  box-shadow: 0 1px 0 rgba(94, 184, 58, 0.2);
+}
+
+/* --- Nature: Hardcore active --- */
+[data-theme="nature"] .typing-game__hardcore--active {
+  background: rgba(123, 218, 78, 0.15);
+}
+
+[data-theme="nature"] .typing-game__hardcore--active .typing-game__hardcore-icon {
+  filter: drop-shadow(0 0 4px rgba(123, 218, 78, 0.6));
+}
+
+/* --- Nature: HC countdown --- */
+[data-theme="nature"] .typing-game__hc-countdown {
+  text-shadow: 0 0 30px rgba(123, 218, 78, 0.5),
+               0 0 60px rgba(123, 218, 78, 0.25);
+}
+
+/* --- Nature: HC memorize --- */
+[data-theme="nature"] .typing-game--hardcore-memorize .typing-game__text {
+  background: rgba(21, 34, 16, 0.65) !important;
+  border-color: rgba(123, 218, 78, 0.2) !important;
+  box-shadow: 0 0 12px rgba(123, 218, 78, 0.08) !important;
+}
+
+/* --- Nature: HC fail --- */
+[data-theme="nature"] .typing-game--hardcore-fail .typing-game__wpm {
+  text-shadow: 0 0 20px rgba(123, 218, 78, 0.5);
+}
+
+/* --- Nature: Intro text --- */
+[data-theme="nature"] .typing-game__text--intro {
+  background: rgba(21, 34, 16, 0.55);
+  border-color: rgba(42, 69, 34, 0.15);
+}
+
+[data-theme="nature"] .typing-game__loading {
+  background: rgba(21, 34, 16, 0.55);
+  border-color: rgba(42, 69, 34, 0.15);
+}
+
+/* --- Nature: Intro button glow --- */
+[data-theme="nature"] .typing-game__intro-btn--visible {
+  animation-name: intro-btn-glow-nature;
+}
+
+@keyframes intro-btn-glow-nature {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(94, 184, 58, 0); }
+  50%      { box-shadow: 0 0 28px rgba(94, 184, 58, 0.3), 0 0 60px rgba(94, 184, 58, 0.15); }
+}
+
+/* --- Nature: AI active --- */
+[data-theme="nature"] .typing-game__ai--active {
+  color: var(--clr-primary);
+  background: rgba(94, 184, 58, 0.15);
+}
+
+[data-theme="nature"] .typing-game__ai--active .typing-game__ai-icon {
+  filter: drop-shadow(0 0 4px rgba(94, 184, 58, 0.5));
+}
+
+[data-theme="nature"] .typing-game__ai:hover .typing-game__ai-icon {
+  filter: drop-shadow(0 0 4px rgba(94, 184, 58, 0.6))
+          drop-shadow(0 0 9px rgba(94, 184, 58, 0.45))
+          drop-shadow(0 0 16px rgba(94, 184, 58, 0.2));
+}
+
+[data-theme="nature"] .typing-game__ai-mini {
+  background: var(--clr-primary);
+  box-shadow: 0 0 3px rgba(94, 184, 58, 0.5);
+}
+
+[data-theme="nature"] .typing-game__ai-theme:hover {
+  background: rgba(94, 184, 58, 0.15);
+}
+
+[data-theme="nature"] .typing-game__ai-input {
+  background: rgba(21, 34, 16, 0.7);
+  border-color: rgba(42, 69, 34, 0.2);
+}
+
+[data-theme="nature"] .typing-game__ai-input:focus {
+  border-color: rgba(94, 184, 58, 0.4);
+  box-shadow: 0 0 12px rgba(94, 184, 58, 0.15);
+}
+
+/* --- Nature: AI popup options --- */
+[data-theme="nature"] .typing-game__ai-opt:hover {
+  background: rgba(94, 184, 58, 0.08);
+}
+
+[data-theme="nature"] .typing-game__ai-opt-check:checked + .typing-game__ai-opt-toggle {
+  background: rgba(94, 184, 58, 0.35);
+}
+
+[data-theme="nature"] .typing-game__ai-opt-check:checked + .typing-game__ai-opt-toggle::after {
+  background: var(--clr-primary);
+}
+
+/* --- Nature: AI inline --- */
+[data-theme="nature"] .typing-game__ai-inline {
+  background: rgba(21, 34, 16, 0.6);
+  border-color: rgba(42, 69, 34, 0.15);
+}
+
+[data-theme="nature"] .typing-game__ai-inline-spinner {
+  border-color: rgba(42, 69, 34, 0.2);
+  border-top-color: var(--clr-primary);
+}
+
+[data-theme="nature"] .typing-game__ai-inline-tag {
+  background: rgba(94, 184, 58, 0.12);
+  color: var(--clr-primary);
+}
+
+[data-theme="nature"] .typing-game__ai-inline-result--success .typing-game__ai-inline-result-icon svg {
+  stroke: var(--clr-primary);
+  filter: drop-shadow(0 0 6px rgba(94, 184, 58, 0.4));
+}
+
+[data-theme="nature"] .typing-game__ai-inline-result--error .typing-game__ai-inline-result-icon svg {
+  stroke: var(--clr-primary-hover);
+  filter: drop-shadow(0 0 6px rgba(123, 218, 78, 0.4));
+}
+
+[data-theme="nature"] .typing-game__ai-inline-result--error .typing-game__ai-inline-result-msg {
+  color: var(--clr-primary-hover);
+}
+
+/* --- Nature: Settings gear --- */
+[data-theme="nature"] .typing-game__settings--active {
+  background: rgba(94, 184, 58, 0.15);
+}
+
+[data-theme="nature"] .typing-game__settings--active .typing-game__settings-icon {
+  filter: drop-shadow(0 0 3px rgba(94, 184, 58, 0.5));
+}
+
+[data-theme="nature"] .typing-game__settings-option:hover {
+  background: rgba(94, 184, 58, 0.08);
+}
+
+[data-theme="nature"] .typing-game__settings-check:checked + .typing-game__settings-toggle {
+  background: rgba(94, 184, 58, 0.35);
+}
+
+[data-theme="nature"] .typing-game__settings-check:checked + .typing-game__settings-toggle::after {
+  background: var(--clr-primary);
+}
+
+/* --- Nature: Tooltip --- */
+[data-theme="nature"] .typing-game__tooltip {
+  background: rgba(21, 34, 16, 0.75);
+  border-color: rgba(42, 69, 34, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .typing-game__tooltip::after {
+  border-top-color: rgba(21, 34, 16, 0.75);
+}
+
 /* ---- Navbar tooltip ---- */
 
 .typing-game__tooltip {
