@@ -1468,7 +1468,6 @@
         '50': 'Texte de mode 50 mots',
         '100': 'Texte de mode 100 mots',
         zen: 'Lancer le mode zen',
-        'zen-active': 'Quitter le mode zen',
         eye: 'Afficher / masquer les erreurs',
         hardcore: 'Lancer le mode hardcore',
         'hardcore-active': 'Quitter le mode hardcore',
@@ -1485,7 +1484,6 @@
         '50': 'Text of 50-word mode',
         '100': 'Text of 100-word mode',
         zen: 'Start zen mode ',
-        'zen-active': 'Quit zen mode',
         eye: 'Show / hide errors',
         hardcore: 'Start hardcore mode',
         'hardcore-active': 'Quit hardcore mode',
@@ -1505,7 +1503,6 @@
       var texts = TOOLTIP_TEXTS[currentLang] || TOOLTIP_TEXTS.fr;
       var resolvedKey = key;
       if (key === 'ai' && aiMode) resolvedKey = 'ai-active';
-      if (key === 'zen' && currentMode === 'zen') resolvedKey = 'zen-active';
       if (key === 'hardcore' && hardcoreMode) resolvedKey = 'hardcore-active';
       tooltipEl.textContent = texts[resolvedKey] || '';
       if (!tooltipEl.textContent) return;
