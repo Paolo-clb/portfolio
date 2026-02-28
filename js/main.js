@@ -1034,6 +1034,53 @@ function initThemeToggle() {
     }
   }
 
+  /* ---- Background credit badge ---- */
+  var BG_CREDITS = {
+    dark:   { label: 'Wallpaper', title: 'Katana Zero',               author: 'Devolver Digital' },
+    nature: { label: 'Wallpaper', title: 'Hollow Knight: Endless Dream', author: 'DOR & Team Cherry' }
+  };
+
+  var creditEl = document.createElement('div');
+  creditEl.className = 'bg-credit';
+  creditEl.innerHTML =
+    '<span class="bg-credit__label"></span>' +
+    '<span class="bg-credit__title"></span>' +
+    '<span class="bg-credit__author"></span>';
+  document.body.appendChild(creditEl);
+
+  var creditHideTimer = null;
+
+  function showCredit(theme) {
+    clearTimeout(creditHideTimer);
+    var data = BG_CREDITS[theme];
+    if (!data) { hideCredit(true); return; }
+
+    // Update content
+    creditEl.querySelector('.bg-credit__label').textContent  = data.label;
+    creditEl.querySelector('.bg-credit__title').textContent  = data.title;
+    creditEl.querySelector('.bg-credit__author').textContent = data.author;
+
+    // Force reset so transition replays when switching between themes
+    creditEl.classList.remove('bg-credit--visible', 'bg-credit--hiding');
+    void creditEl.offsetWidth; // reflow
+    creditEl.classList.add('bg-credit--visible');
+
+    // Auto-dismiss after 3 s
+    creditHideTimer = setTimeout(function () { hideCredit(false); }, 3000);
+  }
+
+  function hideCredit(immediate) {
+    clearTimeout(creditHideTimer);
+    if (immediate) {
+      creditEl.classList.remove('bg-credit--visible', 'bg-credit--hiding');
+      return;
+    }
+    creditEl.classList.remove('bg-credit--visible');
+    creditEl.classList.add('bg-credit--hiding');
+    var t = setTimeout(function () { creditEl.classList.remove('bg-credit--hiding'); }, 500);
+    creditHideTimer = t;
+  }
+
   // Restore saved theme
   var saved = localStorage.getItem(STORAGE_KEY);
   if (saved === 'dark' || saved === 'nature') {
@@ -1056,6 +1103,13 @@ function initThemeToggle() {
     }
     localStorage.setItem(STORAGE_KEY, next);
     manageVideos(next);
+
+    // Show / hide credit badge
+    if (next === 'dark' || next === 'nature') {
+      showCredit(next);
+    } else {
+      hideCredit(false);
+    }
 
     // Set attrs after CSS transition completes (backup)
     setTimeout(function () { setIconAttrs(next); }, 550);

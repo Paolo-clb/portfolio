@@ -1067,6 +1067,69 @@ section.hero {
 }
 
 /* ==========================================================================
+   Background Credit Badge
+   ========================================================================== */
+
+.bg-credit {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  padding: 0.5rem 0.85rem 0.55rem;
+  background: rgba(27, 26, 39, 0.55);
+  border: 1px solid rgba(191, 153, 160, 0.18);
+  border-radius: var(--radius);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.bg-credit--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.bg-credit--hiding {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.bg-credit__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--clr-primary);
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.bg-credit__author {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--clr-text-muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.bg-credit__label {
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--clr-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.05rem;
+  opacity: 0.75;
+}
+
+/* ==========================================================================
    CV Modal
    ========================================================================== */
 
@@ -1577,6 +1640,13 @@ section.hero {
   backdrop-filter: none;
 }
 
+/* --- Dark: Background credit --- */
+[data-theme="dark"] .bg-credit {
+  background: rgba(10, 10, 32, 0.65);
+  border-color: rgba(156, 39, 176, 0.28);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 12px rgba(156, 39, 176, 0.12);
+}
+
 /* --- Dark: CV --- */
 [data-theme="dark"] .cv-modal {
   background: rgba(26, 0, 51, 0.6);
@@ -1840,6 +1910,13 @@ section.hero {
   background: rgba(21, 34, 16, 0.6);
   border-color: rgba(42, 69, 34, 0.15);
   backdrop-filter: none;
+}
+
+/* --- Nature: Background credit --- */
+[data-theme="nature"] .bg-credit {
+  background: rgba(10, 20, 10, 0.65);
+  border-color: rgba(74, 143, 87, 0.28);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 12px rgba(74, 143, 87, 0.12);
 }
 
 /* --- Nature: Footer --- */
