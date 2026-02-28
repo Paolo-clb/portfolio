@@ -10,7 +10,7 @@
 
 const PROJECTS = [
   {
-    title: 'MEGA SAE',
+    title: 'Application d\'organisation de banquets',
     description: 'Application JavaFX d\'organisation de banquets — gestion d\'événements, invités, menus et plans de table.',
     image: 'assets/images/background.jpg',
     tags: ['JavaFX', 'MVC', 'UML', 'Gestion de projet'],
@@ -20,33 +20,33 @@ const PROJECTS = [
         {
           title: 'Réaliser un développement d\'application',
           items: [
-            'AC 1 : Implémenter des conceptions simples',
-            'AC 2 : Élaborer des conceptions simples',
-            'AC 3 : Faire des essais et évaluer leurs résultats',
-            'AC 4 : Développer des interfaces utilisateurs',
+            'Implémenter des conceptions simples',
+            'Élaborer des conceptions simples',
+            'Faire des essais et évaluer leurs résultats',
+            'Développer des interfaces utilisateurs',
           ],
         },
         {
           title: 'Optimiser des applications',
           items: [
-            'AC 1 : Analyser un problème avec méthode',
-            'AC 3 : Formaliser / mettre en œuvre des outils mathématiques',
+            'Analyser un problème avec méthode',
+            'Formaliser / mettre en œuvre des outils mathématiques',
           ],
         },
         {
           title: 'Conduire un projet',
           items: [
-            'AC 1 : Appréhender les besoins du client et de l\'utilisateur',
-            'AC 2 : Mettre en place les outils de gestion de projet',
-            'AC 3 : Identifier les acteurs et les différentes phases d\'un cycle de développement',
+            'Appréhender les besoins du client et de l\'utilisateur',
+            'Mettre en place les outils de gestion de projet',
+            'Identifier les acteurs et les différentes phases d\'un cycle de développement',
           ],
         },
         {
           title: 'Collaborer au sein d\'une équipe informatique',
           items: [
-            'AC 1 : Appréhender l\'écosystème numérique',
-            'AC 3 : Identifier les statuts, les fonctions et les rôles de chaque membre d\'une équipe pluridisciplinaire',
-            'AC 4 : Acquérir les compétences interpersonnelles pour travailler en équipe',
+            'Appréhender l\'écosystème numérique',
+            'Identifier les statuts, les fonctions et les rôles de chaque membre d\'une équipe pluridisciplinaire',
+            'Acquérir les compétences interpersonnelles pour travailler en équipe',
           ],
         },
       ],
@@ -62,7 +62,7 @@ const PROJECTS = [
     },
   },
   {
-    title: 'SAE 2.04',
+    title: 'Exploitation d\'une base de données',
     description: 'Exploitation d\'une base de données open data sur les accidents de la route — démarche Data Science.',
     image: 'assets/images/background.jpg',
     tags: ['PostgreSQL', 'SQL', 'Data Science', 'Visualisation'],
@@ -72,21 +72,21 @@ const PROJECTS = [
         {
           title: 'Gérer des données de l\'information',
           items: [
-            'AC 1 : Mettre à jour et interroger une base de données relationnelle (en requêtes directes ou à travers une application)',
-            'AC 2 : Visualiser des données',
+            'Mettre à jour et interroger une base de données relationnelle (en requêtes directes ou à travers une application)',
+            'Visualiser des données',
           ],
         },
         {
           title: 'Conduire un projet',
           items: [
-            'AC 2 : Mettre en place les outils de gestion de projet',
-            'AC 3 : Identifier les acteurs et les différentes phases d\'un cycle de développement',
+            'Mettre en place les outils de gestion de projet',
+            'Identifier les acteurs et les différentes phases d\'un cycle de développement',
           ],
         },
         {
           title: 'Collaborer au sein d\'une équipe informatique',
           items: [
-            'AC 4 : Acquérir les compétences interpersonnelles pour travailler en équipe',
+            'Acquérir les compétences interpersonnelles pour travailler en équipe',
           ],
         },
       ],
@@ -105,7 +105,7 @@ const PROJECTS = [
     },
   },
   {
-    title: 'SAE 1.04',
+    title: 'Conception d\'une base de données',
     description: 'Conception et mise en place d\'une base de données complète pour le club de bowling SuperBall.',
     image: 'assets/images/background.jpg',
     tags: ['PostgreSQL', 'SQL', 'Merise', 'Conception BD'],
@@ -115,9 +115,9 @@ const PROJECTS = [
         {
           title: 'Gérer des données de l\'information',
           items: [
-            'AC 1 : Mettre à jour et interroger une base de données relationnelle (en requêtes directes ou via une application)',
-            'AC 2 : Visualiser des données',
-            'AC 3 : Concevoir une base de données relationnelle à partir d\'un cahier des charges',
+            'Mettre à jour et interroger une base de données relationnelle (en requêtes directes ou via une application)',
+            'Visualiser des données',
+            'Concevoir une base de données relationnelle à partir d\'un cahier des charges',
           ],
         },
       ],
@@ -134,7 +134,7 @@ const PROJECTS = [
     },
   },
   {
-    title: 'SAE 1.01/2',
+    title: 'Comparaison d\'approches algorithmiques',
     description: 'Classification automatique de dépêches — génération de lexiques par apprentissage et comparaison K-NN.',
     image: 'assets/images/project-4.jpg',
     tags: ['Java', 'Algorithmes', 'IA', 'IntelliJ'],
@@ -144,29 +144,29 @@ const PROJECTS = [
         {
           title: 'Réaliser un développement d\'application',
           items: [
-            'AC 1 : Implémenter des conceptions simples',
-            'AC 2 : Élaborer des conceptions simples',
-            'AC 3 : Faire des essais et évaluer leurs résultats en regard des spécifications',
+            'Implémenter des conceptions simples',
+            'Élaborer des conceptions simples',
+            'Faire des essais et évaluer leurs résultats en regard des spécifications',
           ],
         },
         {
           title: 'Optimiser des applications',
           items: [
-            'AC 1 : Analyser un problème avec méthode (découpage en éléments algorithmiques simples, structure de données…)',
-            'AC 2 : Comparer des algorithmes pour des problèmes classiques (tris simples, recherche…)',
-            'AC 3 : Formaliser et mettre en œuvre des outils mathématiques pour l\'informatique',
+            'Analyser un problème avec méthode (découpage en éléments algorithmiques simples, structure de données…)',
+            'Comparer des algorithmes pour des problèmes classiques (tris simples, recherche…)',
+            'Formaliser et mettre en œuvre des outils mathématiques pour l\'informatique',
           ],
         },
         {
           title: 'Conduire un projet',
           items: [
-            'AC 3 : Identifier les acteurs et les différentes phases d\'un cycle de développement',
+            'Identifier les acteurs et les différentes phases d\'un cycle de développement',
           ],
         },
         {
           title: 'Collaborer au sein d\'une équipe informatique',
           items: [
-            'AC 4 : Acquérir les compétences interpersonnelles pour travailler en équipe',
+            'Acquérir les compétences interpersonnelles pour travailler en équipe',
           ],
         },
       ],
