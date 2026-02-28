@@ -1404,9 +1404,9 @@
   align-items: center;
   justify-content: center;
   border-radius: calc(var(--radius) * 1.5);
-  background: rgba(27, 26, 39, 1);
+  background: rgba(27, 26, 39, 0.72);
   border: 1px solid rgba(191, 153, 160, 0.15);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(28px);
   opacity: 0;
   transform: scale(0.97);
   transition: opacity 0.4s ease, transform 0.4s ease;

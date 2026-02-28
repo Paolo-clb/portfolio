@@ -117,6 +117,7 @@
   let wpmBoost = 0; // DEBUG: artificial WPM boost (Ctrl+ArrowUp/Down)
   let showErrors = false;
   let isFocused = true; // whether the game container has focus
+  let aiInlineActive = false; // whether the AI inline loader is displayed
   let blurHintTimer = null; // debounce timer for focus hint
   let trailTimestamps = []; // timestamps of recent correct keystrokes for trail speed calc
   let trailSpeed = 0; // 0–1 speed factor for trail intensity
@@ -1144,6 +1145,13 @@
     // Animate in
     aiInlineEl.offsetHeight;
     aiInlineEl.classList.add('typing-game__ai-inline--visible');
+
+    // Lock game focus/blur while inline is shown, hide focus hint
+    aiInlineActive = true;
+    if (blurHintTimer) { clearTimeout(blurHintTimer); blurHintTimer = null; }
+    if (focusHintEl) focusHintEl.classList.remove('typing-game__focus-hint--visible');
+    container.classList.remove('typing-game--blurred');
+    container.blur();
   }
 
   function finishAiInlineLoader(success, message, onDone) {
@@ -1187,6 +1195,7 @@
     // Ungrey navbar
     if (navbarEl) navbarEl.classList.remove('typing-game__navbar--disabled');
     aiLoading = false;
+    aiInlineActive = false;
     delete document.body.dataset.aiLoading;
     container.focus();
   }
@@ -2051,6 +2060,8 @@
 
     // Focus / blur detection
     container.addEventListener('focus', function () {
+      // Reject focus while the AI inline loader is active
+      if (aiInlineActive) { container.blur(); return; }
       isFocused = true;
       container.dataset.focused = '1';
       if (blurHintTimer) { clearTimeout(blurHintTimer); blurHintTimer = null; }
@@ -2087,7 +2098,7 @@
       // Debounce focus hint to avoid flash on navbar clicks
       if (blurHintTimer) clearTimeout(blurHintTimer);
       blurHintTimer = setTimeout(function () {
-        if (!isFocused && hardcorePhase !== 'memorize') {
+        if (!isFocused && hardcorePhase !== 'memorize' && !aiInlineActive) {
           container.classList.add('typing-game--blurred');
           focusHintEl.classList.add('typing-game__focus-hint--visible');
           delete container.dataset.focused;
