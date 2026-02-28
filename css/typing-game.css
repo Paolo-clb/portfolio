@@ -1297,6 +1297,69 @@
   opacity: 0.6;
 }
 
+/* ---- Strict option custom tooltip ---- */
+.typing-game__ai-opt--strict {
+  position: relative;
+}
+
+.typing-game__ai-opt-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius);
+  background: rgba(27, 26, 39, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(191, 153, 160, 0.15);
+  color: var(--clr-text);
+  font-size: 0.72rem;
+  font-weight: 400;
+  white-space: normal;
+  max-width: 260px;
+  text-align: center;
+  line-height: 1.35;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 100;
+}
+
+.typing-game__ai-opt--strict:hover .typing-game__ai-opt-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.typing-game__ai-opt-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(27, 26, 39, 0.7);
+}
+
+[data-theme="dark"] .typing-game__ai-opt-tip {
+  background: rgba(26, 0, 51, 0.75);
+  border-color: rgba(63, 81, 181, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .typing-game__ai-opt-tip::after {
+  border-top-color: rgba(26, 0, 51, 0.75);
+}
+
+[data-theme="nature"] .typing-game__ai-opt-tip {
+  background: rgba(21, 34, 16, 0.75);
+  border-color: rgba(42, 69, 34, 0.2);
+  backdrop-filter: none;
+}
+
+[data-theme="nature"] .typing-game__ai-opt-tip::after {
+  border-top-color: rgba(21, 34, 16, 0.75);
+}
+
 .typing-game__ai-input::placeholder {
   color: var(--clr-text-muted);
   opacity: 0.6;
@@ -1391,6 +1454,61 @@
   transition: opacity 0.4s ease, filter 0.4s ease;
 }
 
+/* ---- Inline loader responsive ---- */
+@media (max-width: 480px) {
+  .typing-game__ai-inline-content {
+    gap: 0.5rem;
+    padding: 0 0.5rem;
+  }
+
+  .typing-game__ai-inline-spinner {
+    width: 22px;
+    height: 22px;
+  }
+
+  .typing-game__ai-inline-theme {
+    font-size: 0.78rem;
+  }
+
+  .typing-game__ai-inline-tags {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .typing-game__ai-inline-tag {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.4rem;
+  }
+
+  .typing-game__ai-inline-text {
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .typing-game__ai-inline-info {
+    gap: 0.25rem;
+  }
+
+  .typing-game__ai-inline-theme {
+    font-size: 0.72rem;
+  }
+
+  .typing-game__ai-inline-theme svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .typing-game__ai-inline-tag {
+    font-size: 0.6rem;
+    padding: 0.08rem 0.35rem;
+  }
+
+  .typing-game__ai-inline-text {
+    font-size: 0.65rem;
+  }
+}
+
 /* ---- Inline loader overlay ---- */
 .typing-game__ai-inline {
   position: absolute;
@@ -1474,9 +1592,9 @@
   font-size: 0.72rem;
   padding: 0.15rem 0.5rem;
   border-radius: 1rem;
-  background: rgba(191, 153, 160, 0.10);
+  background: rgba(27, 26, 39, 0.82);
   color: var(--clr-text-muted);
-  border: 1px solid rgba(191, 153, 160, 0.12);
+  border: 1px solid rgba(191, 153, 160, 0.18);
   letter-spacing: 0.04em;
 }
 

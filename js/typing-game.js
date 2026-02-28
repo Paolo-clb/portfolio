@@ -73,7 +73,7 @@
       special: getCookie('typing_opt_special') === '1',
       aiUppercase: getCookie('typing_ai_uppercase') === '1',
       aiPunctuation: getCookie('typing_ai_punctuation') === '1',
-      aiStrictWordCount: getCookie('typing_ai_strict_wc') !== '0',
+      aiStrictWordCount: getCookie('typing_ai_strict_wc') === '1',
     };
   }
 
@@ -95,9 +95,130 @@
 
   var WORKER_URL = 'https://gemini-proxy.colombatpaolo.workers.dev'; // <-- remplace par ton URL worker
 
-  /* ---- Intro presentation text (shown before game is unlocked) ---- */
+  /* ---- Translations ---- */
 
-  const INTRO_TEXT = 'Bienvenue sur mon portfolio ! Je suis Paolo Colombat, développeur full stack passionné, actuellement en 2ème année de BUT Informatique. Ici vous découvrirez mes projets et mes compétences, ainsi qu\'un Typing Game. Bonne visite !';
+  var I18N = {
+    fr: {
+      introText: 'Bienvenue sur mon portfolio ! Je suis Paolo Colombat, développeur full stack passionné, actuellement en 2ème année de BUT Informatique. Ici vous découvrirez mes projets et mes compétences, ainsi qu\'un Typing Game. Bonne visite !',
+      words: 'mots',
+      wpmFinal: 'Words Per Minute',
+      wordsFinal: 'Mots',
+      accFinal: 'Accuracy',
+      timeFinal: 'Time',
+      bestFinal: 'Best',
+      zenHint: 'Shift + Espace pour arr\u00eater \u00b7 Entr\u00e9e pour recommencer',
+      restartHint: 'Entr\u00e9e : nouveau texte \u00b7 Espace : m\u00eame texte',
+      failText: '\u00c9chec',
+      zenFinishHint: 'Entr\u00e9e ou Espace pour recommencer',
+      zenTitle: 'Mode Zen',
+      zenDesc: 'Tapez librement, sans limite de texte ni validation.<br>Tous les mots comptent pour le WPM.',
+      zenShortcut: '<kbd>Shift</kbd> + <kbd>Espace</kbd> pour terminer.',
+      hardcoreTitle: 'Mode Hardcore',
+      hardcoreDesc: 'Le texte s\'affiche pendant 3 secondes puis dispara\u00eet.<br>\u00c9crivez tout de m\u00e9moire...',
+      hardcoreShortcut: 'Une erreur et c\'est fini !',
+      gotIt: 'Compris',
+      wcStrict: 'Nb mots : strict',
+      wcFree: 'Nb mots : libre',
+      wcStrictTip: 'Nombre de mots bloqu\u00e9 \u00e0 10, 25, 50 et 100',
+      wcFreeTip: 'Nombre de mots selon l\'humeur de Gemini',
+      generating: 'G\u00e9n\u00e9ration en cours\u2026',
+      textsOk: 'Textes g\u00e9n\u00e9r\u00e9s !',
+      aiTitle: 'G\u00e9n\u00e9rateur IA',
+      aiQuestion: 'Que souhaitez-vous taper aujourd\'hui ?',
+      aiPlaceholder: 'Ex: l\'espace, la cuisine, les chats...',
+      uppercase: 'Majuscules',
+      punctuation: 'Ponctuation',
+      aiStrictLabel: 'Nb de mots strict',
+      aiStrictTip: 'Activ\u00e9 : nombre de mots bloqu\u00e9 \u00e0 10, 25, 50, 100. D\u00e9sactiv\u00e9 : d\u00e9pend de l\'humeur de Gemini.',
+      aiGenerate: 'G\u00e9n\u00e9rer les textes',
+      aiRetry: 'R\u00e9essayer',
+      errOrigin: 'Origine non autoris\u00e9e.',
+      errRate: 'Quota journalier atteint. R\u00e9essayez demain !',
+      errTrunc: 'R\u00e9ponse tronqu\u00e9e. R\u00e9essayez.',
+      errTimeout: 'D\u00e9lai d\u00e9pass\u00e9. R\u00e9essayez.',
+      errGeneric: 'Erreur de g\u00e9n\u00e9ration. R\u00e9essayez.',
+      settTitle: 'Param\u00e8tres du texte',
+      settDesc: 'Ajoutez des \u00e9l\u00e9ments au texte pour varier la difficult\u00e9.',
+      settNumbers: 'Nombres',
+      settSpecial: 'Caract\u00e8res sp\u00e9ciaux',
+      settApply: 'Valider',
+      settTitleAttr: 'Param\u00e8tres du texte',
+      eyeTitleAttr: 'Afficher/masquer les erreurs',
+      hcTitleAttr: 'Mode Hardcore',
+      aiTitleAttr: 'Mode IA',
+      aiThemeTitleAttr: 'Changer le th\u00e8me IA',
+      closeLbl: 'Fermer',
+      focusHint: 'Cliquez ici pour commencer \u00e0 taper',
+      loadingText: 'Chargement du site en cours\u2026',
+      introBtn: 'Jouer au Typing Game',
+      introPopupText: 'Testez votre vitesse de frappe !<br>La barre de navigation au-dessus du texte vous permet de choisir la langue, le mode et les options du jeu.',
+      introPopupHint: 'Amusez-vous bien !',
+      heroTitle: 'Paolo Colombat : Typing Game',
+      heroIntro: 'Paolo Colombat'
+    },
+    en: {
+      introText: 'Welcome to my portfolio! I\'m Paolo Colombat, a passionate full stack developer, currently in my 2nd year of a Computer Science degree. Here you\'ll discover my projects and skills, as well as a Typing Game. Enjoy your visit!',
+      words: 'words',
+      wpmFinal: 'Words Per Minute',
+      wordsFinal: 'Words',
+      accFinal: 'Accuracy',
+      timeFinal: 'Time',
+      bestFinal: 'Best',
+      zenHint: 'Shift + Space to stop \u00b7 Enter to restart',
+      restartHint: 'Enter: new text \u00b7 Space: same text',
+      failText: 'Fail',
+      zenFinishHint: 'Enter or Space to restart',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Type freely, with no text limit or validation.<br>All words count toward WPM.',
+      zenShortcut: '<kbd>Shift</kbd> + <kbd>Space</kbd> to finish.',
+      hardcoreTitle: 'Hardcore Mode',
+      hardcoreDesc: 'The text is shown for 3 seconds then disappears.<br>Write everything from memory...',
+      hardcoreShortcut: 'One mistake and it\'s over!',
+      gotIt: 'Got it',
+      wcStrict: 'Word count: strict',
+      wcFree: 'Word count: free',
+      wcStrictTip: 'Word count locked to 10, 25, 50 and 100',
+      wcFreeTip: 'Word count depends on Gemini\'s mood',
+      generating: 'Generating\u2026',
+      textsOk: 'Texts generated!',
+      aiTitle: 'AI Generator',
+      aiQuestion: 'What would you like to type today?',
+      aiPlaceholder: 'E.g: space, cooking, cats...',
+      uppercase: 'Uppercase',
+      punctuation: 'Punctuation',
+      aiStrictLabel: 'Strict word count',
+      aiStrictTip: 'Enabled: word count locked to 10, 25, 50, 100. Disabled: depends on Gemini\'s mood.',
+      aiGenerate: 'Generate texts',
+      aiRetry: 'Retry',
+      errOrigin: 'Origin not authorized.',
+      errRate: 'Daily quota reached. Try again tomorrow!',
+      errTrunc: 'Truncated response. Try again.',
+      errTimeout: 'Timeout. Try again.',
+      errGeneric: 'Generation error. Try again.',
+      settTitle: 'Text settings',
+      settDesc: 'Add elements to the text to vary the difficulty.',
+      settNumbers: 'Numbers',
+      settSpecial: 'Special characters',
+      settApply: 'Apply',
+      settTitleAttr: 'Text settings',
+      eyeTitleAttr: 'Show/hide errors',
+      hcTitleAttr: 'Hardcore Mode',
+      aiTitleAttr: 'AI Mode',
+      aiThemeTitleAttr: 'Change AI theme',
+      closeLbl: 'Close',
+      focusHint: 'Click here to start typing',
+      loadingText: 'Loading site\u2026',
+      introBtn: 'Play Typing Game',
+      introPopupText: 'Test your typing speed!<br>The navigation bar above the text lets you choose the language, mode and game options.',
+      introPopupHint: 'Have fun!',
+      heroTitle: 'Paolo Colombat: Typing Game',
+      heroIntro: 'Paolo Colombat'
+    }
+  };
+
+  function t(key) {
+    return (I18N[currentLang] && I18N[currentLang][key]) || I18N.fr[key] || key;
+  }
 
   /* ---- State ---- */
 
@@ -137,7 +258,7 @@
   let aiThemeBtn = null; // reference to the "change theme" button in navbar
   let aiUppercase = false; // AI popup setting: uppercase (independent from settings gear)
   let aiPunctuation = false; // AI popup setting: punctuation (independent from settings gear)
-  let aiStrictWordCount = true; // AI popup setting: strict word count (trim to exact mode count)
+  let aiStrictWordCount = false; // AI popup setting: strict word count (trim to exact mode count)
   let settingsUppercase = false; // text setting: add uppercase letters
   let settingsNumbers = false; // text setting: add numbers
   let settingsPunctuation = false; // text setting: add punctuation
@@ -573,10 +694,10 @@
     const acc = calcAccuracy();
     wpmEl.textContent = `${wpm} WPM`;
     if (currentMode === 'zen') {
-      accEl.textContent = `${zenWordCount} mots`;
+      accEl.textContent = `${zenWordCount} ${t('words')}`;
     } else if (aiMode && !aiStrictWordCount && text) {
       var wc = text.trim().split(/\s+/).length;
-      accEl.textContent = `${acc}% \u00b7 ${wc} mots`;
+      accEl.textContent = `${acc}% \u00b7 ${wc} ${t('words')}`;
     } else {
       accEl.textContent = `${acc}%`;
     }
@@ -662,22 +783,22 @@
     const wpm = calcWPM();
     const acc = calcAccuracy();
     const seconds = Math.round((Date.now() - startTime - totalPaused) / 1000);
-    wpmEl.textContent = `Words Per Minute : ${wpm}`;
+    wpmEl.textContent = `${t('wpmFinal')} : ${wpm}`;
     if (currentMode === 'zen') {
-      accEl.textContent = `Mots : ${zenWordCount}`;
+      accEl.textContent = `${t('wordsFinal')} : ${zenWordCount}`;
     } else if (aiMode && !aiStrictWordCount && text) {
       var wc = text.trim().split(/\s+/).length;
-      accEl.textContent = `Accuracy : ${acc}% \u00b7 ${wc} mots`;
+      accEl.textContent = `${t('accFinal')} : ${acc}% \u00b7 ${wc} ${t('words')}`;
     } else {
-      accEl.textContent = `Accuracy : ${acc}%`;
+      accEl.textContent = `${t('accFinal')} : ${acc}%`;
     }
-    timeEl.textContent = `Time : ${seconds}s`;
+    timeEl.textContent = `${t('timeFinal')} : ${seconds}s`;
     timeEl.classList.add('typing-game__time--visible');
 
     // Best score
     var isNewRecord = saveBestWPM(currentMode, wpm);
     var best = getBestWPM(currentMode);
-    bestEl.textContent = `Best : ${best} WPM`;
+    bestEl.textContent = `${t('bestFinal')} : ${best} WPM`;
     bestEl.classList.add('typing-game__best--visible');
     if (isNewRecord && wpm > 0) {
       bestEl.classList.add('typing-game__best--new');
@@ -727,9 +848,11 @@
     wpmEl.classList.remove('typing-game__wpm--visible');
     accEl.classList.remove('typing-game__acc--visible');
     wpmEl.textContent = '0 WPM';
-    if (aiMode && !aiStrictWordCount && text) {
+    if (currentMode === 'zen') {
+      accEl.textContent = '0 ' + t('words');
+    } else if (aiMode && !aiStrictWordCount && text) {
       var wc = text.trim().split(/\s+/).length;
-      accEl.textContent = '100% \u00b7 ' + wc + ' mots';
+      accEl.textContent = '100% \u00b7 ' + wc + ' ' + t('words');
     } else {
       accEl.textContent = '100%';
     }
@@ -760,11 +883,15 @@
     // Toggle zen-specific classes
     if (currentMode === 'zen') {
       container.classList.add('typing-game--zen');
-      setRestartText('Shift + Espace pour arrêter · Entrée pour recommencer', ZEN_STOP_ICON);
+      setRestartText(t('zenHint'), ZEN_STOP_ICON);
     } else {
       container.classList.remove('typing-game--zen');
-      setRestartText('Entrée : nouveau texte · Espace : même texte');
+      setRestartText(t('restartHint'));
     }
+    // Update translatable UI elements on language change
+    var focusHintText = focusHintEl && focusHintEl.querySelector('.typing-game__focus-hint-text');
+    if (focusHintText) focusHintText.textContent = t('focusHint');
+    if (heroTitleEl && !introActive) heroTitleEl.textContent = t('heroTitle');
     // Hardcore mode reset
     hardcorePhase = null;
     hardcoreFailed = false;
@@ -824,7 +951,7 @@
       container.classList.remove('typing-game--hardcore-typing');
       if (hardcoreFailed) {
         container.classList.add('typing-game--hardcore-fail');
-        wpmEl.textContent = 'Échec';
+        wpmEl.textContent = t('failText');
         wpmEl.classList.add('typing-game__wpm--visible');
         accEl.textContent = '';
         accEl.classList.remove('typing-game__acc--visible');
@@ -843,9 +970,9 @@
 
     // Update restart hint for finished state
     if (currentMode === 'zen') {
-      setRestartText('Entrée ou Espace pour recommencer');
+      setRestartText(t('zenFinishHint'));
     } else {
-      setRestartText('Entrée : nouveau texte · Espace : même texte');
+      setRestartText(t('restartHint'));
     }
     showRestart();
     container.classList.add('typing-game--finished');
@@ -1020,18 +1147,18 @@
 
   function showZenPopup() {
     setCookie('typing_zen_seen', '1', 365);
-    showInfoPopup('Mode Zen',
-      'Tapez librement, sans limite de texte ni validation.<br>Tous les mots comptent pour le WPM.',
-      '<kbd>Shift</kbd> + <kbd>Espace</kbd> pour terminer.',);
+    showInfoPopup(t('zenTitle'),
+      t('zenDesc'),
+      t('zenShortcut'),);
   }
 
   /* ---- Hardcore popup (first time) ---- */
 
   function showHardcorePopup(onClose) {
     setCookie('typing_hardcore_seen', '1', 365);
-    showInfoPopup('Mode Hardcore',
-      'Le texte s\'affiche pendant 3 secondes puis disparaît.<br>Écrivez tout de mémoire...',
-      'Une erreur et c\'est fini !',
+    showInfoPopup(t('hardcoreTitle'),
+      t('hardcoreDesc'),
+      t('hardcoreShortcut'),
       onClose);
   }
 
@@ -1046,7 +1173,7 @@
       '<div class="zen-popup__title">' + title + '</div>' +
       '<p class="zen-popup__text">' + text + '</p>' +
       '<div class="zen-popup__shortcut">' + shortcut + '</div>' +
-      '<button class="zen-popup__btn">Compris</button>';
+      '<button class="zen-popup__btn">' + t('gotIt') + '</button>';
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
     // Force reflow then animate in
@@ -1142,10 +1269,10 @@
     var settingsHtml = '';
     if (uppercase) settingsHtml += '<span class="typing-game__ai-inline-tag">ABC</span>';
     if (punctuation) settingsHtml += '<span class="typing-game__ai-inline-tag">.,;!?</span>';
-    var wcLabel = strictWc ? 'Nb mots : strict' : 'Nb mots : libre';
+    var wcLabel = strictWc ? t('wcStrict') : t('wcFree');
     var wcTooltip = strictWc
-      ? 'Nombre de mots bloqué à 10, 25, 50 et 100'
-      : 'Nombre de mots selon l\x27humeur de Gemini';
+      ? t('wcStrictTip')
+      : t('wcFreeTip');
     settingsHtml += '<span class="typing-game__ai-inline-tag" title="' + wcTooltip + '">' + wcLabel + '</span>';
 
     aiInlineEl.innerHTML =
@@ -1158,7 +1285,7 @@
           '</div>' +
           '<div class="typing-game__ai-inline-tags">' + settingsHtml + '</div>' +
         '</div>' +
-        '<div class="typing-game__ai-inline-text">Génération en cours\u2026</div>' +
+        '<div class="typing-game__ai-inline-text">' + t('generating') + '</div>' +
       '</div>' +
       '<div class="typing-game__ai-inline-result"></div>';
 
@@ -1239,36 +1366,37 @@
     popup.className = 'zen-popup typing-game__ai-popup';
 
     popup.innerHTML =
-      '<button class="modal__close zen-popup__close" aria-label="Fermer">&times;</button>' +
-      '<div class="zen-popup__title">Générateur IA</div>' +
-      '<p class="zen-popup__text">Que souhaitez-vous taper aujourd\'hui ?</p>' +
-      '<input class="typing-game__ai-input typing-game__ai-theme-input" type="text" placeholder="Ex: l\'espace, la cuisine, les chats..." maxlength="100" />' +
+      '<button class="modal__close zen-popup__close" aria-label="' + t('closeLbl') + '">&times;</button>' +
+      '<div class="zen-popup__title">' + t('aiTitle') + '</div>' +
+      '<p class="zen-popup__text">' + t('aiQuestion') + '</p>' +
+      '<input class="typing-game__ai-input typing-game__ai-theme-input" type="text" placeholder="' + t('aiPlaceholder') + '" maxlength="100" />' +
       '<div class="typing-game__ai-options">' +
         '<label class="typing-game__ai-opt">' +
           '<input type="checkbox" class="typing-game__ai-opt-check" data-key="uppercase"' + (aiUppercase ? ' checked' : '') + '/>' +
           '<span class="typing-game__ai-opt-toggle"></span>' +
-          '<span class="typing-game__ai-opt-label">Majuscules</span>' +
+          '<span class="typing-game__ai-opt-label">' + t('uppercase') + '</span>' +
           '<span class="typing-game__ai-opt-hint">ABC</span>' +
         '</label>' +
         '<label class="typing-game__ai-opt">' +
           '<input type="checkbox" class="typing-game__ai-opt-check" data-key="punctuation"' + (aiPunctuation ? ' checked' : '') + '/>' +
           '<span class="typing-game__ai-opt-toggle"></span>' +
-          '<span class="typing-game__ai-opt-label">Ponctuation</span>' +
+          '<span class="typing-game__ai-opt-label">' + t('punctuation') + '</span>' +
           '<span class="typing-game__ai-opt-hint">.,;!?</span>' +
         '</label>' +
-        '<label class="typing-game__ai-opt" title="Activé : nombre de mots bloqué à 10, 25, 50, 100. Désactivé : dépend de l\'humeur de Gemini.">' +
+        '<label class="typing-game__ai-opt typing-game__ai-opt--strict">' +
           '<input type="checkbox" class="typing-game__ai-opt-check" data-key="strictwc"' + (aiStrictWordCount ? ' checked' : '') + '/>' +
           '<span class="typing-game__ai-opt-toggle"></span>' +
-          '<span class="typing-game__ai-opt-label">Nb de mots strict</span>' +
+          '<span class="typing-game__ai-opt-label">' + t('aiStrictLabel') + '</span>' +
           '<span class="typing-game__ai-opt-hint">#</span>' +
+          '<span class="typing-game__ai-opt-tip">' + t('aiStrictTip') + '</span>' +
         '</label>' +
       '</div>' +
       '<div class="typing-game__ai-status"></div>' +
       '<div class="typing-game__ai-loader">' +
         '<div class="typing-game__ai-loader-spinner"></div>' +
-        '<div class="typing-game__ai-loader-text">Génération en cours\u2026</div>' +
+        '<div class="typing-game__ai-loader-text">' + t('generating') + '</div>' +
       '</div>' +
-      '<button class="zen-popup__btn typing-game__ai-confirm">Générer les textes</button>';
+      '<button class="zen-popup__btn typing-game__ai-confirm">' + t('aiGenerate') + '</button>';
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
 
@@ -1320,11 +1448,11 @@
 
     function getErrorMsg(err) {
       var msg = err && err.message || '';
-      if (msg === 'ORIGIN_BLOCKED') return 'Origine non autorisée.';
-      if (msg === 'RATE_LIMIT') return 'Quota journalier atteint. Réessayez demain !';
-      if (msg === 'TRUNCATED') return 'Réponse tronquée. Réessayez.';
-      if (msg === 'TIMEOUT') return 'Délai dépassé. Réessayez.';
-      return 'Erreur de génération. Réessayez.';
+      if (msg === 'ORIGIN_BLOCKED') return t('errOrigin');
+      if (msg === 'RATE_LIMIT') return t('errRate');
+      if (msg === 'TRUNCATED') return t('errTrunc');
+      if (msg === 'TIMEOUT') return t('errTimeout');
+      return t('errGeneric');
     }
 
     function doGenerate() {
@@ -1374,7 +1502,7 @@
 
         if (movedInline) {
           // Result goes to the inline loader; onConfirm fires after dismiss
-          finishAiInlineLoader(true, 'Textes générés !', function() {
+          finishAiInlineLoader(true, t('textsOk'), function() {
             if (typeof onConfirm === 'function') onConfirm();
           });
         } else {
@@ -1399,7 +1527,7 @@
           confirmBtn.disabled = false;
           confirmBtn.style.display = '';
           themeInput.disabled = false;
-          confirmBtn.textContent = 'Réessayer';
+          confirmBtn.textContent = t('aiRetry');
           statusEl.textContent = getErrorMsg(err);
           statusEl.className = 'typing-game__ai-status typing-game__ai-status--error';
         }
@@ -1433,14 +1561,14 @@
     var changed = false;
 
     var options = [
-      { key: 'uppercase', label: 'Majuscules', desc: 'ABC', get: function() { return settingsUppercase; }, set: function(v) { settingsUppercase = v; } },
-      { key: 'punctuation', label: 'Ponctuation', desc: '.,;!?', get: function() { return settingsPunctuation; }, set: function(v) { settingsPunctuation = v; } },
-      { key: 'numbers', label: 'Nombres', desc: '123', get: function() { return settingsNumbers; }, set: function(v) { settingsNumbers = v; } },
-      { key: 'special', label: 'Caract\u00e8res sp\u00e9ciaux', desc: '@#$%', get: function() { return settingsSpecial; }, set: function(v) { settingsSpecial = v; } }
+      { key: 'uppercase', label: t('uppercase'), desc: 'ABC', get: function() { return settingsUppercase; }, set: function(v) { settingsUppercase = v; } },
+      { key: 'punctuation', label: t('punctuation'), desc: '.,;!?', get: function() { return settingsPunctuation; }, set: function(v) { settingsPunctuation = v; } },
+      { key: 'numbers', label: t('settNumbers'), desc: '123', get: function() { return settingsNumbers; }, set: function(v) { settingsNumbers = v; } },
+      { key: 'special', label: t('settSpecial'), desc: '@#$%', get: function() { return settingsSpecial; }, set: function(v) { settingsSpecial = v; } }
     ];
 
-    var html = '<div class="zen-popup__title">Param\u00e8tres du texte</div>' +
-      '<p class="zen-popup__text">Ajoutez des \u00e9l\u00e9ments au texte pour varier la difficult\u00e9.</p>' +
+    var html = '<div class="zen-popup__title">' + t('settTitle') + '</div>' +
+      '<p class="zen-popup__text">' + t('settDesc') + '</p>' +
       '<div class="typing-game__settings-options">';
 
     options.forEach(function(opt) {
@@ -1453,7 +1581,7 @@
     });
 
     html += '</div>' +
-      '<button class="zen-popup__btn typing-game__settings-confirm">Valider</button>';
+      '<button class="zen-popup__btn typing-game__settings-confirm">' + t('settApply') + '</button>';
     popup.innerHTML = html;
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
@@ -1529,11 +1657,11 @@
       en: {
         fr: 'Switch to French',
         en: 'Switch to English',
-        '10': 'Texte of 10-word mode',
+        '10': 'Text of 10-word mode',
         '25': 'Text of 25-word mode',
         '50': 'Text of 50-word mode',
         '100': 'Text of 100-word mode',
-        zen: 'Start zen mode ',
+        zen: 'Start zen mode',
         eye: 'Show / hide errors',
         hardcore: 'Start hardcore mode',
         'hardcore-active': 'Quit hardcore mode',
@@ -1623,7 +1751,7 @@
     var settingsGearBtn = document.createElement('button');
     settingsGearBtn.className = 'typing-game__settings';
     settingsGearBtn.setAttribute('tabindex', '-1');
-    settingsGearBtn.setAttribute('title', 'Param\u00e8tres du texte');
+    settingsGearBtn.setAttribute('title', t('settTitleAttr'));
     settingsGearBtn.innerHTML = '<svg class="typing-game__settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<circle cx="12" cy="12" r="3"/>' +
       '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>' +
@@ -1659,7 +1787,7 @@
     var eyeBtn = document.createElement('button');
     eyeBtn.className = 'typing-game__eye';
     eyeBtn.setAttribute('tabindex', '-1');
-    eyeBtn.setAttribute('title', 'Afficher/masquer les erreurs');
+    eyeBtn.setAttribute('title', t('eyeTitleAttr'));
     eyeBtn.innerHTML = '<svg class="typing-game__eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="typing-game__eye-top" d="M1 12s4-8 11-8 11 8 11 8"/><path class="typing-game__eye-bottom" d="M1 12s4 8 11 8 11-8 11-8"/><circle class="typing-game__eye-pupil" cx="12" cy="12" r="3"/><line class="typing-game__eye-slash" x1="2" y1="2" x2="22" y2="22"/></svg>';
     // Appliquer l'état initial de showErrors
     eyeBtn.classList.toggle('typing-game__eye--active', showErrors);
@@ -1679,7 +1807,7 @@
     var hcBtn = document.createElement('button');
     hcBtn.className = 'typing-game__hardcore';
     hcBtn.setAttribute('tabindex', '-1');
-    hcBtn.setAttribute('title', 'Mode Hardcore');
+    hcBtn.setAttribute('title', t('hcTitleAttr'));
     hcBtn.innerHTML = '<svg class="typing-game__hardcore-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><g class="typing-game__hc-happy"><circle cx="8.5" cy="11" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="11" r="1.5" fill="currentColor" stroke="none"/><path d="M8 16c0 0 1.5 2 4 2s4-2 4-2" stroke="currentColor" stroke-width="1.6" fill="none"/></g><g class="typing-game__hc-scary"><rect x="7" y="9" width="3" height="3.5" rx="0.3" fill="currentColor" stroke="none"/><rect x="14" y="9" width="3" height="3.5" rx="0.3" fill="currentColor" stroke="none"/><path d="M8 17h8" stroke="currentColor" stroke-width="1.8"/><path d="M10 17v-1.5M14 17v-1.5" stroke="currentColor" stroke-width="1.4"/></g></svg>';
 
     function updateHardcoreUI() {
@@ -1732,7 +1860,7 @@
     var aiBtn = document.createElement('button');
     aiBtn.className = 'typing-game__ai';
     aiBtn.setAttribute('tabindex', '-1');
-    aiBtn.setAttribute('title', 'Mode IA');
+    aiBtn.setAttribute('title', t('aiTitleAttr'));
     // Dual-star icon with floating mini-stars container
     aiBtn.innerHTML = '<div class="typing-game__ai-wrap">' +
       '<svg class="typing-game__ai-icon" viewBox="0 0 24 24" fill="none">' +
@@ -1749,7 +1877,7 @@
     aiThemeBtn = document.createElement('button');
     aiThemeBtn.className = 'typing-game__ai-theme';
     aiThemeBtn.setAttribute('tabindex', '-1');
-    aiThemeBtn.setAttribute('title', 'Changer le thème IA');
+    aiThemeBtn.setAttribute('title', t('aiThemeTitleAttr'));
     aiThemeBtn.innerHTML = '<svg class="typing-game__ai-theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>' +
     '</svg>';
@@ -1829,13 +1957,13 @@
   function showIntro(isSmartphone) {
     introActive = true;
     heroTitleEl = document.querySelector('#hero .section__title');
-    if (heroTitleEl) heroTitleEl.textContent = 'Paolo Colombat';
+    if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
 
     // --- Loading screen (shown until page fully loads) ---
     var loadingEl = document.createElement('div');
     loadingEl.className = 'typing-game__loading';
     loadingEl.innerHTML = '<div class="typing-game__loading-spinner"></div>' +
-      '<div class="typing-game__loading-text">Chargement du site en cours\u2026</div>';
+      '<div class="typing-game__loading-text">' + t('loadingText') + '</div>';
     container.appendChild(loadingEl);
 
     // Prepare intro elements but don't add to DOM yet
@@ -1875,11 +2003,11 @@
     if (!isSmartphone) {
       introButtonEl = document.createElement('button');
       introButtonEl.className = 'btn btn--outline typing-game__intro-btn';
-      introButtonEl.textContent = 'Jouer au Typing Game';
+      introButtonEl.textContent = t('introBtn');
     }
 
     // Start typewriter animation with cursor + trail (zen-style rendering)
-    var chars = INTRO_TEXT.split('');
+    var chars = t('introText').split('');
     var idx = 0;
     var speed = 38; // ms per character (slower for readability)
     var introCombo = 0;
@@ -1991,8 +2119,8 @@
   function showIntroPopup() {
     showInfoPopup(
       'Typing Game',
-      'Testez votre vitesse de frappe !<br>La barre de navigation au-dessus du texte vous permet de choisir la langue, le mode et les options du jeu.',
-      'Amusez-vous bien !',
+      t('introPopupText'),
+      t('introPopupHint'),
       function () {
         unlockGame();
         transitionToGame();
@@ -2004,7 +2132,7 @@
     introActive = false;
 
     // Update title
-    if (heroTitleEl) heroTitleEl.textContent = 'Paolo Colombat : Typing Game';
+    if (heroTitleEl) heroTitleEl.textContent = t('heroTitle');
 
     // Fade out intro elements
     introTextEl.classList.add('typing-game__text--intro-out');
@@ -2035,7 +2163,7 @@
     // Show intro text statically (no game, no greyed navbar)
     var staticText = document.createElement('div');
     staticText.className = 'typing-game__text typing-game__text--intro';
-    staticText.textContent = INTRO_TEXT;
+    staticText.textContent = t('introText');
     container.appendChild(staticText);
   }
 
@@ -2065,12 +2193,12 @@
     restartEl = document.createElement('div');
     restartEl.className = 'typing-game__restart';
     restartEl.dataset.shouldShow = '0';
-    setRestartText('Entrée : nouveau texte · Espace : même texte');
+    setRestartText(t('restartHint'));
 
     // Focus hint (visible when blurred)
     focusHintEl = document.createElement('div');
     focusHintEl.className = 'typing-game__focus-hint';
-    focusHintEl.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> Cliquez ici pour commencer à taper';
+    focusHintEl.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> <span class="typing-game__focus-hint-text">' + t('focusHint') + '</span>';
 
     // Stats row wraps WPM + Accuracy side by side
     statsRow = document.createElement('div');
@@ -2193,7 +2321,7 @@
     // --- Mobile smartphone mode (already unlocked): show static intro text ---
     if (isSmartphone) {
       heroTitleEl = document.querySelector('#hero .section__title');
-      if (heroTitleEl) heroTitleEl.textContent = 'Paolo Colombat';
+      if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
       buildSmartphoneStaticDOM();
       return;
     }
