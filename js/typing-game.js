@@ -55,6 +55,7 @@
   function saveAiOptions() {
     setCookie('typing_ai_uppercase', aiUppercase ? '1' : '0', 365);
     setCookie('typing_ai_punctuation', aiPunctuation ? '1' : '0', 365);
+    setCookie('typing_ai_strict_wc', aiStrictWordCount ? '1' : '0', 365);
   }
 
   function loadSettings() {
@@ -72,6 +73,7 @@
       special: getCookie('typing_opt_special') === '1',
       aiUppercase: getCookie('typing_ai_uppercase') === '1',
       aiPunctuation: getCookie('typing_ai_punctuation') === '1',
+      aiStrictWordCount: getCookie('typing_ai_strict_wc') !== '0',
     };
   }
 
@@ -135,6 +137,7 @@
   let aiThemeBtn = null; // reference to the "change theme" button in navbar
   let aiUppercase = false; // AI popup setting: uppercase (independent from settings gear)
   let aiPunctuation = false; // AI popup setting: punctuation (independent from settings gear)
+  let aiStrictWordCount = true; // AI popup setting: strict word count (trim to exact mode count)
   let settingsUppercase = false; // text setting: add uppercase letters
   let settingsNumbers = false; // text setting: add numbers
   let settingsPunctuation = false; // text setting: add punctuation
@@ -571,6 +574,9 @@
     wpmEl.textContent = `${wpm} WPM`;
     if (currentMode === 'zen') {
       accEl.textContent = `${zenWordCount} mots`;
+    } else if (aiMode && !aiStrictWordCount && text) {
+      var wc = text.trim().split(/\s+/).length;
+      accEl.textContent = `${acc}% \u00b7 ${wc} mots`;
     } else {
       accEl.textContent = `${acc}%`;
     }
@@ -659,6 +665,9 @@
     wpmEl.textContent = `Words Per Minute : ${wpm}`;
     if (currentMode === 'zen') {
       accEl.textContent = `Mots : ${zenWordCount}`;
+    } else if (aiMode && !aiStrictWordCount && text) {
+      var wc = text.trim().split(/\s+/).length;
+      accEl.textContent = `Accuracy : ${acc}% \u00b7 ${wc} mots`;
     } else {
       accEl.textContent = `Accuracy : ${acc}%`;
     }
@@ -718,7 +727,12 @@
     wpmEl.classList.remove('typing-game__wpm--visible');
     accEl.classList.remove('typing-game__acc--visible');
     wpmEl.textContent = '0 WPM';
-    accEl.textContent = '100%';
+    if (aiMode && !aiStrictWordCount && text) {
+      var wc = text.trim().split(/\s+/).length;
+      accEl.textContent = '100% \u00b7 ' + wc + ' mots';
+    } else {
+      accEl.textContent = '100%';
+    }
     if (hardcoreFailed) {
       void wpmEl.offsetHeight;
       wpmEl.style.transition = '';
@@ -1068,12 +1082,20 @@
       if (!parsed[lang]) return;
       modes.forEach(function(mode) {
         if (!Array.isArray(parsed[lang][mode])) return;
+        var modeLimit = parseInt(mode, 10);
         parsed[lang][mode] = parsed[lang][mode].map(function(text) {
           if (typeof text !== 'string') return text;
           if (!aiUppercase) text = text.toLowerCase();
           if (!aiPunctuation) {
             text = text.replace(/[.,;:!?]/g, '');
             text = text.replace(/ {2,}/g, ' ').trim();
+          }
+          // Strict word count: trim to at most modeLimit words
+          if (aiStrictWordCount) {
+            var words = text.split(/\s+/);
+            if (words.length > modeLimit) {
+              text = words.slice(0, modeLimit).join(' ');
+            }
           }
           return text;
         });
@@ -1108,7 +1130,7 @@
 
   var aiInlineEl = null;
 
-  function showAiInlineLoader(theme, uppercase, punctuation) {
+  function showAiInlineLoader(theme, uppercase, punctuation, strictWc) {
     // Grey out the navbar
     if (navbarEl) navbarEl.classList.add('typing-game__navbar--disabled');
 
@@ -1120,6 +1142,11 @@
     var settingsHtml = '';
     if (uppercase) settingsHtml += '<span class="typing-game__ai-inline-tag">ABC</span>';
     if (punctuation) settingsHtml += '<span class="typing-game__ai-inline-tag">.,;!?</span>';
+    var wcLabel = strictWc ? 'Nb mots : strict' : 'Nb mots : libre';
+    var wcTooltip = strictWc
+      ? 'Nombre de mots bloqué à 10, 25, 50 et 100'
+      : 'Nombre de mots selon l\x27humeur de Gemini';
+    settingsHtml += '<span class="typing-game__ai-inline-tag" title="' + wcTooltip + '">' + wcLabel + '</span>';
 
     aiInlineEl.innerHTML =
       '<div class="typing-game__ai-inline-content">' +
@@ -1129,7 +1156,7 @@
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ' +
             theme +
           '</div>' +
-          (settingsHtml ? '<div class="typing-game__ai-inline-tags">' + settingsHtml + '</div>' : '') +
+          '<div class="typing-game__ai-inline-tags">' + settingsHtml + '</div>' +
         '</div>' +
         '<div class="typing-game__ai-inline-text">Génération en cours\u2026</div>' +
       '</div>' +
@@ -1229,6 +1256,12 @@
           '<span class="typing-game__ai-opt-label">Ponctuation</span>' +
           '<span class="typing-game__ai-opt-hint">.,;!?</span>' +
         '</label>' +
+        '<label class="typing-game__ai-opt" title="Activé : nombre de mots bloqué à 10, 25, 50, 100. Désactivé : dépend de l\'humeur de Gemini.">' +
+          '<input type="checkbox" class="typing-game__ai-opt-check" data-key="strictwc"' + (aiStrictWordCount ? ' checked' : '') + '/>' +
+          '<span class="typing-game__ai-opt-toggle"></span>' +
+          '<span class="typing-game__ai-opt-label">Nb de mots strict</span>' +
+          '<span class="typing-game__ai-opt-hint">#</span>' +
+        '</label>' +
       '</div>' +
       '<div class="typing-game__ai-status"></div>' +
       '<div class="typing-game__ai-loader">' +
@@ -1248,12 +1281,14 @@
     // Local copies — only committed on successful generate
     var localUppercase = aiUppercase;
     var localPunctuation = aiPunctuation;
+    var localStrictWc = aiStrictWordCount;
 
     popup.querySelectorAll('.typing-game__ai-opt-check').forEach(function(chk) {
       chk.addEventListener('change', function() {
         var key = chk.getAttribute('data-key');
         if (key === 'uppercase') localUppercase = chk.checked;
         if (key === 'punctuation') localPunctuation = chk.checked;
+        if (key === 'strictwc') localStrictWc = chk.checked;
       });
     });
 
@@ -1275,6 +1310,7 @@
         if (!generated && !isReopen) {
           aiUppercase = localUppercase;
           aiPunctuation = localPunctuation;
+          aiStrictWordCount = localStrictWc;
           aiTheme = themeInput.value.trim();
           saveAiOptions();
         }
@@ -1319,7 +1355,7 @@
         // Close the popup smoothly
         close(true); // generated=true prevents persisting partial state
         // Build the inline loader overlay
-        showAiInlineLoader(theme, localUppercase, localPunctuation);
+        showAiInlineLoader(theme, localUppercase, localPunctuation, localStrictWc);
       }, 3000);
 
       fetchAiTexts(theme, function(texts) {
@@ -1330,6 +1366,7 @@
         // Commit AI toggle values on successful generation
         aiUppercase = localUppercase;
         aiPunctuation = localPunctuation;
+        aiStrictWordCount = localStrictWc;
         aiTheme = theme;
         saveAiOptions();
         postProcessAiTexts(texts);
@@ -2141,6 +2178,7 @@
     settingsSpecial = saved.special;
     aiUppercase = saved.aiUppercase;
     aiPunctuation = saved.aiPunctuation;
+    aiStrictWordCount = saved.aiStrictWordCount;
     // If hardcore is on but mode is incompatible, force to 10
     if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
       currentMode = '10';
