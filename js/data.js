@@ -136,7 +136,7 @@ const PROJECTS = [
   {
     title: 'Comparaison d\'approches algorithmiques',
     description: 'Développement de méthodes de classification automatique de dépêches — génération de lexiques par apprentissage et comparaison K-NN.',
-    image: 'assets/images/project-4.jpg',
+    image: 'assets/images/background.jpg',
     tags: ['Java', 'Algorithmes', 'IA', 'IntelliJ'],
     details: {
       overview: 'Ce projet, intitulé « <em>Classification automatique</em> », visait à améliorer un système de tri de <em>dépêches d\'actualité</em> en développant une méthode de <em>génération automatique de lexiques</em>. Contrairement à la première partie où les lexiques étaient manuels, nous avons ici expérimenté l\' <em>apprentissage automatique</em> afin de générer des lexiques plus pertinents et d\'améliorer la précision du système de classification.<br><br><em>Binôme</em> : Paolo Colombat, Enzo Morello',
