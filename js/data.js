@@ -12,7 +12,7 @@ const PROJECTS = [
   {
     title: 'Satablé : Application d\'organisation de banquets',
     description: 'Développement d\'une Application lourde JavaFX d\'organisation de banquets — gestion d\'événements, invités, menus et plans de table.',
-    image: 'assets/images/background.jpg',
+    image: 'assets/images/satable.jpg',
     tags: ['JavaFX', 'MVC', 'UML', 'Gestion de projet'],
     details: {
       overview: 'Le projet consiste à concevoir et développer une <em>application JavaFX</em> permettant à tout organisateur de gérer un événement. L\'application fonctionne <em>hors-ligne</em> (architecture lourde) et s\'appuie sur un <em>modèle MVC complet</em>. Projet réalisé en équipe de six, avec gestion de jalons, dépôt <em>GitLab</em> institutionnel et soutenance finale.',
