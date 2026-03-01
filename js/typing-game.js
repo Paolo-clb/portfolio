@@ -695,7 +695,7 @@
     wpmEl.textContent = `${wpm} WPM`;
     if (currentMode === 'zen') {
       accEl.textContent = `${zenWordCount} ${t('words')}`;
-    } else if (aiMode && !aiStrictWordCount && text) {
+    } else if (aiMode && !aiStrictWordCount && text && finished) {
       var wc = text.trim().split(/\s+/).length;
       accEl.textContent = `${acc}% \u00b7 ${wc} ${t('words')}`;
     } else {
