@@ -850,9 +850,6 @@
     wpmEl.textContent = '0 WPM';
     if (currentMode === 'zen') {
       accEl.textContent = '0 ' + t('words');
-    } else if (aiMode && !aiStrictWordCount && text) {
-      var wc = text.trim().split(/\s+/).length;
-      accEl.textContent = '100% \u00b7 ' + wc + ' ' + t('words');
     } else {
       accEl.textContent = '100%';
     }
