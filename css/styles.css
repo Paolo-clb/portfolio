@@ -774,7 +774,7 @@ section.hero {
 }
 
 .skills-group--visible {
-  max-height: 500px;
+  max-height: 1500px;
   opacity: 1;
   overflow: visible;
   padding: 1rem 1.25rem;

@@ -1536,6 +1536,18 @@
   transform: scale(1);
 }
 
+/* Hide text chars underneath the AI inline overlay while it is visible.
+   Uses :has() — no JS changes needed, no side effects on game state.
+   The 0.35s delay on the fade-out matches the inline's own appear transition,
+   so chars disappear right as the blur panel finishes fading in. */
+.typing-game__text:has(.typing-game__ai-inline--visible) .typing-game__char {
+  color: transparent;
+  text-shadow: none;
+  -webkit-text-fill-color: transparent;
+  transition: color 0.3s ease 0.1s,
+              -webkit-text-fill-color 0.3s ease 0.1s;
+}
+
 /* ---- Content: spinner + info ---- */
 .typing-game__ai-inline-content {
   display: flex;
