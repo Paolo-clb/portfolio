@@ -78,8 +78,12 @@ export default {
       return respond({ error: 'Method not allowed' }, 405, corsHeaders);
     }
 
-    const apiKey = env.GEMINI_API_KEY;
-    if (!apiKey) return respond({ error: 'API key not configured' }, 500, corsHeaders);
+    const apiKeys = [
+      env.GEMINI_API_KEY,
+      env.GEMINI_API_KEY_2,
+      env.GEMINI_API_KEY_3,
+    ].filter(Boolean);
+    if (apiKeys.length === 0) return respond({ error: 'API key not configured' }, 500, corsHeaders);
 
     try {
       /* ---- Parse & sanitize client input ---- */
@@ -100,18 +104,22 @@ export default {
         },
       });
 
-      /* ---- Call Gemini with timeout ---- */
+      /* ---- Call Gemini with timeout + key rotation on 429 ---- */
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT);
 
       let geminiRes;
       try {
-        geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: geminiBody,
-          signal: ctrl.signal,
-        });
+        for (const apiKey of apiKeys) {
+          geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: geminiBody,
+            signal: ctrl.signal,
+          });
+          // On 429, try the next key; any other status breaks the loop
+          if (geminiRes.status !== 429) break;
+        }
       } finally {
         clearTimeout(timer);
       }
