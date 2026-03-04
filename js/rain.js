@@ -52,6 +52,16 @@
         right:     r.right
       });
     }
+    // Add umbrella button as bounce surface when rain is active (open dome)
+    if (enabled && btnEl) {
+      var br = btnEl.getBoundingClientRect();
+      arr.push({
+        absTop:    br.top + sy,
+        absBottom: br.bottom + sy,
+        left:      br.left,
+        right:     br.right
+      });
+    }
     return arr;
   }
 
@@ -159,25 +169,13 @@
     btn.className = 'rain-toggle';
     btn.setAttribute('aria-label', 'Toggle rain effect');
     btn.setAttribute('title', 'Pluie');
-    // Reworked SVG: thicker strokes, filled canopy for visibility,
-    // rain drops visible even when inactive (muted), canopy always shown
+    // SVG umbrella: dome path morphs between closed (furled) and open via CSS d property
     btn.innerHTML =
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
-        '<g class="umbrella-canopy" stroke-width="2">' +
-          '<path d="M12 2C6.5 2 2 6.5 3 12h18c1-5.5-3.5-10-9-10z" fill="currentColor" opacity="0.15"/>' +
-          '<path d="M12 2C6.5 2 2 6.5 3 12h18c1-5.5-3.5-10-9-10z"/>' +
-        '</g>' +
+        '<path class="umbrella-dome" d="M12 2 C6.5 2 2 6.5 3 12 H21 C22 6.5 17.5 2 12 2 Z" fill="currentColor" fill-opacity="0.15" stroke-width="2"/>' +
         '<g class="umbrella-handle" stroke-width="2">' +
           '<line x1="12" y1="12" x2="12" y2="21"/>' +
-          '<path d="M12 21c0 0-2 0-2-1.5S12 18 12 18"/>' +
-        '</g>' +
-        '<g class="umbrella-drops" stroke-width="1.8">' +
-          '<line x1="6" y1="14.5" x2="6" y2="17"/>' +
-          '<line x1="9" y1="16" x2="9" y2="19"/>' +
-          '<line x1="18" y1="14.5" x2="18" y2="17"/>' +
-          '<line x1="15" y1="16" x2="15" y2="19"/>' +
-          '<line x1="3.5" y1="16" x2="3.5" y2="18" opacity="0.5"/>' +
-          '<line x1="20.5" y1="16" x2="20.5" y2="18" opacity="0.5"/>' +
+          '<path d="M12 21c0 0-2 0-2-1.5S12 18 12 18" fill="none"/>' +
         '</g>' +
       '</svg>';
 
