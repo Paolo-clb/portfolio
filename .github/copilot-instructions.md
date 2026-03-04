@@ -6,7 +6,9 @@ Static single-page portfolio — no build tools, no frameworks, no bundler. Host
 
 ```
 index.html              ← Single entry point; all sections live here
-css/styles.css          ← Main styles (~2176 lines), organized by component blocks
+css/styles.css          ← Core styles (~1232 lines) — variables, reset, layout, header, nav, buttons, hero, contact, footer, CV, cursor halo, theme toggle, dark/nature core overrides, responsive
+css/modals.css          ← Projects, Modal & Detail Modal styles (~539 lines) — cards, grid, overlays, detail sections, dark/nature overrides
+css/skills.css          ← Skills & Skill Popup styles (~386 lines) — groups, items, popup overlay, level bar, dark/nature overrides
 css/typing-game.css     ← Typing game core styles (~1387 lines) — base, navbar, text, cursor, stats, zen, hardcore, dark/nature core overrides, tooltip
 css/typing-game-ai.css  ← Typing game AI styles (~882 lines) — AI toggle, popup, inline loader, dark/nature AI overrides
 css/typing-game-intro.css ← Typing game intro styles (~198 lines) — typewriter, loading, reveal animation, dark/nature intro overrides
@@ -97,7 +99,7 @@ Theme toggle: `initThemeToggle()` in `main.js`, persisted in `localStorage('port
 
 **Background credit badge:** CSS `.bg-credit` element created by `initThemeToggle()`. Shows game/artwork credit (Katana Zero for dark, Hollow Knight for nature) for 3 seconds on theme switch. Auto-dismisses.
 
-Dark & nature theme CSS overrides in `styles.css` are all under `[data-theme="dark"]` and `[data-theme="nature"]` selectors. Each component CSS file (`typing-game.css`, `typing-game-ai.css`, `typing-game-intro.css`, `music-player.css`, `visualizer.css`, `rain.css`) has its own dark + nature override blocks. All components read `document.documentElement.dataset.theme` or `getAttribute('data-theme')` for theme-aware colors.
+Dark & nature theme CSS overrides are split across each CSS file under `[data-theme="dark"]` and `[data-theme="nature"]` selectors. Core overrides (layout, header, nav, contact, footer, CV, cursor halo, theme toggle) live in `styles.css`. Each component CSS file (`modals.css`, `skills.css`, `typing-game.css`, `typing-game-ai.css`, `typing-game-intro.css`, `music-player.css`, `visualizer.css`, `rain.css`) has its own co-located dark + nature override blocks. All components read `document.documentElement.dataset.theme` or `getAttribute('data-theme')` for theme-aware colors.
 
 ## Features
 
@@ -312,7 +314,9 @@ No install step. No build step. No environment variables. Web Audio features (mu
 - Glass-morphism pattern: `rgba()` background + `backdrop-filter: blur()` (light theme only, disabled in dark + nature with `backdrop-filter: none`)
 - Dark theme: overrides under `[data-theme="dark"]` selectors in each CSS file
 - Nature theme: overrides under `[data-theme="nature"]` selectors in each CSS file
-- `styles.css` organized blocks: Variables & Reset, Layout, Header & Navigation, Buttons, Hero, Projects, Modal, Detail Modal, Skills, Skill Popup, Contact Form, Scroll Hint, Footer, CV Section, Cursor Halo, Background Credit Badge, Theme Toggle, Dark Theme, Nature Theme, Responsive
+- `styles.css` organized blocks: Variables & Reset, Layout, Header & Navigation, Buttons, Hero, Contact Form, Scroll Hint, Footer, Background Credit Badge, CV Modal, CV Section, Cursor Halo, Theme Toggle, Dark Theme (core overrides), Nature Theme (core overrides), Responsive
+- `modals.css` organized blocks: Projects (grid, cards, tags, actions), Modal (overlay, header, close, grid, scroll hint hook), Detail Modal (overlay, content, image, sections, scrollbar, expandable), Dark Theme (projects + modal + detail overrides), Nature Theme (projects + modal + detail overrides)
+- `skills.css` organized blocks: Skills (grid, groups, labels, items, visibility, actions), Skill Popup (overlay, popup, icon, description, level bar, dots), Dark Theme (skills + popup overrides), Nature Theme (skills + popup overrides)
 - `typing-game.css` organized blocks: Base, Blur/Focus states, Navbar, Eye toggle, Settings gear/popup, Text display, Character states, Cursor (blink/combo/trail), Stats, Best score, Hints, Responsive, Zen mode/popup, Hardcore, Dark Theme (core overrides), Nature Theme (core overrides), Navbar tooltip
 - `typing-game-ai.css` organized blocks: AI toggle, Floating mini-stars, AI theme button, AI popup input/options, Strict tooltip, AI loading indicator, AI Inline Loader (navbar disabled, responsive, overlay, content, result, dark overrides), Dark Theme (AI overrides), Nature Theme (AI overrides)
 - `typing-game-intro.css` organized blocks: Intro text container, Loading screen, Intro button, Reveal animation, Dark Theme (intro overrides), Nature Theme (intro overrides)
