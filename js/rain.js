@@ -1,0 +1,343 @@
+/* ==========================================================================
+   Rain Effect — OffscreenCanvas + Web Worker architecture
+   
+   Main thread (this file): creates canvas, button, toggle.
+   Sends scroll / resize / surface / theme data to Worker via postMessage.
+   ALL physics + rendering run in a SEPARATE thread → zero main-thread cost.
+   
+   Falls back to main-thread rendering if OffscreenCanvas is unsupported.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* ── Config ────────────────────────────────────────────── */
+  var MAX_DROPS        = 160;
+  var MAX_DROPS_MOBILE = 60;
+  var STORAGE_KEY      = 'portfolio_rain';
+  var SURFACE_RECALC_MS = 3000;
+  var SURFACE_SELECTORS =
+    '.project-card,.skills-group,.contact__form,.cv-section__card,.footer,.typing-game__text';
+
+  /* ── State ─────────────────────────────────────────────── */
+  var canvas, worker;
+  var enabled   = false;
+  var W = 0, H = 0;
+  var dropCount;
+  var btnEl;
+  var surfRecalcTimer = null;
+  var useWorker = false;
+
+  /* ── Fallback state (main-thread, only used if no OffscreenCanvas) ── */
+  var fbCtx, fbRafId;
+  var fbDrops = [], fbSplashes = [], fbSplashN = 0;
+  var fbSurfAbs = [];
+  var fbScrollY = 0;
+  var fbRainRGB = '220,220,240', fbSplashRGB = '242,200,190';
+  var FB_RES = 0.5, FB_DROP_W = 1.8;
+
+  /* ── Surface queries (main thread only — DOM access) ──── */
+  function querySurfaces() {
+    var els = document.querySelectorAll(SURFACE_SELECTORS);
+    var sy  = window.pageYOffset || 0;
+    var arr = [];
+    for (var i = 0; i < els.length; i++) {
+      var r = els[i].getBoundingClientRect();
+      arr.push({
+        absTop:    r.top + sy,
+        absBottom: r.bottom + sy,
+        left:      r.left,
+        right:     r.right
+      });
+    }
+    return arr;
+  }
+
+  function sendSurfaces() {
+    var s = querySurfaces();
+    if (useWorker && worker) {
+      worker.postMessage({ type: 'surfaces', surfaces: s });
+    } else {
+      fbSurfAbs = s;
+    }
+  }
+
+  /* ── Theme helper ──────────────────────────────────────── */
+  function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'light';
+  }
+
+  function sendTheme() {
+    var t = currentTheme();
+    if (useWorker && worker) {
+      worker.postMessage({ type: 'theme', theme: t });
+    } else {
+      if (t === 'dark')        { fbRainRGB='200,140,255'; fbSplashRGB='220,160,255'; }
+      else if (t === 'nature') { fbRainRGB='120,210,240'; fbSplashRGB='140,230,120'; }
+      else                     { fbRainRGB='220,220,240'; fbSplashRGB='242,200,190'; }
+    }
+  }
+
+  /* ── Start / Stop ──────────────────────────────────────── */
+  function start() {
+    enabled = true;
+    canvas.style.display = '';
+    sendTheme();
+    sendSurfaces();
+
+    if (useWorker) {
+      worker.postMessage({
+        type: 'start',
+        scrollY: window.pageYOffset || 0
+      });
+    } else {
+      fbStart();
+    }
+
+    // Periodically refresh surface positions (layout may shift)
+    surfRecalcTimer = setInterval(sendSurfaces, SURFACE_RECALC_MS);
+  }
+
+  function stop() {
+    enabled = false;
+    if (surfRecalcTimer) { clearInterval(surfRecalcTimer); surfRecalcTimer = null; }
+
+    if (useWorker) {
+      worker.postMessage({ type: 'stop' });
+    } else {
+      fbStop();
+    }
+    canvas.style.display = 'none';
+  }
+
+  /* ── Toggle ────────────────────────────────────────────── */
+  function toggle() {
+    if (enabled) {
+      stop();
+      btnEl.classList.remove('rain-toggle--active');
+      localStorage.setItem(STORAGE_KEY, 'off');
+    } else {
+      start();
+      btnEl.classList.add('rain-toggle--active');
+      localStorage.setItem(STORAGE_KEY, 'on');
+    }
+  }
+
+  /* ── Resize ────────────────────────────────────────────── */
+  function resize() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    dropCount = W < 600 ? MAX_DROPS_MOBILE : MAX_DROPS;
+
+    if (useWorker) {
+      worker.postMessage({
+        type: 'resize',
+        width: W,
+        height: H,
+        dropCount: dropCount
+      });
+    } else {
+      if (canvas) {
+        canvas.width  = Math.ceil(W * FB_RES);
+        canvas.height = Math.ceil(H * FB_RES);
+      }
+      if (enabled) fbBuildDrops(dropCount);
+    }
+
+    if (enabled) sendSurfaces();
+  }
+
+  /* =======================================================================
+     Umbrella SVG Button
+     ======================================================================= */
+  function createUmbrellaButton() {
+    var btn = document.createElement('button');
+    btn.className = 'rain-toggle';
+    btn.setAttribute('aria-label', 'Toggle rain effect');
+    btn.setAttribute('title', 'Pluie');
+    btn.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+        '<g class="umbrella-canopy">' +
+          '<path d="M12 2 C12 2 3 7 3 12 L12 12"/>' +
+          '<path d="M12 2 C12 2 21 7 21 12 L12 12"/>' +
+          '<path d="M7.5 9.5 C8 11.5 9.5 12 9.5 12" opacity="0.5"/>' +
+          '<path d="M16.5 9.5 C16 11.5 14.5 12 14.5 12" opacity="0.5"/>' +
+        '</g>' +
+        '<g class="umbrella-handle">' +
+          '<line x1="12" y1="12" x2="12" y2="21"/>' +
+          '<path d="M12 21 C12 21 10 21 10 19.5 C10 18 12 18 12 18"/>' +
+        '</g>' +
+        '<g class="umbrella-drops">' +
+          '<line x1="5" y1="15" x2="5" y2="17" opacity="0.6"/>' +
+          '<line x1="8" y1="16" x2="8" y2="18.5" opacity="0.4"/>' +
+          '<line x1="19" y1="15" x2="19" y2="17" opacity="0.6"/>' +
+          '<line x1="16" y1="16.5" x2="16" y2="18.5" opacity="0.4"/>' +
+        '</g>' +
+      '</svg>';
+
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggle();
+    });
+    return btn;
+  }
+
+  function placeButton(btn) {
+    var heroContent = document.querySelector('#hero .hero__content');
+    if (heroContent) heroContent.appendChild(btn);
+  }
+
+  /* =======================================================================
+     Fallback — main-thread rendering (only if OffscreenCanvas unavailable)
+     Identical physics/batched-draw from the old IIFE, kept minimal.
+     ======================================================================= */
+  function fbResetDrop(d) {
+    d.x=Math.random()*W; d.y=-(Math.random()*80+10);
+    d.vy=7+Math.random()*6; d.vx=-0.5+Math.random();
+    d.len=d.vy*1.1+Math.random()*4; d.a=0.3+Math.random()*0.35;
+    d.bou=false; d.lif=1; d._ca=0;
+  }
+  function fbBuildDrops(n) {
+    fbDrops.length=n;
+    for(var i=0;i<n;i++){var d=fbDrops[i]||{};fbResetDrop(d);d.y=-(Math.random()*H+10);fbDrops[i]=d;}
+  }
+  function fbBuildSplashes() {
+    fbSplashes.length=150;
+    for(var i=0;i<150;i++) fbSplashes[i]=fbSplashes[i]||{x:0,y:0,vx:0,vy:0,lif:0,dec:0,r:0};
+    fbSplashN=0;
+  }
+  function fbSpawnSplash(x,y) {
+    for(var i=0;i<3;i++){if(fbSplashN>=150)return;var s=fbSplashes[fbSplashN++];
+    s.x=x;s.y=y;s.vx=-2+Math.random()*4;s.vy=-1.2-Math.random()*2.2;s.lif=1;s.dec=1/(12+Math.random()*8);s.r=0.7+Math.random();}
+  }
+  function fbHitSurface(x,tipY) {
+    for(var i=0,n=fbSurfAbs.length;i<n;i++){
+      var s=fbSurfAbs[i],vT=s.absTop-fbScrollY;
+      if(s.absBottom-fbScrollY<0||vT>H)continue;
+      if(x>=s.left&&x<=s.right&&tipY>=vT&&tipY<=vT+10)return vT;
+    } return -1;
+  }
+  function fbDraw() {
+    if(!enabled){fbRafId=null;return;}
+    fbRafId=requestAnimationFrame(fbDraw);
+    var c=fbCtx; c.setTransform(FB_RES,0,0,FB_RES,0,0); c.clearRect(0,0,W,H);
+    var i,d,a,vTop,count=fbDrops.length;
+    for(i=0;i<count;i++){d=fbDrops[i];
+      if(d.bou){d.x+=d.vx;d.y+=d.vy;d.vy+=0.25;d.lif-=0.07;if(d.lif<=0||d.y>H+10)fbResetDrop(d);}
+      else{d.x+=d.vx;d.y+=d.vy;vTop=fbHitSurface(d.x,d.y+d.len);
+        if(vTop>=0){d.y=vTop-d.len;fbSpawnSplash(d.x,vTop);d.bou=true;d.vy=-(Math.abs(d.vy)*(0.12+Math.random()*0.12));d.vx=-1.5+Math.random()*3;d.len*=0.4;d.lif=1;}
+        else if(d.y>H+10||d.x<-10||d.x>W+10)fbResetDrop(d);}
+      a=d.a*d.lif;d._ca=a>=0.02?a:0;
+    }
+    c.lineCap='butt';c.lineWidth=FB_DROP_W;c.strokeStyle='rgb('+fbRainRGB+')';
+    var bLo=[0.02,0.22,0.42],bHi=[0.22,0.42,1.01],bAl=[0.14,0.32,0.52];
+    for(var b=0;b<3;b++){var lo=bLo[b],hi=bHi[b],has=false;c.globalAlpha=bAl[b];c.beginPath();
+      for(i=0;i<count;i++){d=fbDrops[i];a=d._ca;if(a<lo||a>=hi)continue;c.moveTo(d.x,d.y);c.lineTo(d.x+d.vx*0.3,d.y+d.len);has=true;}
+      if(has)c.stroke();}
+    if(fbSplashN>0){c.fillStyle='rgb('+fbSplashRGB+')';
+      for(var j=fbSplashN-1;j>=0;j--){var sp=fbSplashes[j];sp.x+=sp.vx;sp.y+=sp.vy;sp.vy+=0.25;sp.lif-=sp.dec;
+        if(sp.lif<=0){fbSplashN--;if(j<fbSplashN){var t=fbSplashes[fbSplashN];fbSplashes[j]=t;fbSplashes[fbSplashN]=sp;}}}
+      c.globalAlpha=0.4;c.beginPath();var hc=false;
+      for(j=0;j<fbSplashN;j++){sp=fbSplashes[j];if(sp.lif<0.5)continue;var r=sp.r*sp.lif;c.moveTo(sp.x+r,sp.y);c.arc(sp.x,sp.y,r,0,6.2832);hc=true;}
+      if(hc)c.fill();
+      c.globalAlpha=0.18;c.beginPath();hc=false;
+      for(j=0;j<fbSplashN;j++){sp=fbSplashes[j];if(sp.lif>=0.5||sp.lif<=0)continue;var r2=sp.r*sp.lif;c.moveTo(sp.x+r2,sp.y);c.arc(sp.x,sp.y,r2,0,6.2832);hc=true;}
+      if(hc)c.fill();}
+    c.globalAlpha=1;
+  }
+  function fbStart() {
+    fbScrollY=window.pageYOffset||0;
+    fbBuildDrops(dropCount); fbBuildSplashes();
+    sendTheme();
+    if(!fbRafId) fbRafId=requestAnimationFrame(fbDraw);
+  }
+  function fbStop() {
+    if(fbRafId){cancelAnimationFrame(fbRafId);fbRafId=null;}
+    if(fbCtx){fbCtx.setTransform(1,0,0,1,0,0);fbCtx.clearRect(0,0,canvas.width,canvas.height);}
+    fbSplashN=0;
+  }
+
+  /* =======================================================================
+     Init
+     ======================================================================= */
+  function init() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    dropCount = W < 600 ? MAX_DROPS_MOBILE : MAX_DROPS;
+
+    // ── Create canvas ──
+    canvas = document.createElement('canvas');
+    canvas.className = 'rain-canvas';
+    canvas.setAttribute('aria-hidden', 'true');
+    canvas.style.display = 'none';
+
+    var tint = document.querySelector('.bg-tint-overlay');
+    if (tint) tint.after(canvas);
+    else document.body.insertBefore(canvas, document.body.firstChild);
+
+    // ── Try OffscreenCanvas + Worker ──
+    var canUseWorker = typeof canvas.transferControlToOffscreen === 'function';
+
+    if (canUseWorker) {
+      try {
+        var offscreen = canvas.transferControlToOffscreen();
+        worker = new Worker('js/rain-worker.js');
+        worker.postMessage({
+          type: 'init',
+          canvas: offscreen,
+          width: W,
+          height: H,
+          dropCount: dropCount
+        }, [offscreen]);
+        useWorker = true;
+      } catch (err) {
+        // Worker creation failed — fall back
+        useWorker = false;
+      }
+    }
+
+    // Fallback: main-thread context
+    if (!useWorker) {
+      canvas.width  = Math.ceil(W * FB_RES);
+      canvas.height = Math.ceil(H * FB_RES);
+      fbCtx = canvas.getContext('2d');
+    }
+
+    // ── Button ──
+    btnEl = createUmbrellaButton();
+    placeButton(btnEl);
+
+    // ── Scroll → forward to worker (or cache for fallback) ──
+    window.addEventListener('scroll', function () {
+      var sy = window.pageYOffset || 0;
+      if (useWorker && worker) {
+        worker.postMessage({ type: 'scroll', scrollY: sy });
+      } else {
+        fbScrollY = sy;
+      }
+    }, { passive: true });
+
+    // ── Resize ──
+    window.addEventListener('resize', resize);
+
+    // ── Theme change → forward to worker ──
+    new MutationObserver(function () {
+      sendTheme();
+    }).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+
+    // ── Restore saved state ──
+    if (localStorage.getItem(STORAGE_KEY) === 'on') {
+      start();
+      btnEl.classList.add('rain-toggle--active');
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
