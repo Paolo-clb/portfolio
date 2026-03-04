@@ -140,6 +140,41 @@
   50%      { filter: drop-shadow(0 0 8px var(--clr-primary)); }
 }
 
+/* ---- Rain toggle custom tooltip ---- */
+.rain-toggle__tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius);
+  background: rgba(27, 26, 39, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(191, 153, 160, 0.15);
+  color: var(--clr-text);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 100;
+}
+
+.rain-toggle__tooltip--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.rain-toggle__tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(27, 26, 39, 0.7);
+}
+
 /* ==========================================================================
    Dark Theme Overrides
    ========================================================================== */
@@ -152,6 +187,15 @@
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
 }
 
+[data-theme="dark"] .rain-toggle__tooltip {
+  background: rgba(26, 0, 51, 0.75);
+  border-color: rgba(63, 81, 181, 0.2);
+}
+
+[data-theme="dark"] .rain-toggle__tooltip::after {
+  border-top-color: rgba(26, 0, 51, 0.75);
+}
+
 /* ==========================================================================
    Nature Theme Overrides
    ========================================================================== */
@@ -162,6 +206,15 @@
 
 [data-theme="nature"] .rain-toggle svg {
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+}
+
+[data-theme="nature"] .rain-toggle__tooltip {
+  background: rgba(21, 34, 16, 0.75);
+  border-color: rgba(42, 69, 34, 0.2);
+}
+
+[data-theme="nature"] .rain-toggle__tooltip::after {
+  border-top-color: rgba(21, 34, 16, 0.75);
 }
 
 /* ==========================================================================

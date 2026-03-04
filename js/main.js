@@ -843,12 +843,14 @@ function initCursorHalo() {
       return;
     }
     if (e.target.closest(interactiveSelector)) {
-      // Don't show hover on typing text when game is focused or intro is playing
+      // Don't show hover on typing text when game is focused, intro is playing, or AI inline is active
       if (e.target.closest('.typing-game__text')) {
         var game = document.getElementById('typing-game');
         var gameFocused = game && game.dataset.focused === '1';
         var isIntro = e.target.closest('.typing-game__text--intro');
-        if (gameFocused || isIntro) return;
+        var aiInlineVisible = e.target.closest('.typing-game__text') &&
+            e.target.closest('.typing-game__text').querySelector('.typing-game__ai-inline--visible');
+        if (gameFocused || isIntro || aiInlineVisible) return;
       }
       // Don't show hover on popup overlay content — only on the backdrop itself,
       // but allow interactive children (buttons, inputs, labels) inside the popup

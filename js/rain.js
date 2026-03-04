@@ -164,7 +164,6 @@
     var btn = document.createElement('button');
     btn.className = 'rain-toggle';
     btn.setAttribute('aria-label', 'Toggle rain effect');
-    btn.setAttribute('title', 'Pluie');
     // SVG umbrella: dome path morphs between closed (furled) and open via CSS d property
     btn.innerHTML =
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
@@ -178,9 +177,28 @@
         '<i></i><i></i><i></i><i></i><i></i><i></i>' +
       '</span>';
 
+    // Custom tooltip (same style as typing-game tooltips)
+    var tipEl = document.createElement('div');
+    tipEl.className = 'rain-toggle__tooltip';
+    tipEl.textContent = 'Pluie';
+    btn.appendChild(tipEl);
+    var tipTimer = null;
+    btn.addEventListener('mouseenter', function () {
+      clearTimeout(tipTimer);
+      tipEl.textContent = enabled ? 'D\u00e9sactiver la pluie' : 'Activer la pluie';
+      void tipEl.offsetWidth;
+      tipEl.classList.add('rain-toggle__tooltip--visible');
+    });
+    btn.addEventListener('mouseleave', function () {
+      tipEl.classList.remove('rain-toggle__tooltip--visible');
+      tipTimer = setTimeout(function () {
+        // keep element in DOM, just hidden
+      }, 200);
+    });
     btn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
+      tipEl.classList.remove('rain-toggle__tooltip--visible');
       toggle();
     });
     return btn;

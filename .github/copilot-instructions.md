@@ -13,7 +13,10 @@ css/visualizer.css      ← Background canvas visualizer (~34 lines, full-screen
 css/rain.css            ← Rain effect styles (~140 lines, umbrella button + canvas)
 js/data.js              ← Content data (PROJECTS, SKILL_GROUPS, MUSIC) — loaded first
 js/typing-texts.js      ← Typing practice texts by lang/mode — exposes TYPING_TEXTS on window
-js/typing-game.js       ← Self-contained IIFE (~2343 lines) — hero typing speed game
+js/typing-game-i18n.js  ← Typing game i18n translations (~122 lines) — exposes TYPING_GAME_I18N on window
+js/typing-game-ai.js    ← Typing game AI module factory (~327 lines) — exposes createTypingGameAI on window
+js/typing-game-intro.js ← Typing game intro module factory (~198 lines) — exposes createTypingGameIntro on window
+js/typing-game.js       ← Typing game core IIFE (~1497 lines) — rendering, input, game lifecycle, navbar
 js/music-player.js      ← Self-contained IIFE (~373 lines) — navbar mini music player
 js/visualizer.js        ← Self-contained IIFE (~342 lines) — background frequency bars + particles
 js/rain-engine.js       ← Shared rain physics + rendering engine (~275 lines) — used by both worker and fallback
@@ -26,7 +29,7 @@ assets/doc/             ← CV PDF (CV_Paolo.pdf)
 worker/gemini-proxy.js  ← Cloudflare Worker source — Gemini API proxy (server-side prompt, key rotation)
 ```
 
-`index.html` loads scripts in order: `data.js` → `typing-texts.js` → `typing-game.js` → `music-player.js` → `visualizer.js` → `rain-engine.js` → `rain.js` → `main.js`. Each IIFE boots on `DOMContentLoaded`. `main.js` initializes all non-game features in its own `DOMContentLoaded` handler. A pre-`<body>` inline `<script>` restores saved theme (`dark` or `nature`) from `localStorage` to prevent flash.
+`index.html` loads scripts in order: `data.js` → `typing-texts.js` → `typing-game-i18n.js` → `typing-game-ai.js` → `typing-game-intro.js` → `typing-game.js` → `music-player.js` → `visualizer.js` → `rain-engine.js` → `rain.js` → `main.js`. Each IIFE boots on `DOMContentLoaded`. `main.js` initializes all non-game features in its own `DOMContentLoaded` handler. A pre-`<body>` inline `<script>` restores saved theme (`dark` or `nature`) from `localStorage` to prevent flash.
 
 ## Key Conventions
 
@@ -49,6 +52,20 @@ No libraries, no frameworks, no npm. Use the `createElement(tag, className, text
 ### Self-Contained IIFEs
 
 `typing-game.js`, `music-player.js`, and `visualizer.js` are each wrapped in an IIFE. They build their own DOM, manage their own state, and depend only on a container element in `index.html` (`#typing-game`, `#music-player`). Cross-IIFE communication is done via `window` globals: the music player exposes its audio graph on `window` (`__musicPlayerAudioCtx`, `__musicPlayerSource`, `__musicPlayerGain`) for the visualizer to consume.
+
+### Typing Game Modular Architecture
+
+The typing game is split into 4 files using a **factory pattern with dependency injection**:
+- `typing-game-i18n.js` — Pure data (FR/EN translations). Exposes `window.TYPING_GAME_I18N`.
+- `typing-game-ai.js` — AI text generation factory. Exposes `window.createTypingGameAI(deps)`. Returns `{ showPopup, isInlineActive }`.
+- `typing-game-intro.js` — Intro typewriter factory. Exposes `window.createTypingGameIntro(deps)`. Returns `{ showIntro, buildSmartphoneStaticDOM }`.
+- `typing-game.js` — Core IIFE. Creates module instances in `init()` via dependency injection.
+
+**Shared state:** AI-related state is grouped into an `aiState` object (`{ mode, texts, theme, uppercase, punctuation, strictWordCount, inlineActive }`) passed by reference to the AI module — both core IIFE and module read/write the same object.
+
+**DOM ref getters:** Since DOM elements (`container`, `navbarEl`, `textEl`, etc.) are set at different init stages, modules receive getter functions (e.g., `getContainer()`, `getTextEl()`) instead of direct references.
+
+**Adding to modules:** To add AI functionality, edit `typing-game-ai.js`. To modify the intro sequence, edit `typing-game-intro.js`. To add/change translations, edit `typing-game-i18n.js`. Core game logic (rendering, input, lifecycle) stays in `typing-game.js`.
 
 ### Persistence
 
@@ -82,35 +99,38 @@ Dark & nature theme CSS overrides in `styles.css` are all under `[data-theme="da
 
 ## Features
 
-### Typing Game (`js/typing-game.js` + `css/typing-game.css`)
+### Typing Game (`js/typing-game.js` + `js/typing-game-i18n.js` + `js/typing-game-ai.js` + `js/typing-game-intro.js` + `css/typing-game.css`)
 
-The largest and most complex feature. IIFE structure (in order):
+The largest and most complex feature. Split into 4 JS files (see "Typing Game Modular Architecture" above).
 
-1. **Cookie helpers** — `setCookie`, `getCookie`, `getBestWPM`, `saveBestWPM`, `saveSettings`, `loadSettings`, `isGameUnlocked`, `unlockGame`
-2. **Text data** — `const TEXTS = window.TYPING_TEXTS` (from typing-texts.js)
-3. **AI config** — `WORKER_URL` (Cloudflare Worker proxy URL)
-4. **Intro text** — `const INTRO_TEXT` (welcome message)
-5. **i18n tooltips** — `TOOLTIPS` object with `{ fr: {...}, en: {...} }` for all navbar buttons
-6. **Text settings** — `SETTING_KEYS` array: uppercase, punctuation, numbers, specials — each togglable via navbar
-7. **State variables** — ~35 `let` variables managing all game state
-8. **DOM refs** — `container`, `navbarEl`, `textEl`, `innerEl`, etc.
-9. **Helpers** — restart text, text picker (`pickText(avoidIndex)`), active texts getter (`getActiveTexts()`), `applySettings(text)` applies uppercase/punctuation/numbers/specials transforms
-10. **Word locking** — `tryLockWord()` scans from `lockedIndex` forward, locks correct words, increments `correctWords`
-11. **Calculations** — `calcWPM()`, `calcAccuracy()`, `updateTrailSpeed()`
-12. **DOM span builder** — `buildCharSpans()` creates one `<span>` per character with `_cls`, `_sty`, `_err`, `_wc` change-detection properties
-13. **Zen rendering** — `renderZen()` uses `innerHTML` (dynamic text length)
-14. **Main rendering** — `render()` DOM-reuse via `charSpans[]` array, updates only changed span class/style/content. Trail, combo, cursor, hardcore hiding all handled here
-15. **Scroll to cursor** — `scrollToCursor()` with `cachedLH` (cached line-height), keeps cursor on middle visible line via `translateY`
-16. **Stats** — `updateStats()` with trail decay, `updateTextBackground(wpm)` (dynamic glow/border/background based on WPM 0-200 scale, theme-aware RGB values)
-17. **Game lifecycle** — `startGame(forceNewText)`, `finishGame()`
-18. **Input handling** — `handleKey(e)` — all keyboard logic, Ctrl+ArrowUp/Down debug WPM boost
-19. **Popups** — `showZenPopup()`, `showHardcorePopup()`, `showInfoPopup()` (shared overlay popup builder)
-20. **AI generation** — `fetchAiTexts(theme, onSuccess, onError)`, `showAiPopup(onConfirm)` — prompt is now built server-side in worker
-21. **AI inline loader** — overlay on text area displayed after 3s of generation time
-22. **Navbar builder** — `buildNavbar()` creates lang selector, mode selector, 4 text-setting toggles (uppercase, punctuation, numbers, specials), eye toggle, hardcore toggle, AI toggle + theme button, 3 AI option toggles. Full tooltip system in fr/en
-23. **Intro typewriter** — `showIntro(isSmartphone)`, `showIntroPopup()`, `transitionToGame()`
-24. **Game DOM builder** — `buildGameDOM()` creates text area, stats, focus hint, hardcore countdown, focus/blur handlers with pause/resume
-25. **Init** — `init()` — detects unlock state → intro/smartphone/desktop flow
+**Core IIFE** (`typing-game.js`) structure (in order):
+
+1. **I18N data** — `var I18N = window.TYPING_GAME_I18N` (from typing-game-i18n.js)
+2. **Cookie helpers** — `setCookie`, `getCookie`, `getBestWPM`, `saveBestWPM`, `saveSettings`, `loadSettings`, `isGameUnlocked`, `unlockGame`
+3. **Text data** — `var TEXTS = window.TYPING_TEXTS` (from typing-texts.js)
+4. **Text settings** — `SETTING_KEYS` array: uppercase, punctuation, numbers, specials — each togglable via navbar
+5. **State variables** — ~30 `let` variables managing core game state + `aiState` shared object + `ai`/`intro` module refs
+6. **DOM refs** — `container`, `navbarEl`, `textEl`, `innerEl`, etc.
+7. **Helpers** — restart text, text picker (`pickText(avoidIndex)`), active texts getter (`getActiveTexts()`), `applySettings(text)` applies uppercase/punctuation/numbers/specials transforms
+8. **Word locking** — `tryLockWord()` scans from `lockedIndex` forward, locks correct words, increments `correctWords`
+9. **Calculations** — `calcWPM()`, `calcAccuracy()`, `updateTrailSpeed()`
+10. **DOM span builder** — `buildCharSpans()` creates one `<span>` per character with `_cls`, `_sty`, `_err`, `_wc` change-detection properties
+11. **Zen rendering** — `renderZen()` uses `innerHTML` (dynamic text length)
+12. **Main rendering** — `render()` DOM-reuse via `charSpans[]` array, updates only changed span class/style/content. Trail, combo, cursor, hardcore hiding all handled here
+13. **Scroll to cursor** — `scrollToCursor()` with `cachedLH` (cached line-height), keeps cursor on middle visible line via `translateY`
+14. **Stats** — `updateStats()` with trail decay, `updateTextBackground(wpm)` (dynamic glow/border/background based on WPM 0-200 scale, theme-aware RGB values)
+15. **Game lifecycle** — `startGame(forceNewText)`, `finishGame()`
+16. **Input handling** — `handleKey(e)` — all keyboard logic, Ctrl+ArrowUp/Down debug WPM boost
+17. **Popups** — `showZenPopup()`, `showHardcorePopup()`, `showInfoPopup()` (shared overlay popup builder)
+18. **Navbar builder** — `buildNavbar()` creates lang selector, mode selector, 4 text-setting toggles (uppercase, punctuation, numbers, specials), eye toggle, hardcore toggle, AI toggle + theme button, 3 AI option toggles. Full tooltip system in fr/en
+19. **Game DOM builder** — `buildGameDOM()` creates text area, stats, focus hint, hardcore countdown, focus/blur handlers with pause/resume
+20. **Init** — `init()` — creates AI + intro modules via factory functions with dependency injection, detects unlock state → intro/smartphone/desktop flow
+
+**I18N module** (`typing-game-i18n.js`): Pure `window.TYPING_GAME_I18N = { fr: {...}, en: {...} }` with ~55 translation keys per language (intro text, tooltips, stats labels, popup messages, etc.)
+
+**AI module** (`typing-game-ai.js`): Factory `window.createTypingGameAI(deps)` containing `WORKER_URL`, `postProcessAiTexts`, `fetchAiTexts`, `showAiInlineLoader`/`finishAiInlineLoader`/`dismissAiInlineLoader`, `showAiPopup`. Returns `{ showPopup, isInlineActive }`. Deps: `t` (translation fn), `aiState` (shared ref), DOM getters, `clearBlurHint`, `saveAiOptions`.
+
+**Intro module** (`typing-game-intro.js`): Factory `window.createTypingGameIntro(deps)` containing `showIntro`, `buildIntroDOM` (typewriter animation with trail + combo), `showIntroPopup`, `transitionToGame`, `buildSmartphoneStaticDOM`. Returns `{ showIntro, buildSmartphoneStaticDOM }`. Deps: `t`, `getContainer`, hero title getter/setter, `showInfoPopup`, `unlockGame`, `buildGameDOM`, `startGame`.
 
 #### Game Modes
 - **10, 25, 50, 100** — Fixed word count from `TYPING_TEXTS` or AI-generated texts
@@ -303,7 +323,7 @@ Form submits to Formspree (`https://formspree.io/f/mkovoawq`) with anti-spam mea
 
 ## AI Integration (Cloudflare Worker)
 
-The typing game's AI mode uses a Cloudflare Worker as a proxy to the Google Gemini API (model: `gemini-2.5-flash`). The worker hides the API key and restricts requests to allowed origins.
+The typing game's AI mode uses a Cloudflare Worker as a proxy to the Google Gemini API (model: `gemini-2.5-flash`). The worker hides the API key and restricts requests to allowed origins. Client-side AI logic lives in `js/typing-game-ai.js` (factory module).
 
 - **Worker URL:** `https://gemini-proxy.colombatpaolo.workers.dev`
 - **Architecture:** Prompt is built **entirely server-side** — client sends only `{ theme }`, worker contains `SYSTEM_INSTRUCTION` with detailed generation rules
@@ -332,3 +352,4 @@ The typing game's AI mode uses a Cloudflare Worker as a proxy to the Google Gemi
 - Cursor halo uses `requestAnimationFrame` with `lerp` for smooth ring/dot following, opacity transitions, and auto-pause when mouse isn't moving.
 - Rain uses a **shared engine** (`rain-engine.js`) for both Worker and fallback paths — eliminates code duplication. Worker uses `importScripts`, main thread uses `<script>` tag.
 - Rain engine uses **swept collision** (`hitSurface`) checking previous frame position to never miss fast drops passing through thin surfaces.
+- Typing game uses **factory pattern + shared state object** for modular architecture: `createTypingGameAI(deps)` and `createTypingGameIntro(deps)` receive dependencies (translation fn, DOM getters, shared `aiState` object) and return public API objects. The `aiState` object is passed by reference so both the core IIFE and the AI module read/write the same state.

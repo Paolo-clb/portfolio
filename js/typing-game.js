@@ -53,9 +53,9 @@
   }
 
   function saveAiOptions() {
-    setCookie('typing_ai_uppercase', aiUppercase ? '1' : '0', 365);
-    setCookie('typing_ai_punctuation', aiPunctuation ? '1' : '0', 365);
-    setCookie('typing_ai_strict_wc', aiStrictWordCount ? '1' : '0', 365);
+    setCookie('typing_ai_uppercase', aiState.uppercase ? '1' : '0', 365);
+    setCookie('typing_ai_punctuation', aiState.punctuation ? '1' : '0', 365);
+    setCookie('typing_ai_strict_wc', aiState.strictWordCount ? '1' : '0', 365);
   }
 
   function loadSettings() {
@@ -91,130 +91,9 @@
 
   const TEXTS = window.TYPING_TEXTS;
 
-  /* ---- AI config (Cloudflare Worker proxy) ---- */
+  /* ---- Translations (loaded from typing-game-i18n.js) ---- */
 
-  var WORKER_URL = 'https://gemini-proxy.colombatpaolo.workers.dev'; // <-- remplace par ton URL worker
-
-  /* ---- Translations ---- */
-
-  var I18N = {
-    fr: {
-      introText: 'Bienvenue sur mon portfolio ! Je suis Paolo Colombat, développeur full stack passionné, actuellement en 2ème année de BUT Informatique. Ici vous découvrirez mes projets et mes compétences, ainsi qu\'un Typing Game. Bonne visite !',
-      words: 'mots',
-      wpmFinal: 'Words Per Minute',
-      wordsFinal: 'Mots',
-      accFinal: 'Accuracy',
-      timeFinal: 'Time',
-      bestFinal: 'Best',
-      zenHint: 'Shift + Espace pour arr\u00eater \u00b7 Entr\u00e9e pour recommencer',
-      restartHint: 'Entr\u00e9e : nouveau texte \u00b7 Espace : m\u00eame texte',
-      failText: '\u00c9chec',
-      zenFinishHint: 'Entr\u00e9e ou Espace pour recommencer',
-      zenTitle: 'Mode Zen',
-      zenDesc: 'Tapez librement, sans limite de texte ni validation.<br>Tous les mots comptent pour le WPM.',
-      zenShortcut: '<kbd>Shift</kbd> + <kbd>Espace</kbd> pour terminer.',
-      hardcoreTitle: 'Mode Hardcore',
-      hardcoreDesc: 'Le texte s\'affiche pendant 3 secondes puis dispara\u00eet.<br>\u00c9crivez tout de m\u00e9moire...',
-      hardcoreShortcut: 'Une erreur et c\'est fini !',
-      gotIt: 'Compris',
-      wcStrict: 'Nb mots : strict',
-      wcFree: 'Nb mots : libre',
-      wcStrictTip: 'Nombre de mots bloqu\u00e9 \u00e0 10, 25, 50 et 100',
-      wcFreeTip: 'Nombre de mots selon l\'humeur de Gemini',
-      generating: 'G\u00e9n\u00e9ration en cours\u2026',
-      textsOk: 'Textes g\u00e9n\u00e9r\u00e9s !',
-      aiTitle: 'G\u00e9n\u00e9rateur IA',
-      aiQuestion: 'Que souhaitez-vous taper aujourd\'hui ?',
-      aiPlaceholder: 'Ex: l\'espace, la cuisine, les chats...',
-      uppercase: 'Majuscules',
-      punctuation: 'Ponctuation',
-      aiStrictLabel: 'Nb de mots strict',
-      aiStrictTip: 'Activ\u00e9 : nombre de mots bloqu\u00e9 \u00e0 10, 25, 50, 100. D\u00e9sactiv\u00e9 : d\u00e9pend de l\'humeur de Gemini.',
-      aiGenerate: 'G\u00e9n\u00e9rer les textes',
-      aiRetry: 'R\u00e9essayer',
-      errOrigin: 'Origine non autoris\u00e9e.',
-      errRate: 'Quota journalier atteint. R\u00e9essayez demain !',
-      errTrunc: 'R\u00e9ponse tronqu\u00e9e. R\u00e9essayez.',
-      errTimeout: 'D\u00e9lai d\u00e9pass\u00e9. R\u00e9essayez.',
-      errGeneric: 'Erreur de g\u00e9n\u00e9ration. R\u00e9essayez.',
-      settTitle: 'Param\u00e8tres du texte',
-      settDesc: 'Ajoutez des \u00e9l\u00e9ments au texte pour varier la difficult\u00e9.',
-      settNumbers: 'Nombres',
-      settSpecial: 'Caract\u00e8res sp\u00e9ciaux',
-      settApply: 'Valider',
-      settTitleAttr: 'Param\u00e8tres du texte',
-      eyeTitleAttr: 'Afficher/masquer les erreurs',
-      hcTitleAttr: 'Mode Hardcore',
-      aiTitleAttr: 'Mode IA',
-      aiThemeTitleAttr: 'Changer le th\u00e8me IA',
-      closeLbl: 'Fermer',
-      focusHint: 'Cliquez ici pour commencer \u00e0 taper',
-      loadingText: 'Chargement du site en cours\u2026',
-      introBtn: 'Jouer au Typing Game',
-      introPopupText: 'Testez votre vitesse de frappe !<br>La barre de navigation au-dessus du texte vous permet de choisir la langue, le mode et les options du jeu.',
-      introPopupHint: 'Amusez-vous bien !',
-      heroTitle: 'Paolo Colombat : Typing Game',
-      heroIntro: 'Paolo Colombat'
-    },
-    en: {
-      introText: 'Welcome to my portfolio! I\'m Paolo Colombat, a passionate full stack developer, currently in my 2nd year of a Computer Science degree. Here you\'ll discover my projects and skills, as well as a Typing Game. Enjoy your visit!',
-      words: 'words',
-      wpmFinal: 'Words Per Minute',
-      wordsFinal: 'Words',
-      accFinal: 'Accuracy',
-      timeFinal: 'Time',
-      bestFinal: 'Best',
-      zenHint: 'Shift + Space to stop \u00b7 Enter to restart',
-      restartHint: 'Enter: new text \u00b7 Space: same text',
-      failText: 'Fail',
-      zenFinishHint: 'Enter or Space to restart',
-      zenTitle: 'Zen Mode',
-      zenDesc: 'Type freely, with no text limit or validation.<br>All words count toward WPM.',
-      zenShortcut: '<kbd>Shift</kbd> + <kbd>Space</kbd> to finish.',
-      hardcoreTitle: 'Hardcore Mode',
-      hardcoreDesc: 'The text is shown for 3 seconds then disappears.<br>Write everything from memory...',
-      hardcoreShortcut: 'One mistake and it\'s over!',
-      gotIt: 'Got it',
-      wcStrict: 'Word count: strict',
-      wcFree: 'Word count: free',
-      wcStrictTip: 'Word count locked to 10, 25, 50 and 100',
-      wcFreeTip: 'Word count depends on Gemini\'s mood',
-      generating: 'Generating\u2026',
-      textsOk: 'Texts generated!',
-      aiTitle: 'AI Generator',
-      aiQuestion: 'What would you like to type today?',
-      aiPlaceholder: 'E.g: space, cooking, cats...',
-      uppercase: 'Uppercase',
-      punctuation: 'Punctuation',
-      aiStrictLabel: 'Strict word count',
-      aiStrictTip: 'Enabled: word count locked to 10, 25, 50, 100. Disabled: depends on Gemini\'s mood.',
-      aiGenerate: 'Generate texts',
-      aiRetry: 'Retry',
-      errOrigin: 'Origin not authorized.',
-      errRate: 'Daily quota reached. Try again tomorrow!',
-      errTrunc: 'Truncated response. Try again.',
-      errTimeout: 'Timeout. Try again.',
-      errGeneric: 'Generation error. Try again.',
-      settTitle: 'Text settings',
-      settDesc: 'Add elements to the text to vary the difficulty.',
-      settNumbers: 'Numbers',
-      settSpecial: 'Special characters',
-      settApply: 'Apply',
-      settTitleAttr: 'Text settings',
-      eyeTitleAttr: 'Show/hide errors',
-      hcTitleAttr: 'Hardcore Mode',
-      aiTitleAttr: 'AI Mode',
-      aiThemeTitleAttr: 'Change AI theme',
-      closeLbl: 'Close',
-      focusHint: 'Click here to start typing',
-      loadingText: 'Loading site\u2026',
-      introBtn: 'Play Typing Game',
-      introPopupText: 'Test your typing speed!<br>The navigation bar above the text lets you choose the language, mode and game options.',
-      introPopupHint: 'Have fun!',
-      heroTitle: 'Paolo Colombat: Typing Game',
-      heroIntro: 'Paolo Colombat'
-    }
-  };
+  var I18N = window.TYPING_GAME_I18N;
 
   function t(key) {
     return (I18N[currentLang] && I18N[currentLang][key]) || I18N.fr[key] || key;
@@ -240,7 +119,6 @@
   let wpmBoost = 0; // DEBUG: artificial WPM boost (Ctrl+ArrowUp/Down)
   let showErrors = false;
   let isFocused = true; // whether the game container has focus
-  let aiInlineActive = false; // whether the AI inline loader is displayed
   let blurHintTimer = null; // debounce timer for focus hint
   let trailTimestamps = []; // timestamps of recent correct keystrokes for trail speed calc
   let trailSpeed = 0; // 0–1 speed factor for trail intensity
@@ -251,14 +129,6 @@
   let hardcoreCountdown = 0; // countdown seconds remaining
   let hardcoreTimer = null; // setInterval id for countdown
   let hardcoreFailed = false; // whether the player made an error
-  let aiMode = false; // AI text generation toggle
-  let aiTexts = null; // generated texts when AI mode is active: { fr: { '10': [...], ... }, en: { ... } }
-  let aiTheme = ''; // current AI theme description
-  let aiLoading = false; // whether an AI request is in-flight
-  let aiThemeBtn = null; // reference to the "change theme" button in navbar
-  let aiUppercase = false; // AI popup setting: uppercase (independent from settings gear)
-  let aiPunctuation = false; // AI popup setting: punctuation (independent from settings gear)
-  let aiStrictWordCount = false; // AI popup setting: strict word count (trim to exact mode count)
   let settingsUppercase = false; // text setting: add uppercase letters
   let settingsNumbers = false; // text setting: add numbers
   let settingsPunctuation = false; // text setting: add punctuation
@@ -266,10 +136,26 @@
   let charSpans = []; // pre-built span elements (one per character in text)
   let cachedLH = 0; // cached line-height in px for scroll calculations
 
+  // AI state — shared object passed by reference to the AI module
+  var aiState = {
+    mode: false,            // AI text generation toggle
+    texts: null,            // generated texts: { fr: { '10': [...], ... }, en: { ... } }
+    theme: '',              // AI theme description
+    uppercase: false,       // AI popup setting: uppercase
+    punctuation: false,     // AI popup setting: punctuation
+    strictWordCount: false, // AI popup setting: strict word count
+    inlineActive: false     // whether the AI inline loader is displayed
+  };
+  let aiThemeBtn = null; // reference to the "change theme" button in navbar
+
+  // Module instances (set in init)
+  var ai = null;   // AI module (typing-game-ai.js)
+  var intro = null; // Intro module (typing-game-intro.js)
+
   /* ---- DOM refs (set in init) ---- */
 
   let container, navbarEl, textEl, innerEl, wpmEl, accEl, timeEl, bestEl, restartEl, statsRow, focusHintEl, hardcoreCountdownEl;
-  let introTextEl, introButtonEl, heroTitleEl; // intro mode DOM refs
+  let heroTitleEl; // intro mode DOM ref
 
   /* ---- Helpers ---- */
 
@@ -291,7 +177,7 @@
   }
 
   function getActiveTexts() {
-    return (aiMode && aiTexts) ? aiTexts : TEXTS;
+    return (aiState.mode && aiState.texts) ? aiState.texts : TEXTS;
   }
 
   function pickText(avoidIndex) {
@@ -695,7 +581,7 @@
     wpmEl.textContent = `${wpm} WPM`;
     if (currentMode === 'zen') {
       accEl.textContent = `${zenWordCount} ${t('words')}`;
-    } else if (aiMode && !aiStrictWordCount && text && finished) {
+    } else if (aiState.mode && !aiState.strictWordCount && text && finished) {
       var wc = text.trim().split(/\s+/).length;
       accEl.textContent = `${acc}% \u00b7 ${wc} ${t('words')}`;
     } else {
@@ -786,7 +672,7 @@
     wpmEl.textContent = `${t('wpmFinal')} : ${wpm}`;
     if (currentMode === 'zen') {
       accEl.textContent = `${t('wordsFinal')} : ${zenWordCount}`;
-    } else if (aiMode && !aiStrictWordCount && text) {
+    } else if (aiState.mode && !aiState.strictWordCount && text) {
       var wc = text.trim().split(/\s+/).length;
       accEl.textContent = `${t('accFinal')} : ${acc}% \u00b7 ${wc} ${t('words')}`;
     } else {
@@ -987,7 +873,7 @@
     if (e.ctrlKey || e.altKey || e.metaKey) return;
 
     // Block all input during AI inline loading
-    if (aiInlineEl) return;
+    if (ai && ai.isInlineActive()) return;
 
     // Allow restarting during hardcore memorize phase
     if (hardcorePhase === 'memorize') {
@@ -1197,356 +1083,7 @@
     document.addEventListener('keydown', onKeyDown);
   }
 
-  /* ---- AI text generation (Gemini) ---- */
-
-  function postProcessAiTexts(parsed) {
-    var langs = ['fr', 'en'];
-    var modes = ['10', '25', '50', '100'];
-    langs.forEach(function(lang) {
-      if (!parsed[lang]) return;
-      modes.forEach(function(mode) {
-        if (!Array.isArray(parsed[lang][mode])) return;
-        var modeLimit = parseInt(mode, 10);
-        parsed[lang][mode] = parsed[lang][mode].map(function(text) {
-          if (typeof text !== 'string') return text;
-          if (!aiUppercase) text = text.toLowerCase();
-          if (!aiPunctuation) {
-            text = text.replace(/[.,;:!?]/g, '');
-            text = text.replace(/ {2,}/g, ' ').trim();
-          }
-          // Strict word count: trim to at most modeLimit words
-          if (aiStrictWordCount) {
-            var words = text.split(/\s+/);
-            if (words.length > modeLimit) {
-              text = words.slice(0, modeLimit).join(' ');
-            }
-          }
-          return text;
-        });
-      });
-    });
-  }
-
-  function fetchAiTexts(theme, onSuccess, onError) {
-    fetch(WORKER_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme: theme })
-    })
-    .then(function(res) {
-      if (!res.ok) {
-        return res.json().then(function(d) {
-          throw new Error(d.error || 'HTTP ' + res.status);
-        });
-      }
-      return res.json();
-    })
-    .then(function(parsed) {
-      if (parsed.error) throw new Error(parsed.error);
-      onSuccess(parsed);
-    })
-    .catch(function(err) {
-      onError(err);
-    });
-  }
-
-  /* ---- AI inline loader (replaces popup after 3s) ---- */
-
-  var aiInlineEl = null;
-
-  function showAiInlineLoader(theme, uppercase, punctuation, strictWc) {
-    // Grey out the navbar
-    if (navbarEl) navbarEl.classList.add('typing-game__navbar--disabled');
-
-    // Build inline overlay positioned over the text area
-    aiInlineEl = document.createElement('div');
-    aiInlineEl.className = 'typing-game__ai-inline';
-
-    // Summary: theme + settings
-    var settingsHtml = '';
-    if (uppercase) settingsHtml += '<span class="typing-game__ai-inline-tag">ABC</span>';
-    if (punctuation) settingsHtml += '<span class="typing-game__ai-inline-tag">.,;!?</span>';
-    var wcLabel = strictWc ? t('wcStrict') : t('wcFree');
-    var wcTooltip = strictWc
-      ? t('wcStrictTip')
-      : t('wcFreeTip');
-    settingsHtml += '<span class="typing-game__ai-inline-tag" title="' + wcTooltip + '">' + wcLabel + '</span>';
-
-    aiInlineEl.innerHTML =
-      '<div class="typing-game__ai-inline-content">' +
-        '<div class="typing-game__ai-inline-spinner"></div>' +
-        '<div class="typing-game__ai-inline-info">' +
-          '<div class="typing-game__ai-inline-theme">' +
-            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ' +
-            theme +
-          '</div>' +
-          '<div class="typing-game__ai-inline-tags">' + settingsHtml + '</div>' +
-        '</div>' +
-        '<div class="typing-game__ai-inline-text">' + t('generating') + '</div>' +
-      '</div>' +
-      '<div class="typing-game__ai-inline-result"></div>';
-
-    // Insert inside textEl so absolute positioning covers it exactly
-    if (textEl) {
-      textEl.appendChild(aiInlineEl);
-    } else {
-      container.appendChild(aiInlineEl);
-    }
-
-    // Animate in
-    aiInlineEl.offsetHeight;
-    aiInlineEl.classList.add('typing-game__ai-inline--visible');
-
-    // Lock game focus/blur while inline is shown, hide focus hint
-    aiInlineActive = true;
-    if (blurHintTimer) { clearTimeout(blurHintTimer); blurHintTimer = null; }
-    if (focusHintEl) focusHintEl.classList.remove('typing-game__focus-hint--visible');
-    container.classList.remove('typing-game--blurred');
-    container.blur();
-  }
-
-  function finishAiInlineLoader(success, message, onDone) {
-    if (!aiInlineEl) return;
-
-    var resultEl = aiInlineEl.querySelector('.typing-game__ai-inline-result');
-    var contentEl = aiInlineEl.querySelector('.typing-game__ai-inline-content');
-
-    // Fade out spinner content
-    contentEl.classList.add('typing-game__ai-inline-content--hidden');
-
-    setTimeout(function() {
-      // Show result message
-      resultEl.innerHTML =
-        '<div class="typing-game__ai-inline-result-icon">' +
-          (success
-            ? '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
-            : '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
-          ) +
-        '</div>' +
-        '<div class="typing-game__ai-inline-result-msg">' + message + '</div>';
-      resultEl.classList.add('typing-game__ai-inline-result--visible');
-      resultEl.classList.add(success ? 'typing-game__ai-inline-result--success' : 'typing-game__ai-inline-result--error');
-
-      // After a moment, dismiss the inline overlay
-      setTimeout(function() {
-        dismissAiInlineLoader(onDone);
-      }, success ? 1000 : 2000);
-    }, 300);
-  }
-
-  function dismissAiInlineLoader(onDone) {
-    if (!aiInlineEl) { if (typeof onDone === 'function') onDone(); return; }
-    aiInlineEl.classList.remove('typing-game__ai-inline--visible');
-    aiInlineEl.addEventListener('transitionend', function handler() {
-      aiInlineEl.removeEventListener('transitionend', handler);
-      if (aiInlineEl.parentNode) aiInlineEl.remove();
-      aiInlineEl = null;
-      if (typeof onDone === 'function') onDone();
-    });
-    // Ungrey navbar
-    if (navbarEl) navbarEl.classList.remove('typing-game__navbar--disabled');
-    aiLoading = false;
-    aiInlineActive = false;
-    delete document.body.dataset.aiLoading;
-    container.focus();
-  }
-
-  /* ---- AI popup ---- */
-
-  function showAiPopup(onConfirm) {
-    // Track whether AI texts already exist (reopen via pencil vs first activation)
-    var isReopen = !!(aiTexts);
-
-    var overlay = document.createElement('div');
-    overlay.className = 'zen-popup-overlay';
-    var popup = document.createElement('div');
-    popup.className = 'zen-popup typing-game__ai-popup';
-
-    popup.innerHTML =
-      '<button class="modal__close zen-popup__close" aria-label="' + t('closeLbl') + '">&times;</button>' +
-      '<div class="zen-popup__title">' + t('aiTitle') + '</div>' +
-      '<p class="zen-popup__text">' + t('aiQuestion') + '</p>' +
-      '<input class="typing-game__ai-input typing-game__ai-theme-input" type="text" placeholder="' + t('aiPlaceholder') + '" maxlength="100" />' +
-      '<div class="typing-game__ai-options">' +
-        '<label class="typing-game__ai-opt">' +
-          '<input type="checkbox" class="typing-game__ai-opt-check" data-key="uppercase"' + (aiUppercase ? ' checked' : '') + '/>' +
-          '<span class="typing-game__ai-opt-toggle"></span>' +
-          '<span class="typing-game__ai-opt-label">' + t('uppercase') + '</span>' +
-          '<span class="typing-game__ai-opt-hint">ABC</span>' +
-        '</label>' +
-        '<label class="typing-game__ai-opt">' +
-          '<input type="checkbox" class="typing-game__ai-opt-check" data-key="punctuation"' + (aiPunctuation ? ' checked' : '') + '/>' +
-          '<span class="typing-game__ai-opt-toggle"></span>' +
-          '<span class="typing-game__ai-opt-label">' + t('punctuation') + '</span>' +
-          '<span class="typing-game__ai-opt-hint">.,;!?</span>' +
-        '</label>' +
-        '<label class="typing-game__ai-opt typing-game__ai-opt--strict">' +
-          '<input type="checkbox" class="typing-game__ai-opt-check" data-key="strictwc"' + (aiStrictWordCount ? ' checked' : '') + '/>' +
-          '<span class="typing-game__ai-opt-toggle"></span>' +
-          '<span class="typing-game__ai-opt-label">' + t('aiStrictLabel') + '</span>' +
-          '<span class="typing-game__ai-opt-hint">#</span>' +
-          '<span class="typing-game__ai-opt-tip">' + t('aiStrictTip') + '</span>' +
-        '</label>' +
-      '</div>' +
-      '<div class="typing-game__ai-status"></div>' +
-      '<div class="typing-game__ai-loader">' +
-        '<div class="typing-game__ai-loader-spinner"></div>' +
-        '<div class="typing-game__ai-loader-text">' + t('generating') + '</div>' +
-      '</div>' +
-      '<button class="zen-popup__btn typing-game__ai-confirm">' + t('aiGenerate') + '</button>';
-    overlay.appendChild(popup);
-    document.body.appendChild(overlay);
-
-    var themeInput = popup.querySelector('.typing-game__ai-theme-input');
-    var confirmBtn = popup.querySelector('.typing-game__ai-confirm');
-    var statusEl = popup.querySelector('.typing-game__ai-status');
-    var loaderEl = popup.querySelector('.typing-game__ai-loader');
-    var optionsEl = popup.querySelector('.typing-game__ai-options');
-
-    // Local copies — only committed on successful generate
-    var localUppercase = aiUppercase;
-    var localPunctuation = aiPunctuation;
-    var localStrictWc = aiStrictWordCount;
-
-    popup.querySelectorAll('.typing-game__ai-opt-check').forEach(function(chk) {
-      chk.addEventListener('change', function() {
-        var key = chk.getAttribute('data-key');
-        if (key === 'uppercase') localUppercase = chk.checked;
-        if (key === 'punctuation') localPunctuation = chk.checked;
-        if (key === 'strictwc') localStrictWc = chk.checked;
-      });
-    });
-
-    // Pre-fill theme
-    if (aiTheme) themeInput.value = aiTheme;
-
-    // Force reflow then animate in
-    overlay.offsetHeight;
-    overlay.classList.add('zen-popup-overlay--visible');
-
-    setTimeout(function() { themeInput.focus(); }, 350);
-
-    function close(generated) {
-      overlay.classList.remove('zen-popup-overlay--visible');
-      overlay.addEventListener('transitionend', function handler() {
-        overlay.removeEventListener('transitionend', handler);
-        overlay.remove();
-        // Persist AI popup state on dismiss (not reopen): theme input + toggles
-        if (!generated && !isReopen) {
-          aiUppercase = localUppercase;
-          aiPunctuation = localPunctuation;
-          aiStrictWordCount = localStrictWc;
-          aiTheme = themeInput.value.trim();
-          saveAiOptions();
-        }
-        container.focus();
-      });
-    }
-
-    function getErrorMsg(err) {
-      var msg = err && err.message || '';
-      if (msg === 'ORIGIN_BLOCKED') return t('errOrigin');
-      if (msg === 'RATE_LIMIT') return t('errRate');
-      if (msg === 'TRUNCATED') return t('errTrunc');
-      if (msg === 'TIMEOUT') return t('errTimeout');
-      return t('errGeneric');
-    }
-
-    function doGenerate() {
-      var theme = themeInput.value.trim();
-      if (!theme) {
-        themeInput.classList.add('typing-game__ai-input--error');
-        setTimeout(function() { themeInput.classList.remove('typing-game__ai-input--error'); }, 600);
-        return;
-      }
-      // Loading state
-      confirmBtn.disabled = true;
-      confirmBtn.style.display = 'none';
-      themeInput.disabled = true;
-      statusEl.textContent = '';
-      statusEl.className = 'typing-game__ai-status';
-      loaderEl.classList.add('typing-game__ai-loader--active');
-      optionsEl.classList.add('typing-game__ai-options--loading');
-      aiLoading = true;
-      document.body.dataset.aiLoading = '1';
-
-      var resolved = false;
-      var movedInline = false;
-
-      // After 3s, close popup and show inline loader on the typing text
-      var inlineTimer = setTimeout(function() {
-        if (resolved) return;
-        movedInline = true;
-        // Close the popup smoothly
-        close(true); // generated=true prevents persisting partial state
-        // Build the inline loader overlay
-        showAiInlineLoader(theme, localUppercase, localPunctuation, localStrictWc);
-      }, 3000);
-
-      fetchAiTexts(theme, function(texts) {
-        if (resolved) return;
-        resolved = true;
-        clearTimeout(inlineTimer);
-        aiLoading = false;
-        // Commit AI toggle values on successful generation
-        aiUppercase = localUppercase;
-        aiPunctuation = localPunctuation;
-        aiStrictWordCount = localStrictWc;
-        aiTheme = theme;
-        saveAiOptions();
-        postProcessAiTexts(texts);
-        aiTexts = texts;
-
-        if (movedInline) {
-          // Result goes to the inline loader; onConfirm fires after dismiss
-          finishAiInlineLoader(true, t('textsOk'), function() {
-            if (typeof onConfirm === 'function') onConfirm();
-          });
-        } else {
-          delete document.body.dataset.aiLoading;
-          loaderEl.classList.remove('typing-game__ai-loader--active');
-          optionsEl.classList.remove('typing-game__ai-options--loading');
-          close(true);
-          if (typeof onConfirm === 'function') onConfirm();
-        }
-      }, function(err) {
-        if (resolved) return;
-        resolved = true;
-        clearTimeout(inlineTimer);
-        aiLoading = false;
-
-        if (movedInline) {
-          finishAiInlineLoader(false, getErrorMsg(err));
-        } else {
-          delete document.body.dataset.aiLoading;
-          loaderEl.classList.remove('typing-game__ai-loader--active');
-          optionsEl.classList.remove('typing-game__ai-options--loading');
-          confirmBtn.disabled = false;
-          confirmBtn.style.display = '';
-          themeInput.disabled = false;
-          confirmBtn.textContent = t('aiRetry');
-          statusEl.textContent = getErrorMsg(err);
-          statusEl.className = 'typing-game__ai-status typing-game__ai-status--error';
-        }
-      });
-    }
-
-    popup.querySelector('.zen-popup__close').addEventListener('click', function() {
-      if (!aiLoading) close();
-    });
-    confirmBtn.addEventListener('click', doGenerate);
-    popup.addEventListener('keydown', function(e) {
-      e.stopPropagation();
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        doGenerate();
-      }
-      if (e.key === 'Escape' && !aiLoading) close();
-    });
-    overlay.addEventListener('click', function(ev) {
-      if (ev.target === overlay && !aiLoading) close();
-    });
-  }
+  /* ---- AI text generation — delegated to typing-game-ai.js module ---- */
 
   /* ---- Settings popup ---- */
 
@@ -1677,7 +1214,7 @@
       clearTimeout(tooltipTimer);
       var texts = TOOLTIP_TEXTS[currentLang] || TOOLTIP_TEXTS.fr;
       var resolvedKey = key;
-      if (key === 'ai' && aiMode) resolvedKey = 'ai-active';
+      if (key === 'ai' && aiState.mode) resolvedKey = 'ai-active';
       if (key === 'hardcore' && hardcoreMode) resolvedKey = 'hardcore-active';
       tooltipEl.textContent = texts[resolvedKey] || '';
       if (!tooltipEl.textContent) return;
@@ -1880,24 +1417,24 @@
     '</svg>';
 
     function updateAiUI() {
-      aiBtn.classList.toggle('typing-game__ai--active', aiMode);
-      container.classList.toggle('typing-game--ai', aiMode);
-      aiThemeBtn.classList.toggle('typing-game__ai-theme--visible', aiMode);
+      aiBtn.classList.toggle('typing-game__ai--active', aiState.mode);
+      container.classList.toggle('typing-game--ai', aiState.mode);
+      aiThemeBtn.classList.toggle('typing-game__ai-theme--visible', aiState.mode);
     }
 
     aiBtn.addEventListener('click', function(e) {
       e.preventDefault();
-      if (aiMode) {
+      if (aiState.mode) {
         // Deactivate AI mode — revert to default texts
-        aiMode = false;
-        aiTexts = null;
-        aiTheme = '';
+        aiState.mode = false;
+        aiState.texts = null;
+        aiState.theme = '';
         updateAiUI();
         startGame(true);
       } else {
         // Activate — show popup
-        showAiPopup(function() {
-          aiMode = true;
+        ai.showPopup(function() {
+          aiState.mode = true;
           updateAiUI();
           startGame(true);
         });
@@ -1907,7 +1444,7 @@
     aiThemeBtn.addEventListener('click', function(e) {
       e.preventDefault();
       // Reopen popup to change theme while keeping AI mode on
-      showAiPopup(function() {
+      ai.showPopup(function() {
         startGame(true);
       });
     });
@@ -1949,220 +1486,7 @@
     return group;
   }
 
-  /* ---- Intro typewriter mode ---- */
-
-  function showIntro(isSmartphone) {
-    introActive = true;
-    heroTitleEl = document.querySelector('#hero .section__title');
-    if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
-
-    // --- Loading screen (shown until page fully loads) ---
-    var loadingEl = document.createElement('div');
-    loadingEl.className = 'typing-game__loading';
-    loadingEl.innerHTML = '<div class="typing-game__loading-spinner"></div>' +
-      '<div class="typing-game__loading-text">' + t('loadingText') + '</div>';
-    container.appendChild(loadingEl);
-
-    // Prepare intro elements but don't add to DOM yet
-    function startTypewriter() {
-      // Fade out loading
-      loadingEl.classList.add('typing-game__loading--hidden');
-      setTimeout(function () {
-        if (loadingEl.parentNode) loadingEl.remove();
-      }, 400);
-
-      // Build intro DOM
-      buildIntroDOM(isSmartphone);
-    }
-
-    // Wait for full page load (images, fonts, etc.)
-    if (document.readyState === 'complete') {
-      // Already loaded — small delay so loading screen is visible briefly
-      setTimeout(startTypewriter, 300);
-    } else {
-      window.addEventListener('load', function () {
-        setTimeout(startTypewriter, 200);
-      });
-    }
-  }
-
-  function buildIntroDOM(isSmartphone) {
-    // Intro text container (reuses typing-game__text styling)
-    introTextEl = document.createElement('div');
-    introTextEl.className = 'typing-game__text typing-game__text--intro';
-
-    // Inner for typewriter chars
-    var introInner = document.createElement('div');
-    introInner.className = 'typing-game__text-inner typing-game__intro-inner';
-    introTextEl.appendChild(introInner);
-
-    // Button (hidden initially) — desktop only
-    if (!isSmartphone) {
-      introButtonEl = document.createElement('button');
-      introButtonEl.className = 'btn btn--outline typing-game__intro-btn';
-      introButtonEl.textContent = t('introBtn');
-    }
-
-    // Start typewriter animation with cursor + trail (zen-style rendering)
-    var chars = t('introText').split('');
-    var idx = 0;
-    var speed = 38; // ms per character (slower for readability)
-    var introCombo = 0;
-    var introTrailTimestamps = [];
-    var introTrailSpeed = 0;
-    var introFinished = false;
-    // Fixed trail color (primary only, no shift) — theme-aware
-    function getIntroTrailColor() {
-      var dk = document.documentElement.dataset.theme === 'dark';
-      var nt = document.documentElement.dataset.theme === 'nature';
-      return { r: nt ? 94 : dk ? 156 : 242, g: nt ? 184 : dk ? 39 : 162, b: nt ? 58 : dk ? 176 : 133 };
-    }
-
-    function calcIntroTrailSpeed() {
-      if (introTrailTimestamps.length < 2) { introTrailSpeed = 0; return; }
-      var recent = introTrailTimestamps.slice(-8);
-      var totalInterval = recent[recent.length - 1] - recent[0];
-      var avgInterval = totalInterval / (recent.length - 1);
-      introTrailSpeed = Math.max(0, Math.min(1, 1 - (avgInterval - 30) / 450));
-    }
-
-    function renderIntro() {
-      var html = '';
-      var tc = getIntroTrailColor();
-
-      // Trail length from combo + speed
-      var trailLen = 0;
-      if (introCombo >= 10 && introTrailSpeed > 0.05) {
-        var comboFactor = Math.min(introCombo / 150, 1);
-        trailLen = Math.round(2 + comboFactor * 28);
-        trailLen = Math.round(trailLen * (0.15 + introTrailSpeed * 0.85));
-      }
-
-      for (var i = 0; i < idx; i++) {
-        var cls = 'typing-game__char typing-game__char--correct';
-        var trailAttr = '';
-
-        // Trail behind cursor
-        if (!introFinished && trailLen > 0) {
-          var distFromCursor = idx - i;
-          if (distFromCursor <= trailLen && distFromCursor >= 1) {
-            cls += ' typing-game__char--trail';
-            var trailOpacity = (1 - (distFromCursor - 1) / trailLen) * introTrailSpeed;
-            trailOpacity = Math.max(0.05, Math.min(1, trailOpacity));
-            trailAttr = ' style="--trail-opacity:' + trailOpacity.toFixed(3)
-              + ';--trail-r:' + tc.r
-              + ';--trail-g:' + tc.g
-              + ';--trail-b:' + tc.b + '"';
-          }
-        }
-
-        var ch = chars[i] === ' ' ? ' ' : chars[i];
-        html += '<span class="' + cls + '"' + trailAttr + '>' + ch + '</span>';
-      }
-
-      // Cursor after typed chars
-      if (!introFinished) {
-        var cursorCls = 'typing-game__char typing-game__char--cursor';
-        if (introCombo >= 60) cursorCls += ' typing-game__char--combo-3';
-        else if (introCombo >= 30) cursorCls += ' typing-game__char--combo-2';
-        else if (introCombo >= 10) cursorCls += ' typing-game__char--combo-1';
-        html += '<span class="' + cursorCls + '">\u200B</span>';
-      }
-
-      introInner.innerHTML = html;
-    }
-
-    function typeNext() {
-      if (idx >= chars.length) {
-        introFinished = true;
-        renderIntro();
-        if (isSmartphone) {
-          // On smartphone: auto-unlock, keep intro text visible
-          unlockGame();
-          introActive = false;
-          return;
-        }
-        // Typewriter finished — show button
-        requestAnimationFrame(function () {
-          introButtonEl.classList.add('typing-game__intro-btn--visible');
-        });
-        return;
-      }
-      introCombo++;
-      introTrailTimestamps.push(Date.now());
-      if (introTrailTimestamps.length > 20) introTrailTimestamps.shift();
-      calcIntroTrailSpeed();
-      idx++;
-      renderIntro();
-      setTimeout(typeNext, speed);
-    }
-
-    // Small delay before starting the typewriter — insert elements here so
-    // the container background never flashes between loading and intro
-    setTimeout(function () {
-      container.appendChild(introTextEl);
-      if (introButtonEl) container.appendChild(introButtonEl);
-      typeNext();
-    }, 400);
-
-    // Button click → show popup, then reveal game (desktop only)
-    if (introButtonEl) {
-      introButtonEl.addEventListener('click', function () {
-        showIntroPopup();
-      });
-    }
-  }
-
-  function showIntroPopup() {
-    showInfoPopup(
-      'Typing Game',
-      t('introPopupText'),
-      t('introPopupHint'),
-      function () {
-        unlockGame();
-        transitionToGame();
-      }
-    );
-  }
-
-  function transitionToGame() {
-    introActive = false;
-
-    // Update title
-    if (heroTitleEl) heroTitleEl.textContent = t('heroTitle');
-
-    // Fade out intro elements
-    introTextEl.classList.add('typing-game__text--intro-out');
-    introButtonEl.classList.add('typing-game__intro-btn--out');
-
-    setTimeout(function () {
-      // Remove intro elements
-      if (introTextEl && introTextEl.parentNode) introTextEl.remove();
-      if (introButtonEl && introButtonEl.parentNode) introButtonEl.remove();
-
-      // Build and reveal the real game
-      buildGameDOM();
-      // Start with hidden state, then animate in
-      container.classList.add('typing-game--reveal');
-      void container.offsetHeight; // force reflow
-      container.classList.add('typing-game--reveal-active');
-
-      startGame(true);
-
-      // Clean up reveal classes after animation
-      setTimeout(function () {
-        container.classList.remove('typing-game--reveal', 'typing-game--reveal-active');
-      }, 700);
-    }, 400);
-  }
-
-  function buildSmartphoneStaticDOM() {
-    // Show intro text statically (no game, no greyed navbar)
-    var staticText = document.createElement('div');
-    staticText.className = 'typing-game__text typing-game__text--intro';
-    staticText.textContent = t('introText');
-    container.appendChild(staticText);
-  }
+  /* ---- Intro typewriter — delegated to typing-game-intro.js module ---- */
 
   function buildGameDOM() {
     // Build inner DOM
@@ -2223,7 +1547,7 @@
     // Focus / blur detection
     container.addEventListener('focus', function () {
       // Reject focus while the AI inline loader is active
-      if (aiInlineActive) { container.blur(); return; }
+      if (ai && ai.isInlineActive()) { container.blur(); return; }
       isFocused = true;
       container.dataset.focused = '1';
       if (blurHintTimer) { clearTimeout(blurHintTimer); blurHintTimer = null; }
@@ -2260,7 +1584,7 @@
       // Debounce focus hint to avoid flash on navbar clicks
       if (blurHintTimer) clearTimeout(blurHintTimer);
       blurHintTimer = setTimeout(function () {
-        if (!isFocused && hardcorePhase !== 'memorize' && !aiInlineActive) {
+        if (!isFocused && hardcorePhase !== 'memorize' && !(ai && ai.isInlineActive())) {
           container.classList.add('typing-game--blurred');
           focusHintEl.classList.add('typing-game__focus-hint--visible');
           delete container.dataset.focused;
@@ -2301,17 +1625,44 @@
     settingsNumbers = saved.numbers;
     settingsPunctuation = saved.punctuation;
     settingsSpecial = saved.special;
-    aiUppercase = saved.aiUppercase;
-    aiPunctuation = saved.aiPunctuation;
-    aiStrictWordCount = saved.aiStrictWordCount;
+    aiState.uppercase = saved.aiUppercase;
+    aiState.punctuation = saved.aiPunctuation;
+    aiState.strictWordCount = saved.aiStrictWordCount;
     // If hardcore is on but mode is incompatible, force to 10
     if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {
       currentMode = '10';
     }
 
+    // Create AI module (typing-game-ai.js)
+    ai = window.createTypingGameAI({
+      t: t,
+      aiState: aiState,
+      getContainer: function () { return container; },
+      getNavbar: function () { return navbarEl; },
+      getTextEl: function () { return textEl; },
+      getFocusHint: function () { return focusHintEl; },
+      clearBlurHint: function () {
+        if (blurHintTimer) { clearTimeout(blurHintTimer); blurHintTimer = null; }
+      },
+      saveAiOptions: function () { saveAiOptions(); }
+    });
+
+    // Create intro module (typing-game-intro.js)
+    intro = window.createTypingGameIntro({
+      t: t,
+      getContainer: function () { return container; },
+      getHeroTitle: function () { return heroTitleEl; },
+      setHeroTitle: function (el) { heroTitleEl = el; },
+      setIntroActive: function (v) { introActive = v; },
+      showInfoPopup: showInfoPopup,
+      unlockGame: unlockGame,
+      buildGameDOM: function () { buildGameDOM(); },
+      startGame: function (force) { startGame(force); }
+    });
+
     // --- If game has never been unlocked: show intro typewriter ---
     if (!isGameUnlocked()) {
-      showIntro(isSmartphone);
+      intro.showIntro(isSmartphone);
       return;
     }
 
@@ -2319,7 +1670,7 @@
     if (isSmartphone) {
       heroTitleEl = document.querySelector('#hero .section__title');
       if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
-      buildSmartphoneStaticDOM();
+      intro.buildSmartphoneStaticDOM();
       return;
     }
 
