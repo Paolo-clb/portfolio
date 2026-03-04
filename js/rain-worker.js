@@ -1,12 +1,13 @@
 /* ==========================================================================
-   Rain Worker — ENHANCED edition
+   Rain Worker — ENHANCED edition v2
    Runs physics + rendering in a SEPARATE THREAD.
    
    Effects:
    • 160 rain drops with varying width & bright alpha
-   • 5 splash particles per impact in TWO colors (rain + accent)
+   • 5 splash particles per impact — rain-colored
    • Ripple rings expanding on surface hits
-   • Higher-res rendering (0.65) for crisp streaks
+   • Cursor halo bounce — drops deflect off cursor circle
+   • Drain mode — drops finish falling gracefully on disable
    ========================================================================== */
 
 /* ── Configuration ──────────────────────────────────────── */
@@ -21,11 +22,15 @@ var SPLASH_PER   = 5;
 var SPLASH_G     = 0.22;
 var RES          = 0.65;
 
+// Cursor bounce
+var CURSOR_R     = 22;   // halo ring radius (~38px CSS / 2 + margin)
+
 /* ── State ──────────────────────────────────────────────── */
 var canvas, ctx;
 var W = 0, H = 0;
 var scrollY   = 0;
 var running   = false;
+var draining  = false;  // true = no new drops, wait for all to exit
 var dropCount = 160;
 
 var drops    = [];
@@ -36,13 +41,16 @@ var rippleN  = 0;
 
 var surfAbs  = [];
 
-// Colors — 3 channels: rain, splash-primary, splash-accent
+// Cursor position (viewport coords, sent from main thread)
+var curX = -999, curY = -999;
+
+// Colors — uniform rain color for drops, splashes, and ripples
 var rainRGB    = '220,220,240';
-var splashRGB  = '242,200,190';
-var accentRGB  = '180,210,255';   // blue-ish highlight for secondary splashlets
 
 /* ── Drop pool ──────────────────────────────────────────── */
 function resetDrop(d) {
+  // In drain mode, mark drop as dead instead of recycling
+  if (draining) { d.lif = 0; d._ca = 0; return; }
   d.x   = Math.random() * W;
   d.y   = -(Math.random() * 100 + 10);
   d.vy  = DROP_MIN_SPD + Math.random() * (DROP_MAX_SPD - DROP_MIN_SPD);
@@ -65,11 +73,11 @@ function buildDrops(n) {
   }
 }
 
-/* ── Splash pool (dual-color) ───────────────────────────── */
+/* ── Splash pool ─────────────────────────────────────────── */
 function buildSplashes() {
   splashes.length = MAX_SPLASHES;
   for (var i = 0; i < MAX_SPLASHES; i++)
-    splashes[i] = splashes[i] || {x:0,y:0,vx:0,vy:0,lif:0,dec:0,r:0,acc:0};
+    splashes[i] = splashes[i] || {x:0,y:0,vx:0,vy:0,lif:0,dec:0,r:0};
   splashN = 0;
 }
 
@@ -84,7 +92,6 @@ function spawnSplash(x, y) {
     s.lif = 1;
     s.dec = 1 / (14 + Math.random() * 10);
     s.r = 0.8 + Math.random() * 1.4;
-    s.acc = (i >= 3) ? 1 : 0;   // last 2 splashlets use accent color
   }
 }
 
@@ -99,15 +106,22 @@ function buildRipples() {
 function spawnRipple(x, y) {
   if (rippleN >= MAX_RIPPLES) return;
   var rp = ripples[rippleN++];
-  rp.x = x;
-  rp.y = y;
-  rp.r = 0;
+  rp.x = x; rp.y = y; rp.r = 0;
   rp.maxR = 6 + Math.random() * 10;
   rp.lif = 1;
   rp.dec = 1 / (18 + Math.random() * 12);
 }
 
-/* ── Hit test ───────────────────────────────────────────── */
+/* ── Cursor hit test ────────────────────────────────────── */
+function hitCursor(x, tipY) {
+  var dx = x - curX;
+  var dy = tipY - curY;
+  var dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < CURSOR_R) return dist;
+  return -1;
+}
+
+/* ── Surface hit test ───────────────────────────────────── */
 function hitSurface(x, tipY) {
   for (var i = 0, n = surfAbs.length; i < n; i++) {
     var s = surfAbs[i];
@@ -130,26 +144,58 @@ function draw() {
 
   var i, d, a, vTop, count = drops.length;
 
+  // Check drain completion
+  if (draining) {
+    var alive = 0;
+    for (i = 0; i < count; i++) if (drops[i].lif > 0) alive++;
+    if (alive === 0 && splashN === 0 && rippleN === 0) {
+      running = false;
+      draining = false;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      self.postMessage({ type: 'drained' });
+      return;
+    }
+  }
+
   /* ── Physics ── */
   for (i = 0; i < count; i++) {
     d = drops[i];
+    if (d.lif <= 0) { d._ca = 0; continue; }
+
     if (d.bou) {
       d.x += d.vx; d.y += d.vy;
       d.vy += SPLASH_G; d.lif -= 0.06;
       if (d.lif <= 0 || d.y > H + 10) resetDrop(d);
     } else {
       d.x += d.vx; d.y += d.vy;
-      vTop = hitSurface(d.x, d.y + d.len);
-      if (vTop >= 0) {
-        d.y = vTop - d.len;
-        spawnSplash(d.x, vTop);
-        spawnRipple(d.x, vTop);
+
+      // Cursor bounce
+      var cDist = hitCursor(d.x, d.y + d.len);
+      if (cDist >= 0 && cDist > 1) {
+        var cdx = d.x - curX;
+        var cdy = (d.y + d.len) - curY;
+        var cn = Math.sqrt(cdx * cdx + cdy * cdy);
+        d.vx = (cdx / cn) * 3.5 + (Math.random() - 0.5);
+        d.vy = (cdy / cn) * 2.5;
         d.bou = true;
-        d.vy = -(Math.abs(d.vy) * (0.15 + Math.random() * 0.15));
-        d.vx = -2 + Math.random() * 4;
-        d.len *= 0.35; d.lif = 1;
-      } else if (d.y > H + 10 || d.x < -10 || d.x > W + 10) {
-        resetDrop(d);
+        d.len *= 0.4;
+        d.lif = 0.8 + Math.random() * 0.2;
+        spawnSplash(d.x, d.y + d.len);
+        spawnRipple(d.x, d.y + d.len);
+      } else {
+        vTop = hitSurface(d.x, d.y + d.len);
+        if (vTop >= 0) {
+          d.y = vTop - d.len;
+          spawnSplash(d.x, vTop);
+          spawnRipple(d.x, vTop);
+          d.bou = true;
+          d.vy = -(Math.abs(d.vy) * (0.15 + Math.random() * 0.15));
+          d.vx = -2 + Math.random() * 4;
+          d.len *= 0.35; d.lif = 1;
+        } else if (d.y > H + 10 || d.x < -10 || d.x > W + 10) {
+          resetDrop(d);
+        }
       }
     }
     a = d.a * d.lif;
@@ -164,7 +210,6 @@ function draw() {
   var bHi  = [0.25, 0.48, 1.01];
   var bAlp = [0.18, 0.38, 0.58];
 
-  // Thin drops (w < 1.8) then thick drops (w >= 1.8) — 2 lineWidth changes
   var wThresh = (DROP_W_MIN + DROP_W_MAX) * 0.5;
   var wVals   = [DROP_W_MIN + 0.15, DROP_W_MAX - 0.15];
 
@@ -190,7 +235,7 @@ function draw() {
   /* ── Ripple rings ── */
   if (rippleN > 0) {
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgb(' + accentRGB + ')';
+    ctx.strokeStyle = 'rgb(' + rainRGB + ')';
     for (var k = rippleN - 1; k >= 0; k--) {
       var rp = ripples[k];
       rp.r += (rp.maxR - rp.r) * 0.12;
@@ -220,51 +265,26 @@ function draw() {
       }
     }
 
-    // Draw primary-color splashes (acc === 0)
-    ctx.fillStyle = 'rgb(' + splashRGB + ')';
-    // Bucket 1: bright
+    // Draw splashes — uniform rain color
+    ctx.fillStyle = 'rgb(' + rainRGB + ')';
     ctx.globalAlpha = 0.5;
     ctx.beginPath();
     var hc = false;
     for (j = 0; j < splashN; j++) {
       sp = splashes[j];
-      if (sp.acc || sp.lif < 0.45) continue;
+      if (sp.lif < 0.4) continue;
       var r = sp.r * sp.lif;
       ctx.moveTo(sp.x + r, sp.y); ctx.arc(sp.x, sp.y, r, 0, 6.2832);
       hc = true;
     }
     if (hc) ctx.fill();
-    // Bucket 2: dim
-    ctx.globalAlpha = 0.22;
+    ctx.globalAlpha = 0.2;
     ctx.beginPath(); hc = false;
     for (j = 0; j < splashN; j++) {
       sp = splashes[j];
-      if (sp.acc || sp.lif >= 0.45 || sp.lif <= 0) continue;
+      if (sp.lif >= 0.4 || sp.lif <= 0) continue;
       var r3 = sp.r * sp.lif;
       ctx.moveTo(sp.x + r3, sp.y); ctx.arc(sp.x, sp.y, r3, 0, 6.2832);
-      hc = true;
-    }
-    if (hc) ctx.fill();
-
-    // Draw accent-color splashes (acc === 1)
-    ctx.fillStyle = 'rgb(' + accentRGB + ')';
-    ctx.globalAlpha = 0.45;
-    ctx.beginPath(); hc = false;
-    for (j = 0; j < splashN; j++) {
-      sp = splashes[j];
-      if (!sp.acc || sp.lif < 0.4) continue;
-      var r4 = sp.r * sp.lif;
-      ctx.moveTo(sp.x + r4, sp.y); ctx.arc(sp.x, sp.y, r4, 0, 6.2832);
-      hc = true;
-    }
-    if (hc) ctx.fill();
-    ctx.globalAlpha = 0.16;
-    ctx.beginPath(); hc = false;
-    for (j = 0; j < splashN; j++) {
-      sp = splashes[j];
-      if (!sp.acc || sp.lif >= 0.4 || sp.lif <= 0) continue;
-      var r5 = sp.r * sp.lif;
-      ctx.moveTo(sp.x + r5, sp.y); ctx.arc(sp.x, sp.y, r5, 0, 6.2832);
       hc = true;
     }
     if (hc) ctx.fill();
@@ -290,8 +310,9 @@ self.onmessage = function (e) {
 
     case 'start':
       if (!canvas) return;
-      running = true;
-      scrollY = msg.scrollY || 0;
+      running  = true;
+      draining = false;
+      scrollY  = msg.scrollY || 0;
       buildDrops(dropCount);
       buildSplashes();
       buildRipples();
@@ -299,13 +320,20 @@ self.onmessage = function (e) {
       break;
 
     case 'stop':
+      // Instant stop — clear everything
       running = false;
+      draining = false;
       if (ctx) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
       splashN = 0;
       rippleN = 0;
+      break;
+
+    case 'drain':
+      // Graceful stop — no new drops, let existing ones finish
+      draining = true;
       break;
 
     case 'scroll':
@@ -320,27 +348,26 @@ self.onmessage = function (e) {
         canvas.width  = Math.ceil(W * RES);
         canvas.height = Math.ceil(H * RES);
       }
-      if (running) buildDrops(dropCount);
+      if (running && !draining) buildDrops(dropCount);
       break;
 
     case 'surfaces':
       surfAbs = msg.surfaces;
       break;
 
+    case 'cursor':
+      curX = msg.x;
+      curY = msg.y;
+      break;
+
     case 'theme':
       var theme = msg.theme;
       if (theme === 'dark') {
         rainRGB   = '200,140,255';
-        splashRGB = '220,160,255';
-        accentRGB = '160,100,240';
       } else if (theme === 'nature') {
         rainRGB   = '120,210,240';
-        splashRGB = '140,230,120';
-        accentRGB = '90,200,200';
       } else {
         rainRGB   = '220,220,240';
-        splashRGB = '242,200,190';
-        accentRGB = '180,210,255';
       }
       break;
   }

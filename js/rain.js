@@ -1,11 +1,14 @@
 /* ==========================================================================
-   Rain Effect — OffscreenCanvas + Web Worker architecture
+   Rain Effect — OffscreenCanvas + Web Worker architecture v2
    
    Main thread (this file): creates canvas, button, toggle.
-   Sends scroll / resize / surface / theme data to Worker via postMessage.
+   Sends scroll / resize / surface / theme / cursor / click data to Worker.
    ALL physics + rendering run in a SEPARATE thread → zero main-thread cost.
    
-   Falls back to main-thread rendering if OffscreenCanvas is unsupported.
+   Features:
+   • Cursor halo bounce — mouse position forwarded to Worker
+   • Drain mode — disabling lets existing drops finish falling
+   • Falls back to main-thread rendering if OffscreenCanvas unsupported
    ========================================================================== */
 (function () {
   'use strict';
@@ -32,7 +35,7 @@
   var fbDrops = [], fbSplashes = [], fbSplashN = 0;
   var fbSurfAbs = [];
   var fbScrollY = 0;
-  var fbRainRGB = '220,220,240', fbSplashRGB = '242,200,190';
+  var fbRainRGB = '220,220,240';
   var FB_RES = 0.5, FB_DROP_W = 1.8;
 
   /* ── Surface queries (main thread only — DOM access) ──── */
@@ -71,9 +74,9 @@
     if (useWorker && worker) {
       worker.postMessage({ type: 'theme', theme: t });
     } else {
-      if (t === 'dark')        { fbRainRGB='200,140,255'; fbSplashRGB='220,160,255'; }
-      else if (t === 'nature') { fbRainRGB='120,210,240'; fbSplashRGB='140,230,120'; }
-      else                     { fbRainRGB='220,220,240'; fbSplashRGB='242,200,190'; }
+      if (t === 'dark')        { fbRainRGB='200,140,255'; }
+      else if (t === 'nature') { fbRainRGB='120,210,240'; }
+      else                     { fbRainRGB='220,220,240'; }
     }
   }
 
@@ -102,11 +105,13 @@
     if (surfRecalcTimer) { clearInterval(surfRecalcTimer); surfRecalcTimer = null; }
 
     if (useWorker) {
-      worker.postMessage({ type: 'stop' });
+      // Drain: stop spawning, let existing drops finish falling
+      worker.postMessage({ type: 'drain' });
+      // Worker will postMessage 'drained' when done → hide canvas
     } else {
       fbStop();
+      canvas.style.display = 'none';
     }
-    canvas.style.display = 'none';
   }
 
   /* ── Toggle ────────────────────────────────────────────── */
@@ -147,30 +152,32 @@
   }
 
   /* =======================================================================
-     Umbrella SVG Button
+     Umbrella SVG Button — reworked for better inactive visibility
      ======================================================================= */
   function createUmbrellaButton() {
     var btn = document.createElement('button');
     btn.className = 'rain-toggle';
     btn.setAttribute('aria-label', 'Toggle rain effect');
     btn.setAttribute('title', 'Pluie');
+    // Reworked SVG: thicker strokes, filled canopy for visibility,
+    // rain drops visible even when inactive (muted), canopy always shown
     btn.innerHTML =
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
-        '<g class="umbrella-canopy">' +
-          '<path d="M12 2 C12 2 3 7 3 12 L12 12"/>' +
-          '<path d="M12 2 C12 2 21 7 21 12 L12 12"/>' +
-          '<path d="M7.5 9.5 C8 11.5 9.5 12 9.5 12" opacity="0.5"/>' +
-          '<path d="M16.5 9.5 C16 11.5 14.5 12 14.5 12" opacity="0.5"/>' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+        '<g class="umbrella-canopy" stroke-width="2">' +
+          '<path d="M12 2C6.5 2 2 6.5 3 12h18c1-5.5-3.5-10-9-10z" fill="currentColor" opacity="0.15"/>' +
+          '<path d="M12 2C6.5 2 2 6.5 3 12h18c1-5.5-3.5-10-9-10z"/>' +
         '</g>' +
-        '<g class="umbrella-handle">' +
+        '<g class="umbrella-handle" stroke-width="2">' +
           '<line x1="12" y1="12" x2="12" y2="21"/>' +
-          '<path d="M12 21 C12 21 10 21 10 19.5 C10 18 12 18 12 18"/>' +
+          '<path d="M12 21c0 0-2 0-2-1.5S12 18 12 18"/>' +
         '</g>' +
-        '<g class="umbrella-drops">' +
-          '<line x1="5" y1="15" x2="5" y2="17" opacity="0.6"/>' +
-          '<line x1="8" y1="16" x2="8" y2="18.5" opacity="0.4"/>' +
-          '<line x1="19" y1="15" x2="19" y2="17" opacity="0.6"/>' +
-          '<line x1="16" y1="16.5" x2="16" y2="18.5" opacity="0.4"/>' +
+        '<g class="umbrella-drops" stroke-width="1.8">' +
+          '<line x1="6" y1="14.5" x2="6" y2="17"/>' +
+          '<line x1="9" y1="16" x2="9" y2="19"/>' +
+          '<line x1="18" y1="14.5" x2="18" y2="17"/>' +
+          '<line x1="15" y1="16" x2="15" y2="19"/>' +
+          '<line x1="3.5" y1="16" x2="3.5" y2="18" opacity="0.5"/>' +
+          '<line x1="20.5" y1="16" x2="20.5" y2="18" opacity="0.5"/>' +
         '</g>' +
       '</svg>';
 
@@ -183,8 +190,14 @@
   }
 
   function placeButton(btn) {
-    var heroContent = document.querySelector('#hero .hero__content');
-    if (heroContent) heroContent.appendChild(btn);
+    var h2 = document.querySelector('#hero .section__title');
+    if (!h2) return;
+    // Create inline wrapper so button sits right next to the title text
+    var row = document.createElement('div');
+    row.className = 'hero__title-row';
+    h2.parentNode.insertBefore(row, h2);
+    row.appendChild(h2);
+    row.appendChild(btn);
   }
 
   /* =======================================================================
@@ -234,7 +247,7 @@
     for(var b=0;b<3;b++){var lo=bLo[b],hi=bHi[b],has=false;c.globalAlpha=bAl[b];c.beginPath();
       for(i=0;i<count;i++){d=fbDrops[i];a=d._ca;if(a<lo||a>=hi)continue;c.moveTo(d.x,d.y);c.lineTo(d.x+d.vx*0.3,d.y+d.len);has=true;}
       if(has)c.stroke();}
-    if(fbSplashN>0){c.fillStyle='rgb('+fbSplashRGB+')';
+    if(fbSplashN>0){ctx.fillStyle='rgb('+fbRainRGB+')';
       for(var j=fbSplashN-1;j>=0;j--){var sp=fbSplashes[j];sp.x+=sp.vx;sp.y+=sp.vy;sp.vy+=0.25;sp.lif-=sp.dec;
         if(sp.lif<=0){fbSplashN--;if(j<fbSplashN){var t=fbSplashes[fbSplashN];fbSplashes[j]=t;fbSplashes[fbSplashN]=sp;}}}
       c.globalAlpha=0.4;c.beginPath();var hc=false;
@@ -290,8 +303,14 @@
           dropCount: dropCount
         }, [offscreen]);
         useWorker = true;
+
+        // Listen for drain completion
+        worker.onmessage = function (e) {
+          if (e.data.type === 'drained') {
+            canvas.style.display = 'none';
+          }
+        };
       } catch (err) {
-        // Worker creation failed — fall back
         useWorker = false;
       }
     }
@@ -315,6 +334,17 @@
       } else {
         fbScrollY = sy;
       }
+    }, { passive: true });
+
+    // ── Mouse → forward cursor position to worker for halo bounce ──
+    // Throttle: send at most every 16ms (~60fps) to avoid flooding
+    var lastCursorSend = 0;
+    document.addEventListener('mousemove', function (e) {
+      if (!useWorker || !worker) return;
+      var now = performance.now();
+      if (now - lastCursorSend < 16) return;
+      lastCursorSend = now;
+      worker.postMessage({ type: 'cursor', x: e.clientX, y: e.clientY });
     }, { passive: true });
 
     // ── Resize ──

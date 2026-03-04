@@ -13,88 +13,97 @@
   pointer-events: none;
 }
 
-/* ---- Umbrella toggle button (positioned next to hero title) ---- */
-#hero .hero__content {
-  position: relative;
-}
-
-.rain-toggle {
-  position: absolute;
-  top: 0.15em;
-  right: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.35rem;
+/* ---- Umbrella toggle button (positioned right of hero title) ---- */
+.hero__title-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--clr-text-muted);
+  gap: 0.35em;
+  margin-bottom: 2.5rem;
+}
+
+.hero__title-row .section__title {
+  margin-bottom: 0;
+}
+
+.rain-toggle {
+  flex-shrink: 0;
+  margin-top: -0.55em;  /* offset for ::after underline to align with text */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--clr-text);
+  opacity: 0.55;
   border-radius: 50%;
-  transition: background 0.3s ease, color 0.4s ease, transform 0.3s ease;
+  transition: background 0.35s ease, color 0.4s ease, opacity 0.4s ease, transform 0.3s ease;
   z-index: 5;
 }
 
 .rain-toggle:hover {
   background: rgba(242, 162, 133, 0.12);
   color: var(--clr-primary);
+  opacity: 0.85;
 }
 
 .rain-toggle:active {
-  transform: scale(0.9);
+  transform: scale(0.88);
 }
 
 /* SVG sizing */
 .rain-toggle svg {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   overflow: visible;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
 }
 
 /* ---- Umbrella SVG animation ---- */
 
-/* Closed state (default) — canopy hidden, handle visible */
+/* Inactive state — canopy rotated/tilted, drops falling straight */
 .rain-toggle .umbrella-canopy {
   transform-origin: 50% 100%;
-  transform: scaleY(0) rotate(-15deg);
-  opacity: 0;
+  transform: rotate(-20deg) scaleY(0.85);
   transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
               opacity 0.3s ease;
 }
 
 .rain-toggle .umbrella-handle {
-  transition: transform 0.4s ease, opacity 0.3s ease;
+  transition: transform 0.4s ease;
 }
 
 .rain-toggle .umbrella-drops {
-  opacity: 0;
-  transform: translateY(-4px);
-  transition: opacity 0.4s ease 0.2s, transform 0.4s ease 0.2s;
+  opacity: 0.5;
+  transform: translateY(0);
+  transition: opacity 0.4s ease 0.15s, transform 0.4s ease 0.15s;
 }
 
-/* Active state — canopy open, drops visible */
+/* Active state — canopy straight up (protecting), drops scatter outward */
 .rain-toggle--active {
   color: var(--clr-primary);
+  opacity: 1;
 }
 
 .rain-toggle--active .umbrella-canopy {
-  transform: scaleY(1) rotate(0deg);
-  opacity: 1;
+  transform: rotate(0deg) scaleY(1);
 }
 
 .rain-toggle--active .umbrella-drops {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(2px);
 }
 
-/* Subtle pulse when active */
+/* Subtle glow pulse when active */
 .rain-toggle--active:hover {
-  animation: rain-pulse 1.5s ease-in-out infinite;
+  animation: rain-pulse 1.8s ease-in-out infinite;
 }
 
 @keyframes rain-pulse {
   0%, 100% { filter: drop-shadow(0 0 0px transparent); }
-  50%      { filter: drop-shadow(0 0 6px var(--clr-primary)); }
+  50%      { filter: drop-shadow(0 0 8px var(--clr-primary)); }
 }
 
 /* ==========================================================================
@@ -105,6 +114,10 @@
   background: rgba(156, 39, 176, 0.15);
 }
 
+[data-theme="dark"] .rain-toggle svg {
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+}
+
 /* ==========================================================================
    Nature Theme Overrides
    ========================================================================== */
@@ -113,20 +126,24 @@
   background: rgba(94, 184, 58, 0.12);
 }
 
+[data-theme="nature"] .rain-toggle svg {
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+}
+
 /* ==========================================================================
    Responsive
    ========================================================================== */
 
 @media (max-width: 768px) {
   .rain-toggle svg {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
   }
 }
 
 @media (max-width: 480px) {
   .rain-toggle svg {
-    width: 20px;
-    height: 20px;
+    width: 21px;
+    height: 21px;
   }
 }
