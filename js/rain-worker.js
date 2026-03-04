@@ -6,14 +6,19 @@
 importScripts('rain-engine.js');
 
 var engine = createRainEngine();
+var looping = false;
 
 function loop() {
   var result = engine.draw();
   if (result === 'drained') {
+    looping = false;
     self.postMessage({ type: 'drained' });
     return;
   }
-  if (result === 'stopped') return;
+  if (result === 'stopped') {
+    looping = false;
+    return;
+  }
   requestAnimationFrame(loop);
 }
 
@@ -27,7 +32,10 @@ self.onmessage = function (e) {
 
     case 'start':
       engine.start(msg.scrollY);
-      requestAnimationFrame(loop);
+      if (!looping) {
+        looping = true;
+        requestAnimationFrame(loop);
+      }
       break;
 
     case 'stop':
