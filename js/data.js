@@ -189,7 +189,7 @@ const SKILL_GROUPS = [
   {
     label: 'Langages',
     skills: [
-      { name: 'C',          icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/c/c-original.svg', description: 'Programmation système, pointeurs, gestion mémoire. Utilisé en cours et projets bas niveau.', level: 2 },
+      { name: 'C',          icon: 'assets/images/c-icon.png', description: 'Programmation système, pointeurs, gestion mémoire. Utilisé en cours et projets bas niveau.', level: 2 },
       { name: 'C++',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg', description: 'Programmation orientée objet, STL et gestion de ressources. Utilisé pour des projets algorithmiques.', level: 2 },
       { name: 'Java',       icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg', description: 'Programmation orientée objet, héritage, interfaces, collections, JavaFX.', level: 4 },
       { name: 'Python',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg', description: 'Vu en au lycée en spécialité NSI : POO, arbres, recursivité.', level: 2 },
@@ -205,7 +205,7 @@ const SKILL_GROUPS = [
       { name: 'GitLab & GitHub',   icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/gitlab/gitlab-original.svg', description: 'Hébergement de dépôts, issues, CI/CD. GitLab institutionnel + GitHub pour projets personnels.', level: 3 },
       { name: 'VS Code',           icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vscode/vscode-original.svg', description: 'Éditeur principal pour le développement web, extensions, debugging intégré.', level: 5 },
       { name: 'JetBrains',         icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/jetbrains/jetbrains-original.svg', description: 'IntelliJ IDEA pour Java, PhpStorm pour PHP, CLion pour C/C++. IDE complets utilisés en TP/Projets.', level: 4 },
-      { name: 'Bash',              icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/bash/bash-original.svg', description: 'Scripts shell, automatisation de tâches, navigation système Linux.', level: 3 },
+      { name: 'Bash',              icon: 'assets/images/bash.webp', description: 'Scripts shell, automatisation de tâches, navigation système Linux.', level: 3 },
       { name: 'Mocha',              icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mocha/mocha-original.svg', description: 'Framework de test pour JavaScript et Node.js, utilisé pour les tests unitaires et d\'intégration.', level: 2 },
     ],
   },
@@ -214,7 +214,7 @@ const SKILL_GROUPS = [
     skills: [
       { name: 'HTML / CSS', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg', description: 'Structure sémantique, Flexbox, Grid, animations CSS, responsive design mobile-first.', level: 4 },
       { name: 'React',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg', description: 'Composants, hooks, state management. Développement d\'interfaces modernes. Utilisé pour l\'Application web Aidémé.', level: 2 },
-      { name: 'Symfony',      icon: 'https://img.icons8.com/color/48/symfony.png', description: 'Framework PHP pour le développement d\'applications web robustes et maintenables.', level: 2 },
+      { name: 'Symfony',      icon: 'assets/images/symfony.png', description: 'Framework PHP pour le développement d\'applications web robustes et maintenables.', level: 2 },
     ],
   },
   {
