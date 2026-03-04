@@ -173,7 +173,10 @@
           '<line x1="12" y1="12" x2="12" y2="21"/>' +
           '<path d="M12 21c0 0-2 0-2-1.5S12 18 12 18" fill="none"/>' +
         '</g>' +
-      '</svg>';
+      '</svg>' +
+      '<span class="rain-ambient" aria-hidden="true">' +
+        '<i></i><i></i><i></i><i></i><i></i><i></i>' +
+      '</span>';
 
     btn.addEventListener('click', function (e) {
       e.preventDefault();

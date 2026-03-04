@@ -26,7 +26,14 @@
   margin-bottom: 0;
 }
 
+/* Shift underline right to compensate for button width beside title */
+.hero__title-row .section__title::after {
+  transform: translateX(20px);
+}
+
 .rain-toggle {
+  position: relative;
+  overflow: visible;
   flex-shrink: 0;
   margin-top: -0.55em;  /* offset for ::after underline to align with text */
   background: none;
@@ -59,6 +66,43 @@
   height: 28px;
   overflow: visible;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+}
+
+/* ---- Ambient drops around closed umbrella (inactive state only) ---- */
+.rain-ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.rain-ambient i {
+  position: absolute;
+  display: block;
+  width: 1.5px;
+  background: currentColor;
+  border-radius: 1px;
+  opacity: 0;
+  animation: ambient-drop linear infinite;
+}
+
+/* 6 drops — varied x positions across the button, staggered timing */
+.rain-ambient i:nth-child(1) { left:  4px;  top: 0;  height: 7px; animation-duration: 1.7s; animation-delay: 0.0s; }
+.rain-ambient i:nth-child(2) { left: 12px;  top: 0;  height: 5px; animation-duration: 2.0s; animation-delay: 0.5s; }
+.rain-ambient i:nth-child(3) { left: 20px;  top: 0;  height: 6px; animation-duration: 1.5s; animation-delay: 1.1s; }
+.rain-ambient i:nth-child(4) { right: 4px;  top: 0;  height: 8px; animation-duration: 1.9s; animation-delay: 0.3s; }
+.rain-ambient i:nth-child(5) { right: 12px; top: 0;  height: 5px; animation-duration: 2.2s; animation-delay: 0.85s; }
+.rain-ambient i:nth-child(6) { left: 50%;   top: 0;  height: 6px; animation-duration: 1.6s; animation-delay: 1.4s; }
+
+@keyframes ambient-drop {
+  0%   { opacity: 0;    transform: translateY(-2px); }
+  15%  { opacity: 0.45; }
+  80%  { opacity: 0.1;  }
+  100% { opacity: 0;    transform: translateY(28px); }
+}
+
+/* Hide ambient drops when rain is active — real canvas rain takes over */
+.rain-toggle--active .rain-ambient {
+  display: none;
 }
 
 /* ---- Umbrella SVG animation (closed ↔ open dome morph) ---- */
@@ -129,11 +173,17 @@
     width: 24px;
     height: 24px;
   }
+  .hero__title-row .section__title::after {
+    transform: translateX(18px);
+  }
 }
 
 @media (max-width: 480px) {
   .rain-toggle svg {
     width: 21px;
     height: 21px;
+  }
+  .hero__title-row .section__title::after {
+    transform: translateX(16px);
   }
 }
