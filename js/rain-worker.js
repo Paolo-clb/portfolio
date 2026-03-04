@@ -44,10 +44,12 @@ self.onmessage = function (e) {
 
     case 'resize':
       engine.resize(msg.width, msg.height, msg.dropCount);
+      if (msg.scrollY !== undefined) engine.setScroll(msg.scrollY);
       break;
 
     case 'surfaces':
       engine.setSurfaces(msg.surfaces);
+      if (msg.scrollY !== undefined) engine.setScroll(msg.scrollY);
       break;
 
     case 'cursor':

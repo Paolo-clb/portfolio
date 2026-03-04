@@ -64,10 +64,12 @@
 
   function sendSurfaces() {
     var s = querySurfaces();
+    var sy = window.pageYOffset || 0;
     if (useWorker && worker) {
-      worker.postMessage({ type: 'surfaces', surfaces: s });
+      worker.postMessage({ type: 'surfaces', surfaces: s, scrollY: sy });
     } else if (fbEngine) {
       fbEngine.setSurfaces(s);
+      fbEngine.setScroll(sy);
     }
   }
 
@@ -144,10 +146,12 @@
         type: 'resize',
         width: W,
         height: H,
-        dropCount: dropCount
+        dropCount: dropCount,
+        scrollY: window.pageYOffset || 0
       });
     } else if (fbEngine) {
       fbEngine.resize(W, H, dropCount);
+      fbEngine.setScroll(window.pageYOffset || 0);
     }
 
     if (enabled) sendSurfaces();
