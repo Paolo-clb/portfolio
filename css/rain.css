@@ -139,7 +139,7 @@
   padding: 0.35rem 0.7rem;
   border-radius: var(--radius);
   background: rgba(27, 26, 39, 0.7);
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(calc(3px * var(--blur-factor)));
   border: 1px solid rgba(191, 153, 160, 0.15);
   color: var(--clr-text);
   font-size: 0.72rem;

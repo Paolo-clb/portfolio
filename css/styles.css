@@ -29,6 +29,9 @@
   --radius: 0.5rem;
   --shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   --transition: 0.3s ease;
+
+  /* Blur scaling — 1 for light, reduced for dark/nature */
+  --blur-factor: 1;
 }
 
 *,
@@ -144,7 +147,7 @@ ul {
   width: 100%;
   z-index: 100;
   background: rgba(16, 15, 24, 0.6);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(calc(4px * var(--blur-factor)));
   border-bottom: 1px solid var(--clr-border);
 }
 
@@ -289,7 +292,7 @@ section.hero {
   max-width: 600px;
   margin-inline: auto;
   background: rgba(27, 26, 39, 0.5);
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(calc(3px * var(--blur-factor)));
   border: 1px solid rgba(191, 153, 160, 0.1);
   border-radius: var(--radius);
   padding: 2rem;
@@ -411,7 +414,7 @@ section.hero {
   border-top: 1px solid rgba(191, 153, 160, 0.15);
   color: var(--clr-text-muted);
   background: rgba(16, 15, 24, 0.6);
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(calc(3px * var(--blur-factor)));
   position: relative;
   z-index: 1;
 }
@@ -440,7 +443,7 @@ section.hero {
   background: rgba(27, 26, 39, 0.55);
   border: 1px solid rgba(191, 153, 160, 0.18);
   border-radius: var(--radius);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(calc(4px * var(--blur-factor)));
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
   opacity: 0;
   transform: translateY(10px);
@@ -499,7 +502,7 @@ section.hero {
   flex-direction: column;
   background: rgba(27, 26, 39, 0.4);
   border: 1px solid rgba(191, 153, 160, 0.15);
-  backdrop-filter: blur(7px);
+  backdrop-filter: blur(calc(7px * var(--blur-factor)));
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35),
               inset 0 1px 0 rgba(255, 255, 255, 0.05);
   overflow: hidden;
@@ -553,7 +556,7 @@ section.hero {
   background: rgba(27, 26, 39, 0.4);
   border: 1px solid rgba(191, 153, 160, 0.15);
   border-radius: calc(var(--radius) * 1.5);
-  backdrop-filter: blur(7px);
+  backdrop-filter: blur(calc(7px * var(--blur-factor)));
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35),
               inset 0 1px 0 rgba(255, 255, 255, 0.05);
   padding: 1.25rem;
@@ -818,6 +821,7 @@ section.hero {
   --clr-text: #e0e0ff;
   --clr-text-muted: #bbaadd;
   --clr-border: #3f51b5;
+  --blur-factor: 0.35;
 }
 
 [data-theme="dark"] body::before {
@@ -949,6 +953,7 @@ section.hero {
   --clr-text: #dff0d8;
   --clr-text-muted: #89a87c;
   --clr-border: #2a4522;
+  --blur-factor: 0.35;
 }
 
 [data-theme="nature"] body::before {
@@ -1146,7 +1151,7 @@ section.hero {
     z-index: 20;
     margin: -0.5rem -0.25rem 0 0;
     background: rgba(16, 15, 24, 0.6);
-    backdrop-filter: blur(3px);
+    backdrop-filter: blur(calc(3px * var(--blur-factor)));
     border: 1px solid rgba(191, 153, 160, 0.25);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
   }

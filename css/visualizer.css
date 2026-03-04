@@ -20,8 +20,8 @@
   z-index: 0;
   pointer-events: none;
   background: rgba(16, 15, 24, 0.15);
-  backdrop-filter: blur(1px);
-  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(calc(1px * var(--blur-factor)));
+  -webkit-backdrop-filter: blur(calc(1px * var(--blur-factor)));
 }
 
 [data-theme="dark"] .bg-tint-overlay {
