@@ -1119,65 +1119,6 @@ section.hero {
     border-top: 1px solid rgba(191, 153, 160, 0.15);
   }
 
-  /* ---- Modals mobile centering ---- */
-  .modal {
-    width: 95%;
-    max-width: 95%;
-    max-height: 90vh;
-    padding: 1.5rem;
-  }
-
-  .modal__header {
-    position: relative;
-    top: auto;
-    background: none;
-    backdrop-filter: none;
-    border-bottom: 1px solid rgba(191, 153, 160, 0.12);
-    padding: 0.5rem 0 0.75rem;
-    margin-top: 0;
-  }
-
-  /* Hide header close button on mobile */
-  .modal__header .modal__close {
-    display: none;
-  }
-
-  /* Show sticky close button on mobile */
-  .modal__close--sticky {
-    display: flex;
-    position: sticky;
-    top: 0;
-    float: right;
-    z-index: 20;
-    margin: -0.5rem -0.25rem 0 0;
-    background: rgba(16, 15, 24, 0.6);
-    backdrop-filter: blur(calc(3px * var(--blur-factor)));
-    border: 1px solid rgba(191, 153, 160, 0.25);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
-  }
-
-  .modal__title {
-    font-size: 1.35rem;
-  }
-
-  .modal__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .detail-modal {
-    width: 95%;
-    max-width: 95%;
-    max-height: 90vh;
-  }
-
-  .detail-modal__content {
-    padding: 1.25rem 1.25rem 1.5rem;
-  }
-
-  .detail-modal__title {
-    font-size: 1.35rem;
-  }
-
   .scroll-hint {
     bottom: 5rem;
   }
@@ -1204,34 +1145,14 @@ section.hero {
 
 /* --- Dark: Responsive overrides --- */
 @media (max-width: 768px) {
-  [data-theme="dark"] .modal__header {
-    background: none;
-    border-bottom-color: rgba(63, 81, 181, 0.15);
-  }
-
   [data-theme="dark"] .skills-group:nth-child(even) {
     border-top-color: rgba(63, 81, 181, 0.2);
-  }
-
-  [data-theme="dark"] .modal__close--sticky {
-    background: rgba(10, 10, 32, 0.7);
-    border-color: rgba(63, 81, 181, 0.3);
   }
 }
 
 /* --- Nature: Responsive overrides --- */
 @media (max-width: 768px) {
-  [data-theme="nature"] .modal__header {
-    background: none;
-    border-bottom-color: rgba(42, 69, 34, 0.15);
-  }
-
   [data-theme="nature"] .skills-group:nth-child(even) {
     border-top-color: rgba(42, 69, 34, 0.2);
-  }
-
-  [data-theme="nature"] .modal__close--sticky {
-    background: rgba(10, 18, 8, 0.7);
-    border-color: rgba(42, 69, 34, 0.3);
   }
 }
