@@ -121,14 +121,15 @@ function hitCursor(x, tipY) {
   return -1;
 }
 
-/* ── Surface hit test ───────────────────────────────────── */
-function hitSurface(x, tipY) {
+/* ── Surface hit test (swept — never misses fast drops) ── */
+function hitSurface(x, tipY, vy) {
+  var prevTip = tipY - vy;
   for (var i = 0, n = surfAbs.length; i < n; i++) {
     var s = surfAbs[i];
     var vTop = s.absTop - scrollY;
     var vBot = s.absBottom - scrollY;
     if (vBot < 0 || vTop > H) continue;
-    if (x >= s.left && x <= s.right && tipY >= vTop && tipY <= vTop + 10)
+    if (x >= s.left && x <= s.right && tipY >= vTop && prevTip < vTop)
       return vTop;
   }
   return -1;
@@ -184,7 +185,7 @@ function draw() {
         spawnSplash(d.x, d.y + d.len);
         spawnRipple(d.x, d.y + d.len);
       } else {
-        vTop = hitSurface(d.x, d.y + d.len);
+        vTop = hitSurface(d.x, d.y + d.len, d.vy);
         if (vTop >= 0) {
           d.y = vTop - d.len;
           spawnSplash(d.x, vTop);

@@ -221,11 +221,12 @@
     for(var i=0;i<3;i++){if(fbSplashN>=150)return;var s=fbSplashes[fbSplashN++];
     s.x=x;s.y=y;s.vx=-2+Math.random()*4;s.vy=-1.2-Math.random()*2.2;s.lif=1;s.dec=1/(12+Math.random()*8);s.r=0.7+Math.random();}
   }
-  function fbHitSurface(x,tipY) {
+  function fbHitSurface(x,tipY,vy) {
+    var pT=tipY-vy;
     for(var i=0,n=fbSurfAbs.length;i<n;i++){
       var s=fbSurfAbs[i],vT=s.absTop-fbScrollY;
       if(s.absBottom-fbScrollY<0||vT>H)continue;
-      if(x>=s.left&&x<=s.right&&tipY>=vT&&tipY<=vT+10)return vT;
+      if(x>=s.left&&x<=s.right&&tipY>=vT&&pT<vT)return vT;
     } return -1;
   }
   function fbDraw() {
@@ -235,7 +236,7 @@
     var i,d,a,vTop,count=fbDrops.length;
     for(i=0;i<count;i++){d=fbDrops[i];
       if(d.bou){d.x+=d.vx;d.y+=d.vy;d.vy+=0.25;d.lif-=0.07;if(d.lif<=0||d.y>H+10)fbResetDrop(d);}
-      else{d.x+=d.vx;d.y+=d.vy;vTop=fbHitSurface(d.x,d.y+d.len);
+      else{d.x+=d.vx;d.y+=d.vy;vTop=fbHitSurface(d.x,d.y+d.len,d.vy);
         if(vTop>=0){d.y=vTop-d.len;fbSpawnSplash(d.x,vTop);d.bou=true;d.vy=-(Math.abs(d.vy)*(0.12+Math.random()*0.12));d.vx=-1.5+Math.random()*3;d.len*=0.4;d.lif=1;}
         else if(d.y>H+10||d.x<-10||d.x>W+10)fbResetDrop(d);}
       a=d.a*d.lif;d._ca=a>=0.02?a:0;
