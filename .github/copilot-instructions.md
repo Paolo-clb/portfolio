@@ -7,7 +7,9 @@ Static single-page portfolio — no build tools, no frameworks, no bundler. Host
 ```
 index.html              ← Single entry point; all sections live here
 css/styles.css          ← Main styles (~2176 lines), organized by component blocks
-css/typing-game.css     ← Typing game styles (~2397 lines)
+css/typing-game.css     ← Typing game core styles (~1387 lines) — base, navbar, text, cursor, stats, zen, hardcore, dark/nature core overrides, tooltip
+css/typing-game-ai.css  ← Typing game AI styles (~882 lines) — AI toggle, popup, inline loader, dark/nature AI overrides
+css/typing-game-intro.css ← Typing game intro styles (~198 lines) — typewriter, loading, reveal animation, dark/nature intro overrides
 css/music-player.css    ← Music player styles (~406 lines, navbar mini-player)
 css/visualizer.css      ← Background canvas visualizer (~34 lines, full-screen)
 css/rain.css            ← Rain effect styles (~140 lines, umbrella button + canvas)
@@ -95,11 +97,11 @@ Theme toggle: `initThemeToggle()` in `main.js`, persisted in `localStorage('port
 
 **Background credit badge:** CSS `.bg-credit` element created by `initThemeToggle()`. Shows game/artwork credit (Katana Zero for dark, Hollow Knight for nature) for 3 seconds on theme switch. Auto-dismisses.
 
-Dark & nature theme CSS overrides in `styles.css` are all under `[data-theme="dark"]` and `[data-theme="nature"]` selectors. Each component CSS file (`typing-game.css`, `music-player.css`, `visualizer.css`, `rain.css`) has its own dark + nature override blocks. All components read `document.documentElement.dataset.theme` or `getAttribute('data-theme')` for theme-aware colors.
+Dark & nature theme CSS overrides in `styles.css` are all under `[data-theme="dark"]` and `[data-theme="nature"]` selectors. Each component CSS file (`typing-game.css`, `typing-game-ai.css`, `typing-game-intro.css`, `music-player.css`, `visualizer.css`, `rain.css`) has its own dark + nature override blocks. All components read `document.documentElement.dataset.theme` or `getAttribute('data-theme')` for theme-aware colors.
 
 ## Features
 
-### Typing Game (`js/typing-game.js` + `js/typing-game-i18n.js` + `js/typing-game-ai.js` + `js/typing-game-intro.js` + `css/typing-game.css`)
+### Typing Game (`js/typing-game.js` + `js/typing-game-i18n.js` + `js/typing-game-ai.js` + `js/typing-game-intro.js` + `css/typing-game.css` + `css/typing-game-ai.css` + `css/typing-game-intro.css`)
 
 The largest and most complex feature. Split into 4 JS files (see "Typing Game Modular Architecture" above).
 
@@ -311,7 +313,9 @@ No install step. No build step. No environment variables. Web Audio features (mu
 - Dark theme: overrides under `[data-theme="dark"]` selectors in each CSS file
 - Nature theme: overrides under `[data-theme="nature"]` selectors in each CSS file
 - `styles.css` organized blocks: Variables & Reset, Layout, Header & Navigation, Buttons, Hero, Projects, Modal, Detail Modal, Skills, Skill Popup, Contact Form, Scroll Hint, Footer, CV Section, Cursor Halo, Background Credit Badge, Theme Toggle, Dark Theme, Nature Theme, Responsive
-- `typing-game.css` organized blocks: Base, Blur/Focus states, Navbar, Text settings, Eye toggle, Hardcore, AI toggle/theme button/popup/inline loader, Intro typewriter, Text display, Character states, Cursor (blink/combo/trail), Stats, Hints, Dark Theme, Nature Theme, Responsive, Smartphone, Zen mode/popup
+- `typing-game.css` organized blocks: Base, Blur/Focus states, Navbar, Eye toggle, Settings gear/popup, Text display, Character states, Cursor (blink/combo/trail), Stats, Best score, Hints, Responsive, Zen mode/popup, Hardcore, Dark Theme (core overrides), Nature Theme (core overrides), Navbar tooltip
+- `typing-game-ai.css` organized blocks: AI toggle, Floating mini-stars, AI theme button, AI popup input/options, Strict tooltip, AI loading indicator, AI Inline Loader (navbar disabled, responsive, overlay, content, result, dark overrides), Dark Theme (AI overrides), Nature Theme (AI overrides)
+- `typing-game-intro.css` organized blocks: Intro text container, Loading screen, Intro button, Reveal animation, Dark Theme (intro overrides), Nature Theme (intro overrides)
 - `music-player.css` organized blocks: Container, Cover, Track info, Controls, Volume, Playlist dropdown, Responsive, Dark Theme, Nature Theme
 - `rain.css` organized blocks: Canvas, Hero title row, Umbrella button, SVG dome animation, Active state, Dark Theme, Nature Theme, Responsive
 - `visualizer.css` organized blocks: Canvas, Tint overlay, Dark Theme, Nature Theme

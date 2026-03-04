@@ -1,0 +1,198 @@
+/* ==========================================================================
+   Typing Game — Intro Typewriter Mode
+   Extracted from typing-game.css — intro loading, typewriter, reveal animation
+   ========================================================================== */
+
+/* ==========================================================================
+   Intro Typewriter Mode (before game is unlocked)
+   ========================================================================== */
+
+/* Intro text container â€" auto height so it grows with content */
+.typing-game__text--intro {
+  height: auto;
+  min-height: calc(4.8em + 1.5rem);
+  overflow: visible;
+  background: rgba(27, 26, 39, 0.15);
+  border: 1px solid rgba(191, 153, 160, 0.1);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* ---- Intro loading screen ---- */
+.typing-game__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  min-height: calc(4.8em + 1.5rem);
+  padding: 2rem;
+  background: rgba(27, 26, 39, 0.15);
+  border: 1px solid rgba(191, 153, 160, 0.1);
+  border-radius: var(--radius);
+  transition: opacity 0.4s ease;
+}
+
+.typing-game__loading--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.typing-game__loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(191, 153, 160, 0.15);
+  border-top-color: var(--clr-primary);
+  border-radius: 50%;
+  animation: typing-loading-spin 0.8s linear infinite;
+}
+
+@keyframes typing-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+.typing-game__loading-text {
+  font-size: 0.9rem;
+  color: var(--clr-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.typing-game__text--intro .typing-game__intro-inner {
+  transition: none;
+  transform: none;
+}
+
+/* Each typewriter char fades in */
+.typing-game__intro-char {
+  animation: intro-char-in 0.15s ease forwards;
+}
+
+@keyframes intro-char-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Fade out intro elements on transition */
+.typing-game__text--intro-out {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.typing-game__intro-btn--out {
+  opacity: 0 !important;
+  transform: translateY(10px) !important;
+}
+
+/* ---- "Jouer au Typing Game" button ---- */
+
+.typing-game__intro-btn {
+  margin-top: 2rem;
+  opacity: 0;
+  transform: translateY(15px);
+  transition: opacity 0.5s ease, transform 0.5s ease,
+              background 0.3s ease, color 0.3s ease;
+  pointer-events: none;
+}
+
+.typing-game__intro-btn--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  animation: intro-btn-glow 2s ease-in-out infinite;
+}
+
+@keyframes intro-btn-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 162, 133, 0); }
+  50%      { box-shadow: 0 0 26px rgba(242, 162, 133, 0.25), 0 0 55px rgba(242, 162, 133, 0.12); }
+}
+
+/* ---- Reveal animation (game appearing after intro) ---- */
+
+.typing-game--reveal .typing-game__navbar,
+.typing-game--reveal .typing-game__text,
+.typing-game--reveal .typing-game__stats,
+.typing-game--reveal .typing-game__hc-countdown {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.typing-game--reveal-active .typing-game__navbar {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.typing-game--reveal-active .typing-game__text {
+  transition: opacity 0.5s ease 0.1s, transform 0.5s ease 0.1s;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.typing-game--reveal-active .typing-game__stats {
+  transition: opacity 0.5s ease 0.2s, transform 0.5s ease 0.2s;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.typing-game--reveal .typing-game__restart {
+  opacity: 0;
+}
+
+.typing-game--reveal-active .typing-game__restart {
+  transition: opacity 0.5s ease 0.3s;
+  opacity: 0;
+}
+
+.typing-game--reveal-active .typing-game__hc-countdown {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   Dark Theme — Intro overrides
+   ========================================================================== */
+
+/* --- Dark: Intro text --- */
+[data-theme="dark"] .typing-game__text--intro {
+  background: rgba(26, 0, 51, 0.55);
+  border-color: rgba(63, 81, 181, 0.15);
+}
+
+[data-theme="dark"] .typing-game__loading {
+  background: rgba(26, 0, 51, 0.55);
+  border-color: rgba(63, 81, 181, 0.15);
+}
+
+/* --- Dark: Intro button glow --- */
+[data-theme="dark"] .typing-game__intro-btn--visible {
+  animation-name: intro-btn-glow-dark;
+}
+
+@keyframes intro-btn-glow-dark {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(156, 39, 176, 0); }
+  50%      { box-shadow: 0 0 28px rgba(156, 39, 176, 0.3), 0 0 60px rgba(156, 39, 176, 0.15); }
+}
+
+/* ==========================================================================
+   Nature Theme — Intro overrides
+   ========================================================================== */
+
+/* --- Nature: Intro text --- */
+[data-theme="nature"] .typing-game__text--intro {
+  background: rgba(21, 34, 16, 0.55);
+  border-color: rgba(42, 69, 34, 0.15);
+}
+
+[data-theme="nature"] .typing-game__loading {
+  background: rgba(21, 34, 16, 0.55);
+  border-color: rgba(42, 69, 34, 0.15);
+}
+
+/* --- Nature: Intro button glow --- */
+[data-theme="nature"] .typing-game__intro-btn--visible {
+  animation-name: intro-btn-glow-nature;
+}
+
+@keyframes intro-btn-glow-nature {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(94, 184, 58, 0); }
+  50%      { box-shadow: 0 0 28px rgba(94, 184, 58, 0.3), 0 0 60px rgba(94, 184, 58, 0.15); }
+}
