@@ -9,6 +9,7 @@
    • Cursor halo bounce — mouse position forwarded to Worker
    • Drain mode — disabling lets existing drops finish falling
    • Falls back to main-thread rendering if OffscreenCanvas unsupported
+   • Fallback uses the same full-quality RainEngine (rain-engine.js)
    ========================================================================== */
 (function () {
   'use strict';
@@ -31,12 +32,8 @@
   var useWorker = false;
 
   /* ── Fallback state (main-thread, only used if no OffscreenCanvas) ── */
-  var fbCtx, fbRafId;
-  var fbDrops = [], fbSplashes = [], fbSplashN = 0;
-  var fbSurfAbs = [];
-  var fbScrollY = 0;
-  var fbRainRGB = '220,220,240';
-  var FB_RES = 0.5, FB_DROP_W = 1.8;
+  var fbEngine = null;
+  var fbRafId  = null;
 
   /* ── Surface queries (main thread only — DOM access) ──── */
   function querySurfaces() {
@@ -69,8 +66,8 @@
     var s = querySurfaces();
     if (useWorker && worker) {
       worker.postMessage({ type: 'surfaces', surfaces: s });
-    } else {
-      fbSurfAbs = s;
+    } else if (fbEngine) {
+      fbEngine.setSurfaces(s);
     }
   }
 
@@ -83,10 +80,8 @@
     var t = currentTheme();
     if (useWorker && worker) {
       worker.postMessage({ type: 'theme', theme: t });
-    } else {
-      if (t === 'dark')        { fbRainRGB='200,140,255'; }
-      else if (t === 'nature') { fbRainRGB='120,210,240'; }
-      else                     { fbRainRGB='220,220,240'; }
+    } else if (fbEngine) {
+      fbEngine.setTheme(t);
     }
   }
 
@@ -103,7 +98,8 @@
         scrollY: window.pageYOffset || 0
       });
     } else {
-      fbStart();
+      fbEngine.start(window.pageYOffset || 0);
+      if (!fbRafId) fbRafId = requestAnimationFrame(fbDraw);
     }
 
     // Periodically refresh surface positions (layout may shift)
@@ -119,8 +115,8 @@
       worker.postMessage({ type: 'drain' });
       // Worker will postMessage 'drained' when done → hide canvas
     } else {
-      fbStop();
-      canvas.style.display = 'none';
+      fbEngine.drain();
+      // fbDraw loop will detect 'drained' and hide canvas
     }
   }
 
@@ -150,12 +146,8 @@
         height: H,
         dropCount: dropCount
       });
-    } else {
-      if (canvas) {
-        canvas.width  = Math.ceil(W * FB_RES);
-        canvas.height = Math.ceil(H * FB_RES);
-      }
-      if (enabled) fbBuildDrops(dropCount);
+    } else if (fbEngine) {
+      fbEngine.resize(W, H, dropCount);
     }
 
     if (enabled) sendSurfaces();
@@ -200,73 +192,20 @@
 
   /* =======================================================================
      Fallback — main-thread rendering (only if OffscreenCanvas unavailable)
-     Identical physics/batched-draw from the old IIFE, kept minimal.
+     Uses the same full-quality RainEngine from rain-engine.js.
      ======================================================================= */
-  function fbResetDrop(d) {
-    d.x=Math.random()*W; d.y=-(Math.random()*80+10);
-    d.vy=7+Math.random()*6; d.vx=-0.5+Math.random();
-    d.len=d.vy*1.1+Math.random()*4; d.a=0.3+Math.random()*0.35;
-    d.bou=false; d.lif=1; d._ca=0;
-  }
-  function fbBuildDrops(n) {
-    fbDrops.length=n;
-    for(var i=0;i<n;i++){var d=fbDrops[i]||{};fbResetDrop(d);d.y=-(Math.random()*H+10);fbDrops[i]=d;}
-  }
-  function fbBuildSplashes() {
-    fbSplashes.length=150;
-    for(var i=0;i<150;i++) fbSplashes[i]=fbSplashes[i]||{x:0,y:0,vx:0,vy:0,lif:0,dec:0,r:0};
-    fbSplashN=0;
-  }
-  function fbSpawnSplash(x,y) {
-    for(var i=0;i<3;i++){if(fbSplashN>=150)return;var s=fbSplashes[fbSplashN++];
-    s.x=x;s.y=y;s.vx=-2+Math.random()*4;s.vy=-1.2-Math.random()*2.2;s.lif=1;s.dec=1/(12+Math.random()*8);s.r=0.7+Math.random();}
-  }
-  function fbHitSurface(x,tipY,vy) {
-    var pT=tipY-vy;
-    for(var i=0,n=fbSurfAbs.length;i<n;i++){
-      var s=fbSurfAbs[i],vT=s.absTop-fbScrollY;
-      if(s.absBottom-fbScrollY<0||vT>H)continue;
-      if(x>=s.left&&x<=s.right&&tipY>=vT&&pT<vT)return vT;
-    } return -1;
-  }
   function fbDraw() {
-    if(!enabled){fbRafId=null;return;}
-    fbRafId=requestAnimationFrame(fbDraw);
-    var c=fbCtx; c.setTransform(FB_RES,0,0,FB_RES,0,0); c.clearRect(0,0,W,H);
-    var i,d,a,vTop,count=fbDrops.length;
-    for(i=0;i<count;i++){d=fbDrops[i];
-      if(d.bou){d.x+=d.vx;d.y+=d.vy;d.vy+=0.25;d.lif-=0.07;if(d.lif<=0||d.y>H+10)fbResetDrop(d);}
-      else{d.x+=d.vx;d.y+=d.vy;vTop=fbHitSurface(d.x,d.y+d.len,d.vy);
-        if(vTop>=0){d.y=vTop-d.len;fbSpawnSplash(d.x,vTop);d.bou=true;d.vy=-(Math.abs(d.vy)*(0.12+Math.random()*0.12));d.vx=-1.5+Math.random()*3;d.len*=0.4;d.lif=1;}
-        else if(d.y>H+10||d.x<-10||d.x>W+10)fbResetDrop(d);}
-      a=d.a*d.lif;d._ca=a>=0.02?a:0;
+    var result = fbEngine.draw();
+    if (result === 'drained') {
+      fbRafId = null;
+      canvas.style.display = 'none';
+      return;
     }
-    c.lineCap='butt';c.lineWidth=FB_DROP_W;c.strokeStyle='rgb('+fbRainRGB+')';
-    var bLo=[0.02,0.22,0.42],bHi=[0.22,0.42,1.01],bAl=[0.14,0.32,0.52];
-    for(var b=0;b<3;b++){var lo=bLo[b],hi=bHi[b],has=false;c.globalAlpha=bAl[b];c.beginPath();
-      for(i=0;i<count;i++){d=fbDrops[i];a=d._ca;if(a<lo||a>=hi)continue;c.moveTo(d.x,d.y);c.lineTo(d.x+d.vx*0.3,d.y+d.len);has=true;}
-      if(has)c.stroke();}
-    if(fbSplashN>0){ctx.fillStyle='rgb('+fbRainRGB+')';
-      for(var j=fbSplashN-1;j>=0;j--){var sp=fbSplashes[j];sp.x+=sp.vx;sp.y+=sp.vy;sp.vy+=0.25;sp.lif-=sp.dec;
-        if(sp.lif<=0){fbSplashN--;if(j<fbSplashN){var t=fbSplashes[fbSplashN];fbSplashes[j]=t;fbSplashes[fbSplashN]=sp;}}}
-      c.globalAlpha=0.4;c.beginPath();var hc=false;
-      for(j=0;j<fbSplashN;j++){sp=fbSplashes[j];if(sp.lif<0.5)continue;var r=sp.r*sp.lif;c.moveTo(sp.x+r,sp.y);c.arc(sp.x,sp.y,r,0,6.2832);hc=true;}
-      if(hc)c.fill();
-      c.globalAlpha=0.18;c.beginPath();hc=false;
-      for(j=0;j<fbSplashN;j++){sp=fbSplashes[j];if(sp.lif>=0.5||sp.lif<=0)continue;var r2=sp.r*sp.lif;c.moveTo(sp.x+r2,sp.y);c.arc(sp.x,sp.y,r2,0,6.2832);hc=true;}
-      if(hc)c.fill();}
-    c.globalAlpha=1;
-  }
-  function fbStart() {
-    fbScrollY=window.pageYOffset||0;
-    fbBuildDrops(dropCount); fbBuildSplashes();
-    sendTheme();
-    if(!fbRafId) fbRafId=requestAnimationFrame(fbDraw);
-  }
-  function fbStop() {
-    if(fbRafId){cancelAnimationFrame(fbRafId);fbRafId=null;}
-    if(fbCtx){fbCtx.setTransform(1,0,0,1,0,0);fbCtx.clearRect(0,0,canvas.width,canvas.height);}
-    fbSplashN=0;
+    if (result === 'stopped') {
+      fbRafId = null;
+      return;
+    }
+    fbRafId = requestAnimationFrame(fbDraw);
   }
 
   /* =======================================================================
@@ -314,36 +253,38 @@
       }
     }
 
-    // Fallback: main-thread context
+    // Fallback: main-thread engine (same full-quality rendering)
     if (!useWorker) {
-      canvas.width  = Math.ceil(W * FB_RES);
-      canvas.height = Math.ceil(H * FB_RES);
-      fbCtx = canvas.getContext('2d');
+      fbEngine = createRainEngine();
+      fbEngine.init(canvas, W, H, dropCount);
     }
 
     // ── Button ──
     btnEl = createUmbrellaButton();
     placeButton(btnEl);
 
-    // ── Scroll → forward to worker (or cache for fallback) ──
+    // ── Scroll → forward to worker (or engine for fallback) ──
     window.addEventListener('scroll', function () {
       var sy = window.pageYOffset || 0;
       if (useWorker && worker) {
         worker.postMessage({ type: 'scroll', scrollY: sy });
-      } else {
-        fbScrollY = sy;
+      } else if (fbEngine) {
+        fbEngine.setScroll(sy);
       }
     }, { passive: true });
 
-    // ── Mouse → forward cursor position to worker for halo bounce ──
+    // ── Mouse → forward cursor position for halo bounce ──
     // Throttle: send at most every 16ms (~60fps) to avoid flooding
     var lastCursorSend = 0;
     document.addEventListener('mousemove', function (e) {
-      if (!useWorker || !worker) return;
       var now = performance.now();
       if (now - lastCursorSend < 16) return;
       lastCursorSend = now;
-      worker.postMessage({ type: 'cursor', x: e.clientX, y: e.clientY });
+      if (useWorker && worker) {
+        worker.postMessage({ type: 'cursor', x: e.clientX, y: e.clientY });
+      } else if (fbEngine) {
+        fbEngine.setCursor(e.clientX, e.clientY);
+      }
     }, { passive: true });
 
     // ── Resize ──
