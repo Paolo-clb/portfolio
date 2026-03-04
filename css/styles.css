@@ -144,7 +144,7 @@ ul {
   width: 100%;
   z-index: 100;
   background: rgba(16, 15, 24, 0.6);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(4px);
   border-bottom: 1px solid var(--clr-border);
 }
 
@@ -297,7 +297,7 @@ section.hero {
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: var(--shadow);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(3px);
   transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
               box-shadow 0.4s ease,
               border-color 0.4s ease;
@@ -419,7 +419,7 @@ section.hero {
   inset: 0;
   z-index: 200;
   background: rgba(16, 15, 24, 0.35);
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -441,7 +441,7 @@ section.hero {
   background: rgba(27, 26, 39, 0.35);
   border: 1px solid rgba(191, 153, 160, 0.18);
   border-radius: calc(var(--radius) * 2);
-  backdrop-filter: blur(28px);
+  backdrop-filter: blur(8px);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35),
               inset 0 1px 0 rgba(255, 255, 255, 0.04);
   overflow-y: auto;
@@ -465,7 +465,7 @@ section.hero {
   padding: 1rem 0;
   margin-top: -1rem;
   background: rgba(27, 26, 39, 0.6);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(4px);
   border-bottom: 1px solid rgba(191, 153, 160, 0.08);
 }
 
@@ -489,7 +489,7 @@ section.hero {
   justify-content: center;
   transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
   flex-shrink: 0;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(3px);
 }
 
 .modal__close:hover {
@@ -532,7 +532,7 @@ section.hero {
 .detail-overlay {
   z-index: 300;
   background: rgba(16, 15, 24, 0.4);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(5px);
 }
 
 .detail-modal {
@@ -542,7 +542,7 @@ section.hero {
   padding: 0;
   background: rgba(27, 26, 39, 0.4);
   border: 1px solid rgba(191, 153, 160, 0.15);
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(7px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35),
               inset 0 1px 0 rgba(255, 255, 255, 0.05);
   overflow-y: auto;
@@ -556,7 +556,7 @@ section.hero {
   z-index: 10;
   margin: 0.75rem 0.75rem -3.25rem 0;
   background: rgba(16, 15, 24, 0.5);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(3px);
 }
 
 .detail-modal__image {
@@ -675,7 +675,7 @@ section.hero {
   border: 1px solid rgba(191, 153, 160, 0.08);
   border-radius: calc(var(--radius) * 1.5);
   padding: 1rem 1.25rem;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(3px);
   width: calc(50% - 0.5rem);
   box-sizing: border-box;
   position: relative;
@@ -727,7 +727,7 @@ section.hero {
   border-radius: var(--radius);
   padding: 1.1rem 1.25rem;
   min-width: 90px;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(3px);
   transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
 
@@ -797,7 +797,7 @@ section.hero {
 .skill-overlay {
   z-index: 250;
   background: rgba(16, 15, 24, 0.4);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(5px);
 }
 
 .skill-popup {
@@ -807,7 +807,7 @@ section.hero {
   background: rgba(27, 26, 39, 0.5);
   border: 1px solid rgba(191, 153, 160, 0.18);
   border-radius: calc(var(--radius) * 2);
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(7px);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35),
               inset 0 1px 0 rgba(255, 255, 255, 0.05);
   padding: 2rem 2rem 1.75rem;
@@ -836,7 +836,7 @@ section.hero {
   background: rgba(242, 162, 133, 0.08);
   border: 1px solid rgba(191, 153, 160, 0.15);
   border-radius: 50%;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(2px);
 }
 
 .skill-popup__icon {
@@ -932,7 +932,7 @@ section.hero {
   max-width: 600px;
   margin-inline: auto;
   background: rgba(27, 26, 39, 0.5);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(3px);
   border: 1px solid rgba(191, 153, 160, 0.1);
   border-radius: var(--radius);
   padding: 2rem;
@@ -1054,7 +1054,7 @@ section.hero {
   border-top: 1px solid rgba(191, 153, 160, 0.15);
   color: var(--clr-text-muted);
   background: rgba(16, 15, 24, 0.6);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(3px);
   position: relative;
   z-index: 1;
 }
@@ -1083,7 +1083,7 @@ section.hero {
   background: rgba(27, 26, 39, 0.55);
   border: 1px solid rgba(191, 153, 160, 0.18);
   border-radius: var(--radius);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(4px);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
   opacity: 0;
   transform: translateY(10px);
@@ -1142,7 +1142,7 @@ section.hero {
   flex-direction: column;
   background: rgba(27, 26, 39, 0.4);
   border: 1px solid rgba(191, 153, 160, 0.15);
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(7px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35),
               inset 0 1px 0 rgba(255, 255, 255, 0.05);
   overflow: hidden;
@@ -1196,7 +1196,7 @@ section.hero {
   background: rgba(27, 26, 39, 0.4);
   border: 1px solid rgba(191, 153, 160, 0.15);
   border-radius: calc(var(--radius) * 1.5);
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(7px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35),
               inset 0 1px 0 rgba(255, 255, 255, 0.05);
   padding: 1.25rem;
@@ -2047,7 +2047,7 @@ section.hero {
     z-index: 20;
     margin: -0.5rem -0.25rem 0 0;
     background: rgba(16, 15, 24, 0.6);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(3px);
     border: 1px solid rgba(191, 153, 160, 0.25);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
   }

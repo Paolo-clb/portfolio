@@ -130,8 +130,9 @@
   fill-opacity: 0.15;
 }
 
-/* Subtle glow pulse when active */
-.rain-toggle--active:hover {
+/* Subtle glow pulse when active — applied to SVG, not button,
+   so the filter doesn't create a containing block that clips the tooltip */
+.rain-toggle--active:hover svg {
   animation: rain-pulse 1.8s ease-in-out infinite;
 }
 
@@ -149,7 +150,7 @@
   padding: 0.35rem 0.7rem;
   border-radius: var(--radius);
   background: rgba(27, 26, 39, 0.7);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(3px);
   border: 1px solid rgba(191, 153, 160, 0.15);
   color: var(--clr-text);
   font-size: 0.72rem;

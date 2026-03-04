@@ -10,7 +10,7 @@
   border-radius: var(--radius);
   background: rgba(27, 26, 39, 0.01);
   border: 1px solid rgba(191, 153, 160, 0.12);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(3px);
   max-width: 420px;
   user-select: none;
   position: relative;
@@ -183,7 +183,7 @@
   background: rgba(27, 26, 39, 0.85);
   border: 1px solid rgba(191, 153, 160, 0.15);
   border-radius: calc(var(--radius) * 1.5);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(5px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   opacity: 0;
   transform: translateY(-4px);
