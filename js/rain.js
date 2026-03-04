@@ -302,6 +302,20 @@
       attributeFilter: ['data-theme']
     });
 
+    // ── DOM layout changes → refresh surfaces immediately ──
+    // Catches: popup open/close, skill expand/collapse, modal overlays, etc.
+    var surfDebounce = null;
+    new MutationObserver(function () {
+      if (!enabled) return;
+      if (surfDebounce) clearTimeout(surfDebounce);
+      surfDebounce = setTimeout(sendSurfaces, 80);
+    }).observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'hidden']
+    });
+
     // ── Restore saved state ──
     if (localStorage.getItem(STORAGE_KEY) === 'on') {
       start();
