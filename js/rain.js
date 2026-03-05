@@ -20,7 +20,7 @@
   var STORAGE_KEY      = 'portfolio_rain';
   var SURFACE_RECALC_MS = 3000;
   var SURFACE_SELECTORS =
-    '.project-card,.skills-group,.contact__form,.cv-section__card,.footer,.typing-game__text';
+    '.project-card,.skills-group:not(.skills-group--hidden),.contact__form,.cv-section__card,.footer,.typing-game__text';
 
   /* ── State ─────────────────────────────────────────────── */
   var canvas, worker;

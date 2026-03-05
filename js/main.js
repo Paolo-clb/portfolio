@@ -362,8 +362,8 @@ function renderSkills() {
       if (!expanded) {
         // Expand
         hiddenGroups.forEach(function (g) {
-          g.classList.add('skills-group--revealing');
           g.classList.remove('skills-group--hidden');
+          g.classList.add('skills-group--revealing');
           // Trigger reflow for animation
           void g.offsetWidth;
           g.classList.add('skills-group--visible');
@@ -372,12 +372,24 @@ function renderSkills() {
         expanded = true;
       } else {
         // Collapse
+        var toCollapse = [];
         allGroups.forEach(function (g, i) {
-          if (i >= VISIBLE_COUNT) {
-            g.classList.remove('skills-group--visible');
-            g.classList.remove('skills-group--revealing');
+          if (i >= VISIBLE_COUNT) toCollapse.push(g);
+        });
+        toCollapse.forEach(function (g) {
+          g.classList.remove('skills-group--visible');
+          g.classList.remove('skills-group--revealing');
+          g.classList.add('skills-group--collapsing');
+          var done = false;
+          function onEnd() {
+            if (done) return;
+            done = true;
+            g.removeEventListener('transitionend', onEnd);
+            g.classList.remove('skills-group--collapsing');
             g.classList.add('skills-group--hidden');
           }
+          g.addEventListener('transitionend', onEnd);
+          setTimeout(onEnd, 500);
         });
         btn.textContent = 'Voir toutes les compétences';
         expanded = false;

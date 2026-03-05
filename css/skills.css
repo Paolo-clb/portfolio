@@ -98,23 +98,32 @@
 }
 
 .skills-group--hidden {
+  display: none;
+}
+
+.skills-group--collapsing {
   max-height: 0;
   opacity: 0;
   overflow: hidden;
-  margin: 0;
   padding: 0;
+  margin: 0;
+  min-width: 0;
+  flex: 0 0 0;
   border: none !important;
-  width: 0;
-  transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.35s ease,
-              padding 0.35s ease,
-              width 0s ease 0.45s;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s ease,
+              padding 0.3s ease,
+              flex 0s ease 0.4s,
+              min-width 0s ease 0.4s;
 }
 
 .skills-group--revealing {
   max-height: 0;
   opacity: 0;
   overflow: hidden;
+  padding: 0;
+  min-width: 0;
+  flex: 0 0 0;
 }
 
 .skills-group--visible {
@@ -131,7 +140,7 @@
 
 .skills__actions {
   text-align: center;
-  margin-top: 1.5rem;
+  margin-top: 2.5rem;
 }
 
 /* ==========================================================================
