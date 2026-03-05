@@ -1109,16 +1109,6 @@ section.hero {
     margin-right: 0.25rem;
   }
 
-  .skills-group,
-  .skills-group--visible {
-    width: 100%;
-  }
-
-  .skills-group:nth-child(even) {
-    border-left: none;
-    border-top: 1px solid rgba(191, 153, 160, 0.15);
-  }
-
   .scroll-hint {
     bottom: 5rem;
   }
@@ -1140,19 +1130,5 @@ section.hero {
   [data-theme="dark"] body::before,
   [data-theme="nature"] body::before {
     opacity: 0;
-  }
-}
-
-/* --- Dark: Responsive overrides --- */
-@media (max-width: 768px) {
-  [data-theme="dark"] .skills-group:nth-child(even) {
-    border-top-color: rgba(63, 81, 181, 0.2);
-  }
-}
-
-/* --- Nature: Responsive overrides --- */
-@media (max-width: 768px) {
-  [data-theme="nature"] .skills-group:nth-child(even) {
-    border-top-color: rgba(42, 69, 34, 0.2);
   }
 }
