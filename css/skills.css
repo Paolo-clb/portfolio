@@ -10,16 +10,16 @@
 .skills__grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.8rem;
+  gap: 2.8rem;
 }
 
 .skills-group {
   background: rgba(27, 26, 39, 0.15);
   border: 1px solid rgba(191, 153, 160, 0.08);
   border-radius: calc(var(--radius) * 1.5);
-  padding: 0.85rem 1rem;
+  padding: 0.75rem 0.85rem;
   backdrop-filter: blur(calc(3px * var(--blur-factor)));
-  flex: 1 1 calc(50% - 0.9rem);
+  flex: 1 1 calc(50% - 1.4rem);
   min-width: 260px;
   box-sizing: border-box;
   position: relative;
@@ -121,8 +121,8 @@
   max-height: 1500px;
   opacity: 1;
   overflow: visible;
-  padding: 0.85rem 1rem;
-  flex: 1 1 calc(50% - 0.9rem);
+  padding: 0.75rem 0.85rem;
+  flex: 1 1 calc(50% - 1.4rem);
   min-width: 260px;
   transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.4s ease 0.1s,
@@ -274,11 +274,11 @@
 
 @media (max-width: 768px) {
   .skills__grid {
-    gap: 1rem;
+    gap: 1.4rem;
   }
 
   .skills-group {
-    padding: 0.65rem 0.7rem;
+    padding: 0.6rem 0.65rem;
   }
 
   .skills-group__label {
@@ -308,7 +308,7 @@
   }
 
   .skills-group--visible {
-    padding: 0.65rem 0.7rem;
+    padding: 0.6rem 0.65rem;
   }
 }
 
