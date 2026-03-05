@@ -513,7 +513,7 @@
   align-items: center;
   justify-content: center;
   border-radius: calc(var(--radius) * 1.5);
-  background: rgba(27, 26, 39, 0.72);
+  background: rgba(27, 26, 39, 0.70);
   border: 1px solid rgba(191, 153, 160, 0.15);
   backdrop-filter: blur(calc(28px * var(--blur-factor)));
   opacity: 0;
@@ -595,7 +595,7 @@
   font-size: 0.72rem;
   padding: 0.15rem 0.5rem;
   border-radius: 1rem;
-  background: rgba(27, 26, 39, 0.82);
+  background: rgba(27, 26, 39, 0.70);
   color: var(--clr-text-muted);
   border: 1px solid rgba(191, 153, 160, 0.18);
   letter-spacing: 0.04em;
@@ -701,7 +701,7 @@
 
 /* ---- Dark theme overrides ---- */
 [data-theme="dark"] .typing-game__ai-inline {
-  background: rgba(26, 0, 51, 1);
+  background: rgba(26, 0, 51, 0.70);
   border-color: rgba(156, 39, 176, 0.2);
 }
 
@@ -844,7 +844,7 @@
 
 /* --- Nature: AI inline --- */
 [data-theme="nature"] .typing-game__ai-inline {
-  background: rgba(21, 34, 16, 0.6);
+  background: rgba(21, 34, 16, 0.70);
   border-color: rgba(42, 69, 34, 0.15);
 }
 

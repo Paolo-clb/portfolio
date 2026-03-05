@@ -733,7 +733,7 @@
 
 .zen-popup {
   position: relative;
-  background: rgba(27, 26, 39, 0.92);
+  background: rgba(27, 26, 39, 0.70);
   border: 1px solid rgba(242, 162, 133, 0.25);
   border-radius: var(--radius);
   padding: 2.2rem 2.8rem;
@@ -1109,7 +1109,7 @@
 
 /* --- Dark: Zen popup --- */
 [data-theme="dark"] .zen-popup {
-  background: rgba(26, 0, 51, 0.94);
+  background: rgba(26, 0, 51, 0.70);
   border-color: rgba(156, 39, 176, 0.3);
   box-shadow: 0 0 40px rgba(156, 39, 176, 0.15),
               0 0 80px rgba(156, 39, 176, 0.08);
@@ -1269,7 +1269,7 @@
 
 /* --- Nature: Zen popup --- */
 [data-theme="nature"] .zen-popup {
-  background: rgba(21, 34, 16, 0.94);
+  background: rgba(21, 34, 16, 0.70);
   border-color: rgba(94, 184, 58, 0.3);
   box-shadow: 0 0 40px rgba(94, 184, 58, 0.15),
               0 0 80px rgba(94, 184, 58, 0.08);

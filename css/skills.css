@@ -149,7 +149,7 @@
 
 .skill-overlay {
   z-index: 250;
-  background: rgba(16, 15, 24, 0.4);
+  background: rgba(16, 15, 24, 0.5);
   backdrop-filter: blur(calc(5px * var(--blur-factor)));
 }
 
@@ -157,7 +157,7 @@
   position: relative;
   width: 90vw;
   max-width: 340px;
-  background: rgba(27, 26, 39, 0.5);
+  background: rgba(27, 26, 39, 0.7);
   border: 1px solid rgba(191, 153, 160, 0.18);
   border-radius: calc(var(--radius) * 2);
   backdrop-filter: blur(calc(7px * var(--blur-factor)));
@@ -358,7 +358,7 @@
 }
 
 [data-theme="dark"] .skill-popup {
-  background: rgba(26, 0, 51, 0.9);
+  background: rgba(26, 0, 51, 0.7);
   border-color: rgba(63, 81, 181, 0.25);
 }
 
@@ -417,7 +417,7 @@
 }
 
 [data-theme="nature"] .skill-popup {
-  background: rgba(21, 34, 16, 0.9);
+  background: rgba(21, 34, 16, 0.7);
   border-color: rgba(42, 69, 34, 0.25);
 }
 

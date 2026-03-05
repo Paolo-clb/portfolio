@@ -18,6 +18,7 @@
     /* ── Configuration ──────────────────────────────────── */
     var MAX_SPLASHES = 350;
     var MAX_RIPPLES  = 60;
+    var MAX_RUNOFFS  = 80;
     var DROP_MIN_SPD = 7;
     var DROP_MAX_SPD = 14;
     var DROP_W_MIN   = 1.2;
@@ -26,6 +27,7 @@
     var SPLASH_G     = 0.22;
     var RES          = 0.65;
     var CURSOR_R     = 22;
+    var CORNER_R     = 12;
 
     /* ── State ──────────────────────────────────────────── */
     var canvas   = null;
@@ -41,6 +43,8 @@
     var splashN  = 0;
     var ripples  = [];
     var rippleN  = 0;
+    var runoffs  = [];
+    var runoffN  = 0;
 
     var surfAbs  = [];
     var curX = -999, curY = -999;
@@ -110,6 +114,40 @@
       rp.dec = 1 / (18 + Math.random() * 12);
     }
 
+    /* ── Runoff stream pool ─────────────────────────────── */
+    function _buildRunoffs() {
+      runoffs.length = MAX_RUNOFFS;
+      for (var i = 0; i < MAX_RUNOFFS; i++)
+        runoffs[i] = runoffs[i] || { x:0, y:0, len:0, vy:0, lif:0, dec:0, w:0, edge:0 };
+      runoffN = 0;
+    }
+
+    function spawnRunoff(hitX, surfTop, surfLeft, surfRight, surfBot) {
+      if (runoffN >= MAX_RUNOFFS || draining) return;
+      if (Math.random() > 0.55) return;
+      var distL = hitX - surfLeft;
+      var distR = surfRight - hitX;
+      var edge, ex;
+      if (distL < distR) { edge = -1; ex = surfLeft - 1; }
+      else               { edge =  1; ex = surfRight + 1; }
+      var absTop = surfTop + scrollY;
+      var absBot = surfBot + scrollY;
+      var startAbsY = absTop + CORNER_R + Math.random() * 4;
+      if (startAbsY >= absBot) return;
+      var ro = runoffs[runoffN++];
+      ro.x    = ex;
+      ro.absY = startAbsY;
+      ro.len  = 0;
+      ro.maxL = 25 + Math.random() * 35;
+      ro.vy   = 0.8 + Math.random() * 1.0;
+      ro.lif  = 1;
+      ro.dec  = 1 / (80 + Math.random() * 60);
+      ro.w    = 1.0 + Math.random() * 0.8;
+      ro.edge = edge;
+      ro.absBot = absBot - CORNER_R;
+      ro.age  = 0;
+    }
+
     /* ── Cursor hit test ────────────────────────────────── */
     function hitCursor(x, tipY) {
       var dx = x - curX;
@@ -128,9 +166,9 @@
         var vBot = s.absBottom - scrollY;
         if (vBot < 0 || vTop > H) continue;
         if (x >= s.left && x <= s.right && tipY >= vTop && prevTip < vTop)
-          return vTop;
+          return { vTop: vTop, idx: i };
       }
-      return -1;
+      return null;
     }
 
     /* ── Draw (physics + render) ─────────────────────────
@@ -147,7 +185,7 @@
       if (draining) {
         var alive = 0;
         for (i = 0; i < count; i++) if (drops[i].lif > 0) alive++;
-        if (alive === 0 && splashN === 0 && rippleN === 0) {
+        if (alive === 0 && splashN === 0 && rippleN === 0 && runoffN === 0) {
           running  = false;
           draining = false;
           ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -182,11 +220,14 @@
             spawnSplash(d.x, d.y + d.len);
             spawnRipple(d.x, d.y + d.len);
           } else {
-            vTop = hitSurface(d.x, d.y + d.len, d.vy);
-            if (vTop >= 0) {
+            var hit = hitSurface(d.x, d.y + d.len, d.vy);
+            if (hit) {
+              vTop = hit.vTop;
               d.y = vTop - d.len;
               spawnSplash(d.x, vTop);
               spawnRipple(d.x, vTop);
+              var hs = surfAbs[hit.idx];
+              spawnRunoff(d.x, vTop, hs.left, hs.right, hs.absBottom - scrollY);
               d.bou = true;
               d.vy = -(Math.abs(d.vy) * (0.15 + Math.random() * 0.15));
               d.vx = -2 + Math.random() * 4;
@@ -288,6 +329,35 @@
         if (hc) ctx.fill();
       }
 
+      /* ── Runoff streams ── */
+      if (runoffN > 0) {
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'rgb(' + rainRGB + ')';
+        for (var ri = runoffN - 1; ri >= 0; ri--) {
+          var ro = runoffs[ri];
+          ro.absY += ro.vy;
+          ro.len += ro.vy * 0.6;
+          if (ro.len > ro.maxL) ro.len = ro.maxL;
+          ro.lif -= ro.dec;
+          ro.age++;
+          var viewY   = ro.absY - scrollY;
+          var viewTop = viewY - ro.len;
+          var viewBot = ro.absBot - scrollY;
+          if (ro.lif <= 0 || ro.absY > ro.absBot + 5 || viewY < -ro.len || viewTop > H) {
+            runoffN--;
+            if (ri < runoffN) { var tmp3 = runoffs[runoffN]; runoffs[ri] = tmp3; runoffs[runoffN] = ro; }
+            continue;
+          }
+          var fadeIn = ro.age < 10 ? ro.age / 10 : 1;
+          ctx.globalAlpha = ro.lif * 0.55 * fadeIn;
+          ctx.lineWidth = ro.w * (0.4 + ro.lif * 0.6);
+          ctx.beginPath();
+          ctx.moveTo(ro.x, viewTop);
+          ctx.lineTo(ro.x, viewY);
+          ctx.stroke();
+        }
+      }
+
       ctx.globalAlpha = 1;
       return 'ok';
     }
@@ -313,6 +383,7 @@
         _buildDrops(dropCount);
         _buildSplashes();
         _buildRipples();
+        _buildRunoffs();
       },
 
       /** Instant stop — clear everything. */
@@ -325,6 +396,7 @@
         }
         splashN = 0;
         rippleN = 0;
+        runoffN = 0;
       },
 
       /** Graceful stop — no new drops, let existing ones finish. */

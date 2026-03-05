@@ -140,7 +140,7 @@
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(16, 15, 24, 0.35);
+  background: rgba(16, 15, 24, 0.45);
   backdrop-filter: blur(calc(6px * var(--blur-factor)));
   display: flex;
   align-items: center;
@@ -160,7 +160,7 @@
   width: 90vw;
   max-width: 1100px;
   max-height: 85vh;
-  background: rgba(27, 26, 39, 0.35);
+  background: rgba(27, 26, 39, 0.55);
   border: 1px solid rgba(191, 153, 160, 0.18);
   border-radius: calc(var(--radius) * 2);
   backdrop-filter: blur(calc(8px * var(--blur-factor)));
@@ -324,7 +324,7 @@
 
 .modal__grid .project-card {
   cursor: pointer;
-  background: rgba(27, 26, 39, 0.55);
+  background: rgba(27, 26, 39, 0.65);
   border: 1px solid rgba(191, 153, 160, 0.12);
 }
 
@@ -340,7 +340,7 @@
 
 .detail-overlay {
   z-index: 300;
-  background: rgba(16, 15, 24, 0.4);
+  background: rgba(16, 15, 24, 0.5);
   backdrop-filter: blur(calc(5px * var(--blur-factor)));
 }
 
@@ -349,7 +349,7 @@
   max-width: 620px;
   max-height: 88vh;
   padding: 0;
-  background: rgba(27, 26, 39, 0.4);
+  background: rgba(27, 26, 39, 0.6);
   border: 1px solid rgba(191, 153, 160, 0.15);
   backdrop-filter: blur(calc(7px * var(--blur-factor)));
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35),
@@ -475,7 +475,7 @@
 
 /* --- Dark: Project cards --- */
 [data-theme="dark"] .project-card {
-  background: rgba(26, 0, 51, 0.85);
+  background: rgba(26, 0, 51, 0.7);
   border-color: rgba(63, 81, 181, 0.2);
 }
 
@@ -492,16 +492,16 @@
 
 /* --- Dark: Modal --- */
 [data-theme="dark"] .modal-overlay {
-  background: rgba(10, 10, 32, 0.4);
+  background: rgba(10, 10, 32, 0.45);
 }
 
 [data-theme="dark"] .modal {
-  background: rgba(26, 0, 51, 0.75);
+  background: rgba(26, 0, 51, 0.55);
   border-color: rgba(63, 81, 181, 0.25);
 }
 
 [data-theme="dark"] .modal__header {
-  background: rgba(26, 0, 51, 0.7);
+  background: rgba(26, 0, 51, 0.6);
   border-bottom-color: rgba(63, 81, 181, 0.12);
 }
 
@@ -511,7 +511,7 @@
 }
 
 [data-theme="dark"] .modal__grid .project-card {
-  background: rgba(26, 0, 51, 0.8);
+  background: rgba(26, 0, 51, 0.65);
   border-color: rgba(63, 81, 181, 0.15);
 }
 
@@ -527,7 +527,7 @@
 }
 
 [data-theme="dark"] .detail-modal {
-  background: rgba(26, 0, 51, 0.88);
+  background: rgba(26, 0, 51, 0.6);
   border-color: rgba(63, 81, 181, 0.2);
 }
 
@@ -553,7 +553,7 @@
 
 /* --- Nature: Project cards --- */
 [data-theme="nature"] .project-card {
-  background: rgba(21, 34, 16, 0.85);
+  background: rgba(21, 34, 16, 0.7);
   border-color: rgba(42, 69, 34, 0.2);
 }
 
@@ -570,16 +570,16 @@
 
 /* --- Nature: Modal --- */
 [data-theme="nature"] .modal-overlay {
-  background: rgba(10, 18, 8, 0.4);
+  background: rgba(10, 18, 8, 0.45);
 }
 
 [data-theme="nature"] .modal {
-  background: rgba(21, 34, 16, 0.75);
+  background: rgba(21, 34, 16, 0.55);
   border-color: rgba(42, 69, 34, 0.25);
 }
 
 [data-theme="nature"] .modal__header {
-  background: rgba(21, 34, 16, 0.7);
+  background: rgba(21, 34, 16, 0.6);
   border-bottom-color: rgba(42, 69, 34, 0.12);
 }
 
@@ -589,7 +589,7 @@
 }
 
 [data-theme="nature"] .modal__grid .project-card {
-  background: rgba(21, 34, 16, 0.8);
+  background: rgba(21, 34, 16, 0.65);
   border-color: rgba(42, 69, 34, 0.15);
 }
 
@@ -605,7 +605,7 @@
 }
 
 [data-theme="nature"] .detail-modal {
-  background: rgba(21, 34, 16, 0.88);
+  background: rgba(21, 34, 16, 0.6);
   border-color: rgba(42, 69, 34, 0.2);
 }
 
