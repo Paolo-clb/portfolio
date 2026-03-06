@@ -18,7 +18,7 @@
     /* ── Configuration ──────────────────────────────────── */
     var MAX_SPLASHES = 350;
     var MAX_RIPPLES  = 60;
-    var MAX_RUNOFFS  = 80;
+    var MAX_DRIPS    = 100;
     var DROP_MIN_SPD = 7;
     var DROP_MAX_SPD = 14;
     var DROP_W_MIN   = 1.2;
@@ -42,8 +42,8 @@
     var splashN  = 0;
     var ripples  = [];
     var rippleN  = 0;
-    var runoffs  = [];
-    var runoffN  = 0;
+    var drips    = [];
+    var dripN    = 0;
 
     var surfs    = [];
     var curX = -999, curY = -999;
@@ -113,42 +113,53 @@
       rp.dec = 1 / (18 + Math.random() * 12);
     }
 
-    /* ── Runoff stream pool ─────────────────────────────── */
-    function _buildRunoffs() {
-      runoffs.length = MAX_RUNOFFS;
-      for (var i = 0; i < MAX_RUNOFFS; i++)
-        runoffs[i] = runoffs[i] || { x:0, sidx:0, sLeft:0, sRight:0, offY:0, len:0, maxL:0, maxOff:0, vy:0, lif:0, dec:0, w:0, edge:0, age:0 };
-      runoffN = 0;
+    /* ── Driplet pool — organic water beads on element edges ── */
+    function _buildDrips() {
+      drips.length = MAX_DRIPS;
+      for (var i = 0; i < MAX_DRIPS; i++)
+        drips[i] = drips[i] || { x:0, y:0, vy:0, vx:0, r:0, lif:0, dec:0, edge:0,
+                                  sidx:0, sL:0, sR:0, sT:0, sB:0, free:false, wobT:0, wobA:0,
+                                  tail:0, maxTail:0, ang:0, phase:0 };
+      dripN = 0;
     }
 
-    function spawnRunoff(hitX, surfIdx) {
-      if (runoffN >= MAX_RUNOFFS || draining) return;
-      if (Math.random() > 0.55) return;
+    function spawnDrip(hitX, surfIdx) {
+      if (dripN >= MAX_DRIPS || draining) return;
+      if (Math.random() > 0.35) return;
       var s = surfs[surfIdx];
       if (!s) return;
+      var surfH = s.bottom - s.top;
+      if (surfH < 20) return;
       var distL = hitX - s.left;
       var distR = s.right - hitX;
-      var edge, ex;
-      if (distL < distR) { edge = -1; ex = s.left - 1; }
-      else               { edge =  1; ex = s.right + 1; }
-      var surfH = s.bottom - s.top;
-      var startOff = CORNER_R + Math.random() * 4;
-      if (startOff >= surfH - CORNER_R) return;
-      var ro = runoffs[runoffN++];
-      ro.x     = ex;
-      ro.sidx  = surfIdx;
-      ro.sLeft = s.left;
-      ro.sRight = s.right;
-      ro.offY  = startOff;
-      ro.len   = 0;
-      ro.maxL  = 25 + Math.random() * 35;
-      ro.vy    = 0.8 + Math.random() * 1.0;
-      ro.lif   = 1;
-      ro.dec   = 1 / (80 + Math.random() * 60);
-      ro.w     = 1.0 + Math.random() * 0.8;
-      ro.edge  = edge;
-      ro.maxOff = surfH - CORNER_R;
-      ro.age   = 0;
+      var edge;
+      if (distL < distR) { edge = -1; }
+      else               { edge =  1; }
+      /* Start on top surface, near the corner */
+      var dp = drips[dripN++];
+      dp.phase = 0; /* 0 = top-corner arc, 1 = straight edge, 2 = bottom-corner arc */
+      dp.ang  = -1.5708 + (Math.random() * 0.3); /* start near top of arc (-PI/2) */
+      dp.edge = edge;
+      dp.sidx = surfIdx;
+      dp.sL   = s.left;
+      dp.sR   = s.right;
+      dp.sT   = s.top;
+      dp.sB   = s.bottom;
+      /* Position on the arc */
+      var cx = edge === -1 ? s.left + CORNER_R : s.right - CORNER_R;
+      var cy = s.top + CORNER_R;
+      dp.x    = cx + Math.cos(dp.ang) * CORNER_R * (edge === -1 ? -1 : 1);
+      dp.y    = cy + Math.sin(dp.ang) * CORNER_R;
+      dp.vy   = 0.008 + Math.random() * 0.012; /* angular speed for arc phase */
+      dp.vx   = 0;
+      dp.r    = 1.0 + Math.random() * 1.2;
+      dp.lif  = 1;
+      dp.dec  = 1 / (110 + Math.random() * 90);
+      dp.free = false;
+      dp.wobT = Math.random() * 6.28;
+      dp.wobA = 0.15 + Math.random() * 0.25;
+      dp.tail = 0;
+      dp.maxTail = 8 + Math.random() * 14;
     }
 
     /* ── Cursor hit test ────────────────────────────────── */
@@ -186,7 +197,7 @@
       if (draining) {
         var alive = 0;
         for (i = 0; i < count; i++) if (drops[i].lif > 0) alive++;
-        if (alive === 0 && splashN === 0 && rippleN === 0 && runoffN === 0) {
+        if (alive === 0 && splashN === 0 && rippleN === 0 && dripN === 0) {
           running  = false;
           draining = false;
           ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -227,7 +238,7 @@
               d.y = vTop - d.len;
               spawnSplash(d.x, vTop);
               spawnRipple(d.x, vTop);
-              spawnRunoff(d.x, hit.idx);
+              spawnDrip(d.x, hit.idx);
               d.bou = true;
               d.vy = -(Math.abs(d.vy) * (0.15 + Math.random() * 0.15));
               d.vx = -2 + Math.random() * 4;
@@ -329,41 +340,140 @@
         if (hc) ctx.fill();
       }
 
-      /* ── Runoff streams ── */
-      if (runoffN > 0) {
-        ctx.lineCap = 'round';
+      /* ── Driplets on element edges ── */
+      if (dripN > 0) {
+        ctx.fillStyle = 'rgb(' + rainRGB + ')';
         ctx.strokeStyle = 'rgb(' + rainRGB + ')';
-        for (var ri = runoffN - 1; ri >= 0; ri--) {
-          var ro = runoffs[ri];
-          ro.offY += ro.vy;
-          ro.len += ro.vy * 0.6;
-          if (ro.len > ro.maxL) ro.len = ro.maxL;
-          ro.lif -= ro.dec;
-          ro.age++;
-          var rs = (ro.sidx < surfs.length) ? surfs[ro.sidx] : null;
-          var viewY, viewTop;
+        ctx.lineCap = 'round';
+        for (var di = dripN - 1; di >= 0; di--) {
+          var dp = drips[di];
+          dp.lif -= dp.dec;
+          dp.wobT += 0.18;
+
           var kill = false;
-          if (!rs || Math.abs(rs.left - ro.sLeft) > 50 || Math.abs(rs.right - ro.sRight) > 50) {
-            kill = true;
+          var rs = (dp.sidx < surfs.length) ? surfs[dp.sidx] : null;
+          if (dp.free) {
+            /* Detached — falls freely with gravity */
+            dp.vy += 0.25;
+            dp.y += dp.vy;
+            dp.x += dp.vx;
+            dp.r *= 0.988;
+            dp.tail += dp.vy * 0.5;
+            if (dp.tail > dp.maxTail) dp.tail = dp.maxTail;
+            if (dp.lif <= 0 || dp.y > H + 10) kill = true;
           } else {
-            viewY   = rs.top + ro.offY;
-            viewTop = viewY - ro.len;
-            if (ro.lif <= 0 || ro.offY > ro.maxOff + 5 || viewY < -ro.len || viewTop > H) {
+            /* Clinging to surface */
+            if (!rs || Math.abs(rs.left - dp.sL) > 60) {
               kill = true;
+            } else if (dp.phase === 0) {
+              /* Phase 0: sliding along top corner arc */
+              dp.ang += dp.vy;
+              dp.vy += 0.0008; /* slight angular acceleration */
+              if (dp.vy > 0.04) dp.vy = 0.04;
+              var cx0 = dp.edge === -1 ? rs.left + CORNER_R : rs.right - CORNER_R;
+              var cy0 = rs.top + CORNER_R;
+              var cosA = Math.cos(dp.ang);
+              var sinA = Math.sin(dp.ang);
+              dp.x = cx0 + cosA * CORNER_R * (dp.edge === -1 ? -1 : 1);
+              dp.y = cy0 + sinA * CORNER_R;
+              dp.tail = Math.abs(dp.vy) * CORNER_R * 3;
+              if (dp.tail > dp.maxTail) dp.tail = dp.maxTail;
+              /* Transition to straight edge when arc reaches ~0 (side) */
+              if (dp.ang >= 0) {
+                dp.phase = 1;
+                dp.y = rs.top + CORNER_R;
+                dp.x = (dp.edge === -1 ? rs.left : rs.right) + (dp.edge === -1 ? -0.5 : 0.5);
+                dp.vy = 0.2 + Math.random() * 0.3;
+              }
+            } else if (dp.phase === 1) {
+              /* Phase 1: straight edge crawl */
+              var edgeX = dp.edge === -1 ? rs.left : rs.right;
+              dp.x = edgeX + (dp.edge === -1 ? -0.5 : 0.5);
+              dp.vy += 0.014;
+              if (dp.vy > 1.8) dp.vy = 1.8;
+              if (Math.random() < 0.02) dp.vy *= 0.2;
+              dp.y += dp.vy;
+              dp.vx = Math.sin(dp.wobT) * dp.wobA;
+              dp.tail = dp.vy * 5;
+              if (dp.tail > dp.maxTail) dp.tail = dp.maxTail;
+              /* Transition to bottom corner arc */
+              if (dp.y >= rs.bottom - CORNER_R) {
+                dp.phase = 2;
+                dp.ang = 0;
+                dp.vy = 0.02 + dp.vy * 0.01;
+              }
+            } else {
+              /* Phase 2: bottom corner arc — curves under the element */
+              dp.ang += dp.vy;
+              dp.vy += 0.001;
+              if (dp.vy > 0.05) dp.vy = 0.05;
+              var cx2 = dp.edge === -1 ? rs.left + CORNER_R : rs.right - CORNER_R;
+              var cy2 = rs.bottom - CORNER_R;
+              dp.x = cx2 + Math.cos(dp.ang) * CORNER_R * (dp.edge === -1 ? -1 : 1);
+              dp.y = cy2 + Math.sin(dp.ang) * CORNER_R;
+              dp.tail = Math.abs(dp.vy) * CORNER_R * 2;
+              if (dp.tail > dp.maxTail) dp.tail = dp.maxTail;
+              /* Detach at ~PI/2 (bottom) — splash! */
+              if (dp.ang >= 1.5708) {
+                dp.free = true;
+                dp.y = rs.bottom + 1;
+                dp.vy = 0.8 + Math.random() * 1.2;
+                dp.vx = dp.edge * (0.05 + Math.random() * 0.15);
+                /* Splash on detach */
+                spawnSplash(dp.x, dp.y);
+                spawnRipple(dp.x, dp.y);
+              }
             }
+            if (dp.lif <= 0) kill = true;
           }
-          if (kill) {
-            runoffN--;
-            if (ri < runoffN) { var tmp3 = runoffs[runoffN]; runoffs[ri] = tmp3; runoffs[runoffN] = ro; }
+
+          if (kill || dp.r < 0.3) {
+            /* Splash on death too if still visible */
+            if (dp.r >= 0.6 && dp.lif > 0.15) {
+              spawnSplash(dp.x, dp.y);
+            }
+            dripN--;
+            if (di < dripN) { var tmp3 = drips[dripN]; drips[di] = tmp3; drips[dripN] = dp; }
             continue;
           }
-          var fadeIn = ro.age < 10 ? ro.age / 10 : 1;
-          ctx.globalAlpha = ro.lif * 0.55 * fadeIn;
-          ctx.lineWidth = ro.w * (0.4 + ro.lif * 0.6);
+
+          /* Draw bead + tail streak */
+          var da = dp.lif * 0.6;
+          var drawX = dp.x + (!dp.free && dp.phase === 1 ? dp.vx : 0);
+          /* Tail — thin streak trailing behind the bead */
+          if (dp.tail > 1.5) {
+            ctx.globalAlpha = da * 0.3;
+            ctx.lineWidth = dp.r * 0.45;
+            ctx.beginPath();
+            ctx.moveTo(drawX, dp.y);
+            if (!dp.free && rs && dp.phase === 0) {
+              /* Tail follows the top arc */
+              var tAng = dp.ang - dp.tail / CORNER_R;
+              var tcx = dp.edge === -1 ? rs.left + CORNER_R : rs.right - CORNER_R;
+              var tcy = rs.top + CORNER_R;
+              var tx = tcx + Math.cos(tAng) * CORNER_R * (dp.edge === -1 ? -1 : 1);
+              var ty = tcy + Math.sin(tAng) * CORNER_R;
+              ctx.lineTo(tx, ty);
+            } else if (!dp.free && rs && dp.phase === 2) {
+              /* Tail follows the bottom arc */
+              var tAng2 = dp.ang - dp.tail / CORNER_R;
+              if (tAng2 < 0) tAng2 = 0;
+              var tcx2 = dp.edge === -1 ? rs.left + CORNER_R : rs.right - CORNER_R;
+              var tcy2 = rs.bottom - CORNER_R;
+              var tx2 = tcx2 + Math.cos(tAng2) * CORNER_R * (dp.edge === -1 ? -1 : 1);
+              var ty2 = tcy2 + Math.sin(tAng2) * CORNER_R;
+              ctx.lineTo(tx2, ty2);
+            } else {
+              /* Straight up */
+              ctx.lineTo(drawX, dp.y - dp.tail);
+            }
+            ctx.stroke();
+          }
+          /* Bead — small filled circle */
+          ctx.globalAlpha = da;
           ctx.beginPath();
-          ctx.moveTo(ro.x, viewTop);
-          ctx.lineTo(ro.x, viewY);
-          ctx.stroke();
+          ctx.arc(drawX, dp.y, dp.r * (0.6 + dp.lif * 0.4), 0, 6.2832);
+          ctx.fill();
         }
       }
 
@@ -391,7 +501,7 @@
         _buildDrops(dropCount);
         _buildSplashes();
         _buildRipples();
-        _buildRunoffs();
+        _buildDrips();
       },
 
       /** Instant stop — clear everything. */
@@ -404,7 +514,7 @@
         }
         splashN = 0;
         rippleN = 0;
-        runoffN = 0;
+        dripN = 0;
       },
 
       /** Graceful stop — no new drops, let existing ones finish. */
