@@ -1131,4 +1131,8 @@ section.hero {
   [data-theme="nature"] body::before {
     opacity: 0;
   }
+
+  :not([data-theme="dark"]):not([data-theme="nature"]) body::before {
+    background-position: 60% center;
+  }
 }

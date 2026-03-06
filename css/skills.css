@@ -342,7 +342,7 @@
 }
 
 [data-theme="dark"] .skill-item {
-  background: rgba(26, 0, 51, 0.7);
+  background: rgba(26, 0, 51, 0.35);
   border-color: rgba(63, 81, 181, 0.15);
 }
 
@@ -401,7 +401,7 @@
 }
 
 [data-theme="nature"] .skill-item {
-  background: rgba(21, 34, 16, 0.7);
+  background: rgba(21, 34, 16, 0.35);
   border-color: rgba(42, 69, 34, 0.15);
 }
 
