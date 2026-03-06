@@ -40,6 +40,8 @@
     var els = document.querySelectorAll(SURFACE_SELECTORS);
     var arr = [];
     for (var i = 0; i < els.length; i++) {
+      // Skip elements inside a closed modal overlay
+      if (els[i].closest('.modal-overlay:not(.modal-overlay--open)')) continue;
       var r = els[i].getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
       arr.push({

@@ -1034,6 +1034,13 @@ function initThemeToggle() {
     }
   }
 
+  // Update favicon based on theme
+  var FAVICONS = { light: 'assets/images/favicon.svg', dark: 'assets/images/favicon-dark.svg', nature: 'assets/images/favicon-nature.svg' };
+  function updateFavicon(theme) {
+    var link = document.querySelector('link[rel="icon"]');
+    if (link) link.href = FAVICONS[theme] || FAVICONS.light;
+  }
+
   // Manage video playback based on theme
   function manageVideos(theme) {
     var darkVideo = document.getElementById('bg-video-dark');
@@ -1101,6 +1108,7 @@ function initThemeToggle() {
     root.setAttribute('data-theme', saved);
     setIconAttrs(saved);
     manageVideos(saved);
+    updateFavicon(saved);
   } else {
     manageVideos('light');
   }
@@ -1117,6 +1125,7 @@ function initThemeToggle() {
     }
     localStorage.setItem(STORAGE_KEY, next);
     manageVideos(next);
+    updateFavicon(next);
 
     // Show / hide credit badge
     if (next === 'dark' || next === 'nature') {

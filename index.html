@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="css/visualizer.css" />
   <link rel="stylesheet" href="css/rain.css" />
   <!-- Restore saved theme before any IIFE to avoid light-color flash -->
-  <script>(function(){var t=localStorage.getItem('portfolio_theme');if(t==='dark'||t==='nature')document.documentElement.setAttribute('data-theme',t);})()</script>
+  <script>(function(){var t=localStorage.getItem('portfolio_theme');if(t==='dark'||t==='nature'){document.documentElement.setAttribute('data-theme',t);var f={dark:'assets/images/favicon-dark.svg',nature:'assets/images/favicon-nature.svg'};var l=document.querySelector('link[rel="icon"]');if(l)l.href=f[t];}})()</script>
 </head>
 <body>
   <!-- Video backgrounds for dark & nature themes -->
