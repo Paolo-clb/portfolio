@@ -38,38 +38,38 @@
   /* ── Surface queries (main thread only — DOM access) ──── */
   function querySurfaces() {
     var els = document.querySelectorAll(SURFACE_SELECTORS);
-    var sy  = window.pageYOffset || 0;
     var arr = [];
     for (var i = 0; i < els.length; i++) {
       var r = els[i].getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
       arr.push({
-        absTop:    r.top + sy,
-        absBottom: r.bottom + sy,
-        left:      r.left,
-        right:     r.right
+        top:    r.top,
+        bottom: r.bottom,
+        left:   r.left,
+        right:  r.right
       });
     }
     // Add umbrella button as bounce surface when rain is active (open dome)
     if (enabled && btnEl) {
       var br = btnEl.getBoundingClientRect();
-      arr.push({
-        absTop:    br.top + sy,
-        absBottom: br.bottom + sy,
-        left:      br.left,
-        right:     br.right
-      });
+      if (br.width > 0 && br.height > 0) {
+        arr.push({
+          top:    br.top,
+          bottom: br.bottom,
+          left:   br.left,
+          right:  br.right
+        });
+      }
     }
     return arr;
   }
 
   function sendSurfaces() {
     var s = querySurfaces();
-    var sy = window.pageYOffset || 0;
     if (useWorker && worker) {
-      worker.postMessage({ type: 'surfaces', surfaces: s, scrollY: sy });
+      worker.postMessage({ type: 'surfaces', surfaces: s });
     } else if (fbEngine) {
       fbEngine.setSurfaces(s);
-      fbEngine.setScroll(sy);
     }
   }
 
@@ -95,12 +95,9 @@
     sendSurfaces();
 
     if (useWorker) {
-      worker.postMessage({
-        type: 'start',
-        scrollY: window.pageYOffset || 0
-      });
+      worker.postMessage({ type: 'start' });
     } else {
-      fbEngine.start(window.pageYOffset || 0);
+      fbEngine.start();
       if (!fbRafId) fbRafId = requestAnimationFrame(fbDraw);
     }
 
@@ -146,12 +143,10 @@
         type: 'resize',
         width: W,
         height: H,
-        dropCount: dropCount,
-        scrollY: window.pageYOffset || 0
+        dropCount: dropCount
       });
     } else if (fbEngine) {
       fbEngine.resize(W, H, dropCount);
-      fbEngine.setScroll(window.pageYOffset || 0);
     }
 
     if (enabled) sendSurfaces();
@@ -220,6 +215,7 @@
      Uses the same full-quality RainEngine from rain-engine.js.
      ======================================================================= */
   function fbDraw() {
+    fbEngine.setSurfaces(querySurfaces());
     var result = fbEngine.draw();
     if (result === 'drained') {
       fbRafId = null;
@@ -288,13 +284,15 @@
     btnEl = createUmbrellaButton();
     placeButton(btnEl);
 
-    // ── Scroll → forward to worker (or engine for fallback) ──
+    // ── Scroll → refresh viewport-relative surfaces (rAF-batched, no pageYOffset) ──
+    var scrollPending = false;
     window.addEventListener('scroll', function () {
-      var sy = window.pageYOffset || 0;
-      if (useWorker && worker) {
-        worker.postMessage({ type: 'scroll', scrollY: sy });
-      } else if (fbEngine) {
-        fbEngine.setScroll(sy);
+      if (!scrollPending && enabled) {
+        scrollPending = true;
+        requestAnimationFrame(function () {
+          scrollPending = false;
+          if (enabled) sendSurfaces();
+        });
       }
     }, { passive: true });
 

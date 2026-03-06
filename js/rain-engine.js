@@ -33,7 +33,6 @@
     var canvas   = null;
     var ctx      = null;
     var W = 0, H = 0;
-    var scrollY  = 0;
     var running  = false;
     var draining = false;
     var dropCount = 160;
@@ -46,7 +45,7 @@
     var runoffs  = [];
     var runoffN  = 0;
 
-    var surfAbs  = [];
+    var surfs    = [];
     var curX = -999, curY = -999;
     var rainRGB  = '220,220,240';
 
@@ -118,34 +117,38 @@
     function _buildRunoffs() {
       runoffs.length = MAX_RUNOFFS;
       for (var i = 0; i < MAX_RUNOFFS; i++)
-        runoffs[i] = runoffs[i] || { x:0, y:0, len:0, vy:0, lif:0, dec:0, w:0, edge:0 };
+        runoffs[i] = runoffs[i] || { x:0, sidx:0, sLeft:0, sRight:0, offY:0, len:0, maxL:0, maxOff:0, vy:0, lif:0, dec:0, w:0, edge:0, age:0 };
       runoffN = 0;
     }
 
-    function spawnRunoff(hitX, surfTop, surfLeft, surfRight, surfBot) {
+    function spawnRunoff(hitX, surfIdx) {
       if (runoffN >= MAX_RUNOFFS || draining) return;
       if (Math.random() > 0.55) return;
-      var distL = hitX - surfLeft;
-      var distR = surfRight - hitX;
+      var s = surfs[surfIdx];
+      if (!s) return;
+      var distL = hitX - s.left;
+      var distR = s.right - hitX;
       var edge, ex;
-      if (distL < distR) { edge = -1; ex = surfLeft - 1; }
-      else               { edge =  1; ex = surfRight + 1; }
-      var absTop = surfTop + scrollY;
-      var absBot = surfBot + scrollY;
-      var startAbsY = absTop + CORNER_R + Math.random() * 4;
-      if (startAbsY >= absBot) return;
+      if (distL < distR) { edge = -1; ex = s.left - 1; }
+      else               { edge =  1; ex = s.right + 1; }
+      var surfH = s.bottom - s.top;
+      var startOff = CORNER_R + Math.random() * 4;
+      if (startOff >= surfH - CORNER_R) return;
       var ro = runoffs[runoffN++];
-      ro.x    = ex;
-      ro.absY = startAbsY;
-      ro.len  = 0;
-      ro.maxL = 25 + Math.random() * 35;
-      ro.vy   = 0.8 + Math.random() * 1.0;
-      ro.lif  = 1;
-      ro.dec  = 1 / (80 + Math.random() * 60);
-      ro.w    = 1.0 + Math.random() * 0.8;
-      ro.edge = edge;
-      ro.absBot = absBot - CORNER_R;
-      ro.age  = 0;
+      ro.x     = ex;
+      ro.sidx  = surfIdx;
+      ro.sLeft = s.left;
+      ro.sRight = s.right;
+      ro.offY  = startOff;
+      ro.len   = 0;
+      ro.maxL  = 25 + Math.random() * 35;
+      ro.vy    = 0.8 + Math.random() * 1.0;
+      ro.lif   = 1;
+      ro.dec   = 1 / (80 + Math.random() * 60);
+      ro.w     = 1.0 + Math.random() * 0.8;
+      ro.edge  = edge;
+      ro.maxOff = surfH - CORNER_R;
+      ro.age   = 0;
     }
 
     /* ── Cursor hit test ────────────────────────────────── */
@@ -160,13 +163,11 @@
     /* ── Surface hit test (swept — never misses fast drops) */
     function hitSurface(x, tipY, vy) {
       var prevTip = tipY - vy;
-      for (var i = 0, n = surfAbs.length; i < n; i++) {
-        var s = surfAbs[i];
-        var vTop = s.absTop - scrollY;
-        var vBot = s.absBottom - scrollY;
-        if (vBot < 0 || vTop > H) continue;
-        if (x >= s.left && x <= s.right && tipY >= vTop && prevTip < vTop)
-          return { vTop: vTop, idx: i };
+      for (var i = 0, n = surfs.length; i < n; i++) {
+        var s = surfs[i];
+        if (s.bottom < 0 || s.top > H) continue;
+        if (x >= s.left && x <= s.right && tipY >= s.top && prevTip < s.top)
+          return { vTop: s.top, idx: i };
       }
       return null;
     }
@@ -226,8 +227,7 @@
               d.y = vTop - d.len;
               spawnSplash(d.x, vTop);
               spawnRipple(d.x, vTop);
-              var hs = surfAbs[hit.idx];
-              spawnRunoff(d.x, vTop, hs.left, hs.right, hs.absBottom - scrollY);
+              spawnRunoff(d.x, hit.idx);
               d.bou = true;
               d.vy = -(Math.abs(d.vy) * (0.15 + Math.random() * 0.15));
               d.vx = -2 + Math.random() * 4;
@@ -335,15 +335,24 @@
         ctx.strokeStyle = 'rgb(' + rainRGB + ')';
         for (var ri = runoffN - 1; ri >= 0; ri--) {
           var ro = runoffs[ri];
-          ro.absY += ro.vy;
+          ro.offY += ro.vy;
           ro.len += ro.vy * 0.6;
           if (ro.len > ro.maxL) ro.len = ro.maxL;
           ro.lif -= ro.dec;
           ro.age++;
-          var viewY   = ro.absY - scrollY;
-          var viewTop = viewY - ro.len;
-          var viewBot = ro.absBot - scrollY;
-          if (ro.lif <= 0 || ro.absY > ro.absBot + 5 || viewY < -ro.len || viewTop > H) {
+          var rs = (ro.sidx < surfs.length) ? surfs[ro.sidx] : null;
+          var viewY, viewTop;
+          var kill = false;
+          if (!rs || Math.abs(rs.left - ro.sLeft) > 50 || Math.abs(rs.right - ro.sRight) > 50) {
+            kill = true;
+          } else {
+            viewY   = rs.top + ro.offY;
+            viewTop = viewY - ro.len;
+            if (ro.lif <= 0 || ro.offY > ro.maxOff + 5 || viewY < -ro.len || viewTop > H) {
+              kill = true;
+            }
+          }
+          if (kill) {
             runoffN--;
             if (ri < runoffN) { var tmp3 = runoffs[runoffN]; runoffs[ri] = tmp3; runoffs[runoffN] = ro; }
             continue;
@@ -376,10 +385,9 @@
       },
 
       /** Reset pools and begin running. */
-      start: function (sy) {
+      start: function () {
         running  = true;
         draining = false;
-        scrollY  = sy || 0;
         _buildDrops(dropCount);
         _buildSplashes();
         _buildRipples();
@@ -415,9 +423,8 @@
         if (running && !draining) _buildDrops(dropCount);
       },
 
-      setScroll:   function (sy)   { scrollY = sy; },
       setCursor:   function (x, y) { curX = x; curY = y; },
-      setSurfaces: function (s)    { surfAbs = s; },
+      setSurfaces: function (s)    { surfs = s; },
 
       setTheme: function (theme) {
         if (theme === 'dark')        rainRGB = '200,140,255';

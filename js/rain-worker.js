@@ -31,7 +31,7 @@ self.onmessage = function (e) {
       break;
 
     case 'start':
-      engine.start(msg.scrollY);
+      engine.start();
       if (!looping) {
         looping = true;
         requestAnimationFrame(loop);
@@ -46,18 +46,12 @@ self.onmessage = function (e) {
       engine.drain();
       break;
 
-    case 'scroll':
-      engine.setScroll(msg.scrollY);
-      break;
-
     case 'resize':
       engine.resize(msg.width, msg.height, msg.dropCount);
-      if (msg.scrollY !== undefined) engine.setScroll(msg.scrollY);
       break;
 
     case 'surfaces':
       engine.setSurfaces(msg.surfaces);
-      if (msg.scrollY !== undefined) engine.setScroll(msg.scrollY);
       break;
 
     case 'cursor':
