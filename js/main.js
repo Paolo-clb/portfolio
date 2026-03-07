@@ -1235,7 +1235,8 @@ function initAnimationControls() {
     } else {
       controls.style.setProperty('--clock-speed', (4 / val) + 's');
     }
-    // Music stays at normal speed — only animations slow down
+    // Music slows down with animations
+    if (window.__setMusicPlaybackRate) window.__setMusicPlaybackRate(val || 0.01);
     if (window.__setVisualizerSpeed) window.__setVisualizerSpeed(val);
     if (window.__rainSetSpeed) window.__rainSetSpeed(val);
     // Video backgrounds
