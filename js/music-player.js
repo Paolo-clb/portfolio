@@ -373,6 +373,10 @@
   var popupPlayBtn = null;
   var popupVolSlider = null;
   var popupVolIcon = null;
+  var popupPlaylistWrap = null;
+  var popupPlaylistList = null;
+  var popupPlaylistBtn = null;
+  var popupPlaylistOpen = false;
 
   function updateTriggerState() {
     if (!triggerBtn) return;
@@ -391,6 +395,7 @@
     popupVolSlider.value = audio.volume;
     updatePopupSliderFill();
     updatePopupVolumeIcon(audio.volume);
+    updatePopupPlaylistHighlight();
   }
 
   function updatePopupSliderFill() {
@@ -406,6 +411,67 @@
     else popupVolIcon.innerHTML = SVG_VOL_HIGH;
   }
 
+  function updatePopupPlaylistHighlight() {
+    if (!popupPlaylistList) return;
+    var items = popupPlaylistList.querySelectorAll('.music-popup__playlist-item');
+    items.forEach(function (item, i) {
+      item.classList.toggle('music-popup__playlist-item--active', i === currentIndex);
+    });
+  }
+
+  function buildPopupPlaylist() {
+    popupPlaylistList.innerHTML = '';
+    playlist.forEach(function (track, i) {
+      var item = document.createElement('div');
+      item.className = 'music-popup__playlist-item';
+      if (i === currentIndex) item.classList.add('music-popup__playlist-item--active');
+
+      var cover = document.createElement('img');
+      cover.className = 'music-popup__playlist-cover';
+      cover.src = track.cover;
+      cover.alt = track.title;
+
+      var info = document.createElement('div');
+      info.className = 'music-popup__playlist-info';
+
+      var title = document.createElement('span');
+      title.className = 'music-popup__playlist-title';
+      title.textContent = track.title;
+
+      var artist = document.createElement('span');
+      artist.className = 'music-popup__playlist-artist';
+      artist.textContent = track.artist;
+
+      info.appendChild(title);
+      info.appendChild(artist);
+      item.appendChild(cover);
+      item.appendChild(info);
+
+      item.addEventListener('click', function () {
+        currentIndex = i;
+        loadTrack(currentIndex);
+        play();
+      });
+
+      popupPlaylistList.appendChild(item);
+    });
+  }
+
+  function togglePopupPlaylist() {
+    popupPlaylistOpen = !popupPlaylistOpen;
+    popupPlaylistWrap.classList.toggle('music-popup__playlist-wrap--open', popupPlaylistOpen);
+    popupPlaylistBtn.classList.toggle('music-player__btn--active', popupPlaylistOpen);
+    if (popupPlaylistOpen) {
+      var active = popupPlaylistList.querySelector('.music-popup__playlist-item--active');
+      if (active) {
+        var top = active.offsetTop;
+        var h = active.offsetHeight;
+        var listH = 210;
+        popupPlaylistList.scrollTop = Math.max(0, top - listH / 2 + h / 2);
+      }
+    }
+  }
+
   function buildPopup() {
     popupOverlay = document.createElement('div');
     popupOverlay.className = 'music-popup-overlay';
@@ -413,9 +479,10 @@
     var popup = document.createElement('div');
     popup.className = 'music-popup';
 
+    // Close button — same .modal__close as site modals
     var closeBtn = document.createElement('button');
-    closeBtn.className = 'music-popup__close';
-    closeBtn.innerHTML = '&#10005;';
+    closeBtn.className = 'modal__close music-popup__close';
+    closeBtn.innerHTML = '\u00D7';
     closeBtn.setAttribute('aria-label', 'Close');
 
     var player = document.createElement('div');
@@ -451,9 +518,15 @@
     pNext.innerHTML = SVG_NEXT;
     pNext.setAttribute('aria-label', 'Next');
 
+    popupPlaylistBtn = document.createElement('button');
+    popupPlaylistBtn.className = 'music-player__btn music-player__btn--playlist';
+    popupPlaylistBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="12" height="2" rx="1"/><rect x="3" y="11" width="12" height="2" rx="1"/><rect x="3" y="17" width="12" height="2" rx="1"/><polygon points="19,8 19,3 21,3 21,12 19,12 19,10 17,10 17,8"/></svg>';
+    popupPlaylistBtn.setAttribute('aria-label', 'Playlist');
+
     controls.appendChild(pPrev);
     controls.appendChild(popupPlayBtn);
     controls.appendChild(pNext);
+    controls.appendChild(popupPlaylistBtn);
 
     var volWrap = document.createElement('div');
     volWrap.className = 'music-popup__volume';
@@ -471,6 +544,14 @@
     volWrap.appendChild(popupVolIcon);
     volWrap.appendChild(popupVolSlider);
 
+    // Playlist section
+    popupPlaylistWrap = document.createElement('div');
+    popupPlaylistWrap.className = 'music-popup__playlist-wrap';
+    popupPlaylistList = document.createElement('div');
+    popupPlaylistList.className = 'music-popup__playlist-list';
+    popupPlaylistWrap.appendChild(popupPlaylistList);
+    buildPopupPlaylist();
+
     player.appendChild(popupCover);
     player.appendChild(info);
     player.appendChild(controls);
@@ -478,6 +559,7 @@
 
     popup.appendChild(closeBtn);
     popup.appendChild(player);
+    popup.appendChild(popupPlaylistWrap);
     popupOverlay.appendChild(popup);
     document.body.appendChild(popupOverlay);
 
@@ -489,6 +571,7 @@
     pPrev.addEventListener('click', prev);
     popupPlayBtn.addEventListener('click', togglePlay);
     pNext.addEventListener('click', next);
+    popupPlaylistBtn.addEventListener('click', togglePopupPlaylist);
     popupVolSlider.addEventListener('input', function () {
       var val = parseFloat(popupVolSlider.value);
       setVolume(val);
@@ -514,6 +597,12 @@
   function closePopup() {
     if (!popupOverlay) return;
     popupOverlay.classList.remove('music-popup-overlay--open');
+    // Reset playlist state
+    if (popupPlaylistOpen) {
+      popupPlaylistOpen = false;
+      if (popupPlaylistWrap) popupPlaylistWrap.classList.remove('music-popup__playlist-wrap--open');
+      if (popupPlaylistBtn) popupPlaylistBtn.classList.remove('music-player__btn--active');
+    }
   }
 
   function initTrigger() {

@@ -350,6 +350,8 @@ function closeProjectDetail() {
 // ---------------------------------------------------------------------------
 // Render skill items into #skills-grid (grouped)
 // ---------------------------------------------------------------------------
+var skillsExpanded = false;
+
 function renderSkills() {
   const grid = document.getElementById('skills-grid');
   if (!grid) return;
@@ -363,7 +365,7 @@ function renderSkills() {
 
   SKILL_GROUPS.forEach(function (group, index) {
     var section = createElement('div', 'skills-group');
-    if (index >= VISIBLE_COUNT) {
+    if (index >= VISIBLE_COUNT && !skillsExpanded) {
       section.classList.add('skills-group--hidden');
     }
 
@@ -398,14 +400,13 @@ function renderSkills() {
   if (SKILL_GROUPS.length > VISIBLE_COUNT) {
     var wrapper = grid.parentElement;
     var actions = createElement('div', 'skills__actions');
-    var btn = createElement('button', 'btn btn--outline', siteT('viewAllSkills'));
-    var expanded = false;
+    var btn = createElement('button', 'btn btn--outline', skillsExpanded ? siteT('viewLess') : siteT('viewAllSkills'));
 
     btn.addEventListener('click', function () {
       var hiddenGroups = grid.querySelectorAll('.skills-group--hidden');
       var allGroups = grid.querySelectorAll('.skills-group');
 
-      if (!expanded) {
+      if (!skillsExpanded) {
         // Expand
         hiddenGroups.forEach(function (g) {
           g.classList.remove('skills-group--hidden');
@@ -415,7 +416,7 @@ function renderSkills() {
           g.classList.add('skills-group--visible');
         });
         btn.textContent = siteT('viewLess');
-        expanded = true;
+        skillsExpanded = true;
       } else {
         // Collapse
         var toCollapse = [];
@@ -438,7 +439,7 @@ function renderSkills() {
           setTimeout(onEnd, 500);
         });
         btn.textContent = siteT('viewAllSkills');
-        expanded = false;
+        skillsExpanded = false;
       }
     });
 

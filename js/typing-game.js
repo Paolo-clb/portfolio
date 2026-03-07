@@ -1690,6 +1690,14 @@
         return;
       }
 
+      // Smartphone with no game DOM: update static intro text
+      if (!navbarEl) {
+        var staticText = container.querySelector('.typing-game__text--intro');
+        if (staticText) staticText.textContent = t('introText');
+        if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
+        return;
+      }
+
       // Refresh visible UI text if the game DOM is built
       if (container && navbarEl) {
         var scrollY = window.pageYOffset;

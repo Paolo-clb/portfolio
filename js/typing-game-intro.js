@@ -150,8 +150,8 @@ window.createTypingGameIntro = function (deps) {
       if (idx >= chars.length) {
         introFinished = true;
         renderIntro();
+        deps.unlockGame();
         if (isSmartphone) {
-          deps.unlockGame();
           deps.setIntroActive(false);
           return;
         }
