@@ -1258,14 +1258,14 @@ function initAnimationControls() {
   });
   footerContainer.appendChild(backTop);
 
-  // ── Non-linear slider curve ──
-  // Power curve: speed = raw^CURVE_EXP → fast changes at top, fine control at bottom
+  // ── Curve split ──
+  // Non-linear (rain, grayscale/time-warp, clock): curved = raw^CURVE_EXP
+  // Linear (music, visualizer particles, video backgrounds, label): linear = raw
   var CURVE_EXP = 2.5;
-  function sliderToSpeed(raw) { return Math.pow(raw, CURVE_EXP); }
-  function speedToSlider(spd) { return Math.pow(spd, 1 / CURVE_EXP); }
+  function rawToCurved(raw) { return Math.pow(raw, CURVE_EXP); }
 
   // ── Music rate: offset so browser never hits its floor (min 0.15) ──
-  function musicRate(speed) { return speed === 0 ? 0 : 0.15 + speed * 0.85; }
+  function musicRate(linear) { return linear === 0 ? 0 : 0.15 + linear * 0.85; }
 
   // ── Speed slider fill ──
   function updateSliderFill() {
@@ -1280,21 +1280,22 @@ function initAnimationControls() {
   var timeFrozen = false;
 
   // ── Apply speed to all systems ──
-  // lastRaw tracks the raw slider position for the clock icon (linear mapping)
-  var lastRaw = 1;
-  function applySpeed(val, raw) {
-    if (raw !== undefined) lastRaw = raw;
-    speedLabel.textContent = val.toFixed(2) + 'x';
-    // Clock animation: use RAW slider position for linear feel
-    if (lastRaw === 0) {
+  function applySpeed(raw) {
+    var linear = raw;          // music, particles, videos, label
+    var curved = rawToCurved(raw); // rain, time-warp, clock
+
+    speedLabel.textContent = linear.toFixed(2) + 'x';
+
+    // Clock animation: non-linear
+    if (raw === 0) {
       speedWrap.style.setProperty('--clock-speed', '0s');
     } else {
-      speedWrap.style.setProperty('--clock-speed', (4 / lastRaw) + 's');
+      speedWrap.style.setProperty('--clock-speed', (4 / curved) + 's');
     }
+
     // Music freeze logic
     var audio = window.__musicPlayerAudio;
-    if (val === 0) {
-      // Freeze: silently pause audio without touching player state (icon stays)
+    if (raw === 0) {
       if (!timeFrozen) {
         timeFrozen = true;
         if (window.__musicPlayerSetFrozen) window.__musicPlayerSetFrozen(true);
@@ -1304,50 +1305,54 @@ function initAnimationControls() {
       if (timeFrozen) {
         timeFrozen = false;
         if (window.__musicPlayerSetFrozen) window.__musicPlayerSetFrozen(false);
-        // Resume only if the player still thinks it's playing (user didn't pause)
         var wantsPlay = window.__musicPlayerIsPlaying && window.__musicPlayerIsPlaying();
         if (wantsPlay && audio && audio.paused) {
           audio.play().catch(function(){});
         }
       }
-      // Set playback rate
-      var rate = musicRate(val);
+      // Music rate: linear
+      var rate = musicRate(linear);
       if (window.__setMusicPlaybackRate) window.__setMusicPlaybackRate(rate);
     }
-    // Visualizer: freeze snapshot at 0, otherwise run normally
-    if (val === 0) {
+
+    // Visualizer: freeze at 0, speed follows linear
+    if (raw === 0) {
       if (window.__setVisualizerFrozen) window.__setVisualizerFrozen(true);
     } else {
       if (window.__setVisualizerFrozen) window.__setVisualizerFrozen(false);
     }
-    if (window.__setVisualizerSpeed) window.__setVisualizerSpeed(val);
-    if (window.__rainSetSpeed) window.__rainSetSpeed(val);
-    // Video backgrounds
+    if (window.__setVisualizerSpeed) window.__setVisualizerSpeed(linear);
+
+    // Rain: non-linear
+    if (window.__rainSetSpeed) window.__rainSetSpeed(curved);
+
+    // Video backgrounds: linear
     var darkVid = document.getElementById('bg-video-dark');
     var natureVid = document.getElementById('bg-video-nature');
-    if (val === 0) {
+    if (raw === 0) {
       if (darkVid && !darkVid.paused) darkVid.pause();
       if (natureVid && !natureVid.paused) natureVid.pause();
     } else {
-      if (darkVid) { darkVid.playbackRate = val; if (darkVid.paused && document.documentElement.getAttribute('data-theme') === 'dark') darkVid.play().catch(function(){}); }
-      if (natureVid) { natureVid.playbackRate = val; if (natureVid.paused && document.documentElement.getAttribute('data-theme') === 'nature') natureVid.play().catch(function(){}); }
+      if (darkVid) { darkVid.playbackRate = linear; if (darkVid.paused && document.documentElement.getAttribute('data-theme') === 'dark') darkVid.play().catch(function(){}); }
+      if (natureVid) { natureVid.playbackRate = linear; if (natureVid.paused && document.documentElement.getAttribute('data-theme') === 'nature') natureVid.play().catch(function(){}); }
     }
   }
 
-  // ── Global time-warp visual effect ──
-  function applyTimeWarp(val) {
+  // ── Global time-warp visual effect (uses curved value for non-linear grayscale) ──
+  function applyTimeWarp(raw) {
+    var curved = rawToCurved(raw);
     var root = document.documentElement;
-    if (val >= 1) {
+    if (raw >= 1) {
       root.removeAttribute('data-time-warp');
       root.style.removeProperty('--tw-intensity');
       return;
     }
-    // intensity: 0 at val=1, 1 at val=0
-    var intensity = (1 - val).toFixed(3);
+    // intensity: 0 at raw=1, 1 at raw=0 — uses curved for non-linear feel
+    var intensity = (1 - curved).toFixed(3);
     root.style.setProperty('--tw-intensity', intensity);
-    if (val === 0) {
+    if (raw === 0) {
       root.setAttribute('data-time-warp', 'frozen');
-    } else if (val <= 0.3) {
+    } else if (curved <= 0.3) {
       root.setAttribute('data-time-warp', 'heavy');
     } else {
       root.setAttribute('data-time-warp', 'slow');
@@ -1356,13 +1361,10 @@ function initAnimationControls() {
 
   slider.addEventListener('input', function () {
     var raw = parseFloat(slider.value);
-    var speed = sliderToSpeed(raw);
-    // Snap to 0 below threshold to eliminate dead zone
-    if (speed > 0 && speed < 0.01) speed = 0;
-    applySpeed(speed, raw);
-    applyTimeWarp(speed);
+    applySpeed(raw);
+    applyTimeWarp(raw);
     updateSliderFill();
-    localStorage.setItem(SPEED_KEY, speed);
+    localStorage.setItem(SPEED_KEY, raw);
   });
 
   // ── Rain state before disable ──
@@ -1422,11 +1424,11 @@ function initAnimationControls() {
     speedWrap.classList.remove('anim-speed--disabled');
     var storedSpeed = parseFloat(localStorage.getItem(SPEED_KEY));
     if (!isNaN(storedSpeed) && storedSpeed >= 0 && storedSpeed <= 1) {
-      var rawVal = speedToSlider(storedSpeed);
+      var rawVal = storedSpeed;
       slider.value = rawVal;
-      applySpeed(storedSpeed, rawVal);
+      applySpeed(rawVal);
       updateSliderFill();
-      applyTimeWarp(storedSpeed);
+      applyTimeWarp(rawVal);
     }
   }
 
@@ -1465,9 +1467,8 @@ function initAnimationControls() {
   if (savedSpeed) {
     var spd = parseFloat(savedSpeed);
     if (!isNaN(spd) && spd >= 0 && spd <= 1) {
-      var rawInit = speedToSlider(spd);
-      slider.value = rawInit;
-      applySpeed(spd, rawInit);
+      slider.value = spd;
+      applySpeed(spd);
       applyTimeWarp(spd);
     }
   }
