@@ -68,6 +68,7 @@
     titleEl.textContent = track.title;
     artistEl.textContent = track.artist;
     updatePlaylistHighlight();
+    syncPopup();
   }
 
   /* ---- Playback ---- */
@@ -78,12 +79,16 @@
     audio.play().catch(() => {});
     isPlaying = true;
     updatePlayIcon();
+    updateTriggerState();
+    syncPopup();
   }
 
   function pause() {
     audio.pause();
     isPlaying = false;
     updatePlayIcon();
+    updateTriggerState();
+    syncPopup();
   }
 
   function togglePlay() {
@@ -358,6 +363,173 @@
     });
   }
 
+  /* ---- Mobile popup ---- */
+
+  var triggerBtn = null;
+  var popupOverlay = null;
+  var popupCover = null;
+  var popupTitle = null;
+  var popupArtist = null;
+  var popupPlayBtn = null;
+  var popupVolSlider = null;
+  var popupVolIcon = null;
+
+  function updateTriggerState() {
+    if (!triggerBtn) return;
+    triggerBtn.classList.toggle('music-trigger--playing', isPlaying);
+  }
+
+  function syncPopup() {
+    if (!popupOverlay) return;
+    var track = playlist[currentIndex];
+    if (!track) return;
+    popupCover.src = track.cover;
+    popupCover.alt = track.title;
+    popupTitle.textContent = track.title;
+    popupArtist.textContent = track.artist;
+    popupPlayBtn.innerHTML = isPlaying ? SVG_PAUSE : SVG_PLAY;
+    popupVolSlider.value = audio.volume;
+    updatePopupSliderFill();
+    updatePopupVolumeIcon(audio.volume);
+  }
+
+  function updatePopupSliderFill() {
+    if (!popupVolSlider) return;
+    var pct = (parseFloat(popupVolSlider.value) / parseFloat(popupVolSlider.max)) * 100;
+    popupVolSlider.style.background = 'linear-gradient(to right, var(--clr-primary) 0%, var(--clr-accent) ' + pct + '%, var(--clr-border) ' + pct + '%)';
+  }
+
+  function updatePopupVolumeIcon(val) {
+    if (!popupVolIcon) return;
+    if (val === 0) popupVolIcon.innerHTML = SVG_VOL_MUTE;
+    else if (val < 0.5) popupVolIcon.innerHTML = SVG_VOL_LOW;
+    else popupVolIcon.innerHTML = SVG_VOL_HIGH;
+  }
+
+  function buildPopup() {
+    popupOverlay = document.createElement('div');
+    popupOverlay.className = 'music-popup-overlay';
+
+    var popup = document.createElement('div');
+    popup.className = 'music-popup';
+
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'music-popup__close';
+    closeBtn.innerHTML = '&#10005;';
+    closeBtn.setAttribute('aria-label', 'Close');
+
+    var player = document.createElement('div');
+    player.className = 'music-popup__player';
+
+    popupCover = document.createElement('img');
+    popupCover.className = 'music-popup__cover';
+
+    var info = document.createElement('div');
+    info.className = 'music-popup__info';
+    popupTitle = document.createElement('div');
+    popupTitle.className = 'music-popup__title';
+    popupArtist = document.createElement('div');
+    popupArtist.className = 'music-popup__artist';
+    info.appendChild(popupTitle);
+    info.appendChild(popupArtist);
+
+    var controls = document.createElement('div');
+    controls.className = 'music-popup__controls';
+
+    var pPrev = document.createElement('button');
+    pPrev.className = 'music-player__btn';
+    pPrev.innerHTML = SVG_PREV;
+    pPrev.setAttribute('aria-label', 'Previous');
+
+    popupPlayBtn = document.createElement('button');
+    popupPlayBtn.className = 'music-player__btn music-player__btn--play';
+    popupPlayBtn.innerHTML = SVG_PLAY;
+    popupPlayBtn.setAttribute('aria-label', 'Play / Pause');
+
+    var pNext = document.createElement('button');
+    pNext.className = 'music-player__btn';
+    pNext.innerHTML = SVG_NEXT;
+    pNext.setAttribute('aria-label', 'Next');
+
+    controls.appendChild(pPrev);
+    controls.appendChild(popupPlayBtn);
+    controls.appendChild(pNext);
+
+    var volWrap = document.createElement('div');
+    volWrap.className = 'music-popup__volume';
+
+    popupVolIcon = document.createElement('span');
+    popupVolIcon.className = 'music-player__volume-icon';
+
+    popupVolSlider = document.createElement('input');
+    popupVolSlider.type = 'range';
+    popupVolSlider.className = 'music-player__slider';
+    popupVolSlider.min = '0';
+    popupVolSlider.max = '1';
+    popupVolSlider.step = '0.01';
+
+    volWrap.appendChild(popupVolIcon);
+    volWrap.appendChild(popupVolSlider);
+
+    player.appendChild(popupCover);
+    player.appendChild(info);
+    player.appendChild(controls);
+    player.appendChild(volWrap);
+
+    popup.appendChild(closeBtn);
+    popup.appendChild(player);
+    popupOverlay.appendChild(popup);
+    document.body.appendChild(popupOverlay);
+
+    // Events
+    closeBtn.addEventListener('click', closePopup);
+    popupOverlay.addEventListener('click', function (e) {
+      if (e.target === popupOverlay) closePopup();
+    });
+    pPrev.addEventListener('click', prev);
+    popupPlayBtn.addEventListener('click', togglePlay);
+    pNext.addEventListener('click', next);
+    popupVolSlider.addEventListener('input', function () {
+      var val = parseFloat(popupVolSlider.value);
+      setVolume(val);
+      volumeSlider.value = val;
+      updatePopupSliderFill();
+      updatePopupVolumeIcon(val);
+    });
+    popupVolIcon.addEventListener('click', function () {
+      toggleMute();
+      popupVolSlider.value = audio.volume;
+      updatePopupSliderFill();
+      updatePopupVolumeIcon(audio.volume);
+    });
+  }
+
+  function openPopup() {
+    if (!popupOverlay) buildPopup();
+    syncPopup();
+    void popupOverlay.offsetWidth; // force reflow
+    popupOverlay.classList.add('music-popup-overlay--open');
+  }
+
+  function closePopup() {
+    if (!popupOverlay) return;
+    popupOverlay.classList.remove('music-popup-overlay--open');
+  }
+
+  function initTrigger() {
+    triggerBtn = document.getElementById('music-trigger');
+    if (!triggerBtn) return;
+    triggerBtn.addEventListener('click', openPopup);
+    updateTriggerState();
+
+    // Close popup on Escape
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && popupOverlay && popupOverlay.classList.contains('music-popup-overlay--open')) {
+        closePopup();
+      }
+    });
+  }
+
   /* ---- Init ---- */
 
   function init() {
@@ -372,6 +544,7 @@
     bindEvents();
     setVolume(0.5);
     loadTrack(0);
+    initTrigger();
   }
 
   // Boot

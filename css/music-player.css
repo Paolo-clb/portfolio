@@ -491,31 +491,6 @@
     background: rgba(94, 184, 58, 0.15);
   }
 }
-  }
-
-  .music-player__slider {
-    width: 35px;
-  }
-
-  .music-player__btn svg {
-    width: 14px;
-    height: 14px;
-  }
-
-  .music-player__btn--play svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  .music-player__playlist {
-    width: 220px;
-    max-height: 0;
-  }
-
-  .music-player__playlist--open {
-    max-height: 240px;
-  }
-}
 
 /* ==========================================================================
    Dark Theme â€” purple neon overrides
