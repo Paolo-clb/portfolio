@@ -774,6 +774,8 @@ function updateStaticTexts() {
 }
 
 function updateSiteLanguage() {
+  var scrollY = window.pageYOffset;
+
   updateStaticTexts();
   renderProjects();
   renderSkills();
@@ -789,6 +791,14 @@ function updateSiteLanguage() {
 
   // Tell the typing game (and others) about the language change
   document.dispatchEvent(new CustomEvent('sitelangchange', { detail: { lang: siteLang } }));
+
+  // Refresh nav indicator position (link text width may have changed)
+  requestAnimationFrame(function () {
+    window.dispatchEvent(new Event('resize'));
+  });
+
+  // Restore scroll position (DOM re-render may shift it)
+  window.scrollTo(0, scrollY);
 }
 
 function initLangToggle() {
@@ -799,7 +809,26 @@ function initLangToggle() {
   // Set initial label
   label.textContent = siteLang === 'fr' ? 'FR' : 'EN';
 
+  // Custom tooltip
+  var tipEl = document.createElement('div');
+  tipEl.className = 'lang-toggle__tooltip';
+  btn.appendChild(tipEl);
+  var tipTimer = null;
+
+  btn.addEventListener('mouseenter', function () {
+    clearTimeout(tipTimer);
+    tipEl.textContent = siteT('langTooltip');
+    void tipEl.offsetWidth;
+    tipEl.classList.add('lang-toggle__tooltip--visible');
+  });
+  btn.addEventListener('mouseleave', function () {
+    tipEl.classList.remove('lang-toggle__tooltip--visible');
+    tipTimer = setTimeout(function () {}, 200);
+  });
+
   btn.addEventListener('click', function () {
+    tipEl.classList.remove('lang-toggle__tooltip--visible');
+
     // Toggle
     siteLang = siteLang === 'fr' ? 'en' : 'fr';
     localStorage.setItem(SITE_LANG_KEY, siteLang);

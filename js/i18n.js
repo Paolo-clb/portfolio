@@ -64,6 +64,13 @@ window.SITE_I18N = {
     // Footer
     footerText: 'Paolo Colombat. Cherche une alternance',
 
+    // Rain
+    rainEnable: 'Activer la pluie',
+    rainDisable: 'Désactiver la pluie',
+
+    // Lang toggle
+    langTooltip: 'Switch to English',
+
     // Misc
     closeLbl: 'Fermer',
     switchLang: 'English',
@@ -126,6 +133,13 @@ window.SITE_I18N = {
 
     // Footer
     footerText: 'Paolo Colombat. Looking for an internship',
+
+    // Rain
+    rainEnable: 'Enable rain',
+    rainDisable: 'Disable rain',
+
+    // Lang toggle
+    langTooltip: 'Passer en Français',
 
     // Misc
     closeLbl: 'Close',

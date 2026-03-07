@@ -1184,6 +1184,7 @@
         '50': 'Texte de 50 mots',
         '100': 'Texte de 100 mots',
         zen: 'Lancer le mode zen',
+        'zen-active': 'Quitter le mode zen',
         eye: 'Afficher / masquer les erreurs',
         hardcore: 'Lancer le mode hardcore',
         'hardcore-active': 'Quitter le mode hardcore',
@@ -1200,6 +1201,7 @@
         '50': 'Text of 50-word',
         '100': 'Text of 100-word',
         zen: 'Start zen mode',
+        'zen-active': 'Quit zen mode',
         eye: 'Show / hide errors',
         hardcore: 'Start hardcore mode',
         'hardcore-active': 'Quit hardcore mode',
@@ -1220,6 +1222,7 @@
       var resolvedKey = key;
       if (key === 'ai' && aiState.mode) resolvedKey = 'ai-active';
       if (key === 'hardcore' && hardcoreMode) resolvedKey = 'hardcore-active';
+      if (key === 'zen' && currentMode === 'zen') resolvedKey = 'zen-active';
       tooltipEl.textContent = texts[resolvedKey] || '';
       if (!tooltipEl.textContent) return;
       anchor.style.position = 'relative';
@@ -1272,6 +1275,17 @@
       ],
       currentMode,
       function (key) {
+        // If zen is already active and user clicks zen again → exit zen
+        if (key === 'zen' && currentMode === 'zen') {
+          currentMode = '25';
+          // Update active button visually
+          modeGroup.querySelectorAll('.typing-game__option').forEach(function (b) {
+            b.classList.toggle('typing-game__option--active', b.getAttribute('data-key') === '25');
+          });
+          startGame(true);
+          saveSettings(currentLang, currentMode, showErrors);
+          return;
+        }
         currentMode = key;
         startGame(true);
         // First time zen: show info popup
@@ -1667,14 +1681,26 @@
     // Listen for site-wide language changes
     document.addEventListener('sitelangchange', function (e) {
       uiLang = e.detail && e.detail.lang || 'fr';
+
+      // If intro is active, restart it in the new language
+      if (introActive) {
+        // Clear intro DOM and restart
+        container.innerHTML = '';
+        intro.showIntro(window.matchMedia('(max-width: 600px) and (pointer: coarse)').matches);
+        return;
+      }
+
       // Refresh visible UI text if the game DOM is built
       if (container && navbarEl) {
+        var scrollY = window.pageYOffset;
         // Rebuild navbar to update all tooltips & labels
         var oldNav = navbarEl;
         var newNav = buildNavbar();
         if (oldNav.parentNode) oldNav.parentNode.replaceChild(newNav, oldNav);
         // Refresh hints / stats / hero title
         startGame(false);
+        // Restore scroll position (prevent jump to top)
+        window.scrollTo(0, scrollY);
       }
     });
 

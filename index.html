@@ -31,6 +31,15 @@
   <header class="header" id="header">
     <nav class="nav container">
       <div class="music-player" id="music-player"></div>
+      <button class="music-trigger" id="music-trigger" aria-label="Music player">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18V5l12-2v13"/>
+          <circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+        </svg>
+        <span class="music-trigger__bars" aria-hidden="true">
+          <i></i><i></i><i></i>
+        </span>
+      </button>
       <div class="nav__list-wrapper">
         <ul class="nav__list">
           <li><a href="#hero" class="nav__link" data-i18n="navHome">Accueil</a></li>

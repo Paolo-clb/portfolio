@@ -24,10 +24,12 @@ window.createTypingGameIntro = function (deps) {
   // Module-internal state
   var introTextEl = null;
   var introButtonEl = null;
+  var introGen = 0; // generation counter — incremented on each showIntro call to cancel stale callbacks
 
   /* ---- Show intro (entry point) ---- */
 
   function showIntro(isSmartphone) {
+    var gen = ++introGen; // capture current generation
     deps.setIntroActive(true);
     var heroTitleEl = document.querySelector('#hero .section__title');
     deps.setHeroTitle(heroTitleEl);
@@ -43,11 +45,12 @@ window.createTypingGameIntro = function (deps) {
     container.appendChild(loadingEl);
 
     function startTypewriter() {
+      if (gen !== introGen) return; // stale — a newer showIntro was called
       loadingEl.classList.add('typing-game__loading--hidden');
       setTimeout(function () {
         if (loadingEl.parentNode) loadingEl.remove();
       }, 400);
-      buildIntroDOM(isSmartphone);
+      buildIntroDOM(isSmartphone, gen);
     }
 
     if (document.readyState === 'complete') {
@@ -55,13 +58,13 @@ window.createTypingGameIntro = function (deps) {
     } else {
       window.addEventListener('load', function () {
         setTimeout(startTypewriter, 200);
-      });
+      }, { once: true });
     }
   }
 
   /* ---- Build intro DOM + typewriter animation ---- */
 
-  function buildIntroDOM(isSmartphone) {
+  function buildIntroDOM(isSmartphone, gen) {
     var container = deps.getContainer();
 
     introTextEl = document.createElement('div');
@@ -143,6 +146,7 @@ window.createTypingGameIntro = function (deps) {
     }
 
     function typeNext() {
+      if (gen !== introGen) return; // stale generation
       if (idx >= chars.length) {
         introFinished = true;
         renderIntro();
@@ -152,6 +156,7 @@ window.createTypingGameIntro = function (deps) {
           return;
         }
         requestAnimationFrame(function () {
+          if (gen !== introGen) return;
           introButtonEl.classList.add('typing-game__intro-btn--visible');
         });
         return;
@@ -166,6 +171,7 @@ window.createTypingGameIntro = function (deps) {
     }
 
     setTimeout(function () {
+      if (gen !== introGen) return; // stale generation
       container.appendChild(introTextEl);
       if (introButtonEl) container.appendChild(introButtonEl);
       typeNext();

@@ -704,6 +704,7 @@ section.hero {
   margin-left: 0.5rem;
   border-radius: 0.5rem;
   transition: background 0.3s ease;
+  position: relative;
 }
 
 .lang-toggle:hover {
@@ -739,6 +740,58 @@ section.hero {
 
 [data-theme="nature"] .lang-toggle:hover {
   background: rgba(94, 184, 58, 0.15);
+}
+
+.lang-toggle__tooltip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius);
+  background: rgba(27, 26, 39, 0.7);
+  backdrop-filter: blur(calc(3px * var(--blur-factor)));
+  border: 1px solid rgba(191, 153, 160, 0.15);
+  color: var(--clr-text);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 100;
+}
+
+.lang-toggle__tooltip--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.lang-toggle__tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: rgba(27, 26, 39, 0.7);
+}
+
+[data-theme="dark"] .lang-toggle__tooltip {
+  background: rgba(26, 0, 51, 0.85);
+  border-color: rgba(156, 39, 176, 0.25);
+}
+
+[data-theme="dark"] .lang-toggle__tooltip::after {
+  border-bottom-color: rgba(26, 0, 51, 0.85);
+}
+
+[data-theme="nature"] .lang-toggle__tooltip {
+  background: rgba(21, 34, 16, 0.85);
+  border-color: rgba(94, 184, 58, 0.25);
+}
+
+[data-theme="nature"] .lang-toggle__tooltip::after {
+  border-bottom-color: rgba(21, 34, 16, 0.85);
 }
 /* ==========================================================================
    Theme Toggle Ã¢â‚¬â€ sun Ã¢â€ â€ moon
