@@ -208,7 +208,7 @@ window.createTypingGameIntro = function (deps) {
     var container = deps.getContainer();
     var heroTitleEl = deps.getHeroTitle();
 
-    if (heroTitleEl) heroTitleEl.textContent = t('heroTitle');
+    if (heroTitleEl) heroTitleEl.innerHTML = t('heroTitleHTML');
 
     introTextEl.classList.add('typing-game__text--intro-out');
     introButtonEl.classList.add('typing-game__intro-btn--out');

@@ -787,7 +787,7 @@
     // Update translatable UI elements on language change
     var focusHintText = focusHintEl && focusHintEl.querySelector('.typing-game__focus-hint-text');
     if (focusHintText) focusHintText.textContent = t('focusHint');
-    if (heroTitleEl && !introActive) heroTitleEl.textContent = t('heroTitle');
+    if (heroTitleEl && !introActive) heroTitleEl.innerHTML = t('heroTitleHTML');
     // Hardcore mode reset
     hardcorePhase = null;
     hardcoreFailed = false;
@@ -1762,7 +1762,7 @@
 
     // Desktop: if game was fully activated before, go straight to game
     if (isGameActivated()) {
-      if (heroTitleEl) heroTitleEl.textContent = t('heroTitle');
+      if (heroTitleEl) heroTitleEl.innerHTML = t('heroTitleHTML');
       buildGameDOM();
       startGame(true);
       return;

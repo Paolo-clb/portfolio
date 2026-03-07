@@ -345,6 +345,13 @@
       btnEl.classList.add('rain-toggle--active');
     }
 
+    // Re-query surfaces after full page load — layout (fonts, images) may shift
+    // element positions between DOMContentLoaded and load, causing rain to target
+    // wrong positions on first render until the 3s recalc timer corrects it.
+    window.addEventListener('load', function () {
+      if (enabled) sendSurfaces();
+    }, { once: true });
+
     /* ── Expose control API on window for animation controls ── */
     window.__rainSetSpeed = function (f) {
       if (useWorker && worker) {

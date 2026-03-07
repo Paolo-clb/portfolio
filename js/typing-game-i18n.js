@@ -60,6 +60,7 @@ window.TYPING_GAME_I18N = {
     introPopupText: 'Testez votre vitesse de frappe !<br>La barre de navigation au-dessus du texte vous permet de choisir la langue, le mode et les options du jeu.',
     introPopupHint: 'Amusez-vous bien !',
     heroTitle: 'Paolo Colombat : Typing Game',
+    heroTitleHTML: 'Paolo Colombat : <em>Typing Game</em>',
     heroIntro: 'Paolo Colombat'
   },
   en: {
@@ -118,6 +119,7 @@ window.TYPING_GAME_I18N = {
     introPopupText: 'Test your typing speed!<br>The navigation bar above the text lets you choose the language, mode and game options.',
     introPopupHint: 'Have fun!',
     heroTitle: 'Paolo Colombat: Typing Game',
+    heroTitleHTML: 'Paolo Colombat : <em>Typing Game</em>',
     heroIntro: 'Paolo Colombat'
   }
 };
