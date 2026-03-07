@@ -970,7 +970,7 @@ function initCursorHalo() {
   }, { passive: true });
 
   // ---- hover on interactive elements ----
-  var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay';
+  var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay, .anim-toggle__track';
   var modalAllowedSelector = 'button, .modal__close, a, .btn';
 
   document.addEventListener('mouseover', function (e) {
@@ -1151,6 +1151,13 @@ function initAnimationControls() {
   var footerContainer = document.querySelector('.footer > .container');
   if (!footerContainer) return;
 
+  // ── Create time-warp overlay (fullscreen tint layer) ──
+  var twOverlay = createElement('div', 'time-warp-overlay');
+  twOverlay.setAttribute('aria-hidden', 'true');
+  var tintEl = document.querySelector('.bg-tint-overlay');
+  if (tintEl) tintEl.after(twOverlay);
+  else document.body.insertBefore(twOverlay, document.body.firstChild);
+
   // ── Build DOM ──
   var controls = createElement('div', 'footer__anim-controls');
 
@@ -1170,7 +1177,7 @@ function initAnimationControls() {
   var slider = document.createElement('input');
   slider.type = 'range';
   slider.className = 'anim-speed__slider';
-  slider.min = '0.25';
+  slider.min = '0';
   slider.max = '1';
   slider.step = '0.05';
   slider.value = '1';
@@ -1222,29 +1229,68 @@ function initAnimationControls() {
   // ── Apply speed to all systems ──
   function applySpeed(val) {
     speedLabel.textContent = val.toFixed(2) + 'x';
-    controls.style.setProperty('--clock-speed', (4 / val) + 's');
-    if (window.__setMusicPlaybackRate) window.__setMusicPlaybackRate(val);
+    // Clock animation: paused at 0, otherwise proportional
+    if (val === 0) {
+      controls.style.setProperty('--clock-speed', '0s');
+    } else {
+      controls.style.setProperty('--clock-speed', (4 / val) + 's');
+    }
+    // Music stays at normal speed — only animations slow down
     if (window.__setVisualizerSpeed) window.__setVisualizerSpeed(val);
     if (window.__rainSetSpeed) window.__rainSetSpeed(val);
     // Video backgrounds
     var darkVid = document.getElementById('bg-video-dark');
     var natureVid = document.getElementById('bg-video-nature');
-    if (darkVid) darkVid.playbackRate = val;
-    if (natureVid) natureVid.playbackRate = val;
+    if (val === 0) {
+      // Can't set playbackRate to 0, pause the video instead
+      if (darkVid && !darkVid.paused) darkVid.pause();
+      if (natureVid && !natureVid.paused) natureVid.pause();
+    } else {
+      if (darkVid) { darkVid.playbackRate = val; if (darkVid.paused && document.documentElement.getAttribute('data-theme') === 'dark') darkVid.play().catch(function(){}); }
+      if (natureVid) { natureVid.playbackRate = val; if (natureVid.paused && document.documentElement.getAttribute('data-theme') === 'nature') natureVid.play().catch(function(){}); }
+    }
+  }
+
+  // ── Global time-warp visual effect ──
+  function applyTimeWarp(val) {
+    var root = document.documentElement;
+    if (val >= 1) {
+      root.removeAttribute('data-time-warp');
+      root.style.removeProperty('--tw-intensity');
+      return;
+    }
+    // intensity: 0 at val=1, 1 at val=0
+    var intensity = (1 - val).toFixed(3);
+    root.style.setProperty('--tw-intensity', intensity);
+    if (val === 0) {
+      root.setAttribute('data-time-warp', 'frozen');
+    } else if (val <= 0.3) {
+      root.setAttribute('data-time-warp', 'heavy');
+    } else {
+      root.setAttribute('data-time-warp', 'slow');
+    }
   }
 
   slider.addEventListener('input', function () {
     var val = parseFloat(slider.value);
     applySpeed(val);
+    applyTimeWarp(val);
     updateSliderFill();
     localStorage.setItem(SPEED_KEY, val);
   });
 
+  // ── Rain state before disable ──
+  var rainWasActive = false;
+
   // ── Toggle animations on/off ──
   function disableAnimations() {
+    // Remember rain state before killing it
+    rainWasActive = !!(window.__rainIsEnabled && window.__rainIsEnabled());
     document.documentElement.setAttribute('data-animations', 'off');
     if (window.__rainSetEnabled) window.__rainSetEnabled(false);
     if (window.__setVisualizerEnabled) window.__setVisualizerEnabled(false);
+    // Ensure music plays at normal speed
+    if (window.__setMusicPlaybackRate) window.__setMusicPlaybackRate(1);
     // Pause current theme video
     var darkVid = document.getElementById('bg-video-dark');
     var natureVid = document.getElementById('bg-video-nature');
@@ -1253,11 +1299,23 @@ function initAnimationControls() {
     // Gray out speed slider
     slider.disabled = true;
     speedWrap.classList.add('anim-speed--disabled');
+    // Remove time-warp effect
+    document.documentElement.removeAttribute('data-time-warp');
   }
 
   function enableAnimations() {
     document.documentElement.removeAttribute('data-animations');
-    if (window.__rainSetEnabled) window.__rainSetEnabled(true);
+    // Restore rain if it was active before disabling
+    if (rainWasActive) {
+      if (window.__rainSetEnabled) window.__rainSetEnabled(true);
+      // Actually start the rain (not just show the button)
+      var rainBtn = document.querySelector('.rain-toggle');
+      if (rainBtn && !rainBtn.classList.contains('rain-toggle--active')) {
+        rainBtn.click();
+      }
+    } else {
+      if (window.__rainSetEnabled) window.__rainSetEnabled(true);
+    }
     if (window.__setVisualizerEnabled) window.__setVisualizerEnabled(true);
     // Resume video for current theme
     var theme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -1269,8 +1327,11 @@ function initAnimationControls() {
     slider.disabled = false;
     speedWrap.classList.remove('anim-speed--disabled');
     var storedSpeed = parseFloat(localStorage.getItem(SPEED_KEY));
-    if (storedSpeed && storedSpeed >= 0.25 && storedSpeed <= 1) {
+    if (!isNaN(storedSpeed) && storedSpeed >= 0 && storedSpeed <= 1) {
+      slider.value = storedSpeed;
       applySpeed(storedSpeed);
+      updateSliderFill();
+      applyTimeWarp(storedSpeed);
     }
   }
 
@@ -1304,9 +1365,10 @@ function initAnimationControls() {
   // Speed
   if (savedSpeed) {
     var spd = parseFloat(savedSpeed);
-    if (spd >= 0.25 && spd <= 1) {
+    if (!isNaN(spd) && spd >= 0 && spd <= 1) {
       slider.value = spd;
       applySpeed(spd);
+      applyTimeWarp(spd);
     }
   }
   updateSliderFill();

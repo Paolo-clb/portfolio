@@ -623,6 +623,91 @@ section.hero {
 }
 
 /* ==========================================================================
+   Time-Warp Visual Effect
+   ========================================================================== */
+
+:root {
+  --tw-intensity: 0;
+}
+
+/* Slow — subtle desaturation + slight cool tint */
+[data-time-warp="slow"] body::before,
+[data-time-warp="slow"] .bg-video--dark,
+[data-time-warp="slow"] .bg-video--nature {
+  filter:
+    saturate(calc(1 - var(--tw-intensity) * 0.35))
+    brightness(calc(1 - var(--tw-intensity) * 0.06));
+  transition: filter 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+[data-time-warp="slow"] .time-warp-overlay {
+  opacity: calc(var(--tw-intensity) * 0.35);
+  transition: opacity 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Heavy — stronger desaturation, noticeable cool shift, subtle vignette */
+[data-time-warp="heavy"] body::before,
+[data-time-warp="heavy"] .bg-video--dark,
+[data-time-warp="heavy"] .bg-video--nature {
+  filter:
+    saturate(calc(1 - var(--tw-intensity) * 0.6))
+    brightness(calc(1 - var(--tw-intensity) * 0.1))
+    contrast(calc(1 + var(--tw-intensity) * 0.08));
+  transition: filter 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+[data-time-warp="heavy"] .time-warp-overlay {
+  opacity: calc(var(--tw-intensity) * 0.55);
+  transition: opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Frozen — full grayscale, blue-ish tint, crystalline feel */
+[data-time-warp="frozen"] body::before,
+[data-time-warp="frozen"] .bg-video--dark,
+[data-time-warp="frozen"] .bg-video--nature {
+  filter: saturate(0.15) brightness(0.88) contrast(1.12);
+  transition: filter 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+[data-time-warp="frozen"] .time-warp-overlay {
+  opacity: 0.7;
+  transition: opacity 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Frozen: clock hands stop */
+[data-time-warp="frozen"] .anim-clock-hand,
+[data-time-warp="frozen"] .anim-clock-hand--min {
+  animation-play-state: paused;
+}
+
+/* Time-warp overlay — cool-tint fullscreen layer */
+.time-warp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(80, 130, 200, 0.08) 0%,
+    rgba(60, 100, 170, 0.18) 70%,
+    rgba(40, 70, 140, 0.28) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Smooth reset when going back to normal */
+body::before,
+.bg-video--dark,
+.bg-video--nature {
+  transition: filter 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.bg-tint-overlay {
+  transition: background 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ==========================================================================
    Background Credit Badge
    ========================================================================== */
 
