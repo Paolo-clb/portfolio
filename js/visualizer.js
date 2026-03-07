@@ -245,6 +245,12 @@
     let avgEnergy = 0;
     if (tryConnect()) {
       analyser.getByteFrequencyData(dataArray);
+      // Scale frequency data by speedFactor so bars & particles slow down
+      if (speedFactor < 1) {
+        for (let i = 0; i < dataArray.length; i++) {
+          dataArray[i] = Math.round(dataArray[i] * speedFactor);
+        }
+      }
       for (let i = 0; i < dataArray.length; i++) avgEnergy += dataArray[i];
       avgEnergy /= dataArray.length * 255;
     }

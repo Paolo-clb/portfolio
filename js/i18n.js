@@ -85,6 +85,13 @@ window.SITE_I18N = {
     themeToNature: 'Passer au thème nature',
     themeToLight: 'Passer au thème jour',
 
+    // Weak device warning
+    weakWarningTitle: 'Animations désactivées',
+    weakWarningMsg: 'Votre appareil a été détecté comme peu puissant. Les animations ont été désactivées pour éviter les ralentissements.',
+    weakWarningCta: 'Activer quand même',
+    weakWarningLag: 'Attention : cela peut provoquer des lags.',
+    weakWarningDismiss: 'OK, compris',
+
     // Misc
     closeLbl: 'Fermer',
     switchLang: 'English',
@@ -168,6 +175,13 @@ window.SITE_I18N = {
     themeToDark: 'Switch to dark theme',
     themeToNature: 'Switch to nature theme',
     themeToLight: 'Switch to light theme',
+
+    // Weak device warning
+    weakWarningTitle: 'Animations disabled',
+    weakWarningMsg: 'Your device was detected as low-powered. Animations have been disabled to prevent lag.',
+    weakWarningCta: 'Enable anyway',
+    weakWarningLag: 'Warning: this may cause lag.',
+    weakWarningDismiss: 'OK, got it',
 
     // Misc
     closeLbl: 'Close',

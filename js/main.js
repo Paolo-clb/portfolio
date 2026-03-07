@@ -971,7 +971,7 @@ function initCursorHalo() {
   }, { passive: true });
 
   // ---- hover on interactive elements ----
-  var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay, .anim-toggle__track';
+  var interactiveSelector = 'a, button:not(.anim-speed__icon), input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay, .music-popup-overlay, .weak-popup-overlay, .anim-toggle__track';
   var modalAllowedSelector = 'button, .modal__close, a, .btn';
 
   document.addEventListener('mouseover', function (e) {
@@ -1008,6 +1008,12 @@ function initCursorHalo() {
       // Don't show hover on modal overlay content — only on the backdrop itself
       // Exceptions: project cards and interactive controls remain hoverable
       if (e.target.closest('.modal-overlay') && e.target.closest('.modal, .detail-modal, .skill-popup') && !e.target.closest('.project-card') && !e.target.closest('button, .modal__close, a, .btn')) return;
+      // Music popup: backdrop clickable (closes), inside popup content is not hoverable unless interactive
+      if (e.target.closest('.music-popup-overlay') && e.target.closest('.music-popup') &&
+          !e.target.closest('button, input, label, a, .music-player__volume-icon, .music-popup__playlist-item')) return;
+      // Weak device warning popup: same pattern
+      if (e.target.closest('.weak-popup-overlay') && e.target.closest('.weak-popup') &&
+          !e.target.closest('button, a')) return;
       halo.classList.add('cursor-halo--hover');
     }
   }, { passive: true });
@@ -1042,7 +1048,9 @@ function initCursorHalo() {
         if (node.nodeType === 1 &&
             (node.classList.contains('zen-popup-overlay') ||
              node.classList.contains('modal-overlay') ||
-             node.classList.contains('skill-overlay'))) {
+             node.classList.contains('skill-overlay') ||
+             node.classList.contains('music-popup-overlay') ||
+             node.classList.contains('weak-popup-overlay'))) {
           halo.classList.remove('cursor-halo--hover');
         }
       });
@@ -1140,6 +1148,76 @@ function detectWeakDevice() {
   if (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) return true;
   if (navigator.deviceMemory && navigator.deviceMemory <= 2) return true;
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// Weak device warning popup
+// ---------------------------------------------------------------------------
+function showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY) {
+  var t = function (key) { return window.__siteT ? window.__siteT(key) : key; };
+
+  var overlay = createElement('div', 'weak-popup-overlay');
+  var popup = createElement('div', 'weak-popup');
+
+  // Warning icon
+  var iconSvg = '<svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>' +
+    '<line x1="12" y1="9" x2="12" y2="13"/>' +
+    '<line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+
+  var icon = createElement('div', 'weak-popup__icon');
+  icon.innerHTML = iconSvg;
+
+  var title = createElement('h3', 'weak-popup__title', t('weakWarningTitle'));
+  var msg = createElement('p', 'weak-popup__msg', t('weakWarningMsg'));
+  var lag = createElement('p', 'weak-popup__lag', t('weakWarningLag'));
+
+  var actions = createElement('div', 'weak-popup__actions');
+
+  var enableBtn = createElement('button', 'weak-popup__btn weak-popup__btn--enable', t('weakWarningCta'));
+  var dismissBtn = createElement('button', 'weak-popup__btn weak-popup__btn--dismiss', t('weakWarningDismiss'));
+
+  actions.appendChild(enableBtn);
+  actions.appendChild(dismissBtn);
+
+  popup.appendChild(icon);
+  popup.appendChild(title);
+  popup.appendChild(msg);
+  popup.appendChild(lag);
+  popup.appendChild(actions);
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
+
+  // Force reflow then animate in
+  overlay.offsetHeight;
+  overlay.classList.add('weak-popup-overlay--visible');
+
+  function close() {
+    overlay.classList.remove('weak-popup-overlay--visible');
+    overlay.addEventListener('transitionend', function () { overlay.remove(); }, { once: true });
+  }
+
+  dismissBtn.addEventListener('click', close);
+
+  enableBtn.addEventListener('click', function () {
+    close();
+    // Enable animations
+    checkbox.checked = true;
+    enableAnimations();
+    localStorage.setItem(TOGGLE_KEY, 'on');
+    // Scroll to footer toggle
+    var toggle = document.querySelector('.anim-toggle');
+    if (toggle) {
+      setTimeout(function () {
+        toggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 400);
+    }
+  });
+
+  // Close on overlay click (outside popup)
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) close();
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1281,16 +1359,16 @@ function initAnimationControls() {
 
   // ── Apply speed to all systems ──
   function applySpeed(raw) {
-    var linear = raw;          // music, particles, videos, label
-    var curved = rawToCurved(raw); // rain, time-warp, clock
+    var linear = raw;          // music, particles, videos, label, clock
+    var curved = rawToCurved(raw); // rain, time-warp (grayscale)
 
     speedLabel.textContent = linear.toFixed(2) + 'x';
 
-    // Clock animation: non-linear
+    // Clock animation: linear
     if (raw === 0) {
       speedWrap.style.setProperty('--clock-speed', '0s');
     } else {
-      speedWrap.style.setProperty('--clock-speed', (4 / curved) + 's');
+      speedWrap.style.setProperty('--clock-speed', (4 / linear) + 's');
     }
 
     // Music freeze logic
@@ -1483,6 +1561,8 @@ function initAnimationControls() {
   } else if (detectWeakDevice()) {
     checkbox.checked = false;
     disableAnimations();
+    // Show warning popup after a short delay so DOM is ready
+    setTimeout(function () { showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY); }, 600);
   }
   updateToggleTooltip();
 }
