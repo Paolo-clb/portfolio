@@ -1177,8 +1177,8 @@
     /* ---- Tooltip system ---- */
     var TOOLTIP_TEXTS = {
       fr: {
-        fr: 'Passer en français',
-        en: 'Passer en anglais',
+        fr: 'Traduire les textes en français',
+        en: 'Traduire les textes en anglais',
         '10': 'Texte de 10 mots',
         '25': 'Texte de 25 mots',
         '50': 'Texte de 50 mots',
@@ -1193,8 +1193,8 @@
         settings: 'Paramètres du texte'
       },
       en: {
-        fr: 'Switch to French',
-        en: 'Switch to English',
+        fr: 'Switch texte to French',
+        en: 'Switch texte to English',
         '10': 'Text of 10-word',
         '25': 'Text of 25-word',
         '50': 'Text of 50-word',
