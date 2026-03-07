@@ -1357,6 +1357,8 @@ function initAnimationControls() {
   slider.addEventListener('input', function () {
     var raw = parseFloat(slider.value);
     var speed = sliderToSpeed(raw);
+    // Snap to 0 below threshold to eliminate dead zone
+    if (speed > 0 && speed < 0.01) speed = 0;
     applySpeed(speed, raw);
     applyTimeWarp(speed);
     updateSliderFill();
@@ -1378,6 +1380,11 @@ function initAnimationControls() {
     timeFrozen = false;
     if (window.__musicPlayerSetFrozen) window.__musicPlayerSetFrozen(false);
     if (window.__setMusicPlaybackRate) window.__setMusicPlaybackRate(1);
+    // Resume audio if player thinks it's playing (unfreezing may have left it paused)
+    var audio = window.__musicPlayerAudio;
+    if (audio && audio.paused && window.__musicPlayerIsPlaying && window.__musicPlayerIsPlaying()) {
+      audio.play().catch(function(){});
+    }
     // Pause current theme video
     var darkVid = document.getElementById('bg-video-dark');
     var natureVid = document.getElementById('bg-video-nature');
@@ -1490,6 +1497,29 @@ function initThemeToggle() {
 
   // Cycle order: light → dark → nature → light
   var THEMES = ['light', 'dark', 'nature'];
+  var THEME_TIP_KEYS = { light: 'themeToDark', dark: 'themeToNature', nature: 'themeToLight' };
+
+  // Custom tooltip (positioned below, same style as lang toggle)
+  var themeTip = document.createElement('div');
+  themeTip.className = 'theme-toggle__tooltip';
+  btn.appendChild(themeTip);
+  var themeTipTimer = null;
+
+  function getThemeTipText() {
+    var cur = root.getAttribute('data-theme') || 'light';
+    return siteT(THEME_TIP_KEYS[cur] || 'themeToDark');
+  }
+
+  btn.addEventListener('mouseenter', function () {
+    clearTimeout(themeTipTimer);
+    themeTip.textContent = getThemeTipText();
+    void themeTip.offsetWidth;
+    themeTip.classList.add('theme-toggle__tooltip--visible');
+  });
+  btn.addEventListener('mouseleave', function () {
+    themeTip.classList.remove('theme-toggle__tooltip--visible');
+    themeTipTimer = setTimeout(function () {}, 200);
+  });
 
   // Directly set SVG attributes as fallback for browsers that don't
   // support CSS geometry properties (r, cx, cy) on SVG elements.
@@ -1594,6 +1624,7 @@ function initThemeToggle() {
   }
 
   btn.addEventListener('click', function () {
+    themeTip.classList.remove('theme-toggle__tooltip--visible');
     var current = root.getAttribute('data-theme') || 'light';
     var idx = THEMES.indexOf(current);
     var next = THEMES[(idx + 1) % THEMES.length];

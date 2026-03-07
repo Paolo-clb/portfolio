@@ -80,6 +80,11 @@ window.SITE_I18N = {
     // Lang toggle
     langTooltip: 'Switch to English',
 
+    // Theme toggle
+    themeToDark: 'Passer au thème nuit',
+    themeToNature: 'Passer au thème nature',
+    themeToLight: 'Passer au thème jour',
+
     // Misc
     closeLbl: 'Fermer',
     switchLang: 'English',
@@ -158,6 +163,11 @@ window.SITE_I18N = {
 
     // Lang toggle
     langTooltip: 'Passer en Français',
+
+    // Theme toggle
+    themeToDark: 'Switch to dark theme',
+    themeToNature: 'Switch to nature theme',
+    themeToLight: 'Switch to light theme',
 
     // Misc
     closeLbl: 'Close',
