@@ -459,7 +459,7 @@ section.hero {
   display: block;
   width: 100%;
   text-align: center;
-  margin: -0.4rem 0 0.8rem;
+  margin: -0.2rem 0 1.3rem;
   padding: 0;
   opacity: 1;
   transition: opacity var(--transition);
@@ -491,7 +491,7 @@ section.hero {
 }
 
 .hero__anim-speed .anim-speed__slider {
-  width: 80px;
+  width: 90px;
   height: 3px;
   margin: 0 0.25rem;
   transition: filter 0.3s ease, width 0.3s ease;
@@ -499,12 +499,12 @@ section.hero {
 
 .anim-speed__inner:hover .anim-speed__slider {
   filter: drop-shadow(0 0 4px var(--clr-primary));
-  width: 90px;
+  width: 100px;
 }
 
 .hero__anim-speed .anim-speed__slider::-webkit-slider-thumb {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -514,8 +514,8 @@ section.hero {
 }
 
 .hero__anim-speed .anim-speed__slider::-moz-range-thumb {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -645,6 +645,22 @@ section.hero {
   min-width: 2.8em;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---- Typing game navbar slider size ---- */
+.typing-game__navbar .anim-speed__slider {
+  width: 100px;
+  height: 4px;
+}
+
+.typing-game__navbar .anim-speed__slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+}
+
+.typing-game__navbar .anim-speed__slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
 }
 
 /* ---- Toggle section ---- */
