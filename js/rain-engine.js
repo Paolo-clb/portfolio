@@ -30,6 +30,7 @@
     var CORNER_R     = 12;
 
     /* ── State ──────────────────────────────────────────── */
+    var speedFactor = 1;
     var canvas   = null;
     var ctx      = null;
     var W = 0, H = 0;
@@ -212,11 +213,11 @@
         if (d.lif <= 0) { d._ca = 0; continue; }
 
         if (d.bou) {
-          d.x += d.vx; d.y += d.vy;
-          d.vy += SPLASH_G; d.lif -= 0.06;
+          d.x += d.vx * speedFactor; d.y += d.vy * speedFactor;
+          d.vy += SPLASH_G * speedFactor; d.lif -= 0.06 * speedFactor;
           if (d.lif <= 0 || d.y > H + 10) resetDrop(d);
         } else {
-          d.x += d.vx; d.y += d.vy;
+          d.x += d.vx * speedFactor; d.y += d.vy * speedFactor;
 
           // Cursor bounce
           var cDist = hitCursor(d.x, d.y + d.len);
@@ -232,7 +233,7 @@
             spawnSplash(d.x, d.y + d.len);
             spawnRipple(d.x, d.y + d.len);
           } else {
-            var hit = hitSurface(d.x, d.y + d.len, d.vy);
+            var hit = hitSurface(d.x, d.y + d.len, d.vy * speedFactor);
             if (hit) {
               vTop = hit.vTop;
               d.y = vTop - d.len;
@@ -288,8 +289,8 @@
         ctx.strokeStyle = 'rgb(' + rainRGB + ')';
         for (var k = rippleN - 1; k >= 0; k--) {
           var rp = ripples[k];
-          rp.r += (rp.maxR - rp.r) * 0.12;
-          rp.lif -= rp.dec;
+          rp.r += (rp.maxR - rp.r) * 0.12 * speedFactor;
+          rp.lif -= rp.dec * speedFactor;
           if (rp.lif <= 0) {
             rippleN--;
             if (k < rippleN) { var tmp = ripples[rippleN]; ripples[k] = tmp; ripples[rippleN] = rp; }
@@ -307,8 +308,8 @@
         // Physics pass
         for (var j = splashN - 1; j >= 0; j--) {
           var sp = splashes[j];
-          sp.x += sp.vx; sp.y += sp.vy;
-          sp.vy += SPLASH_G; sp.lif -= sp.dec;
+          sp.x += sp.vx * speedFactor; sp.y += sp.vy * speedFactor;
+          sp.vy += SPLASH_G * speedFactor; sp.lif -= sp.dec * speedFactor;
           if (sp.lif <= 0) {
             splashN--;
             if (j < splashN) { var t2 = splashes[splashN]; splashes[j] = t2; splashes[splashN] = sp; }
@@ -347,16 +348,16 @@
         ctx.lineCap = 'round';
         for (var di = dripN - 1; di >= 0; di--) {
           var dp = drips[di];
-          dp.lif -= dp.dec;
-          dp.wobT += 0.18;
+          dp.lif -= dp.dec * speedFactor;
+          dp.wobT += 0.18 * speedFactor;
 
           var kill = false;
           var rs = (dp.sidx < surfs.length) ? surfs[dp.sidx] : null;
           if (dp.free) {
             /* Detached — falls freely with gravity */
-            dp.vy += 0.25;
-            dp.y += dp.vy;
-            dp.x += dp.vx;
+            dp.vy += 0.25 * speedFactor;
+            dp.y += dp.vy * speedFactor;
+            dp.x += dp.vx * speedFactor;
             dp.r *= 0.988;
             dp.tail += dp.vy * 0.5;
             if (dp.tail > dp.maxTail) dp.tail = dp.maxTail;
@@ -367,8 +368,8 @@
               kill = true;
             } else if (dp.phase === 0) {
               /* Phase 0: sliding along top corner arc */
-              dp.ang += dp.vy;
-              dp.vy += 0.0008; /* slight angular acceleration */
+              dp.ang += dp.vy * speedFactor;
+              dp.vy += 0.0008 * speedFactor; /* slight angular acceleration */
               if (dp.vy > 0.04) dp.vy = 0.04;
               var cx0 = dp.edge === -1 ? rs.left + CORNER_R : rs.right - CORNER_R;
               var cy0 = rs.top + CORNER_R;
@@ -389,10 +390,10 @@
               /* Phase 1: straight edge crawl */
               var edgeX = dp.edge === -1 ? rs.left : rs.right;
               dp.x = edgeX + (dp.edge === -1 ? -0.5 : 0.5);
-              dp.vy += 0.014;
+              dp.vy += 0.014 * speedFactor;
               if (dp.vy > 1.8) dp.vy = 1.8;
               if (Math.random() < 0.02) dp.vy *= 0.2;
-              dp.y += dp.vy;
+              dp.y += dp.vy * speedFactor;
               dp.vx = Math.sin(dp.wobT) * dp.wobA;
               dp.tail = dp.vy * 5;
               if (dp.tail > dp.maxTail) dp.tail = dp.maxTail;
@@ -404,8 +405,8 @@
               }
             } else {
               /* Phase 2: bottom corner arc — curves under the element */
-              dp.ang += dp.vy;
-              dp.vy += 0.001;
+              dp.ang += dp.vy * speedFactor;
+              dp.vy += 0.001 * speedFactor;
               if (dp.vy > 0.05) dp.vy = 0.05;
               var cx2 = dp.edge === -1 ? rs.left + CORNER_R : rs.right - CORNER_R;
               var cy2 = rs.bottom - CORNER_R;
@@ -543,6 +544,9 @@
       },
 
       isRunning: function () { return running; },
+
+      /** Adjust physics speed (0.25 – 1.0). Does NOT affect cursor bounce. */
+      setSpeed: function (f) { speedFactor = f; },
 
       /** Run one frame of physics + rendering.
        *  @returns {'ok'|'drained'|'stopped'} */

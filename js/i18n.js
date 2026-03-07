@@ -68,6 +68,13 @@ window.SITE_I18N = {
     rainEnable: 'Activer la pluie',
     rainDisable: 'Désactiver la pluie',
 
+    // Animation controls
+    animSpeed: 'Vitesse',
+    animDisable: 'Désactiver les animations',
+    animEnable: 'Activer les animations',
+    animSlowMotion: 'Ralenti',
+    animNormal: 'Normal',
+
     // Lang toggle
     langTooltip: 'Switch to English',
 
@@ -137,6 +144,13 @@ window.SITE_I18N = {
     // Rain
     rainEnable: 'Enable rain',
     rainDisable: 'Disable rain',
+
+    // Animation controls
+    animSpeed: 'Speed',
+    animDisable: 'Disable animations',
+    animEnable: 'Enable animations',
+    animSlowMotion: 'Slow motion',
+    animNormal: 'Normal',
 
     // Lang toggle
     langTooltip: 'Passer en Français',

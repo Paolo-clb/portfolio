@@ -12,6 +12,9 @@
   let dataArray = null;
   let connected = false;
 
+  let speedFactor = 1;
+  let vizEnabled = true;
+
   // Bar appearance
   const BAR_COUNT = 64;
   const BAR_GAP = 2;
@@ -86,8 +89,8 @@
       }
 
       // Base drifting movement (always active)
-      p.x += p.vx;
-      p.y += p.vy + Math.sin(now + i) * 0.2;
+      p.x += p.vx * speedFactor;
+      p.y += (p.vy + Math.sin(now + i) * 0.2) * speedFactor;
 
       // Start from base values
       let r = p.baseRadius;
@@ -218,6 +221,11 @@
   /* ---- Draw one frame ---- */
 
   function draw() {
+    if (!vizEnabled) {
+      requestAnimationFrame(draw);
+      return;
+    }
+
     const w = canvas.width;
     const h = canvas.height;
 
@@ -314,6 +322,18 @@
     });
 
     draw();
+
+    // Expose control API on window for animation controls
+    window.__setVisualizerSpeed = function (f) { speedFactor = f; };
+    window.__setVisualizerEnabled = function (on) {
+      vizEnabled = on;
+      if (!on) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.style.opacity = '0';
+      } else {
+        canvas.style.opacity = '';
+      }
+    };
   }
 
   // Boot

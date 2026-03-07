@@ -641,6 +641,11 @@
     setVolume(0.5);
     loadTrack(0);
     initTrigger();
+
+    // Expose playback rate control for animation controls
+    window.__setMusicPlaybackRate = function (rate) {
+      if (audio) audio.playbackRate = rate;
+    };
   }
 
   // Boot

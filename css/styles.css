@@ -427,6 +427,202 @@ section.hero {
 }
 
 /* ==========================================================================
+   Footer Animation Controls
+   ========================================================================== */
+
+.footer__anim-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin: 1rem 0 0.25rem;
+  flex-wrap: wrap;
+}
+
+/* ---- Speed section ---- */
+
+.anim-speed {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: opacity var(--transition);
+}
+
+.anim-speed--disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.anim-speed__icon {
+  background: none;
+  border: none;
+  color: var(--clr-text-muted);
+  cursor: default;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.anim-speed__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Clock hand animation — speed controlled by --clock-speed */
+.anim-clock-hand {
+  transform-origin: 12px 12px;
+  animation: clockSpin var(--clock-speed, 4s) linear infinite;
+}
+
+.anim-clock-hand--min {
+  transform-origin: 12px 12px;
+  animation: clockSpin calc(var(--clock-speed, 4s) * 4) linear infinite;
+}
+
+@keyframes clockSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.anim-speed__slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 90px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--clr-border);
+  outline: none;
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+
+.anim-speed__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--clr-primary);
+  border: 2px solid var(--clr-surface);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.anim-speed__slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 8px rgba(242, 162, 133, 0.4);
+}
+
+.anim-speed__slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--clr-primary);
+  border: 2px solid var(--clr-surface);
+  cursor: pointer;
+}
+
+.anim-speed__label {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+  min-width: 2.8em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Toggle section ---- */
+
+.anim-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.anim-toggle__label {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+  cursor: default;
+  user-select: none;
+}
+
+.anim-toggle__switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.anim-toggle__switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.anim-toggle__track {
+  position: absolute;
+  inset: 0;
+  background: var(--clr-border);
+  border-radius: 10px;
+  transition: background 0.25s ease;
+}
+
+.anim-toggle__track::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 2px;
+  bottom: 2px;
+  background: var(--clr-text);
+  border-radius: 50%;
+  transition: transform 0.25s ease;
+}
+
+.anim-toggle__switch input:checked + .anim-toggle__track {
+  background: var(--clr-primary);
+}
+
+.anim-toggle__switch input:checked + .anim-toggle__track::after {
+  transform: translateX(16px);
+}
+
+/* ==========================================================================
+   Animations-Off overrides (data attribute on <html>)
+   ========================================================================== */
+
+[data-animations="off"] .bg-video--dark,
+[data-animations="off"] .bg-video--nature {
+  display: none !important;
+}
+
+[data-animations="off"][data-theme="dark"] body::before {
+  background-image: url('../assets/images/backgoundKatanaPoster.jpg');
+  opacity: 0.6;
+}
+
+[data-animations="off"][data-theme="nature"] body::before {
+  background-image: url('../assets/images/hollowbackgroundPoster.jpg');
+  opacity: 0.6;
+}
+
+[data-animations="off"] .visualizer-canvas,
+[data-animations="off"] .bg-tint-overlay {
+  display: none !important;
+}
+
+[data-animations="off"] .rain-toggle {
+  display: none !important;
+}
+
+[data-animations="off"] .rain-canvas {
+  display: none !important;
+}
+
+/* ==========================================================================
    Background Credit Badge
    ========================================================================== */
 
@@ -960,6 +1156,11 @@ section.hero {
   background: rgba(10, 10, 32, 0.825);
 }
 
+/* --- Dark: Animation controls --- */
+[data-theme="dark"] .anim-speed__slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 8px rgba(156, 39, 176, 0.5);
+}
+
 /* --- Dark: Background credit --- */
 [data-theme="dark"] .bg-credit {
   background: rgba(10, 10, 32, 0.65);
@@ -1099,6 +1300,11 @@ section.hero {
   background: rgba(10, 18, 8, 0.825);
 }
 
+/* --- Nature: Animation controls --- */
+[data-theme="nature"] .anim-speed__slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 8px rgba(94, 184, 58, 0.5);
+}
+
 /* --- Nature: CV --- */
 [data-theme="nature"] .cv-modal {
   background: rgba(21, 34, 16, 0.6);
@@ -1221,6 +1427,15 @@ section.hero {
   .cv-section__viewer iframe {
     height: 50vh;
     min-height: 350px;
+  }
+
+  .footer__anim-controls {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .anim-speed__slider {
+    width: 70px;
   }
 }
 

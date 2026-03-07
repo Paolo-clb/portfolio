@@ -868,6 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setFooterYear();
   initScrollHint();
   initThemeToggle();
+  initAnimationControls();
   initCursorHalo();
 });
 
@@ -1130,6 +1131,199 @@ function initScrollHint() {
 // ---------------------------------------------------------------------------
 // Theme Toggle — sun ↔ moon ↔ leaf with animation (light → dark → nature)
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Weak device detection
+// ---------------------------------------------------------------------------
+function detectWeakDevice() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
+  if (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) return true;
+  if (navigator.deviceMemory && navigator.deviceMemory <= 2) return true;
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Animation Controls (footer bar: speed slider + on/off toggle)
+// ---------------------------------------------------------------------------
+function initAnimationControls() {
+  var SPEED_KEY  = 'portfolio_anim_speed';
+  var TOGGLE_KEY = 'portfolio_animations';
+
+  var footerContainer = document.querySelector('.footer > .container');
+  if (!footerContainer) return;
+
+  // ── Build DOM ──
+  var controls = createElement('div', 'footer__anim-controls');
+
+  // Speed section
+  var speedWrap = createElement('div', 'anim-speed');
+
+  var clockBtn = createElement('button', 'anim-speed__icon');
+  clockBtn.setAttribute('aria-label', siteT('animSpeed'));
+  clockBtn.setAttribute('tabindex', '-1');
+  clockBtn.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="12" cy="12" r="10"/>' +
+      '<line class="anim-clock-hand" x1="12" y1="12" x2="12" y2="7"/>' +
+      '<line class="anim-clock-hand--min" x1="12" y1="12" x2="15.5" y2="12"/>' +
+    '</svg>';
+
+  var slider = document.createElement('input');
+  slider.type = 'range';
+  slider.className = 'anim-speed__slider';
+  slider.min = '0.25';
+  slider.max = '1';
+  slider.step = '0.05';
+  slider.value = '1';
+  slider.setAttribute('tabindex', '-1');
+
+  var speedLabel = createElement('span', 'anim-speed__label', '1.0x');
+
+  speedWrap.appendChild(clockBtn);
+  speedWrap.appendChild(slider);
+  speedWrap.appendChild(speedLabel);
+
+  // Toggle section
+  var toggleWrap = createElement('div', 'anim-toggle');
+
+  var toggleLabel = createElement('label', 'anim-toggle__label', 'Animations');
+  toggleLabel.setAttribute('data-i18n-title', 'animEnable');
+
+  var switchLabel = createElement('label', 'anim-toggle__switch');
+  var checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = true;
+  var track = createElement('span', 'anim-toggle__track');
+  switchLabel.appendChild(checkbox);
+  switchLabel.appendChild(track);
+
+  toggleWrap.appendChild(toggleLabel);
+  toggleWrap.appendChild(switchLabel);
+
+  controls.appendChild(speedWrap);
+  controls.appendChild(toggleWrap);
+
+  // Insert between <p> and <ul> in footer
+  var footerSocials = footerContainer.querySelector('.footer__socials');
+  if (footerSocials) {
+    footerContainer.insertBefore(controls, footerSocials);
+  } else {
+    footerContainer.appendChild(controls);
+  }
+
+  // ── Speed slider fill ──
+  function updateSliderFill() {
+    var val = parseFloat(slider.value);
+    var min = parseFloat(slider.min);
+    var max = parseFloat(slider.max);
+    var pct = ((val - min) / (max - min)) * 100;
+    slider.style.background = 'linear-gradient(to right, var(--clr-primary) 0%, var(--clr-accent) ' + pct + '%, var(--clr-border) ' + pct + '%)';
+  }
+
+  // ── Apply speed to all systems ──
+  function applySpeed(val) {
+    speedLabel.textContent = val.toFixed(2) + 'x';
+    controls.style.setProperty('--clock-speed', (4 / val) + 's');
+    if (window.__setMusicPlaybackRate) window.__setMusicPlaybackRate(val);
+    if (window.__setVisualizerSpeed) window.__setVisualizerSpeed(val);
+    if (window.__rainSetSpeed) window.__rainSetSpeed(val);
+    // Video backgrounds
+    var darkVid = document.getElementById('bg-video-dark');
+    var natureVid = document.getElementById('bg-video-nature');
+    if (darkVid) darkVid.playbackRate = val;
+    if (natureVid) natureVid.playbackRate = val;
+  }
+
+  slider.addEventListener('input', function () {
+    var val = parseFloat(slider.value);
+    applySpeed(val);
+    updateSliderFill();
+    localStorage.setItem(SPEED_KEY, val);
+  });
+
+  // ── Toggle animations on/off ──
+  function disableAnimations() {
+    document.documentElement.setAttribute('data-animations', 'off');
+    if (window.__rainSetEnabled) window.__rainSetEnabled(false);
+    if (window.__setVisualizerEnabled) window.__setVisualizerEnabled(false);
+    // Pause current theme video
+    var darkVid = document.getElementById('bg-video-dark');
+    var natureVid = document.getElementById('bg-video-nature');
+    if (darkVid) darkVid.pause();
+    if (natureVid) natureVid.pause();
+    // Gray out speed slider
+    slider.disabled = true;
+    speedWrap.classList.add('anim-speed--disabled');
+  }
+
+  function enableAnimations() {
+    document.documentElement.removeAttribute('data-animations');
+    if (window.__rainSetEnabled) window.__rainSetEnabled(true);
+    if (window.__setVisualizerEnabled) window.__setVisualizerEnabled(true);
+    // Resume video for current theme
+    var theme = document.documentElement.getAttribute('data-theme') || 'light';
+    var darkVid = document.getElementById('bg-video-dark');
+    var natureVid = document.getElementById('bg-video-nature');
+    if (darkVid && theme === 'dark') darkVid.play().catch(function(){});
+    if (natureVid && theme === 'nature') natureVid.play().catch(function(){});
+    // Re-enable speed slider and re-apply stored speed
+    slider.disabled = false;
+    speedWrap.classList.remove('anim-speed--disabled');
+    var storedSpeed = parseFloat(localStorage.getItem(SPEED_KEY));
+    if (storedSpeed && storedSpeed >= 0.25 && storedSpeed <= 1) {
+      applySpeed(storedSpeed);
+    }
+  }
+
+  checkbox.addEventListener('change', function () {
+    if (checkbox.checked) {
+      enableAnimations();
+      localStorage.setItem(TOGGLE_KEY, 'on');
+    } else {
+      disableAnimations();
+      localStorage.setItem(TOGGLE_KEY, 'off');
+    }
+    updateToggleTooltip();
+  });
+
+  // ── Tooltip on toggle label ──
+  function updateToggleTooltip() {
+    toggleLabel.title = checkbox.checked ? siteT('animDisable') : siteT('animEnable');
+  }
+
+  // ── i18n update helper (called on language change) ──
+  function updateAnimI18n() {
+    clockBtn.setAttribute('aria-label', siteT('animSpeed'));
+    updateToggleTooltip();
+  }
+  document.addEventListener('sitelangchange', updateAnimI18n);
+
+  // ── Restore state on load ──
+  var savedToggle = localStorage.getItem(TOGGLE_KEY);
+  var savedSpeed  = localStorage.getItem(SPEED_KEY);
+
+  // Speed
+  if (savedSpeed) {
+    var spd = parseFloat(savedSpeed);
+    if (spd >= 0.25 && spd <= 1) {
+      slider.value = spd;
+      applySpeed(spd);
+    }
+  }
+  updateSliderFill();
+
+  // Toggle: if user never toggled, auto-detect weak device
+  if (savedToggle === 'off') {
+    checkbox.checked = false;
+    disableAnimations();
+  } else if (savedToggle === 'on') {
+    // User explicitly enabled — keep on
+  } else if (detectWeakDevice()) {
+    checkbox.checked = false;
+    disableAnimations();
+  }
+  updateToggleTooltip();
+}
+
 function initThemeToggle() {
   var btn = document.getElementById('theme-toggle');
   if (!btn) return;
@@ -1257,6 +1451,23 @@ function initThemeToggle() {
     localStorage.setItem(STORAGE_KEY, next);
     manageVideos(next);
     updateFavicon(next);
+
+    // If animations are disabled, pause the newly activated video immediately
+    if (document.documentElement.getAttribute('data-animations') === 'off') {
+      var darkVid = document.getElementById('bg-video-dark');
+      var natureVid = document.getElementById('bg-video-nature');
+      if (darkVid) darkVid.pause();
+      if (natureVid) natureVid.pause();
+    } else {
+      // Apply stored speed to the new video
+      var storedSpeed = parseFloat(localStorage.getItem('portfolio_anim_speed'));
+      if (storedSpeed && storedSpeed >= 0.25 && storedSpeed <= 1) {
+        var darkVid2 = document.getElementById('bg-video-dark');
+        var natureVid2 = document.getElementById('bg-video-nature');
+        if (darkVid2) darkVid2.playbackRate = storedSpeed;
+        if (natureVid2) natureVid2.playbackRate = storedSpeed;
+      }
+    }
 
     // Show / hide credit badge
     if (next === 'dark' || next === 'nature') {

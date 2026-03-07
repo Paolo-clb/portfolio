@@ -61,5 +61,9 @@ self.onmessage = function (e) {
     case 'theme':
       engine.setTheme(msg.theme);
       break;
+
+    case 'speed':
+      engine.setSpeed(msg.factor);
+      break;
   }
 };

@@ -343,6 +343,30 @@
       start();
       btnEl.classList.add('rain-toggle--active');
     }
+
+    /* ── Expose control API on window for animation controls ── */
+    window.__rainSetSpeed = function (f) {
+      if (useWorker && worker) {
+        worker.postMessage({ type: 'speed', factor: f });
+      } else if (fbEngine) {
+        fbEngine.setSpeed(f);
+      }
+    };
+
+    window.__rainSetEnabled = function (on) {
+      if (on) {
+        btnEl.style.display = '';
+      } else {
+        if (enabled) {
+          stop();
+          btnEl.classList.remove('rain-toggle--active');
+          localStorage.setItem(STORAGE_KEY, 'off');
+        }
+        btnEl.style.display = 'none';
+      }
+    };
+
+    window.__rainIsEnabled = function () { return enabled; };
   }
 
   if (document.readyState === 'loading') {
