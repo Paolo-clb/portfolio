@@ -74,6 +74,8 @@ window.SITE_I18N = {
     animEnable: 'Activer les animations',
     animSlowMotion: 'Ralenti',
     animNormal: 'Normal',
+    animSpeedTooltip: 'Contrôle la vitesse des animations du site',
+    backToTop: 'Retour en haut',
 
     // Lang toggle
     langTooltip: 'Switch to English',
@@ -151,6 +153,8 @@ window.SITE_I18N = {
     animEnable: 'Enable animations',
     animSlowMotion: 'Slow motion',
     animNormal: 'Normal',
+    animSpeedTooltip: 'Controls the site animation speed',
+    backToTop: 'Back to top',
 
     // Lang toggle
     langTooltip: 'Passer en Français',

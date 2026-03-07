@@ -73,22 +73,33 @@
 
   /* ---- Playback ---- */
 
+  // Frozen state: when true, play/pause toggle the icon+isPlaying but don't touch audio
+  var frozen = false;
+
   function play() {
-    ensureAudioCtx();
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-    audio.play().catch(() => {});
     isPlaying = true;
     updatePlayIcon();
     updateTriggerState();
     syncPopup();
+    if (frozen) return; // Don't actually play audio while time is frozen
+    ensureAudioCtx();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    // Apply current animation speed rate before playing
+    var storedSpeed = parseFloat(localStorage.getItem('portfolio_anim_speed'));
+    if (!isNaN(storedSpeed) && storedSpeed >= 0 && storedSpeed < 1) {
+      var rate = storedSpeed === 0 ? 0.15 : 0.15 + storedSpeed * 0.85;
+      audio.playbackRate = rate;
+    }
+    audio.play().catch(() => {});
   }
 
   function pause() {
-    audio.pause();
     isPlaying = false;
     updatePlayIcon();
     updateTriggerState();
     syncPopup();
+    if (frozen) return; // Don't touch audio while time is frozen
+    audio.pause();
   }
 
   function togglePlay() {
@@ -646,6 +657,17 @@
     window.__setMusicPlaybackRate = function (rate) {
       if (audio) audio.playbackRate = rate;
     };
+
+    // Expose audio element for freeze detection
+    window.__musicPlayerAudio = audio;
+
+    // Expose play/pause functions so animation controls can sync player state
+    window.__musicPlayerPause = pause;
+    window.__musicPlayerPlay = play;
+
+    // Expose frozen state setter and isPlaying getter for animation controls
+    window.__musicPlayerSetFrozen = function (on) { frozen = on; };
+    window.__musicPlayerIsPlaying = function () { return isPlaying; };
   }
 
   // Boot

@@ -14,6 +14,7 @@
 
   let speedFactor = 1;
   let vizEnabled = true;
+  let frozen = false;
 
   // Bar appearance
   const BAR_COUNT = 64;
@@ -226,6 +227,12 @@
       return;
     }
 
+    // Frozen: keep last frame on canvas as a static snapshot
+    if (frozen) {
+      requestAnimationFrame(draw);
+      return;
+    }
+
     const w = canvas.width;
     const h = canvas.height;
 
@@ -328,11 +335,17 @@
     window.__setVisualizerEnabled = function (on) {
       vizEnabled = on;
       if (!on) {
+        frozen = false;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         canvas.style.opacity = '0';
       } else {
         canvas.style.opacity = '';
       }
+    };
+    window.__setVisualizerFrozen = function (on) {
+      frozen = on;
+      // If unfreezing, make sure canvas is visible
+      if (!on) canvas.style.opacity = '';
     };
   }
 

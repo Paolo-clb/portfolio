@@ -14,6 +14,7 @@ var siteLang = localStorage.getItem(SITE_LANG_KEY) || 'fr';
 function siteT(key) {
   return (window.SITE_I18N[siteLang] && window.SITE_I18N[siteLang][key]) || window.SITE_I18N.fr[key] || key;
 }
+window.__siteT = siteT;
 
 function dataField(obj, field) {
   if (siteLang === 'en' && obj.en && obj.en[field] !== undefined) return obj.en[field];
@@ -1149,7 +1150,8 @@ function initAnimationControls() {
   var TOGGLE_KEY = 'portfolio_animations';
 
   var footerContainer = document.querySelector('.footer > .container');
-  if (!footerContainer) return;
+  var heroTitle = document.querySelector('.hero .section__title');
+  if (!footerContainer || !heroTitle) return;
 
   // ── Create time-warp overlay (fullscreen tint layer) ──
   var twOverlay = createElement('div', 'time-warp-overlay');
@@ -1158,11 +1160,25 @@ function initAnimationControls() {
   if (tintEl) tintEl.after(twOverlay);
   else document.body.insertBefore(twOverlay, document.body.firstChild);
 
-  // ── Build DOM ──
-  var controls = createElement('div', 'footer__anim-controls');
+  // ── Speed section (replaces hero title underline) ──
+  var speedWrap = createElement('div', 'hero__anim-speed');
 
-  // Speed section
-  var speedWrap = createElement('div', 'anim-speed');
+  // Inner wrapper — tooltip + hover target scoped to this narrow area
+  var speedInner = createElement('div', 'anim-speed__inner');
+
+  // Custom tooltip (same style as typing-game / rain tooltips)
+  var speedTip = createElement('div', 'anim-speed__tooltip');
+  speedTip.textContent = siteT('animSpeedTooltip');
+  speedInner.appendChild(speedTip);
+  var speedTipTimer = null;
+  speedInner.addEventListener('mouseenter', function () {
+    clearTimeout(speedTipTimer);
+    void speedTip.offsetWidth;
+    speedTip.classList.add('anim-speed__tooltip--visible');
+  });
+  speedInner.addEventListener('mouseleave', function () {
+    speedTip.classList.remove('anim-speed__tooltip--visible');
+  });
 
   var clockBtn = createElement('button', 'anim-speed__icon');
   clockBtn.setAttribute('aria-label', siteT('animSpeed'));
@@ -1183,11 +1199,20 @@ function initAnimationControls() {
   slider.value = '1';
   slider.setAttribute('tabindex', '-1');
 
-  var speedLabel = createElement('span', 'anim-speed__label', '1.0x');
+  var speedLabel = createElement('span', 'anim-speed__label', '1.00x');
 
-  speedWrap.appendChild(clockBtn);
-  speedWrap.appendChild(slider);
-  speedWrap.appendChild(speedLabel);
+  speedInner.appendChild(clockBtn);
+  speedInner.appendChild(slider);
+  speedInner.appendChild(speedLabel);
+  speedWrap.appendChild(speedInner);
+
+  // Insert speed slider right after hero title (or after .hero__title-row if rain wrapped it)
+  var titleRow = heroTitle.closest('.hero__title-row');
+  var insertAfter = titleRow || heroTitle;
+  insertAfter.parentNode.insertBefore(speedWrap, insertAfter.nextSibling);
+
+  // ── Footer controls (toggle + back-to-top) ──
+  var controls = createElement('div', 'footer__anim-controls');
 
   // Toggle section
   var toggleWrap = createElement('div', 'anim-toggle');
@@ -1206,16 +1231,41 @@ function initAnimationControls() {
   toggleWrap.appendChild(toggleLabel);
   toggleWrap.appendChild(switchLabel);
 
-  controls.appendChild(speedWrap);
   controls.appendChild(toggleWrap);
 
-  // Insert between <p> and <ul> in footer
+  // Insert controls between <p> and <ul> in footer
   var footerSocials = footerContainer.querySelector('.footer__socials');
   if (footerSocials) {
     footerContainer.insertBefore(controls, footerSocials);
   } else {
     footerContainer.appendChild(controls);
   }
+
+  // Back-to-top button (after socials)
+  var backTop = document.createElement('a');
+  backTop.href = '#hero';
+  backTop.className = 'footer__back-top';
+  backTop.title = siteT('backToTop');
+  backTop.setAttribute('aria-label', siteT('backToTop'));
+  backTop.innerHTML =
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+      '<polyline points="18 15 12 9 6 15"/>' +
+    '</svg>' +
+    '<span>' + siteT('backToTop') + '</span>';
+  backTop.addEventListener('click', function (e) {
+    e.preventDefault();
+    document.getElementById('hero').scrollIntoView({ behavior: 'smooth' });
+  });
+  footerContainer.appendChild(backTop);
+
+  // ── Non-linear slider curve ──
+  // Power curve: speed = raw^CURVE_EXP → fast changes at top, fine control at bottom
+  var CURVE_EXP = 2.5;
+  function sliderToSpeed(raw) { return Math.pow(raw, CURVE_EXP); }
+  function speedToSlider(spd) { return Math.pow(spd, 1 / CURVE_EXP); }
+
+  // ── Music rate: offset so browser never hits its floor (min 0.15) ──
+  function musicRate(speed) { return speed === 0 ? 0 : 0.15 + speed * 0.85; }
 
   // ── Speed slider fill ──
   function updateSliderFill() {
@@ -1226,24 +1276,56 @@ function initAnimationControls() {
     slider.style.background = 'linear-gradient(to right, var(--clr-primary) 0%, var(--clr-accent) ' + pct + '%, var(--clr-border) ' + pct + '%)';
   }
 
+  // ── Music freeze: silently pause audio without changing player UI state ──
+  var timeFrozen = false;
+
   // ── Apply speed to all systems ──
-  function applySpeed(val) {
+  // lastRaw tracks the raw slider position for the clock icon (linear mapping)
+  var lastRaw = 1;
+  function applySpeed(val, raw) {
+    if (raw !== undefined) lastRaw = raw;
     speedLabel.textContent = val.toFixed(2) + 'x';
-    // Clock animation: paused at 0, otherwise proportional
-    if (val === 0) {
-      controls.style.setProperty('--clock-speed', '0s');
+    // Clock animation: use RAW slider position for linear feel
+    if (lastRaw === 0) {
+      speedWrap.style.setProperty('--clock-speed', '0s');
     } else {
-      controls.style.setProperty('--clock-speed', (4 / val) + 's');
+      speedWrap.style.setProperty('--clock-speed', (4 / lastRaw) + 's');
     }
-    // Music slows down with animations
-    if (window.__setMusicPlaybackRate) window.__setMusicPlaybackRate(val || 0.01);
+    // Music freeze logic
+    var audio = window.__musicPlayerAudio;
+    if (val === 0) {
+      // Freeze: silently pause audio without touching player state (icon stays)
+      if (!timeFrozen) {
+        timeFrozen = true;
+        if (window.__musicPlayerSetFrozen) window.__musicPlayerSetFrozen(true);
+        if (audio && !audio.paused) audio.pause();
+      }
+    } else {
+      if (timeFrozen) {
+        timeFrozen = false;
+        if (window.__musicPlayerSetFrozen) window.__musicPlayerSetFrozen(false);
+        // Resume only if the player still thinks it's playing (user didn't pause)
+        var wantsPlay = window.__musicPlayerIsPlaying && window.__musicPlayerIsPlaying();
+        if (wantsPlay && audio && audio.paused) {
+          audio.play().catch(function(){});
+        }
+      }
+      // Set playback rate
+      var rate = musicRate(val);
+      if (window.__setMusicPlaybackRate) window.__setMusicPlaybackRate(rate);
+    }
+    // Visualizer: freeze snapshot at 0, otherwise run normally
+    if (val === 0) {
+      if (window.__setVisualizerFrozen) window.__setVisualizerFrozen(true);
+    } else {
+      if (window.__setVisualizerFrozen) window.__setVisualizerFrozen(false);
+    }
     if (window.__setVisualizerSpeed) window.__setVisualizerSpeed(val);
     if (window.__rainSetSpeed) window.__rainSetSpeed(val);
     // Video backgrounds
     var darkVid = document.getElementById('bg-video-dark');
     var natureVid = document.getElementById('bg-video-nature');
     if (val === 0) {
-      // Can't set playbackRate to 0, pause the video instead
       if (darkVid && !darkVid.paused) darkVid.pause();
       if (natureVid && !natureVid.paused) natureVid.pause();
     } else {
@@ -1273,11 +1355,12 @@ function initAnimationControls() {
   }
 
   slider.addEventListener('input', function () {
-    var val = parseFloat(slider.value);
-    applySpeed(val);
-    applyTimeWarp(val);
+    var raw = parseFloat(slider.value);
+    var speed = sliderToSpeed(raw);
+    applySpeed(speed, raw);
+    applyTimeWarp(speed);
     updateSliderFill();
-    localStorage.setItem(SPEED_KEY, val);
+    localStorage.setItem(SPEED_KEY, speed);
   });
 
   // ── Rain state before disable ──
@@ -1288,9 +1371,12 @@ function initAnimationControls() {
     // Remember rain state before killing it
     rainWasActive = !!(window.__rainIsEnabled && window.__rainIsEnabled());
     document.documentElement.setAttribute('data-animations', 'off');
+    if (window.__setVisualizerFrozen) window.__setVisualizerFrozen(false);
     if (window.__rainSetEnabled) window.__rainSetEnabled(false);
     if (window.__setVisualizerEnabled) window.__setVisualizerEnabled(false);
-    // Ensure music plays at normal speed
+    // Reset music to normal speed and clear freeze
+    timeFrozen = false;
+    if (window.__musicPlayerSetFrozen) window.__musicPlayerSetFrozen(false);
     if (window.__setMusicPlaybackRate) window.__setMusicPlaybackRate(1);
     // Pause current theme video
     var darkVid = document.getElementById('bg-video-dark');
@@ -1302,6 +1388,7 @@ function initAnimationControls() {
     speedWrap.classList.add('anim-speed--disabled');
     // Remove time-warp effect
     document.documentElement.removeAttribute('data-time-warp');
+    document.documentElement.style.removeProperty('--tw-intensity');
   }
 
   function enableAnimations() {
@@ -1309,7 +1396,6 @@ function initAnimationControls() {
     // Restore rain if it was active before disabling
     if (rainWasActive) {
       if (window.__rainSetEnabled) window.__rainSetEnabled(true);
-      // Actually start the rain (not just show the button)
       var rainBtn = document.querySelector('.rain-toggle');
       if (rainBtn && !rainBtn.classList.contains('rain-toggle--active')) {
         rainBtn.click();
@@ -1324,13 +1410,14 @@ function initAnimationControls() {
     var natureVid = document.getElementById('bg-video-nature');
     if (darkVid && theme === 'dark') darkVid.play().catch(function(){});
     if (natureVid && theme === 'nature') natureVid.play().catch(function(){});
-    // Re-enable speed slider and re-apply stored speed
+    // Re-enable speed slider and re-apply stored speed (handles freeze if 0)
     slider.disabled = false;
     speedWrap.classList.remove('anim-speed--disabled');
     var storedSpeed = parseFloat(localStorage.getItem(SPEED_KEY));
     if (!isNaN(storedSpeed) && storedSpeed >= 0 && storedSpeed <= 1) {
-      slider.value = storedSpeed;
-      applySpeed(storedSpeed);
+      var rawVal = speedToSlider(storedSpeed);
+      slider.value = rawVal;
+      applySpeed(storedSpeed, rawVal);
       updateSliderFill();
       applyTimeWarp(storedSpeed);
     }
@@ -1355,6 +1442,10 @@ function initAnimationControls() {
   // ── i18n update helper (called on language change) ──
   function updateAnimI18n() {
     clockBtn.setAttribute('aria-label', siteT('animSpeed'));
+    speedTip.textContent = siteT('animSpeedTooltip');
+    backTop.title = siteT('backToTop');
+    backTop.setAttribute('aria-label', siteT('backToTop'));
+    backTop.querySelector('span').textContent = siteT('backToTop');
     updateToggleTooltip();
   }
   document.addEventListener('sitelangchange', updateAnimI18n);
@@ -1367,8 +1458,9 @@ function initAnimationControls() {
   if (savedSpeed) {
     var spd = parseFloat(savedSpeed);
     if (!isNaN(spd) && spd >= 0 && spd <= 1) {
-      slider.value = spd;
-      applySpeed(spd);
+      var rawInit = speedToSlider(spd);
+      slider.value = rawInit;
+      applySpeed(spd, rawInit);
       applyTimeWarp(spd);
     }
   }
@@ -1524,11 +1616,17 @@ function initThemeToggle() {
     } else {
       // Apply stored speed to the new video
       var storedSpeed = parseFloat(localStorage.getItem('portfolio_anim_speed'));
-      if (storedSpeed && storedSpeed >= 0.25 && storedSpeed <= 1) {
+      if (!isNaN(storedSpeed) && storedSpeed > 0 && storedSpeed <= 1) {
         var darkVid2 = document.getElementById('bg-video-dark');
         var natureVid2 = document.getElementById('bg-video-nature');
         if (darkVid2) darkVid2.playbackRate = storedSpeed;
         if (natureVid2) natureVid2.playbackRate = storedSpeed;
+      } else if (storedSpeed === 0) {
+        // Time frozen — keep new videos paused
+        var darkVid3 = document.getElementById('bg-video-dark');
+        var natureVid3 = document.getElementById('bg-video-nature');
+        if (darkVid3) darkVid3.pause();
+        if (natureVid3) natureVid3.pause();
       }
     }
 

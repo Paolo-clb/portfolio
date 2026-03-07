@@ -183,7 +183,8 @@
 
     btn.addEventListener('mouseenter', function () {
       clearTimeout(tipTimer);
-      tipEl.textContent = enabled ? 'Désactiver la pluie' : 'Activer la pluie';
+      var t = window.__siteT;
+      tipEl.textContent = t ? (enabled ? t('rainDisable') : t('rainEnable')) : (enabled ? 'Désactiver la pluie' : 'Activer la pluie');
       void tipEl.offsetWidth;
       tipEl.classList.add('rain-toggle__tooltip--visible');
     });
