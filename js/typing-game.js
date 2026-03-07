@@ -95,8 +95,12 @@
 
   var I18N = window.TYPING_GAME_I18N;
 
+  // uiLang follows site-wide language for all UI text / tooltips.
+  // currentLang is only for selecting which text pool to type from.
+  var uiLang = localStorage.getItem('portfolio_lang') || 'fr';
+
   function t(key) {
-    return (I18N[currentLang] && I18N[currentLang][key]) || I18N.fr[key] || key;
+    return (I18N[uiLang] && I18N[uiLang][key]) || I18N.fr[key] || key;
   }
 
   /* ---- State ---- */
@@ -1212,7 +1216,7 @@
 
     function showTooltip(anchor, key) {
       clearTimeout(tooltipTimer);
-      var texts = TOOLTIP_TEXTS[currentLang] || TOOLTIP_TEXTS.fr;
+      var texts = TOOLTIP_TEXTS[uiLang] || TOOLTIP_TEXTS.fr;
       var resolvedKey = key;
       if (key === 'ai' && aiState.mode) resolvedKey = 'ai-active';
       if (key === 'hardcore' && hardcoreMode) resolvedKey = 'hardcore-active';
@@ -1658,6 +1662,20 @@
       unlockGame: unlockGame,
       buildGameDOM: function () { buildGameDOM(); },
       startGame: function (force) { startGame(force); }
+    });
+
+    // Listen for site-wide language changes
+    document.addEventListener('sitelangchange', function (e) {
+      uiLang = e.detail && e.detail.lang || 'fr';
+      // Refresh visible UI text if the game DOM is built
+      if (container && navbarEl) {
+        // Rebuild navbar to update all tooltips & labels
+        var oldNav = navbarEl;
+        var newNav = buildNavbar();
+        if (oldNav.parentNode) oldNav.parentNode.replaceChild(newNav, oldNav);
+        // Refresh hints / stats / hero title
+        startGame(false);
+      }
     });
 
     // --- If game has never been unlocked: show intro typewriter ---

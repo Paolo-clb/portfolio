@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    Variables & Reset
    ========================================================================== */
 
@@ -688,6 +688,58 @@ section.hero {
   cursor: none !important;
 }
 
+/* ==========================================================================
+   Language Toggle
+   ========================================================================== */
+
+.lang-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--clr-text);
+  margin-left: 0.5rem;
+  border-radius: 0.5rem;
+  transition: background 0.3s ease;
+}
+
+.lang-toggle:hover {
+  background: rgba(242, 162, 133, 0.12);
+}
+
+.lang-toggle__icon {
+  flex-shrink: 0;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lang-toggle:hover .lang-toggle__icon {
+  transform: rotate(20deg);
+}
+
+.lang-toggle__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  display: inline-block;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.lang-toggle__label--swapping {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+[data-theme="dark"] .lang-toggle:hover {
+  background: rgba(156, 39, 176, 0.15);
+}
+
+[data-theme="nature"] .lang-toggle:hover {
+  background: rgba(94, 184, 58, 0.15);
+}
 /* ==========================================================================
    Theme Toggle Ã¢â‚¬â€ sun Ã¢â€ â€ moon
    ========================================================================== */
