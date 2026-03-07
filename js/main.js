@@ -1,34 +1,9 @@
 /**
  * main.js — DOM interactions and dynamic rendering.
  *
- * Depends on js/i18n.js and js/data.js being loaded first.
+ * Depends on js/data.js being loaded first (PROJECTS, SKILLS globals).
  * No external libraries — vanilla JS only.
  */
-
-// ---------------------------------------------------------------------------
-// Site language state + helpers
-// ---------------------------------------------------------------------------
-var SITE_LANG_KEY = 'portfolio_lang';
-var siteLang = localStorage.getItem(SITE_LANG_KEY) || 'fr';
-
-function siteT(key) {
-  return (window.SITE_I18N[siteLang] && window.SITE_I18N[siteLang][key]) || window.SITE_I18N.fr[key] || key;
-}
-
-function dataField(obj, field) {
-  if (siteLang === 'en' && obj.en && obj.en[field] !== undefined) return obj.en[field];
-  return obj[field];
-}
-
-function dataDetailField(project, field) {
-  if (siteLang === 'en' && project.en && project.en.details && project.en.details[field] !== undefined) return project.en.details[field];
-  return project.details ? project.details[field] : undefined;
-}
-
-function skillDesc(group, skillIndex) {
-  if (siteLang === 'en' && group.en && group.en.skills && group.en.skills[skillIndex]) return group.en.skills[skillIndex].description;
-  return group.skills[skillIndex].description;
-}
 
 // ---------------------------------------------------------------------------
 // Utility: create an element with optional classes and text
@@ -50,26 +25,25 @@ function buildProjectCard(project) {
   const imgWrap = createElement('div', 'project-card__image');
   const img = document.createElement('img');
   img.src = project.image;
-  img.alt = dataField(project, 'title');
+  img.alt = project.title;
   img.loading = 'lazy';
   imgWrap.appendChild(img);
 
   // Body
   const body = createElement('div', 'project-card__body');
-  body.appendChild(createElement('h3', 'project-card__title', dataField(project, 'title')));
-  body.appendChild(createElement('p', 'project-card__desc', dataField(project, 'description')));
+  body.appendChild(createElement('h3', 'project-card__title', project.title));
+  body.appendChild(createElement('p', 'project-card__desc', project.description));
 
   // Tags
   const tags = createElement('div', 'project-card__tags');
-  var tagList = dataField(project, 'tags');
-  tagList.forEach((t) => tags.appendChild(createElement('span', 'tag', t)));
+  project.tags.forEach((t) => tags.appendChild(createElement('span', 'tag', t)));
   body.appendChild(tags);
 
   card.appendChild(imgWrap);
   card.appendChild(body);
 
-  // Hover hint
-  const hint = createElement('span', 'project-card__hint', siteT('learnMore'));
+  // "En savoir plus" hover hint
+  const hint = createElement('span', 'project-card__hint', 'En savoir plus');
   card.appendChild(hint);
 
   return card;
@@ -81,11 +55,6 @@ function buildProjectCard(project) {
 function renderProjects() {
   const grid = document.getElementById('projects-grid');
   if (!grid) return;
-
-  // Clear previous content for re-render
-  grid.innerHTML = '';
-  var existingActions = grid.parentElement.querySelector('.projects__actions');
-  if (existingActions) existingActions.remove();
 
   const preview = PROJECTS.slice(0, 3);
   preview.forEach((project, i) => {
@@ -102,7 +71,7 @@ function renderProjects() {
   if (PROJECTS.length > 3) {
     const wrapper = grid.parentElement;
     const actions = createElement('div', 'projects__actions');
-    const btn = createElement('button', 'btn btn--outline', siteT('viewAllProjects'));
+    const btn = createElement('button', 'btn btn--outline', 'Voir tous les projets');
     btn.addEventListener('click', openProjectsModal);
     actions.appendChild(btn);
     wrapper.appendChild(actions);
@@ -113,10 +82,6 @@ function renderProjects() {
 // Projects modal
 // ---------------------------------------------------------------------------
 function createProjectsModal() {
-  // Remove existing modal if re-creating
-  var old = document.getElementById('projects-modal');
-  if (old) old.remove();
-
   const overlay = createElement('div', 'modal-overlay');
   overlay.id = 'projects-modal';
 
@@ -124,15 +89,15 @@ function createProjectsModal() {
 
   // Mobile-only sticky close button (direct child of scroll container)
   const stickyClose = createElement('button', 'modal__close modal__close--sticky', '\u00D7');
-  stickyClose.setAttribute('aria-label', siteT('closeLbl'));
+  stickyClose.setAttribute('aria-label', 'Fermer');
   stickyClose.addEventListener('click', closeProjectsModal);
   modal.appendChild(stickyClose);
 
   // Header
   const header = createElement('div', 'modal__header');
-  header.appendChild(createElement('h2', 'modal__title', siteT('allProjectsTitle')));
+  header.appendChild(createElement('h2', 'modal__title', 'Tous les projets'));
   const closeBtn = createElement('button', 'modal__close', '\u00D7');
-  closeBtn.setAttribute('aria-label', siteT('closeLbl'));
+  closeBtn.setAttribute('aria-label', 'Fermer');
   header.appendChild(closeBtn);
   modal.appendChild(header);
 
@@ -178,9 +143,11 @@ function createScrollHint(modalEl, storageKey) {
 }
 
 function openProjectsModal() {
-  // Always recreate to pick up language changes
-  createProjectsModal();
   let overlay = document.getElementById('projects-modal');
+  if (!overlay) {
+    createProjectsModal();
+    overlay = document.getElementById('projects-modal');
+  }
   // Force reflow for transition
   void overlay.offsetWidth;
   overlay.classList.add('modal-overlay--open');
@@ -215,14 +182,14 @@ function openProjectDetail(index) {
 
   // Close button
   const closeBtn = createElement('button', 'modal__close detail-modal__close', '\u00D7');
-  closeBtn.setAttribute('aria-label', siteT('closeLbl'));
+  closeBtn.setAttribute('aria-label', 'Fermer');
   modal.appendChild(closeBtn);
 
   // Hero image
   const imgWrap = createElement('div', 'detail-modal__image');
   const img = document.createElement('img');
   img.src = project.image;
-  img.alt = dataField(project, 'title');
+  img.alt = project.title;
   imgWrap.appendChild(img);
   modal.appendChild(imgWrap);
 
@@ -230,26 +197,23 @@ function openProjectDetail(index) {
   const content = createElement('div', 'detail-modal__content');
 
   // Title + tags
-  content.appendChild(createElement('h2', 'detail-modal__title', dataField(project, 'title')));
+  content.appendChild(createElement('h2', 'detail-modal__title', project.title));
   const tags = createElement('div', 'project-card__tags');
-  var tagList = dataField(project, 'tags');
-  tagList.forEach((t) => tags.appendChild(createElement('span', 'tag', t)));
+  project.tags.forEach((t) => tags.appendChild(createElement('span', 'tag', t)));
   content.appendChild(tags);
 
   // Overview / Description
-  var overview = dataDetailField(project, 'overview');
-  if (overview) {
-    content.appendChild(createElement('h3', 'detail-modal__subtitle', siteT('detailDescription')));
+  if (project.details && project.details.overview) {
+    content.appendChild(createElement('h3', 'detail-modal__subtitle', 'Description'));
     const descP = createElement('p', 'detail-modal__text');
-    descP.innerHTML = overview;
+    descP.innerHTML = project.details.overview;
     content.appendChild(descP);
   }
 
   // Competences (nested lists)
-  var competences = dataDetailField(project, 'competences');
-  if (competences) {
-    content.appendChild(createElement('h3', 'detail-modal__subtitle', siteT('detailCompetences')));
-    competences.forEach((comp) => {
+  if (project.details && project.details.competences) {
+    content.appendChild(createElement('h3', 'detail-modal__subtitle', 'Compétences mobilisées'));
+    project.details.competences.forEach((comp) => {
       content.appendChild(createElement('h4', 'detail-modal__comp-title', comp.title));
       const ul = createElement('ul', 'detail-modal__list');
       comp.items.forEach((item) => ul.appendChild(createElement('li', null, item)));
@@ -258,51 +222,46 @@ function openProjectDetail(index) {
   }
 
   // Objectifs
-  var objectifs = dataDetailField(project, 'objectifs');
-  if (objectifs) {
-    content.appendChild(createElement('h3', 'detail-modal__subtitle', siteT('detailObjectives')));
+  if (project.details && project.details.objectifs) {
+    content.appendChild(createElement('h3', 'detail-modal__subtitle', 'Objectifs'));
     const objP = createElement('p', 'detail-modal__text');
-    objP.innerHTML = objectifs;
+    objP.innerHTML = project.details.objectifs;
     content.appendChild(objP);
   }
 
   // Equipe
-  var equipe = dataDetailField(project, 'equipe');
-  if (equipe) {
-    content.appendChild(createElement('h3', 'detail-modal__subtitle', siteT('detailTeamwork')));
+  if (project.details && project.details.equipe) {
+    content.appendChild(createElement('h3', 'detail-modal__subtitle', 'Travail en groupe'));
     const eqP = createElement('p', 'detail-modal__text');
-    eqP.innerHTML = equipe.replace(/\n/g, '<br>');
+    eqP.innerHTML = project.details.equipe.replace(/\n/g, '<br>');
     content.appendChild(eqP);
   }
 
   // Travail individuel
-  var travailIndividuel = dataDetailField(project, 'travailIndividuel');
-  if (travailIndividuel) {
-    content.appendChild(createElement('h3', 'detail-modal__subtitle', siteT('detailIndividual')));
+  if (project.details && project.details.travailIndividuel) {
+    content.appendChild(createElement('h3', 'detail-modal__subtitle', 'Travail individuel'));
     const tiP = createElement('p', 'detail-modal__text');
-    tiP.innerHTML = travailIndividuel;
+    tiP.innerHTML = project.details.travailIndividuel;
     content.appendChild(tiP);
   }
 
   // Tech details / Savoir-faire (array → list, string → paragraph)
-  var techDetails = dataDetailField(project, 'techDetails');
-  if (techDetails) {
-    content.appendChild(createElement('h3', 'detail-modal__subtitle', siteT('detailTech')));
-    if (Array.isArray(techDetails)) {
+  if (project.details && project.details.techDetails) {
+    content.appendChild(createElement('h3', 'detail-modal__subtitle', 'Techniques et savoir-faire acquis'));
+    if (Array.isArray(project.details.techDetails)) {
       const ul = createElement('ul', 'detail-modal__list');
-      techDetails.forEach((t) => ul.appendChild(createElement('li', null, t)));
+      project.details.techDetails.forEach((t) => ul.appendChild(createElement('li', null, t)));
       content.appendChild(ul);
     } else {
-      content.appendChild(createElement('p', 'detail-modal__text', techDetails));
+      content.appendChild(createElement('p', 'detail-modal__text', project.details.techDetails));
     }
   }
 
   // Challenges
-  var challenges = dataDetailField(project, 'challenges');
-  if (challenges) {
-    content.appendChild(createElement('h3', 'detail-modal__subtitle', siteT('detailChallenges')));
+  if (project.details && project.details.challenges) {
+    content.appendChild(createElement('h3', 'detail-modal__subtitle', 'Défis rencontrés'));
     const chP = createElement('p', 'detail-modal__text');
-    chP.innerHTML = challenges;
+    chP.innerHTML = project.details.challenges;
     content.appendChild(chP);
   }
 
@@ -354,11 +313,6 @@ function renderSkills() {
   const grid = document.getElementById('skills-grid');
   if (!grid) return;
 
-  // Clear previous render
-  grid.innerHTML = '';
-  var oldActions = grid.parentElement.querySelector('.skills__actions');
-  if (oldActions) oldActions.remove();
-
   var VISIBLE_COUNT = 2;
 
   SKILL_GROUPS.forEach(function (group, index) {
@@ -367,10 +321,10 @@ function renderSkills() {
       section.classList.add('skills-group--hidden');
     }
 
-    section.appendChild(createElement('h3', 'skills-group__label', dataField(group, 'label')));
+    section.appendChild(createElement('h3', 'skills-group__label', group.label));
 
     var row = createElement('div', 'skills-group__items');
-    group.skills.forEach(function (skill, sIdx) {
+    group.skills.forEach(function (skill) {
       var item = createElement('div', 'skill-item');
       item.style.cursor = 'pointer';
 
@@ -384,7 +338,7 @@ function renderSkills() {
       item.appendChild(createElement('div', 'skill-item__name', skill.name));
 
       item.addEventListener('click', function () {
-        openSkillPopup(skill, group, sIdx);
+        openSkillPopup(skill);
       });
 
       row.appendChild(item);
@@ -394,11 +348,11 @@ function renderSkills() {
     grid.appendChild(section);
   });
 
-  // Toggle button
+  // Toggle button (same style as "Voir tous les projets")
   if (SKILL_GROUPS.length > VISIBLE_COUNT) {
     var wrapper = grid.parentElement;
     var actions = createElement('div', 'skills__actions');
-    var btn = createElement('button', 'btn btn--outline', siteT('viewAllSkills'));
+    var btn = createElement('button', 'btn btn--outline', 'Voir toutes les compétences');
     var expanded = false;
 
     btn.addEventListener('click', function () {
@@ -414,7 +368,7 @@ function renderSkills() {
           void g.offsetWidth;
           g.classList.add('skills-group--visible');
         });
-        btn.textContent = siteT('viewLess');
+        btn.textContent = 'Voir moins';
         expanded = true;
       } else {
         // Collapse
@@ -437,7 +391,7 @@ function renderSkills() {
           g.addEventListener('transitionend', onEnd);
           setTimeout(onEnd, 500);
         });
-        btn.textContent = siteT('viewAllSkills');
+        btn.textContent = 'Voir toutes les compétences';
         expanded = false;
       }
     });
@@ -450,7 +404,7 @@ function renderSkills() {
 // ---------------------------------------------------------------------------
 // Skill popup
 // ---------------------------------------------------------------------------
-function openSkillPopup(skill, group, skillIndex) {
+function openSkillPopup(skill) {
   // Remove any existing popup
   var existing = document.getElementById('skill-popup');
   if (existing) existing.remove();
@@ -462,7 +416,7 @@ function openSkillPopup(skill, group, skillIndex) {
 
   // Close button
   var closeBtn = createElement('button', 'modal__close skill-popup__close', '\u00D7');
-  closeBtn.setAttribute('aria-label', siteT('closeLbl'));
+  closeBtn.setAttribute('aria-label', 'Fermer');
   popup.appendChild(closeBtn);
 
   // Icon
@@ -478,18 +432,17 @@ function openSkillPopup(skill, group, skillIndex) {
   popup.appendChild(createElement('h3', 'skill-popup__name', skill.name));
 
   // Description
-  var desc = (group && skillIndex !== undefined) ? skillDesc(group, skillIndex) : skill.description;
-  if (desc) {
-    popup.appendChild(createElement('p', 'skill-popup__desc', desc));
+  if (skill.description) {
+    popup.appendChild(createElement('p', 'skill-popup__desc', skill.description));
   }
 
   // Level bar
   if (skill.level) {
     var levelWrap = createElement('div', 'skill-popup__level');
     var labelRow = createElement('div', 'skill-popup__level-header');
-    labelRow.appendChild(createElement('span', 'skill-popup__level-label', siteT('levelLabel')));
-    var levelKey = 'level' + skill.level;
-    labelRow.appendChild(createElement('span', 'skill-popup__level-text', siteT(levelKey)));
+    labelRow.appendChild(createElement('span', 'skill-popup__level-label', 'Niveau'));
+    var levelLabels = ['', 'D\u00e9butant', 'Junior', 'Interm\u00e9diaire', 'Avanc\u00e9', 'Expert'];
+    labelRow.appendChild(createElement('span', 'skill-popup__level-text', levelLabels[skill.level] || ''));
     levelWrap.appendChild(labelRow);
 
     var track = createElement('div', 'skill-popup__bar-track');
@@ -674,7 +627,7 @@ function initContactForm() {
     // --- Honeypot check (bot filled the hidden field) ---
     const honeypot = form.querySelector('[name="_gotcha"]');
     if (honeypot && honeypot.value) {
-      statusEl.textContent = siteT('msgSuccess');
+      statusEl.textContent = 'Message envoyé avec succès !';
       statusEl.classList.add('form__status--success');
       statusEl.style.display = 'block';
       form.reset();
@@ -683,7 +636,7 @@ function initContactForm() {
 
     // --- Timing check (submitted too fast = likely bot) ---
     if (Date.now() - _formLoadedAt < 3000) {
-      statusEl.textContent = siteT('msgTimingError');
+      statusEl.textContent = 'Veuillez patienter avant d\'envoyer.';
       statusEl.classList.add('form__status--error');
       statusEl.style.display = 'block';
       return;
@@ -693,7 +646,7 @@ function initContactForm() {
     const now = Date.now();
     if (now < _formCooldownUntil) {
       const secsLeft = Math.ceil((_formCooldownUntil - now) / 1000);
-      statusEl.textContent = siteT('msgCooldown').replace('{s}', secsLeft);
+      statusEl.textContent = `Veuillez attendre ${secsLeft}s avant de renvoyer.`;
       statusEl.classList.add('form__status--error');
       statusEl.style.display = 'block';
       return;
@@ -711,7 +664,7 @@ function initContactForm() {
     }
 
     const originalText = btn.textContent;
-    btn.textContent = siteT('msgSending');
+    btn.textContent = 'Envoi en cours...';
     btn.disabled = true;
 
     try {
@@ -722,127 +675,46 @@ function initContactForm() {
       });
 
       if (res.ok) {
-        statusEl.textContent = siteT('msgSuccess');
+        statusEl.textContent = 'Message envoyé avec succès !';
         statusEl.classList.add('form__status--success');
         statusEl.style.display = 'block';
         form.reset();
         _formCooldownUntil = Date.now() + 60000;
-        startCooldownTimer(btn);
+        startCooldownTimer(btn, originalText);
         return;
       } else {
-        statusEl.textContent = siteT('msgServerError');
+        statusEl.textContent = "Erreur lors de l'envoi. Réessayez plus tard.";
         statusEl.classList.add('form__status--error');
         statusEl.style.display = 'block';
       }
     } catch {
-      statusEl.textContent = siteT('msgNetworkError');
+      statusEl.textContent = 'Erreur réseau. Vérifiez votre connexion.';
       statusEl.classList.add('form__status--error');
       statusEl.style.display = 'block';
     } finally {
       if (!btn.dataset.cooldown) {
-        btn.textContent = siteT('submitBtn');
+        btn.textContent = originalText;
         btn.disabled = false;
       }
     }
   });
 }
 
-function startCooldownTimer(btn) {
+function startCooldownTimer(btn, originalText) {
   btn.dataset.cooldown = '1';
   const tick = () => {
     const secsLeft = Math.ceil((_formCooldownUntil - Date.now()) / 1000);
     if (secsLeft <= 0) {
-      btn.textContent = siteT('submitBtn');
+      btn.textContent = originalText;
       btn.disabled = false;
       delete btn.dataset.cooldown;
       return;
     }
-    btn.textContent = siteT('msgCooldownBtn').replace('{s}', secsLeft);
+    btn.textContent = `Patienter ${secsLeft}s`;
     btn.disabled = true;
     setTimeout(tick, 500);
   };
   tick();
-}
-
-// ---------------------------------------------------------------------------
-// Language toggle
-// ---------------------------------------------------------------------------
-function updateStaticTexts() {
-  document.querySelectorAll('[data-i18n]').forEach(function (el) {
-    el.textContent = siteT(el.getAttribute('data-i18n'));
-  });
-}
-
-function updateSiteLanguage() {
-  var scrollY = window.pageYOffset;
-
-  updateStaticTexts();
-  renderProjects();
-  renderSkills();
-  setFooterYear();
-
-  // Close any open modals / popups
-  var detailOverlay = document.querySelector('.detail-modal-overlay');
-  if (detailOverlay) detailOverlay.remove();
-  var projectsModal = document.getElementById('projects-modal');
-  if (projectsModal) projectsModal.remove();
-  var skillPopup = document.getElementById('skill-popup');
-  if (skillPopup) skillPopup.remove();
-
-  // Tell the typing game (and others) about the language change
-  document.dispatchEvent(new CustomEvent('sitelangchange', { detail: { lang: siteLang } }));
-
-  // Refresh nav indicator position (link text width may have changed)
-  requestAnimationFrame(function () {
-    window.dispatchEvent(new Event('resize'));
-  });
-
-  // Restore scroll position (DOM re-render may shift it)
-  window.scrollTo(0, scrollY);
-}
-
-function initLangToggle() {
-  var btn = document.getElementById('lang-toggle');
-  var label = document.getElementById('lang-label');
-  if (!btn || !label) return;
-
-  // Set initial label
-  label.textContent = siteLang === 'fr' ? 'FR' : 'EN';
-
-  // Custom tooltip
-  var tipEl = document.createElement('div');
-  tipEl.className = 'lang-toggle__tooltip';
-  btn.appendChild(tipEl);
-  var tipTimer = null;
-
-  btn.addEventListener('mouseenter', function () {
-    clearTimeout(tipTimer);
-    tipEl.textContent = siteT('langTooltip');
-    void tipEl.offsetWidth;
-    tipEl.classList.add('lang-toggle__tooltip--visible');
-  });
-  btn.addEventListener('mouseleave', function () {
-    tipEl.classList.remove('lang-toggle__tooltip--visible');
-    tipTimer = setTimeout(function () {}, 200);
-  });
-
-  btn.addEventListener('click', function () {
-    tipEl.classList.remove('lang-toggle__tooltip--visible');
-
-    // Toggle
-    siteLang = siteLang === 'fr' ? 'en' : 'fr';
-    localStorage.setItem(SITE_LANG_KEY, siteLang);
-    document.documentElement.lang = siteLang;
-
-    // Animate label swap
-    label.classList.add('lang-toggle__label--swapping');
-    setTimeout(function () {
-      label.textContent = siteLang === 'fr' ? 'FR' : 'EN';
-      label.classList.remove('lang-toggle__label--swapping');
-    }, 200);
-
-    updateSiteLanguage();
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -857,8 +729,6 @@ function setFooterYear() {
 // Init
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
-  initLangToggle();
-  updateStaticTexts();
   renderProjects();
   renderSkills();
   initNavToggle();
