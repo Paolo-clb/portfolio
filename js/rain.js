@@ -177,12 +177,18 @@
     // Custom tooltip (same style as typing-game tooltips)
     var tipEl = document.createElement('div');
     tipEl.className = 'rain-toggle__tooltip';
-    tipEl.textContent = 'Pluie';
     btn.appendChild(tipEl);
     var tipTimer = null;
+
+    function getRainTip() {
+      var lang = localStorage.getItem('portfolio_lang') || 'fr';
+      var dict = window.SITE_I18N && window.SITE_I18N[lang] || window.SITE_I18N && window.SITE_I18N.fr || {};
+      return enabled ? (dict.rainDisable || 'Désactiver la pluie') : (dict.rainEnable || 'Activer la pluie');
+    }
+
     btn.addEventListener('mouseenter', function () {
       clearTimeout(tipTimer);
-      tipEl.textContent = enabled ? 'D\u00e9sactiver la pluie' : 'Activer la pluie';
+      tipEl.textContent = getRainTip();
       void tipEl.offsetWidth;
       tipEl.classList.add('rain-toggle__tooltip--visible');
     });

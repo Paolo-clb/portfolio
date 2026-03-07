@@ -15,8 +15,8 @@
   <link rel="stylesheet" href="css/music-player.css" />
   <link rel="stylesheet" href="css/visualizer.css" />
   <link rel="stylesheet" href="css/rain.css" />
-  <!-- Restore saved theme before any IIFE to avoid light-color flash -->
-  <script>(function(){var t=localStorage.getItem('portfolio_theme');if(t==='dark'||t==='nature'){document.documentElement.setAttribute('data-theme',t);var f={dark:'assets/images/favicon-dark.svg',nature:'assets/images/favicon-nature.svg'};var l=document.querySelector('link[rel="icon"]');if(l)l.href=f[t];}})()</script>
+  <!-- Restore saved theme + lang before any IIFE to avoid flash -->
+  <script>(function(){var t=localStorage.getItem('portfolio_theme');if(t==='dark'||t==='nature'){document.documentElement.setAttribute('data-theme',t);var f={dark:'assets/images/favicon-dark.svg',nature:'assets/images/favicon-nature.svg'};var l=document.querySelector('link[rel="icon"]');if(l)l.href=f[t];}var g=localStorage.getItem('portfolio_lang');if(g==='en')document.documentElement.lang='en';})()</script>
 </head>
 <body>
   <!-- Video backgrounds for dark & nature themes -->
@@ -31,16 +31,33 @@
   <header class="header" id="header">
     <nav class="nav container">
       <div class="music-player" id="music-player"></div>
+      <button class="music-trigger" id="music-trigger" aria-label="Music player">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18V5l12-2v13"/>
+          <circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+        </svg>
+        <span class="music-trigger__bars" aria-hidden="true">
+          <i></i><i></i><i></i>
+        </span>
+      </button>
       <div class="nav__list-wrapper">
         <ul class="nav__list">
-          <li><a href="#hero" class="nav__link">Accueil</a></li>
-          <li><a href="#projects" class="nav__link">Projets</a></li>
-          <li><a href="#skills" class="nav__link">Compétences</a></li>
-          <li><a href="#cv" class="nav__link">CV</a></li>
-          <li><a href="#contact" class="nav__link">Contact</a></li>
+          <li><a href="#hero" class="nav__link" data-i18n="navHome">Accueil</a></li>
+          <li><a href="#projects" class="nav__link" data-i18n="navProjects">Projets</a></li>
+          <li><a href="#skills" class="nav__link" data-i18n="navSkills">Compétences</a></li>
+          <li><a href="#cv" class="nav__link" data-i18n="navCv">CV</a></li>
+          <li><a href="#contact" class="nav__link" data-i18n="navContact">Contact</a></li>
         </ul>
         <div class="nav__indicator" id="nav-indicator"></div>
       </div>
+      <button class="lang-toggle" id="lang-toggle" aria-label="Switch language">
+        <svg class="lang-toggle__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <ellipse cx="12" cy="12" rx="4" ry="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+        </svg>
+        <span class="lang-toggle__label" id="lang-label">FR</span>
+      </button>
       <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
         <svg class="theme-toggle__icon" viewBox="0 0 24 24" width="22" height="22">
           <defs>
@@ -97,7 +114,7 @@
     <!-- Projects Section -->
     <section class="projects section" id="projects">
       <div class="container">
-        <h2 class="section__title">Projets</h2>
+        <h2 class="section__title" data-i18n="sectionProjects">Projets</h2>
         <div class="projects__grid" id="projects-grid">
           <!-- Project cards are rendered by js/main.js from js/data.js -->
         </div>
@@ -107,7 +124,7 @@
     <!-- Skills Section -->
     <section class="skills section" id="skills">
       <div class="container">
-        <h2 class="section__title">Compétences</h2>
+        <h2 class="section__title" data-i18n="sectionSkills">Compétences</h2>
         <div class="skills__grid" id="skills-grid">
           <!-- Skill items are rendered by js/main.js from js/data.js -->
         </div>
@@ -117,13 +134,13 @@
     <!-- CV Section -->
     <section class="cv-section section" id="cv">
       <div class="container">
-        <h2 class="section__title">Curriculum Vitae</h2>
+        <h2 class="section__title" data-i18n="sectionCv">Curriculum Vitae</h2>
         <div class="cv-section__card">
           <div class="cv-section__viewer">
             <iframe src="assets/doc/CV_Paolo.pdf" title="CV Paolo"></iframe>
           </div>
           <div class="cv-section__footer">
-            <a href="assets/doc/CV_Paolo.pdf" download="CV_Paolo.pdf" class="btn btn--primary">Télécharger le CV</a>
+            <a href="assets/doc/CV_Paolo.pdf" download="CV_Paolo.pdf" class="btn btn--primary" data-i18n="cvDownload">Télécharger le CV</a>
           </div>
         </div>
       </div>
@@ -132,24 +149,24 @@
     <!-- Contact Section -->
     <section class="contact section" id="contact">
       <div class="container">
-        <h2 class="section__title">Contact</h2>
+        <h2 class="section__title" data-i18n="sectionContact">Contact</h2>
         <form class="contact__form" id="contact-form" action="https://formspree.io/f/mkovoawq" method="POST">
           <!-- Honeypot anti-spam (hidden from users) -->
           <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
           <div class="form__group">
-            <label for="name">Nom</label>
+            <label for="name" data-i18n="labelName">Nom</label>
             <input type="text" id="name" name="name" required minlength="2" maxlength="100" />
           </div>
           <div class="form__group">
-            <label for="email">Email</label>
+            <label for="email" data-i18n="labelEmail">Email</label>
             <input type="email" id="email" name="email" required maxlength="254" />
           </div>
           <div class="form__group">
-            <label for="message">Message</label>
+            <label for="message" data-i18n="labelMessage">Message</label>
             <textarea id="message" name="message" rows="5" required minlength="10" maxlength="3000"></textarea>
           </div>
           <div class="form__actions">
-            <button type="submit" class="btn btn--primary">Envoyer le message</button>
+            <button type="submit" class="btn btn--primary" data-i18n="submitBtn">Envoyer le message</button>
           </div>
           <p id="form-status" class="form__status" style="display:none;"></p>
         </form>
@@ -161,7 +178,7 @@
   <!-- Footer -->
   <footer class="footer">
     <div class="container">
-      <p>&copy; <span id="year" class="footer__availability"></span> Paolo Colombat. Cherche une alternance</p>
+      <p>&copy; <span id="year" class="footer__availability"></span> <span data-i18n="footerText">Paolo Colombat. Cherche une alternance</span></p>
       <ul class="footer__socials">
         <li><a href="https://github.com/Paolo-clb" aria-label="GitHub" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="https://www.linkedin.com/in/paolo-colombat-849503371/" aria-label="LinkedIn" target="_blank" rel="noopener">LinkedIn</a></li>
@@ -169,6 +186,7 @@
     </div>
   </footer>
 
+  <script src="js/i18n.js"></script>
   <script src="js/data.js"></script>
   <script src="js/typing-texts.js"></script>
   <script src="js/typing-game-i18n.js"></script>
