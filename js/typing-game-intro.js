@@ -13,8 +13,10 @@ window.createTypingGameIntro = function (deps) {
      getHeroTitle()     — returns heroTitleEl
      setHeroTitle(el)   — sets heroTitleEl in main IIFE
      setIntroActive(v)  — sets introActive flag in main IIFE
+     setIntroSeen(v)    — marks typewriter as finished this session
      showInfoPopup(title, text, shortcut, onClose) — generic popup builder
-     unlockGame()       — marks game as unlocked (cookie)
+     unlockGame()       — marks game as unlocked (cookie: typewriter completed)
+     activateGame()     — marks game as fully activated (cookie: user played)
      buildGameDOM()     — builds the full game DOM
      startGame(force)   — starts a new game round
   */
@@ -151,6 +153,7 @@ window.createTypingGameIntro = function (deps) {
         introFinished = true;
         renderIntro();
         deps.unlockGame();
+        deps.setIntroSeen(true);
         if (isSmartphone) {
           deps.setIntroActive(false);
           return;
@@ -192,7 +195,7 @@ window.createTypingGameIntro = function (deps) {
       t('introPopupText'),
       t('introPopupHint'),
       function () {
-        deps.unlockGame();
+        deps.activateGame();
         transitionToGame();
       }
     );

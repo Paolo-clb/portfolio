@@ -87,6 +87,14 @@
     setCookie('typing_played', '', -1);
   }
 
+  function isGameActivated() {
+    return getCookie('typing_game_activated') === '1';
+  }
+
+  function activateGame() {
+    setCookie('typing_game_activated', '1', 365);
+  }
+
   /* ---- Text data by language and mode (loaded from typing-texts.js) ---- */
 
   const TEXTS = window.TYPING_TEXTS;
@@ -106,6 +114,7 @@
   /* ---- State ---- */
 
   let introActive = false; // whether the intro typewriter is showing (game not yet unlocked)
+  let introSeen = false;   // whether the typewriter finished at least once this session
   let currentLang = 'fr';
   let currentMode = '25';
   let text = '';
@@ -1677,8 +1686,10 @@
       getHeroTitle: function () { return heroTitleEl; },
       setHeroTitle: function (el) { heroTitleEl = el; },
       setIntroActive: function (v) { introActive = v; },
+      setIntroSeen: function (v) { introSeen = v; },
       showInfoPopup: showInfoPopup,
       unlockGame: unlockGame,
+      activateGame: activateGame,
       buildGameDOM: function () { buildGameDOM(); },
       startGame: function (force) { startGame(force); }
     });
@@ -1687,15 +1698,29 @@
     document.addEventListener('sitelangchange', function (e) {
       uiLang = e.detail && e.detail.lang || 'fr';
 
-      // If intro is active, restart it in the new language
+      // If intro is active (typewriter running or finished but button not clicked yet)
       if (introActive) {
-        // Clear intro DOM and restart
+        var isSmartphone = window.matchMedia('(max-width: 600px) and (pointer: coarse)').matches;
         container.innerHTML = '';
-        intro.showIntro(window.matchMedia('(max-width: 600px) and (pointer: coarse)').matches);
+
+        if (introSeen) {
+          // Typewriter already finished — show static intro (don't replay animation)
+          introActive = false;
+          heroTitleEl = document.querySelector('#hero .section__title');
+          if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
+          if (isSmartphone) {
+            intro.buildSmartphoneStaticDOM();
+          } else {
+            intro.buildDesktopStaticDOM();
+          }
+        } else {
+          // Typewriter still running — restart in new language
+          intro.showIntro(isSmartphone);
+        }
         return;
       }
 
-      // Smartphone with no game DOM: update static intro text + button
+      // Static intro displayed (no game DOM, no introActive)
       if (!navbarEl) {
         var staticText = container.querySelector('.typing-game__text--intro');
         if (staticText) staticText.textContent = t('introText');
@@ -1725,15 +1750,27 @@
       return;
     }
 
-    // --- Already unlocked: show static intro text + play button ---
+    // --- Already unlocked ---
     heroTitleEl = document.querySelector('#hero .section__title');
-    if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
 
+    // Smartphone always gets static text (no interactive game)
     if (isSmartphone) {
+      if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
       intro.buildSmartphoneStaticDOM();
-    } else {
-      intro.buildDesktopStaticDOM();
+      return;
     }
+
+    // Desktop: if game was fully activated before, go straight to game
+    if (isGameActivated()) {
+      if (heroTitleEl) heroTitleEl.textContent = t('heroTitle');
+      buildGameDOM();
+      startGame(true);
+      return;
+    }
+
+    // Desktop: unlocked (typewriter done) but not yet activated — show static intro + button
+    if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
+    intro.buildDesktopStaticDOM();
   }
 
   // Boot when DOM is ready

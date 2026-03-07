@@ -412,6 +412,7 @@
 }
 
 .music-popup__playlist-list {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
