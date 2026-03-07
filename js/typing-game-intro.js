@@ -237,10 +237,31 @@ window.createTypingGameIntro = function (deps) {
     container.appendChild(staticText);
   }
 
+  /* ---- Desktop static display (already unlocked, not yet activated) ---- */
+
+  function buildDesktopStaticDOM() {
+    var container = deps.getContainer();
+
+    introTextEl = document.createElement('div');
+    introTextEl.className = 'typing-game__text typing-game__text--intro';
+    introTextEl.textContent = t('introText');
+    container.appendChild(introTextEl);
+
+    introButtonEl = document.createElement('button');
+    introButtonEl.className = 'btn btn--outline typing-game__intro-btn typing-game__intro-btn--visible';
+    introButtonEl.textContent = t('introBtn');
+    container.appendChild(introButtonEl);
+
+    introButtonEl.addEventListener('click', function () {
+      showIntroPopup();
+    });
+  }
+
   /* ---- Public API ---- */
 
   return {
     showIntro: showIntro,
-    buildSmartphoneStaticDOM: buildSmartphoneStaticDOM
+    buildSmartphoneStaticDOM: buildSmartphoneStaticDOM,
+    buildDesktopStaticDOM: buildDesktopStaticDOM
   };
 };

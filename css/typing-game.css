@@ -686,9 +686,29 @@
     font-size: 0.9rem;
   }
 
-  .typing-game__stats-row {
-    gap: 1.2rem;
+  .typing-game__stats {
+    flex-wrap: wrap;
+    gap: 0.4rem 1.2rem;
     font-size: 0.9rem;
+  }
+
+  .typing-game__wpm,
+  .typing-game__acc,
+  .typing-game__time,
+  .typing-game__best {
+    font-size: 1rem;
+  }
+
+  .typing-game__acc {
+    margin-left: 1.2rem;
+  }
+
+  .typing-game__time--visible {
+    margin-left: 1.2rem;
+  }
+
+  .typing-game__best--visible {
+    margin-left: 1.2rem;
   }
 }
 

@@ -459,17 +459,22 @@
 
   function togglePopupPlaylist() {
     popupPlaylistOpen = !popupPlaylistOpen;
-    popupPlaylistWrap.classList.toggle('music-popup__playlist-wrap--open', popupPlaylistOpen);
-    popupPlaylistBtn.classList.toggle('music-player__btn--active', popupPlaylistOpen);
     if (popupPlaylistOpen) {
+      // Pre-calculate scroll before opening (items laid out even at max-height:0)
       var active = popupPlaylistList.querySelector('.music-popup__playlist-item--active');
       if (active) {
-        var top = active.offsetTop;
-        var h = active.offsetHeight;
+        var offsetTop = active.offsetTop;
+        var itemH = active.offsetHeight;
         var listH = 210;
-        popupPlaylistList.scrollTop = Math.max(0, top - listH / 2 + h / 2);
+        var contentH = popupPlaylistList.scrollHeight;
+        if (contentH < listH) listH = contentH;
+        popupPlaylistList.scrollTop = Math.max(0, offsetTop - listH / 2 + itemH / 2);
+      } else {
+        popupPlaylistList.scrollTop = 0;
       }
     }
+    popupPlaylistWrap.classList.toggle('music-popup__playlist-wrap--open', popupPlaylistOpen);
+    popupPlaylistBtn.classList.toggle('music-player__btn--active', popupPlaylistOpen);
   }
 
   function buildPopup() {

@@ -1622,6 +1622,11 @@
       if (textEl) textEl.style.transition = 'background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease';
       updateTextBackground(0);
     });
+
+    // Re-render on theme change to update trail/combo colors
+    new MutationObserver(function () {
+      if (!finished && typed.length > 0) render();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
   /* ---- Initialisation ---- */
@@ -1690,10 +1695,12 @@
         return;
       }
 
-      // Smartphone with no game DOM: update static intro text
+      // Smartphone with no game DOM: update static intro text + button
       if (!navbarEl) {
         var staticText = container.querySelector('.typing-game__text--intro');
         if (staticText) staticText.textContent = t('introText');
+        var introBtn = container.querySelector('.typing-game__intro-btn');
+        if (introBtn) introBtn.textContent = t('introBtn');
         if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
         return;
       }
@@ -1718,22 +1725,15 @@
       return;
     }
 
-    // --- Mobile smartphone mode (already unlocked): show static intro text ---
+    // --- Already unlocked: show static intro text + play button ---
+    heroTitleEl = document.querySelector('#hero .section__title');
+    if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
+
     if (isSmartphone) {
-      heroTitleEl = document.querySelector('#hero .section__title');
-      if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
       intro.buildSmartphoneStaticDOM();
-      return;
+    } else {
+      intro.buildDesktopStaticDOM();
     }
-
-    // --- Desktop: full game ---
-    buildGameDOM();
-    startGame(true);
-
-    // Re-render on theme change to update trail/combo colors
-    new MutationObserver(function () {
-      if (!finished && typed.length > 0) render();
-    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
   // Boot when DOM is ready
