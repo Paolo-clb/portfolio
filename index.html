@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="css/visualizer.css" />
   <link rel="stylesheet" href="css/rain.css" />
   <!-- Restore saved theme + lang before any IIFE to avoid flash -->
-  <script>(function(){var t=localStorage.getItem('portfolio_theme');if(t==='dark'||t==='nature'){document.documentElement.setAttribute('data-theme',t);var f={dark:'assets/images/favicon-dark.svg',nature:'assets/images/favicon-nature.svg'};var l=document.querySelector('link[rel="icon"]');if(l)l.href=f[t];}var g=localStorage.getItem('portfolio_lang');if(g==='en')document.documentElement.lang='en';var a=localStorage.getItem('portfolio_animations');if(a==='off')document.documentElement.setAttribute('data-animations','off');})()</script>
+  <script>(function(){var t=localStorage.getItem('portfolio_theme');if(t==='dark'||t==='nature'){document.documentElement.setAttribute('data-theme',t);var f={dark:'assets/images/favicon-dark.svg',nature:'assets/images/favicon-nature.svg'};var l=document.querySelector('link[rel="icon"]');if(l)l.href=f[t];}var g=localStorage.getItem('portfolio_lang');if(g==='en')document.documentElement.lang='en';var a=localStorage.getItem('portfolio_animations');if(a==='off')document.documentElement.setAttribute('data-animations','off');if(!a){var w=false;if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)w=true;if(!w&&navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=2)w=true;if(!w&&navigator.deviceMemory&&navigator.deviceMemory<=2)w=true;if(w){window.__weakDeviceDetected=true;window.__weakDeviceAnimFlowActive=true;}}})()</script>
 </head>
 <body>
   <!-- Video backgrounds for dark & nature themes -->

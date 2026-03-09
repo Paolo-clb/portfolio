@@ -91,6 +91,7 @@ window.SITE_I18N = {
     weakWarningCta: 'Activer quand même',
     weakWarningLag: 'Attention : cela peut provoquer des lags.',
     weakWarningDismiss: 'OK, compris',
+    weakLagToast: 'Attention : cela peut provoquer des lags.',
 
     // Misc
     closeLbl: 'Fermer',
@@ -182,6 +183,7 @@ window.SITE_I18N = {
     weakWarningCta: 'Enable anyway',
     weakWarningLag: 'Warning: this may cause lag.',
     weakWarningDismiss: 'OK, got it',
+    weakLagToast: 'Warning: this may cause lag.',
 
     // Misc
     closeLbl: 'Close',

@@ -1746,7 +1746,14 @@
 
     // --- If game has never been unlocked: show intro typewriter ---
     if (!isGameUnlocked()) {
-      intro.showIntro(isSmartphone);
+      // If weak-device animation flow is active, wait for it to finish before showing intro
+      if (window.__weakDeviceAnimFlowActive) {
+        document.addEventListener('weakDeviceAnimDone', function () {
+          intro.showIntro(isSmartphone);
+        }, { once: true });
+      } else {
+        intro.showIntro(isSmartphone);
+      }
       return;
     }
 

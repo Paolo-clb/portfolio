@@ -1197,7 +1197,27 @@ function showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY) {
     overlay.addEventListener('transitionend', function () { overlay.remove(); }, { once: true });
   }
 
-  dismissBtn.addEventListener('click', close);
+  // Helper: highlight the animation toggle in footer
+  function highlightToggle() {
+    var toggle = document.querySelector('.anim-toggle');
+    if (!toggle) return;
+    toggle.classList.add('anim-toggle--highlight');
+    toggle.addEventListener('animationend', function () {
+      toggle.classList.remove('anim-toggle--highlight');
+    }, { once: true });
+  }
+
+  // Helper: finish flow and tell typing-game it can proceed
+  function finishFlow() {
+    window.__weakDeviceAnimFlowActive = false;
+    document.dispatchEvent(new CustomEvent('weakDeviceAnimDone'));
+  }
+
+  dismissBtn.addEventListener('click', function () {
+    close();
+    // User chose not to enable → intro can start immediately
+    finishFlow();
+  });
 
   enableBtn.addEventListener('click', function () {
     close();
@@ -1205,18 +1225,34 @@ function showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY) {
     checkbox.checked = true;
     enableAnimations();
     localStorage.setItem(TOGGLE_KEY, 'on');
-    // Scroll to footer toggle
+    // Scroll to footer toggle + highlight
     var toggle = document.querySelector('.anim-toggle');
     if (toggle) {
       setTimeout(function () {
         toggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(highlightToggle, 600);
       }, 400);
     }
+    // Wait for user to scroll back to hero, then finish flow
+    function onScroll() {
+      var hero = document.getElementById('hero');
+      if (hero && hero.getBoundingClientRect().top >= -100) {
+        window.removeEventListener('scroll', onScroll);
+        finishFlow();
+      }
+    }
+    // Start listening after a delay so the scroll-to-footer doesn't trigger it
+    setTimeout(function () {
+      window.addEventListener('scroll', onScroll, { passive: true });
+    }, 1500);
   });
 
-  // Close on overlay click (outside popup)
+  // Close on overlay click (outside popup) = same as dismiss
   overlay.addEventListener('click', function (e) {
-    if (e.target === overlay) close();
+    if (e.target === overlay) {
+      close();
+      finishFlow();
+    }
   });
 }
 
@@ -1510,10 +1546,28 @@ function initAnimationControls() {
     }
   }
 
+  // ── Track first-time enable on weak device for lag toast ──
+  var weakLagToastShown = false;
+
+  function showLagToast() {
+    if (weakLagToastShown) return;
+    weakLagToastShown = true;
+    var toast = createElement('div', 'lag-toast', siteT('weakLagToast'));
+    document.body.appendChild(toast);
+    toast.offsetHeight;
+    toast.classList.add('lag-toast--visible');
+    setTimeout(function () {
+      toast.classList.remove('lag-toast--visible');
+      setTimeout(function () { toast.remove(); }, 400);
+    }, 3000);
+  }
+
   checkbox.addEventListener('change', function () {
     if (checkbox.checked) {
       enableAnimations();
       localStorage.setItem(TOGGLE_KEY, 'on');
+      // Show lag warning toast on first enable if weak device
+      if (window.__weakDeviceDetected) showLagToast();
     } else {
       disableAnimations();
       localStorage.setItem(TOGGLE_KEY, 'off');
@@ -1559,6 +1613,8 @@ function initAnimationControls() {
   } else if (savedToggle === 'on') {
     // User explicitly enabled — keep on
   } else if (detectWeakDevice()) {
+    window.__weakDeviceDetected = true;
+    window.__weakDeviceAnimFlowActive = true;
     checkbox.checked = false;
     disableAnimations();
     // Show warning popup after a short delay so DOM is ready

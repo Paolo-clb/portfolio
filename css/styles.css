@@ -498,12 +498,13 @@ section.hero {
   width: 90px;
   height: 3px;
   margin: 0 0.25rem;
-  transition: filter 0.3s ease, width 0.3s ease;
+  transition: filter 0.3s ease, width 0.3s ease, height 0.2s ease;
 }
 
 .anim-speed__inner:hover .anim-speed__slider {
   filter: drop-shadow(0 0 4px var(--clr-primary));
   width: 100px;
+  height: 5px;
 }
 
 .hero__anim-speed .anim-speed__slider::-webkit-slider-thumb {
@@ -894,6 +895,46 @@ section.hero {
 }
 [data-theme="nature"] .weak-popup__btn--enable:hover {
   background: #7bda4e;
+}
+
+/* ---- Animation toggle highlight ---- */
+.anim-toggle--highlight {
+  animation: togglePulse 1.5s ease 3;
+}
+@keyframes togglePulse {
+  0%, 100% { filter: none; }
+  50% { filter: drop-shadow(0 0 8px var(--clr-primary)) brightness(1.2); }
+}
+
+/* ---- Lag toast ---- */
+.lag-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(27, 26, 39, 0.92);
+  color: var(--clr-text);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  border: 1px solid rgba(242, 162, 133, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  z-index: 500;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+.lag-toast--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+[data-theme="dark"] .lag-toast {
+  background: rgba(26, 0, 51, 0.92);
+  border-color: rgba(156, 39, 176, 0.25);
+}
+[data-theme="nature"] .lag-toast {
+  background: rgba(21, 34, 16, 0.92);
+  border-color: rgba(94, 184, 58, 0.25);
 }
 
 /* ==========================================================================
@@ -1950,7 +1991,32 @@ body::before,
   }
 
   .hero__anim-speed .anim-speed__slider {
-    width: 50px;
+    width: 120px;
+    height: 4px;
+  }
+
+  /* Mobile: thumb always visible (no hover on touch) */
+  .hero__anim-speed .anim-speed__slider::-webkit-slider-thumb {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .hero__anim-speed .anim-speed__slider::-moz-range-thumb {
+    opacity: 1;
+    transform: scale(1);
+  }
+  /* Disable hover grow on mobile */
+  .anim-speed__inner:hover .anim-speed__slider {
+    width: 120px;
+    height: 4px;
+    filter: none;
+  }
+  .anim-speed__inner:hover .anim-speed__slider::-webkit-slider-thumb {
+    transform: scale(1);
+    box-shadow: none;
+  }
+  .anim-speed__inner:hover .anim-speed__slider::-moz-range-thumb {
+    transform: scale(1);
+    box-shadow: none;
   }
 }
 
