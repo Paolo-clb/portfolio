@@ -501,10 +501,23 @@ section.hero {
   transition: filter 0.3s ease, width 0.3s ease, height 0.2s ease;
 }
 
-.anim-speed__inner:hover .anim-speed__slider {
+.anim-speed__inner:hover .anim-speed__slider,
+.anim-speed__inner:focus-within .anim-speed__slider {
   filter: drop-shadow(0 0 4px var(--clr-primary));
   width: 160px;
   height: 5px;
+}
+
+.anim-speed__inner:hover .anim-speed__icon,
+.anim-speed__inner:focus-within .anim-speed__icon {
+  transform: scale(1.35);
+  color: var(--clr-primary);
+}
+
+.anim-speed__inner:hover .anim-speed__label,
+.anim-speed__inner:focus-within .anim-speed__label {
+  transform: scale(1.2);
+  color: var(--clr-primary);
 }
 
 .hero__anim-speed .anim-speed__slider::-webkit-slider-thumb {
@@ -589,6 +602,8 @@ section.hero {
   padding: 0;
   display: flex;
   align-items: center;
+  transition: transform 0.25s ease, color 0.25s ease;
+  transform-origin: center;
 }
 
 .anim-speed__icon svg {
@@ -656,22 +671,9 @@ section.hero {
   min-width: 2.8em;
   text-align: center;
   font-variant-numeric: tabular-nums;
-}
-
-/* ---- Typing game navbar slider size ---- */
-.typing-game__navbar .anim-speed__slider {
-  width: 140px;
-  height: 4px;
-}
-
-.typing-game__navbar .anim-speed__slider::-webkit-slider-thumb {
-  width: 16px;
-  height: 16px;
-}
-
-.typing-game__navbar .anim-speed__slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  transition: color 0.25s ease, transform 0.25s ease;
+  transform-origin: center;
+  display: inline-block;
 }
 
 /* ---- Toggle section ---- */
@@ -2027,16 +2029,19 @@ body::before,
     transform: scale(1);
   }
   /* Disable hover grow on mobile */
-  .anim-speed__inner:hover .anim-speed__slider {
+  .anim-speed__inner:hover .anim-speed__slider,
+  .anim-speed__inner:focus-within .anim-speed__slider {
     width: 120px;
     height: 4px;
     filter: none;
   }
-  .anim-speed__inner:hover .anim-speed__slider::-webkit-slider-thumb {
+  .anim-speed__inner:hover .anim-speed__slider::-webkit-slider-thumb,
+  .anim-speed__inner:focus-within .anim-speed__slider::-webkit-slider-thumb {
     transform: scale(1);
     box-shadow: none;
   }
-  .anim-speed__inner:hover .anim-speed__slider::-moz-range-thumb {
+  .anim-speed__inner:hover .anim-speed__slider::-moz-range-thumb,
+  .anim-speed__inner:focus-within .anim-speed__slider::-moz-range-thumb {
     transform: scale(1);
     box-shadow: none;
   }
