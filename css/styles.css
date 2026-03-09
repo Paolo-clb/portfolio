@@ -495,7 +495,7 @@ section.hero {
 }
 
 .hero__anim-speed .anim-speed__slider {
-  width: 90px;
+  width: 120px;
   height: 3px;
   margin: 0 0.25rem;
   transition: filter 0.3s ease, width 0.3s ease, height 0.2s ease;
@@ -503,7 +503,7 @@ section.hero {
 
 .anim-speed__inner:hover .anim-speed__slider {
   filter: drop-shadow(0 0 4px var(--clr-primary));
-  width: 100px;
+  width: 160px;
   height: 5px;
 }
 
@@ -660,7 +660,7 @@ section.hero {
 
 /* ---- Typing game navbar slider size ---- */
 .typing-game__navbar .anim-speed__slider {
-  width: 100px;
+  width: 140px;
   height: 4px;
 }
 
