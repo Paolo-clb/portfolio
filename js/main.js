@@ -1197,16 +1197,6 @@ function showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY) {
     overlay.addEventListener('transitionend', function () { overlay.remove(); }, { once: true });
   }
 
-  // Helper: highlight the animation toggle in footer
-  function highlightToggle() {
-    var toggle = document.querySelector('.anim-toggle');
-    if (!toggle) return;
-    toggle.classList.add('anim-toggle--highlight');
-    toggle.addEventListener('animationend', function () {
-      toggle.classList.remove('anim-toggle--highlight');
-    }, { once: true });
-  }
-
   // Helper: finish flow and tell typing-game it can proceed
   function finishFlow() {
     window.__weakDeviceAnimFlowActive = false;
@@ -1225,13 +1215,16 @@ function showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY) {
     checkbox.checked = true;
     enableAnimations();
     localStorage.setItem(TOGGLE_KEY, 'on');
-    // Scroll to footer toggle + highlight
+    // Scroll to footer toggle, then show warning (highlight + toast) when arrived
     var toggle = document.querySelector('.anim-toggle');
     if (toggle) {
       setTimeout(function () {
         toggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(highlightToggle, 600);
-      }, 400);
+        // Show warning after scroll lands (~1000ms)
+        setTimeout(function () {
+          if (window.__showAnimWarning) window.__showAnimWarning();
+        }, 1000);
+      }, 350);
     }
     // Wait for user to scroll back to hero, then finish flow
     function onScroll() {
@@ -1244,7 +1237,7 @@ function showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY) {
     // Start listening after a delay so the scroll-to-footer doesn't trigger it
     setTimeout(function () {
       window.addEventListener('scroll', onScroll, { passive: true });
-    }, 1500);
+    }, 1800);
   });
 
   // Close on overlay click (outside popup) = same as dismiss
@@ -1559,14 +1552,32 @@ function initAnimationControls() {
     setTimeout(function () {
       toast.classList.remove('lag-toast--visible');
       setTimeout(function () { toast.remove(); }, 400);
-    }, 3000);
+    }, 3500);
   }
+
+  function highlightToggle() {
+    var toggleEl = document.querySelector('.anim-toggle');
+    if (!toggleEl) return;
+    toggleEl.classList.remove('anim-toggle--highlight');
+    // Force reflow so re-triggering restarts animation
+    void toggleEl.offsetWidth;
+    toggleEl.classList.add('anim-toggle--highlight');
+    setTimeout(function () { toggleEl.classList.remove('anim-toggle--highlight'); }, 4700);
+  }
+
+  // Combined: highlight toggle + show lag toast (used from popup and from checkbox change)
+  function showAnimWarning() {
+    highlightToggle();
+    showLagToast();
+  }
+  // Expose so showWeakDevicePopup (defined outside initAnimationControls) can call it
+  window.__showAnimWarning = showAnimWarning;
 
   checkbox.addEventListener('change', function () {
     if (checkbox.checked) {
       enableAnimations();
       localStorage.setItem(TOGGLE_KEY, 'on');
-      // Show lag warning toast on first enable if weak device
+      // Show lag toast on first enable if weak device (no highlight in this case)
       if (window.__weakDeviceDetected) showLagToast();
     } else {
       disableAnimations();

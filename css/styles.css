@@ -687,6 +687,19 @@ section.hero {
   color: var(--clr-text-muted);
   cursor: default;
   user-select: none;
+  position: relative;
+}
+
+.anim-toggle__label::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 0;
+  height: 1.5px;
+  background: var(--clr-primary);
+  border-radius: 1px;
+  opacity: 0;
 }
 
 .anim-toggle__switch {
@@ -904,6 +917,15 @@ section.hero {
 @keyframes togglePulse {
   0%, 100% { filter: none; }
   50% { filter: drop-shadow(0 0 8px var(--clr-primary)) brightness(1.2); }
+}
+.anim-toggle--highlight .anim-toggle__label::after {
+  animation: labelUnderline 4.5s ease forwards;
+}
+@keyframes labelUnderline {
+  0%   { width: 0;    opacity: 0; }
+  12%  { width: 100%; opacity: 1; }
+  82%  { width: 100%; opacity: 1; }
+  100% { width: 100%; opacity: 0; }
 }
 
 /* ---- Lag toast ---- */
