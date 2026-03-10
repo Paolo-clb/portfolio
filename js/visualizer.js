@@ -244,13 +244,10 @@
     // Fetch audio data before drawing particles
     let avgEnergy = 0;
     if (tryConnect()) {
+      // At low speed: increase smoothing so bars respond sluggishly (slow-motion feel)
+      // without reducing bar amplitude. At normal speed: keep default 0.8.
+      analyser.smoothingTimeConstant = 0.8 + (1 - speedFactor) * 0.17;
       analyser.getByteFrequencyData(dataArray);
-      // Scale frequency data by speedFactor so bars & particles slow down
-      if (speedFactor < 1) {
-        for (let i = 0; i < dataArray.length; i++) {
-          dataArray[i] = Math.round(dataArray[i] * speedFactor);
-        }
-      }
       for (let i = 0; i < dataArray.length; i++) avgEnergy += dataArray[i];
       avgEnergy /= dataArray.length * 255;
     }
