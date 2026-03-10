@@ -76,6 +76,9 @@ window.SITE_I18N = {
     animNormal: 'Normal',
     animSpeedTooltip: 'Za Warudo ! (pluie et musique recommandées)',
     backToTop: 'Retour en haut',
+    settingsTitle: 'Réglages',
+    yoloMode: 'Mode Yolo',
+    copilotLink: 'Mon Copilot',
 
     // Lang toggle
     langTooltip: 'Switch to English',
@@ -168,6 +171,9 @@ window.SITE_I18N = {
     animNormal: 'Normal',
     animSpeedTooltip: 'Za Warudo ! (rain and music recommended)',
     backToTop: 'Back to top',
+    settingsTitle: 'Settings',
+    yoloMode: 'Yolo Mode',
+    copilotLink: 'My Copilot',
 
     // Lang toggle
     langTooltip: 'Passer en Français',

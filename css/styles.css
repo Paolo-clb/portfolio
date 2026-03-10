@@ -441,7 +441,6 @@ section.hero {
   display: flex;
   justify-content: center;
   gap: 1.5rem;
-  margin-top: 0.75rem;
 }
 
 /* ==========================================================================
@@ -451,10 +450,109 @@ section.hero {
 .footer__anim-controls {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin: 1rem 0 0.25rem;
+  justify-content: space-between;
+  gap: 1.5rem;
   flex-wrap: wrap;
+}
+
+/* ── Left: Settings zone ── */
+
+.footer__settings {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(191, 153, 160, 0.12);
+  border-radius: var(--radius);
+  background: rgba(27, 26, 39, 0.35);
+  text-align: left;
+}
+
+.footer__settings-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--clr-text-muted);
+  margin-bottom: 0.15rem;
+}
+
+.footer__yolo-toggle {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Both toggles: label left, switch right, full width for alignment */
+.footer__settings .anim-toggle {
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border-radius: calc(var(--radius) * 0.7);
+  transition: background 0.2s ease;
+}
+
+.footer__settings .anim-toggle:hover {
+  background: rgba(242, 162, 133, 0.06);
+}
+
+/* ── Center zone ── */
+
+.footer__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.footer__center p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* ── Right zone ── */
+
+.footer__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.65rem;
+}
+
+/* ── "Mon Copilot" link ── */
+
+.footer__copilot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 1.2rem;
+  background: rgba(191, 153, 160, 0.08);
+  border: 1px solid rgba(191, 153, 160, 0.2);
+  border-radius: 2rem;
+  color: var(--clr-accent);
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, color 0.3s ease;
+}
+
+.footer__copilot:hover {
+  background: rgba(191, 153, 160, 0.18);
+  border-color: var(--clr-accent);
+  box-shadow: 0 4px 18px rgba(191, 153, 160, 0.18);
+  color: var(--clr-accent);
+  transform: translateY(-2px);
+}
+
+.footer__copilot-favicon {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  object-fit: contain;
 }
 
 /* ---- Hero speed slider (replaces title underline) ---- */
@@ -682,12 +780,13 @@ section.hero {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  cursor: pointer;
 }
 
 .anim-toggle__label {
   font-size: 0.75rem;
   color: var(--clr-text-muted);
-  cursor: default;
+  cursor: inherit;
   user-select: none;
   position: relative;
 }
@@ -757,7 +856,6 @@ section.hero {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  margin-top: 1.25rem;
   padding: 0.55rem 1.4rem;
   background: rgba(242, 162, 133, 0.08);
   border: 1px solid rgba(242, 162, 133, 0.2);
@@ -933,9 +1031,9 @@ section.hero {
 /* ---- Lag toast ---- */
 .lag-toast {
   position: fixed;
-  bottom: 2rem;
+  top: calc(4rem + 0.75rem);
   left: 50%;
-  transform: translateX(-50%) translateY(20px);
+  transform: translateX(-50%) translateY(-20px);
   background: rgba(27, 26, 39, 0.92);
   color: var(--clr-text);
   padding: 0.75rem 1.5rem;
@@ -943,7 +1041,7 @@ section.hero {
   font-size: 0.85rem;
   border: 1px solid rgba(242, 162, 133, 0.25);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  z-index: 500;
+  z-index: 99;
   opacity: 0;
   transition: opacity 0.3s ease, transform 0.3s ease;
   pointer-events: none;
@@ -1704,6 +1802,27 @@ body::before,
   box-shadow: 0 4px 18px rgba(156, 39, 176, 0.18);
 }
 
+[data-theme="dark"] .footer__settings {
+  border-color: rgba(63, 81, 181, 0.15);
+  background: rgba(26, 0, 51, 0.35);
+}
+
+[data-theme="dark"] .footer__settings .anim-toggle:hover {
+  background: rgba(156, 39, 176, 0.08);
+}
+
+[data-theme="dark"] .footer__copilot {
+  background: rgba(255, 78, 203, 0.08);
+  border-color: rgba(255, 78, 203, 0.2);
+  color: var(--clr-accent);
+}
+
+[data-theme="dark"] .footer__copilot:hover {
+  background: rgba(255, 78, 203, 0.18);
+  border-color: var(--clr-accent);
+  box-shadow: 0 4px 18px rgba(255, 78, 203, 0.18);
+}
+
 /* --- Dark: Background credit --- */
 [data-theme="dark"] .bg-credit {
   background: rgba(10, 10, 32, 0.65);
@@ -1885,6 +2004,27 @@ body::before,
   box-shadow: 0 4px 18px rgba(94, 184, 58, 0.18);
 }
 
+[data-theme="nature"] .footer__settings {
+  border-color: rgba(42, 69, 34, 0.15);
+  background: rgba(21, 34, 16, 0.35);
+}
+
+[data-theme="nature"] .footer__settings .anim-toggle:hover {
+  background: rgba(94, 184, 58, 0.08);
+}
+
+[data-theme="nature"] .footer__copilot {
+  background: rgba(74, 181, 214, 0.08);
+  border-color: rgba(74, 181, 214, 0.2);
+  color: var(--clr-accent);
+}
+
+[data-theme="nature"] .footer__copilot:hover {
+  background: rgba(74, 181, 214, 0.18);
+  border-color: var(--clr-accent);
+  box-shadow: 0 4px 18px rgba(74, 181, 214, 0.18);
+}
+
 /* --- Nature: CV --- */
 [data-theme="nature"] .cv-modal {
   background: rgba(21, 34, 16, 0.6);
@@ -2045,7 +2185,32 @@ body::before,
 
   .footer__anim-controls {
     flex-direction: column;
+    align-items: center;
     gap: 0.75rem;
+  }
+
+  /* Mobile order: text+links on top, settings below, buttons last */
+  .footer__center {
+    order: 1;
+    width: 100%;
+  }
+
+  .footer__settings {
+    order: 2;
+    align-items: center;
+    width: 100%;
+    text-align: center;
+  }
+
+  .footer__settings .anim-toggle {
+    width: auto;
+    justify-content: flex-start;
+    gap: 0.75rem;
+  }
+
+  .footer__right {
+    order: 3;
+    align-items: center;
   }
 
   .hero__anim-speed .anim-speed__slider {

@@ -971,7 +971,7 @@ function initCursorHalo() {
   }, { passive: true });
 
   // ---- hover on interactive elements ----
-  var interactiveSelector = 'a, button:not(.anim-speed__icon), input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay, .music-popup-overlay, .weak-popup-overlay, .anim-toggle__track';
+  var interactiveSelector = 'a, button:not(.anim-speed__icon), input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay, .music-popup-overlay, .weak-popup-overlay, .anim-toggle__track, .anim-toggle';
   var modalAllowedSelector = 'button, .modal__close, a, .btn';
 
   document.addEventListener('mouseover', function (e) {
@@ -1320,37 +1320,70 @@ function initAnimationControls() {
   var insertAfter = titleRow || heroTitle;
   insertAfter.parentNode.insertBefore(speedWrap, insertAfter.nextSibling);
 
-  // ── Footer controls (toggle + back-to-top) ──
+  // ── Footer controls (settings zone left + right zone) ──
   var controls = createElement('div', 'footer__anim-controls');
 
-  // Toggle section
-  var toggleWrap = createElement('div', 'anim-toggle');
+  // ── Left: Settings zone ──
+  var settingsZone = createElement('div', 'footer__settings');
 
-  var toggleLabel = createElement('label', 'anim-toggle__label', 'Animations');
+  var settingsTitle = createElement('span', 'footer__settings-title', siteT('settingsTitle'));
+
+  // Animation toggle — outer <label> makes entire row clickable (no nested <label>)
+  var toggleWrap = document.createElement('label');
+  toggleWrap.className = 'anim-toggle';
+
+  var toggleLabel = createElement('span', 'anim-toggle__label', 'Animations');
   toggleLabel.setAttribute('data-i18n-title', 'animEnable');
 
-  var switchLabel = createElement('label', 'anim-toggle__switch');
+  var switchSlot = createElement('span', 'anim-toggle__switch');
   var checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.checked = true;
   var track = createElement('span', 'anim-toggle__track');
-  switchLabel.appendChild(checkbox);
-  switchLabel.appendChild(track);
+  switchSlot.appendChild(checkbox);
+  switchSlot.appendChild(track);
 
   toggleWrap.appendChild(toggleLabel);
-  toggleWrap.appendChild(switchLabel);
+  toggleWrap.appendChild(switchSlot);
 
-  controls.appendChild(toggleWrap);
+  // Yolo mode toggle (placeholder — disabled for now, stays a div so it's not clickable)
+  var yoloWrap = createElement('div', 'anim-toggle footer__yolo-toggle');
 
-  // Insert controls between <p> and <ul> in footer
+  var yoloLabel = createElement('span', 'anim-toggle__label', siteT('yoloMode'));
+
+  var yoloSlot = createElement('span', 'anim-toggle__switch');
+  var yoloCheckbox = document.createElement('input');
+  yoloCheckbox.type = 'checkbox';
+  yoloCheckbox.checked = false;
+  yoloCheckbox.disabled = true;
+  var yoloTrack = createElement('span', 'anim-toggle__track');
+  yoloSlot.appendChild(yoloCheckbox);
+  yoloSlot.appendChild(yoloTrack);
+
+  yoloWrap.appendChild(yoloLabel);
+  yoloWrap.appendChild(yoloSlot);
+
+  settingsZone.appendChild(settingsTitle);
+  settingsZone.appendChild(toggleWrap);
+  settingsZone.appendChild(yoloWrap);
+  controls.appendChild(settingsZone);
+
+  // ── Center zone (move footer text + socials into the 3-column layout) ──
+  var centerZone = createElement('div', 'footer__center');
+  var footerPara = footerContainer.querySelector('p');
   var footerSocials = footerContainer.querySelector('.footer__socials');
-  if (footerSocials) {
-    footerContainer.insertBefore(controls, footerSocials);
-  } else {
-    footerContainer.appendChild(controls);
-  }
+  if (footerPara) centerZone.appendChild(footerPara);
+  if (footerSocials) centerZone.appendChild(footerSocials);
+  controls.appendChild(centerZone);
 
-  // Back-to-top button (after socials)
+  // ── Right zone ──
+  var rightZone = createElement('div', 'footer__right');
+  controls.appendChild(rightZone);
+
+  // Append controls — footer text + socials now live inside controls > center zone
+  footerContainer.appendChild(controls);
+
+  // Back-to-top button
   var backTop = document.createElement('a');
   backTop.href = '#hero';
   backTop.className = 'footer__back-top';
@@ -1365,7 +1398,19 @@ function initAnimationControls() {
     e.preventDefault();
     document.getElementById('hero').scrollIntoView({ behavior: 'smooth' });
   });
-  footerContainer.appendChild(backTop);
+  rightZone.appendChild(backTop);
+
+  // "Mon Copilot" link — points to friend's portfolio
+  var copilotLink = document.createElement('a');
+  copilotLink.href = 'https://moksi.studio/';
+  copilotLink.className = 'footer__copilot';
+  copilotLink.target = '_blank';
+  copilotLink.rel = 'noopener';
+  copilotLink.title = siteT('copilotLink');
+  copilotLink.innerHTML =
+    '<img class="footer__copilot-favicon" src="assets/images/favicon.svg" alt="" width="18" height="18">' +
+    '<span>' + siteT('copilotLink') + '</span>';
+  rightZone.appendChild(copilotLink);
 
   // ── Curve split ──
   // Non-linear (rain, grayscale/time-warp, clock): curved = raw^CURVE_EXP
@@ -1600,6 +1645,10 @@ function initAnimationControls() {
     backTop.title = siteT('backToTop');
     backTop.setAttribute('aria-label', siteT('backToTop'));
     backTop.querySelector('span').textContent = siteT('backToTop');
+    settingsTitle.textContent = siteT('settingsTitle');
+    yoloLabel.textContent = siteT('yoloMode');
+    copilotLink.title = siteT('copilotLink');
+    copilotLink.querySelector('span').textContent = siteT('copilotLink');
     updateToggleTooltip();
   }
   document.addEventListener('sitelangchange', updateAnimI18n);
