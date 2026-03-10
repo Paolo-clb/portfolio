@@ -1968,8 +1968,20 @@ body::before,
    ========================================================================== */
 
 @media (max-width: 768px) {
+  .nav {
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+
+  /* Reorder nav icons: lang → theme → music-trigger → [gap] → burger */
+  .lang-toggle  { order: 1; }
+  .theme-toggle { order: 2; }
+  .music-trigger { order: 3; }
+  .nav__toggle   { order: 4; }
+
   .nav__list-wrapper {
     position: static;
+    display: none;
   }
 
   .nav__list {
@@ -1997,7 +2009,9 @@ body::before,
 
   .nav__toggle {
     display: flex;
+    margin-left: auto;
     margin-right: 0.25rem;
+    flex-shrink: 0;
   }
 
   .scroll-hint {
@@ -2050,6 +2064,14 @@ body::before,
 @media (max-width: 600px) and (pointer: coarse) {
   .scroll-hint {
     bottom: 8rem;
+  }
+}
+
+/* Very small screens: tighten nav to keep burger always visible */
+@media (max-width: 420px) {
+  .nav.container {
+    padding-inline: 0.6rem;
+    gap: 0.25rem;
   }
 }
 
