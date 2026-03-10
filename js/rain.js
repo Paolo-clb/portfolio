@@ -103,6 +103,14 @@
       if (!fbRafId) fbRafId = requestAnimationFrame(fbDraw);
     }
 
+    // Eager burst: re-query surfaces at short intervals right after start so
+    // elements that animate in (e.g. typing-game__text) are caught quickly
+    // rather than waiting for the 3s periodic recalc.
+    var BURST = [150, 350, 600, 1000, 1800];
+    BURST.forEach(function (ms) {
+      setTimeout(function () { if (enabled) sendSurfaces(); }, ms);
+    });
+
     // Periodically refresh surface positions (layout may shift)
     surfRecalcTimer = setInterval(sendSurfaces, SURFACE_RECALC_MS);
   }
