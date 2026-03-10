@@ -1326,7 +1326,19 @@ function initAnimationControls() {
   // ── Left: Settings zone ──
   var settingsZone = createElement('div', 'footer__settings');
 
+  // Title row: label + spinning gear icon
+  var titleRow = createElement('div', 'footer__settings-title-row');
   var settingsTitle = createElement('span', 'footer__settings-title', siteT('settingsTitle'));
+  var settingsGear = document.createElement('span');
+  settingsGear.className = 'footer__settings-gear';
+  settingsGear.setAttribute('aria-hidden', 'true');
+  settingsGear.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">' +
+      '<circle cx="12" cy="12" r="3"/>' +
+      '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>' +
+    '<\/svg>';
+  titleRow.appendChild(settingsTitle);
+  titleRow.appendChild(settingsGear);
 
   // Animation toggle — outer <label> makes entire row clickable (no nested <label>)
   var toggleWrap = document.createElement('label');
@@ -1363,9 +1375,13 @@ function initAnimationControls() {
   yoloWrap.appendChild(yoloLabel);
   yoloWrap.appendChild(yoloSlot);
 
-  settingsZone.appendChild(settingsTitle);
-  settingsZone.appendChild(toggleWrap);
-  settingsZone.appendChild(yoloWrap);
+  // Row container for both toggles side-by-side
+  var togglesRow = createElement('div', 'footer__settings-toggles');
+  togglesRow.appendChild(toggleWrap);
+  togglesRow.appendChild(yoloWrap);
+
+  settingsZone.appendChild(titleRow);
+  settingsZone.appendChild(togglesRow);
   controls.appendChild(settingsZone);
 
   // ── Center zone (move footer text + socials into the 3-column layout) ──
@@ -1406,10 +1422,19 @@ function initAnimationControls() {
   copilotLink.className = 'footer__copilot';
   copilotLink.target = '_blank';
   copilotLink.rel = 'noopener';
-  copilotLink.title = siteT('copilotLink');
+  copilotLink.setAttribute('aria-label', siteT('copilotLink'));
   copilotLink.innerHTML =
     '<img class="footer__copilot-favicon" src="assets/images/favicon.svg" alt="" width="18" height="18">' +
-    '<span>' + siteT('copilotLink') + '</span>';
+    '<span>' + siteT('copilotLink') + '</span>' +
+    '<span class="footer__copilot-tooltip"></span>';
+  copilotLink.querySelector('.footer__copilot-tooltip').textContent = siteT('copilotTooltip');
+  // Hover events for custom tooltip
+  copilotLink.addEventListener('mouseenter', function () {
+    copilotLink.querySelector('.footer__copilot-tooltip').classList.add('footer__copilot-tooltip--visible');
+  });
+  copilotLink.addEventListener('mouseleave', function () {
+    copilotLink.querySelector('.footer__copilot-tooltip').classList.remove('footer__copilot-tooltip--visible');
+  });
   rightZone.appendChild(copilotLink);
 
   // ── Curve split ──
@@ -1647,8 +1672,9 @@ function initAnimationControls() {
     backTop.querySelector('span').textContent = siteT('backToTop');
     settingsTitle.textContent = siteT('settingsTitle');
     yoloLabel.textContent = siteT('yoloMode');
-    copilotLink.title = siteT('copilotLink');
+    copilotLink.setAttribute('aria-label', siteT('copilotLink'));
     copilotLink.querySelector('span').textContent = siteT('copilotLink');
+    copilotLink.querySelector('.footer__copilot-tooltip').textContent = siteT('copilotTooltip');
     updateToggleTooltip();
   }
   document.addEventListener('sitelangchange', updateAnimI18n);

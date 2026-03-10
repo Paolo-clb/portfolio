@@ -79,6 +79,7 @@ window.SITE_I18N = {
     settingsTitle: 'Réglages',
     yoloMode: 'Mode Yolo',
     copilotLink: 'Mon Copilot',
+    copilotTooltip: 'Portfolio d\'Enzo — collègue de projets et de pair programming',
 
     // Lang toggle
     langTooltip: 'Switch to English',
@@ -174,6 +175,7 @@ window.SITE_I18N = {
     settingsTitle: 'Settings',
     yoloMode: 'Yolo Mode',
     copilotLink: 'My Copilot',
+    copilotTooltip: 'Enzo\'s portfolio — project colleague and pair programming partner',
 
     // Lang toggle
     langTooltip: 'Passer en Français',
