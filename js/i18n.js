@@ -74,7 +74,7 @@ window.SITE_I18N = {
     animEnable: 'Activer les animations',
     animSlowMotion: 'Ralenti',
     animNormal: 'Normal',
-    animSpeedTooltip: 'Contrôle la vitesse des animations du site',
+    animSpeedTooltip: 'Za Warudo ! (pluie et musique recommandées)',
     backToTop: 'Retour en haut',
 
     // Lang toggle
@@ -87,11 +87,11 @@ window.SITE_I18N = {
 
     // Weak device warning
     weakWarningTitle: 'Animations désactivées',
-    weakWarningMsg: 'Votre appareil a été détecté comme peu puissant. Les animations ont été désactivées pour éviter les ralentissements.',
+    weakWarningMsg: 'Les animations du site semblent trop lourdes pour votre appareil et ont été désactivées automatiquement pour éviter les ralentissements.',
     weakWarningCta: 'Activer quand même',
-    weakWarningLag: 'Attention : cela peut provoquer des lags.',
+    weakWarningLag: 'Vous pouvez tout de même les activer, mais cela risque de provoquer des lags.',
     weakWarningDismiss: 'OK, compris',
-    weakLagToast: 'Attention : cela peut provoquer des lags.',
+    weakLagToast: 'Animations activées (performances réduites possibles)',
 
     // Misc
     closeLbl: 'Fermer',
@@ -166,7 +166,7 @@ window.SITE_I18N = {
     animEnable: 'Enable animations',
     animSlowMotion: 'Slow motion',
     animNormal: 'Normal',
-    animSpeedTooltip: 'Controls the site animation speed',
+    animSpeedTooltip: 'Za Warudo ! (rain and music recommended)',
     backToTop: 'Back to top',
 
     // Lang toggle
@@ -179,11 +179,11 @@ window.SITE_I18N = {
 
     // Weak device warning
     weakWarningTitle: 'Animations disabled',
-    weakWarningMsg: 'Your device was detected as low-powered. Animations have been disabled to prevent lag.',
+    weakWarningMsg: 'The site\'s animations appear too resource-intensive for your device and have been automatically disabled to prevent lag.',
     weakWarningCta: 'Enable anyway',
-    weakWarningLag: 'Warning: this may cause lag.',
+    weakWarningLag: 'You can still enable them, but this may cause lag.',
     weakWarningDismiss: 'OK, got it',
-    weakLagToast: 'Warning: this may cause lag.',
+    weakLagToast: 'Animations enabled (reduced performance possible)',
 
     // Misc
     closeLbl: 'Close',
