@@ -101,6 +101,15 @@
   animation: intro-btn-glow 2s ease-in-out infinite;
 }
 
+/* On short viewports where scroll-hint would overlap the intro button,
+   shift it just to the right of the button instead of center */
+@media (max-height: 750px) {
+  .hero:has(.typing-game__intro-btn--visible) .scroll-hint {
+    left: calc(50% + 12rem);
+    transform: none;
+  }
+}
+
 @keyframes intro-btn-glow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(242, 162, 133, 0); }
   50%      { box-shadow: 0 0 26px rgba(242, 162, 133, 0.25), 0 0 55px rgba(242, 162, 133, 0.12); }
