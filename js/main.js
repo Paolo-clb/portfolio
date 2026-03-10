@@ -1211,33 +1211,35 @@ function showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY) {
 
   enableBtn.addEventListener('click', function () {
     close();
-    // Enable animations
-    checkbox.checked = true;
-    enableAnimations();
-    localStorage.setItem(TOGGLE_KEY, 'on');
-    // Scroll to footer toggle, then show warning (highlight + toast) when arrived
+    // Scroll to footer first — user will watch the toggle flip
     var toggle = document.querySelector('.anim-toggle');
     if (toggle) {
       setTimeout(function () {
         toggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Show warning after scroll lands (~1000ms)
+        // After scroll lands: flip toggle visually + enable animations + highlight simultaneously
         setTimeout(function () {
+          checkbox.checked = true;
+          enableAnimations();
+          localStorage.setItem(TOGGLE_KEY, 'on');
           if (window.__showAnimWarning) window.__showAnimWarning();
+          // After highlight animation finishes (4.7s), auto-scroll back to top then finish flow
+          setTimeout(function () {
+            var hero = document.getElementById('hero');
+            if (hero) {
+              hero.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            // Wait for scroll to land then finish flow
+            setTimeout(finishFlow, 1000);
+          }, 4700);
         }, 1000);
       }, 350);
+    } else {
+      // Fallback: no toggle found, enable immediately
+      checkbox.checked = true;
+      enableAnimations();
+      localStorage.setItem(TOGGLE_KEY, 'on');
+      finishFlow();
     }
-    // Wait for user to scroll back to hero, then finish flow
-    function onScroll() {
-      var hero = document.getElementById('hero');
-      if (hero && hero.getBoundingClientRect().top >= -100) {
-        window.removeEventListener('scroll', onScroll);
-        finishFlow();
-      }
-    }
-    // Start listening after a delay so the scroll-to-footer doesn't trigger it
-    setTimeout(function () {
-      window.addEventListener('scroll', onScroll, { passive: true });
-    }, 1800);
   });
 
   // Close on overlay click (outside popup) = same as dismiss
