@@ -496,7 +496,7 @@ section.hero {
 
 .hero__anim-speed .anim-speed__slider {
   width: 120px;
-  height: 3px;
+  height: 4px;
   margin: 0 0.25rem;
   transition: filter 0.3s ease, width 0.3s ease, height 0.2s ease;
 }
@@ -2016,7 +2016,7 @@ body::before,
 
   .hero__anim-speed .anim-speed__slider {
     width: 120px;
-    height: 4px;
+    height: 5px;
   }
 
   /* Mobile: thumb always visible (no hover on touch) */
