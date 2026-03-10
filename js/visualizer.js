@@ -15,6 +15,7 @@
   let speedFactor = 1;
   let vizEnabled = true;
   let frozen = false;
+  let virtualTime = 0; // accumulates scaled by speedFactor — drives particle phase
 
   // Bar appearance
   const BAR_COUNT = 64;
@@ -77,7 +78,7 @@
   function updateAndDrawParticles(w, h, avgEnergy) {
     var colors = getThemeColors();
     var colorArr = [colors.primary, colors.accent, colors.hover];
-    var now = Date.now() * 0.001;
+    var now = virtualTime;
 
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
@@ -100,8 +101,8 @@
       if (musicActive) {
         // Music: smooth sinusoidal displacement scaled by frequency (no random jitter)
         var phase = now * 1.5 + i * 0.41;
-        p.x += Math.cos(phase) * binVal * 2.5;
-        p.y += Math.sin(phase * 0.7 + i) * binVal * 2;
+        p.x += Math.cos(phase) * binVal * 2.5 * speedFactor;
+        p.y += Math.sin(phase * 0.7 + i) * binVal * 2 * speedFactor;
         r += binVal * 11;
         a += binVal * 0.6;
       } else if (!impulseIsClick && impulse > 0.01) {
@@ -237,6 +238,9 @@
     const h = canvas.height;
 
     ctx.clearRect(0, 0, w, h);
+
+    // Advance virtual time by one frame at current speed (60fps baseline)
+    virtualTime += (1 / 60) * speedFactor;
 
     // Decay impulse (slower for clicks → more satisfying spread)
     impulse *= impulseIsClick ? 0.93 : 0.88;
