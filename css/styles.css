@@ -850,12 +850,13 @@ section.hero {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  cursor:pointer;
 }
 
 .anim-toggle__label {
   font-size: 0.75rem;
   color: var(--clr-text-muted);
-  cursor: default;
+  cursor: inherit;
   user-select: none;
   position: relative;
 }
@@ -1100,9 +1101,9 @@ section.hero {
 /* ---- Lag toast ---- */
 .lag-toast {
   position: fixed;
-  bottom: 2rem;
+  top: calc(4rem + 0.75rem);
   left: 50%;
-  transform: translateX(-50%) translateY(20px);
+  transform: translateX(-50%) translateY(-20px);
   background: rgba(27, 26, 39, 0.92);
   color: var(--clr-text);
   padding: 0.75rem 1.5rem;
@@ -1794,12 +1795,20 @@ body::before,
   transform: scale(1);
 }
 
+[data-theme="dark"] .footer__settings .anim-toggle:hover {
+  background: rgba(156, 39, 176, 0.08);
+}
+
 [data-theme="nature"] .theme-toggle__vein {
   opacity: 1;
 }
 
 [data-theme="nature"] .theme-toggle__body {
   r: 0px;
+}
+
+[data-theme="dark"] .footer__copilot-tooltip {
+  background: rgba(26, 0, 51, 0.92);
 }
 
 [data-theme="nature"] .theme-toggle__cutout {
@@ -1985,9 +1994,18 @@ body::before,
   50%      { box-shadow: 0 0 14px rgba(156, 39, 176, 0.15); }
 }
 
+
+[data-theme="nature"] .footer__settings .anim-toggle:hover {
+  background: rgba(94, 184, 58, 0.08);
+}
+
 /* --- Dark: Theme toggle hover --- */
 [data-theme="dark"] .theme-toggle:hover {
   background: rgba(156, 39, 176, 0.15);
+}
+
+[data-theme="nature"] .footer__copilot-tooltip {
+  background: rgba(21, 34, 16, 0.92);
 }
 
 /* --- Dark: Modal close button hover text color fix --- */
@@ -2279,19 +2297,33 @@ body::before,
     gap: 0.75rem;
   }
 
+
+
+  /* Mobile order: text+links on top, settings below, buttons last */
   .footer__center {
-    order: -1;
+    order: 1;
+    width: 100%;
   }
 
   .footer__settings {
     align-items: center;
-    order: 0;
+    order: 2;
+    text-align: center;
+    width: 100%;
   }
 
-  .footer__right {
-    order: 1;
+  .footer__settings .anim-toggle {
+    gap: 0.5rem;
+  }
+
+  .footer__settings-toggles {
     justify-content: center;
-    flex-wrap: wrap;
+  }
+
+
+  .footer__right {
+    order: 3;
+    justify-content: center;
   }
 
   .hero__anim-speed .anim-speed__slider {
