@@ -1424,7 +1424,7 @@ function initAnimationControls() {
   copilotLink.rel = 'noopener';
   copilotLink.setAttribute('aria-label', siteT('copilotLink'));
   copilotLink.innerHTML =
-    '<img class="footer__copilot-favicon" src="assets/images/favicon.svg" alt="" width="18" height="18">' +
+    '<img class="footer__copilot-favicon" src="assets/images/faviconMoksi.svg" alt="" width="18" height="18">' +
     '<span>' + siteT('copilotLink') + '</span>' +
     '<span class="footer__copilot-tooltip"></span>';
   copilotLink.querySelector('.footer__copilot-tooltip').textContent = siteT('copilotTooltip');

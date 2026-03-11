@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <filter id="glow" color-interpolation-filters="sRGB" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" in="SourceGraphic" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <style>
+    .bg     { fill: #0a0a0a; }
+    .ring   { fill: none; stroke: #a0a0a0; stroke-width: 1.2; opacity: .45; }
+    .e-halo { fill: #e8e8e8; opacity: .35; }
+    .e-core { fill: #a0a0a0; }
+    .c-halo { fill: #e8e8e8; opacity: .3; }
+    .c-core { fill: #e8e8e8; }
+    .orbit-outer { transform-origin: 32px 32px; animation: cw  7s linear     infinite; }
+    .orbit-inner { transform-origin: 32px 32px; animation: ccw 4s linear     infinite; }
+    .center-grp  { transform-origin: 32px 32px; animation: pls 1.8s ease-in-out infinite; }
+    @keyframes cw  { to { transform: rotate( 360deg); } }
+    @keyframes ccw { to { transform: rotate(-360deg); } }
+    @keyframes pls { 0%,100% { transform: scale(.75); opacity: .75; } 50% { transform: scale(1.25); opacity: 1; } }
+  </style>
+  <circle cx="32" cy="32" r="30" class="bg"/>
+  <circle cx="32" cy="32" r="24" class="ring"/>
+  <circle cx="32" cy="32" r="14" class="ring"/>
+  <g class="orbit-outer">
+    <circle cx="32" cy="8"  r="6"   class="e-halo" filter="url(#glow)"/>
+    <circle cx="32" cy="8"  r="3.5" class="e-core"/>
+    <circle cx="32" cy="56" r="4"   class="e-halo" opacity=".15"/>
+    <circle cx="32" cy="56" r="2"   class="e-core" opacity=".45"/>
+  </g>
+  <g class="orbit-inner">
+    <circle cx="32" cy="18" r="5" class="e-halo" filter="url(#glow)"/>
+    <circle cx="32" cy="18" r="3" class="e-core"/>
+  </g>
+  <g class="center-grp">
+    <circle cx="32" cy="32" r="8"   class="c-halo" filter="url(#glow)"/>
+    <circle cx="32" cy="32" r="4.5" class="c-core"/>
+  </g>
+</svg>
