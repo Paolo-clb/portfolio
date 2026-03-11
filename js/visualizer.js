@@ -15,6 +15,8 @@
   let speedFactor = 1;
   let vizEnabled = true;
   let frozen = false;
+  let prevFrozen = false;      // to detect freeze→unfreeze transition
+  let postFreezeDecay = 0;    // warm-up frames after unfreeze-while-paused to drain stale analyser buffer
   let virtualTime = 0; // accumulates scaled by speedFactor — drives particle phase
 
   // Frozen bar state: snapshot + decay tracking
@@ -236,54 +238,90 @@
     const w = canvas.width;
     const h = canvas.height;
 
-    // Always sample audio — even when frozen, to detect music-stop transitions
+    // Whether the music player is actually playing (not analyser-derived — immune to decay)
+    const isActuallyPlaying = !!(window.__musicPlayerIsPlaying && window.__musicPlayerIsPlaying());
+
+    // Detect freeze → unfreeze transition
+    const justUnfroze = prevFrozen && !frozen;
+    prevFrozen = frozen;
+
+    if (justUnfroze && !isActuallyPlaying) {
+      // Music was paused while time was frozen — the AnalyserNode's internal smoothed buffer
+      // still holds stale high values from the snapshot. Zero the snapshot so bars stay flat
+      // and drain the analyser for a few frames before rendering bars again.
+      if (frozenDataBuffer) frozenDataBuffer.fill(0);
+      frozenAvgEnergy = 0;
+      frozenBarsDecay = false;
+      postFreezeDecay = 8;
+    }
+
+    // Analyser warm-up: drain stale buffer, render particles normally, skip bars
+    if (postFreezeDecay > 0) {
+      postFreezeDecay--;
+      if (tryConnect()) {
+        analyser.smoothingTimeConstant = 0.2; // fast drain of stale internal buffer
+        analyser.getByteFrequencyData(dataArray);
+      }
+      impulse *= impulseIsClick ? 0.93 : 0.88;
+      virtualTime += (1 / 60) * speedFactor;
+      musicActive = false;
+      ctx.clearRect(0, 0, w, h);
+      updateAndDrawParticles(w, h, 0);
+      requestAnimationFrame(draw);
+      return;
+    }
+
+    // Sample audio only when running, OR when bars are mid-retraction (need live decay)
     let avgEnergy = 0;
-    if (tryConnect()) {
-      analyser.smoothingTimeConstant = 0.8 + (1 - speedFactor) * 0.17;
+    if (tryConnect() && (!frozen || frozenBarsDecay)) {
+      analyser.smoothingTimeConstant = frozen ? 0.92 : (0.8 + (1 - speedFactor) * 0.17);
       analyser.getByteFrequencyData(dataArray);
       for (let i = 0; i < dataArray.length; i++) avgEnergy += dataArray[i];
       avgEnergy /= dataArray.length * 255;
     }
+
     const wasMusicActive = musicActive;
-    musicActive = connected && avgEnergy > 0.015;
 
     if (!frozen) {
-      // Running: advance time and keep bar snapshot current
+      // Running: snapshot bars and advance time normally
+      musicActive = connected && avgEnergy > 0.015;
       virtualTime += (1 / 60) * speedFactor;
       frozenBarsDecay = false;
       if (dataArray) { frozenDataBuffer = new Uint8Array(dataArray); frozenAvgEnergy = avgEnergy; }
     } else {
-      // Frozen: detect music-stop → trigger bar retraction
-      if (wasMusicActive && !musicActive) frozenBarsDecay = true;
-      // Once energy fully decays, zero out snapshot so bars stay gone
-      if (avgEnergy < 0.001) {
+      // Frozen: musicActive stays pinned to snapshot (never driven by live analyser)
+      musicActive = connected && frozenAvgEnergy > 0.015;
+
+      // Trigger retraction only when play button is pressed (music genuinely stopped)
+      if (!frozenBarsDecay && !isActuallyPlaying && frozenAvgEnergy > 0.015) {
+        frozenBarsDecay = true;
+      }
+      // Once retraction completes, zero out snapshot
+      if (frozenBarsDecay && avgEnergy < 0.001) {
         frozenBarsDecay = false;
         if (frozenDataBuffer) frozenDataBuffer.fill(0);
         frozenAvgEnergy = 0;
       }
     }
 
-    // Decay impulse every frame (so it's ready to trigger redraws on click/key)
+    // Decay impulse every frame
     impulse *= impulseIsClick ? 0.93 : 0.88;
 
-    // Determine what needs a redraw this frame
     const particlesNeedUpdate = !frozen || impulse > 0.01;
-    // Bars use frozen snapshot when frozen+musicActive, live data otherwise
-    const barsUseSnapshot = frozen && !frozenBarsDecay;
-    const needsAnyRedraw  = particlesNeedUpdate || frozenBarsDecay;
+    const barsUseSnapshot    = frozen && !frozenBarsDecay;
+    const needsAnyRedraw     = particlesNeedUpdate || frozenBarsDecay;
 
     if (!needsAnyRedraw) {
-      // Fully static snapshot: nothing changed, keep last canvas frame
       requestAnimationFrame(draw);
       return;
     }
 
     ctx.clearRect(0, 0, w, h);
 
-    // Particles (positions unchanged if frozen+no-impulse, drift/music scale by speedFactor=0)
-    updateAndDrawParticles(w, h, avgEnergy);
+    // Particles always get their own energy (frozen ones just have speedFactor=0 so no drift)
+    updateAndDrawParticles(w, h, frozen ? frozenAvgEnergy : avgEnergy);
 
-    // Choose bar data source: frozen snapshot OR live analyser data
+    // Choose bar data source: frozen snapshot OR live analyser during retraction
     const barData   = barsUseSnapshot ? frozenDataBuffer : dataArray;
     const barEnergy = barsUseSnapshot ? frozenAvgEnergy  : avgEnergy;
 

@@ -1116,6 +1116,24 @@ function initScrollHint() {
   const hint = document.querySelector('.scroll-hint');
   if (!hint) return;
   const game = document.getElementById('typing-game');
+  const hero = document.querySelector('section.hero');
+  const mqShortViewport = window.matchMedia('(max-height: 725px)');
+
+  // When the scroll-hint is shifted to the side (short viewport + intro btn visible),
+  // align it vertically with the center of the intro button.
+  function alignWithBtn() {
+    var btn = hero && hero.querySelector('.typing-game__intro-btn--visible');
+    if (mqShortViewport.matches && btn) {
+      var btnRect = btn.getBoundingClientRect();
+      var heroRect = hero.getBoundingClientRect();
+      var btnCenterY = btnRect.top + btnRect.height / 2 - heroRect.top;
+      hint.style.top = (btnCenterY - hint.offsetHeight / 2) + 'px';
+      hint.style.bottom = 'auto';
+    } else {
+      hint.style.top = '';
+      hint.style.bottom = '';
+    }
+  }
 
   function update() {
     var playing  = game && game.dataset.playing  === '1';
@@ -1128,12 +1146,18 @@ function initScrollHint() {
     } else {
       hint.classList.remove('scroll-hint--hidden');
     }
+    alignWithBtn();
   }
 
   window.addEventListener('scroll', update, { passive: true });
-  // Re-evaluate when typing game focus/play state changes
+  window.addEventListener('resize', alignWithBtn, { passive: true });
+  mqShortViewport.addEventListener('change', alignWithBtn);
+
   if (game) {
+    // Re-evaluate visibility on game state changes
     new MutationObserver(update).observe(game, { attributes: true, attributeFilter: ['data-playing', 'data-focused'] });
+    // Re-align when intro button gets/loses --visible class
+    new MutationObserver(alignWithBtn).observe(game, { subtree: true, attributes: true, attributeFilter: ['class'] });
   }
 }
 

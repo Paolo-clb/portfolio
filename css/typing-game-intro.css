@@ -102,11 +102,13 @@
 }
 
 /* On short viewports where scroll-hint would overlap the intro button,
-   shift it just to the right of the button instead of center */
-@media (max-height: 710px) {
+   shift it to the right of the button; JS aligns it vertically with the button. */
+@media (max-height: 725px) {
   .hero:has(.typing-game__intro-btn--visible) .scroll-hint {
     left: calc(50% + 12rem);
-    transform: none;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
   }
 }
 
