@@ -1160,6 +1160,18 @@ section.hero {
   display: none !important;
 }
 
+[data-animations="off"] .hero__anim-speed {
+  display: none !important;
+}
+
+[data-animations="off"] .hero .section__title::after {
+  display: block;
+}
+
+[data-animations="off"] .hero .section__title {
+  margin-bottom: 1.3rem;
+}
+
 /* ==========================================================================
    Time-Warp Visual Effect
    ========================================================================== */

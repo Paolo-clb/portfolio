@@ -1509,8 +1509,11 @@ function initAnimationControls() {
         timeFrozen = false;
         if (window.__musicPlayerSetFrozen) window.__musicPlayerSetFrozen(false);
         var wantsPlay = window.__musicPlayerIsPlaying && window.__musicPlayerIsPlaying();
-        if (wantsPlay && audio && audio.paused) {
-          audio.play().catch(function(){});
+        if (wantsPlay) {
+          // Use the full play() path so ensureAudioCtx() is called (creates the AudioContext
+          // that the visualizer needs to connect to via tryConnect()).
+          if (window.__musicPlayerPlay) window.__musicPlayerPlay();
+          else if (audio && audio.paused) audio.play().catch(function(){});
         }
       }
       // Music rate: linear
