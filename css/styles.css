@@ -441,7 +441,6 @@ section.hero {
   display: flex;
   justify-content: center;
   gap: 1.5rem;
-  margin-top: 0.75rem;
 }
 
 /* ==========================================================================
@@ -450,10 +449,9 @@ section.hero {
 
 .footer__anim-controls {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 2rem;
-  margin: 1rem 0 0.25rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
 }
 
@@ -462,12 +460,20 @@ section.hero {
 .footer__settings {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   border: 1px solid rgba(191, 153, 160, 0.12);
   border-radius: var(--radius);
   background: rgba(27, 26, 39, 0.35);
+  text-align: left;
+}
+
+.footer__settings-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.15rem;
 }
 
 .footer__settings-title {
@@ -476,7 +482,34 @@ section.hero {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--clr-text-muted);
-  margin-bottom: 0.15rem;
+}
+
+.footer__settings-gear {
+  display: flex;
+  align-items: center;
+  color: var(--clr-text-muted);
+  opacity: 0.6;
+  animation: footerGearSpin 6s linear infinite;
+  flex-shrink: 0;
+}
+
+.footer__settings-gear svg {
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes footerGearSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Toggles row: side-by-side */
+.footer__settings-toggles {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
 }
 
 .footer__yolo-toggle {
@@ -484,13 +517,43 @@ section.hero {
   pointer-events: none;
 }
 
+.footer__settings .anim-toggle {
+  padding: 0.35rem 0.5rem;
+  border-radius: calc(var(--radius) * 0.7);
+  transition: background 0.2s ease;
+  gap: 0.5rem;
+}
+
+.footer__settings .anim-toggle:hover {
+  background: rgba(242, 162, 133, 0.06);
+}
+
+/* ── Center zone ── */
+
+.footer__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.footer__center p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
 /* ── Right zone ── */
 
 .footer__right {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row;
+  align-items: center;
   gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 /* ── "Mon Copilot" link ── */
@@ -508,7 +571,43 @@ section.hero {
   font-size: 0.78rem;
   font-weight: 500;
   letter-spacing: 0.03em;
+  position: relative;
   transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, color 0.3s ease;
+}
+
+.footer__copilot-tooltip {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(27, 26, 39, 0.92);
+  border: 1px solid var(--clr-accent);
+  color: var(--clr-accent);
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.72rem;
+  font-weight: 400;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 200;
+  letter-spacing: 0;
+}
+
+.footer__copilot-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--clr-accent);
+}
+
+.footer__copilot-tooltip--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .footer__copilot:hover {
@@ -2168,12 +2267,19 @@ body::before,
     gap: 0.75rem;
   }
 
+  .footer__center {
+    order: -1;
+  }
+
   .footer__settings {
     align-items: center;
+    order: 0;
   }
 
   .footer__right {
-    align-items: center;
+    order: 1;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
   .hero__anim-speed .anim-speed__slider {
