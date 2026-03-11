@@ -103,7 +103,7 @@
 
 /* On short viewports where scroll-hint would overlap the intro button,
    shift it just to the right of the button instead of center */
-@media (max-height: 750px) {
+@media (max-height: 710px) {
   .hero:has(.typing-game__intro-btn--visible) .scroll-hint {
     left: calc(50% + 12rem);
     transform: none;

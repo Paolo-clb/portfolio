@@ -1723,10 +1723,24 @@ function initThemeToggle() {
   // Cycle order: light → dark → nature → light
   var THEMES = ['light', 'dark', 'nature'];
   var THEME_TIP_KEYS = { light: 'themeToDark', dark: 'themeToNature', nature: 'themeToLight' };
+  // Preview image for the *next* theme (what clicking will reveal)
+  var THEME_PREVIEWS = {
+    light:  'assets/images/backgoundKatanaPoster.jpg',
+    dark:   'assets/images/hollowbackgroundPoster.jpg',
+    nature: 'assets/images/background.jpg'
+  };
 
   // Custom tooltip (positioned below, same style as lang toggle)
   var themeTip = document.createElement('div');
   themeTip.className = 'theme-toggle__tooltip';
+  var tipLabelEl = document.createElement('span');
+  tipLabelEl.className = 'theme-toggle__tooltip-label';
+  var tipPreviewEl = document.createElement('img');
+  tipPreviewEl.className = 'theme-toggle__tooltip-preview';
+  tipPreviewEl.setAttribute('alt', '');
+  tipPreviewEl.setAttribute('aria-hidden', 'true');
+  themeTip.appendChild(tipLabelEl);
+  themeTip.appendChild(tipPreviewEl);
   btn.appendChild(themeTip);
   var themeTipTimer = null;
 
@@ -1737,7 +1751,9 @@ function initThemeToggle() {
 
   btn.addEventListener('mouseenter', function () {
     clearTimeout(themeTipTimer);
-    themeTip.textContent = getThemeTipText();
+    var cur = root.getAttribute('data-theme') || 'light';
+    tipLabelEl.textContent = getThemeTipText();
+    tipPreviewEl.src = THEME_PREVIEWS[cur] || THEME_PREVIEWS.light;
     void themeTip.offsetWidth;
     themeTip.classList.add('theme-toggle__tooltip--visible');
   });

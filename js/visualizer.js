@@ -17,6 +17,11 @@
   let frozen = false;
   let virtualTime = 0; // accumulates scaled by speedFactor — drives particle phase
 
+  // Frozen bar state: snapshot + decay tracking
+  let frozenDataBuffer = null;  // Uint8Array snapshot of dataArray at last non-frozen frame
+  let frozenAvgEnergy  = 0;     // avgEnergy at last non-frozen frame
+  let frozenBarsDecay  = false; // true while bars retract after music-stop during freeze
+
   // Bar appearance
   const BAR_COUNT = 64;
   const BAR_GAP = 2;
@@ -228,41 +233,63 @@
       return;
     }
 
-    // Frozen: keep last frame on canvas as a static snapshot
-    if (frozen) {
-      requestAnimationFrame(draw);
-      return;
-    }
-
     const w = canvas.width;
     const h = canvas.height;
 
-    ctx.clearRect(0, 0, w, h);
-
-    // Advance virtual time by one frame at current speed (60fps baseline)
-    virtualTime += (1 / 60) * speedFactor;
-
-    // Decay impulse (slower for clicks → more satisfying spread)
-    impulse *= impulseIsClick ? 0.93 : 0.88;
-
-    // Fetch audio data before drawing particles
+    // Always sample audio — even when frozen, to detect music-stop transitions
     let avgEnergy = 0;
     if (tryConnect()) {
-      // At low speed: increase smoothing so bars respond sluggishly (slow-motion feel)
-      // without reducing bar amplitude. At normal speed: keep default 0.8.
       analyser.smoothingTimeConstant = 0.8 + (1 - speedFactor) * 0.17;
       analyser.getByteFrequencyData(dataArray);
       for (let i = 0; i < dataArray.length; i++) avgEnergy += dataArray[i];
       avgEnergy /= dataArray.length * 255;
     }
+    const wasMusicActive = musicActive;
     musicActive = connected && avgEnergy > 0.015;
 
-    // Particles (react to audio or keyboard depending on musicActive)
+    if (!frozen) {
+      // Running: advance time and keep bar snapshot current
+      virtualTime += (1 / 60) * speedFactor;
+      frozenBarsDecay = false;
+      if (dataArray) { frozenDataBuffer = new Uint8Array(dataArray); frozenAvgEnergy = avgEnergy; }
+    } else {
+      // Frozen: detect music-stop → trigger bar retraction
+      if (wasMusicActive && !musicActive) frozenBarsDecay = true;
+      // Once energy fully decays, zero out snapshot so bars stay gone
+      if (avgEnergy < 0.001) {
+        frozenBarsDecay = false;
+        if (frozenDataBuffer) frozenDataBuffer.fill(0);
+        frozenAvgEnergy = 0;
+      }
+    }
+
+    // Decay impulse every frame (so it's ready to trigger redraws on click/key)
+    impulse *= impulseIsClick ? 0.93 : 0.88;
+
+    // Determine what needs a redraw this frame
+    const particlesNeedUpdate = !frozen || impulse > 0.01;
+    // Bars use frozen snapshot when frozen+musicActive, live data otherwise
+    const barsUseSnapshot = frozen && !frozenBarsDecay;
+    const needsAnyRedraw  = particlesNeedUpdate || frozenBarsDecay;
+
+    if (!needsAnyRedraw) {
+      // Fully static snapshot: nothing changed, keep last canvas frame
+      requestAnimationFrame(draw);
+      return;
+    }
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Particles (positions unchanged if frozen+no-impulse, drift/music scale by speedFactor=0)
     updateAndDrawParticles(w, h, avgEnergy);
 
+    // Choose bar data source: frozen snapshot OR live analyser data
+    const barData   = barsUseSnapshot ? frozenDataBuffer : dataArray;
+    const barEnergy = barsUseSnapshot ? frozenAvgEnergy  : avgEnergy;
+
     // Frequency bars (drawn on top of particles)
-    if (connected && avgEnergy > 0) {
-      const usableBins = Math.min(BAR_COUNT, dataArray.length);
+    if (connected && barData && barEnergy > 0) {
+      const usableBins = Math.min(BAR_COUNT, barData.length);
       const totalBarWidth = (w - (usableBins - 1) * BAR_GAP) / usableBins;
       const barWidth = Math.max(totalBarWidth, 1);
 
@@ -270,7 +297,7 @@
       var isNatureTheme = document.documentElement.dataset.theme === 'nature';
       ctx.globalAlpha = (isDarkTheme || isNatureTheme) ? 0.35 : 0.4;
       for (let i = 0; i < usableBins; i++) {
-        const value = dataArray[i] / 255;
+        const value = barData[i] / 255;
         const barH = Math.max(value * h * 0.7, MIN_BAR_HEIGHT);
         const x = i * (barWidth + BAR_GAP);
         const y = h - barH;
