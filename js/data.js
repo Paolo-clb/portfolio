@@ -440,36 +440,46 @@ const SKILL_GROUPS = [
         { description: 'Main DBMS used in projects: query optimization, integrity constraints.' },
         { description: 'Embedded database for mobile applications and lightweight projects.' },
         { description: 'Used for web projects with PHP, administration via phpMyAdmin.' },
+        { description: 'PostgreSQL web administration interface, schema and query management.' },
       ],
     },
     skills: [
       { name: 'PostgreSQL', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg', description: 'SGBD principal utilisé en Projet : optimisation des requêtes, contraintes d\'intégrité.', level: 4 },
       { name: 'SQLite',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/sqlite/sqlite-original.svg', description: 'Base embarquée pour applications mobiles et projets légers.', level: 2 },
       { name: 'MySQL',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mysql/mysql-original.svg', description: 'Utilisé pour des projets web avec PHP, administration via phpMyAdmin.', level: 1 },
+      { name: 'phpPgAdmin', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg', description: 'Interface web d\'administration PostgreSQL, gestion des schémas et requêtes.', level: 2 },
     ],
   },
   {
-    label: 'Serveur / Réseau / Virtualisation',
+    label: 'Serveur & Réseau',
     en: {
-      label: 'Server / Network / Virtualization',
+      label: 'Server & Network',
       skills: [
         { description: 'System administration, user and process management, permissions, ext4 filesystem.' },
         { description: 'HTTP server configuration, virtual hosts, modules. PHP site deployment.' },
-        { description: 'PostgreSQL web administration interface, schema and query management.' },
-        { description: 'Lightweight virtualization for testing operating systems and server configurations.' },
-        { description: 'Virtualization platform for managing virtual machines and containers at scale.' },
-        { description: 'Application containerization, image and volume management, orchestration with Docker Compose.' },
         { description: 'Network packet analyzer for troubleshooting and security.' },
       ],
     },
     skills: [
       { name: 'Linux',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/linux/linux-original.svg', description: 'Administration système, gestion des utilisateurs et processus, permissions, système de fichiers ext4.', level: 2 },
       { name: 'Apache',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/apache/apache-original.svg', description: 'Configuration de serveur HTTP, virtual hosts, modules. Déploiement de sites PHP.', level: 3 },
-      { name: 'phpPgAdmin', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg', description: 'Interface web d\'administration PostgreSQL, gestion des schémas et requêtes.', level: 2 },
+      { name: 'Wireshark',  icon: 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wireshark.png', description: 'Analyseur de paquets réseau pour le dépannage et la sécurité.', level: 1 },
+    ],
+  },
+  {
+    label: 'Virtualisation & Conteneurs',
+    en: {
+      label: 'Virtualization & Containers',
+      skills: [
+        { description: 'Lightweight virtualization for testing operating systems and server configurations.' },
+        { description: 'Virtualization platform for managing virtual machines and containers at scale.' },
+        { description: 'Application containerization, image and volume management, orchestration with Docker Compose.' },
+      ],
+    },
+    skills: [
       { name: 'Qemu',       icon: 'https://gitlab.com/qemu-project/qemu/-/raw/864ab314f1d924129d06ac7b571f105a2b76a4b2/ui/icons/qemu.svg', description: 'Virtualisation légère pour tester des systèmes d\'exploitation et des configurations serveur.', level: 3 },
       { name: 'Proxmox',    icon: 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/proxmox-light.svg', description: 'Plateforme de virtualisation pour gérer des machines virtuelles et des conteneurs à grande échelle.', level: 2 },
       { name: 'Docker',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/docker/docker-original.svg', description: 'Conteneurisation d\'applications, gestion d\'images et de volumes, orchestration avec Docker Compose.', level: 1 },
-      { name: 'Wireshark',  icon: 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wireshark.png', description: 'Analyseur de paquets réseau pour le dépannage et la sécurité.', level: 1 },
     ],
   },
 ];
