@@ -368,6 +368,8 @@ const SKILL_GROUPS = [
         { description: 'Front-end web development, DOM, events. This portfolio is entirely vanilla JS.' },
         { description: 'Back-end development, forms, sessions and database integration.' },
         { description: 'Complex queries, joins, subqueries, triggers, normal forms. Used in multiple projects.' },
+        { description: 'Standard modeling language for software architecture: class diagrams, sequence diagrams, use case diagrams.' },
+        { description: 'Statistical programming language used for data analysis, visualization, and R Studio integration.' },
       ],
     },
     skills: [
@@ -378,6 +380,8 @@ const SKILL_GROUPS = [
       { name: 'JavaScript', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg', description: 'Développement web front-end, DOM, événements. Ce portfolio est entièrement en vanilla JS.', level: 4 },
       { name: 'PHP',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg', description: 'Développement back-end, formulaires, sessions et intégration avec bases de données.', level: 3 },
       { name: 'SQL',        icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azuresqldatabase/azuresqldatabase-original.svg', description: 'Requêtes complexes, jointures, sous-requêtes, trigger, forme normale. Utilisé dans plusieurs Projets.', level: 3 },
+      { name: 'UML',        icon: 'https://upload.wikimedia.org/wikipedia/commons/d/d5/UML_logo.svg', description: 'Langage de modélisation standard pour l\'architecture logicielle : diagrammes de classes, de séquences, de cas d\'utilisation.', level: 3 },
+      { name: 'R',          icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/r/r-original.svg', description: 'Langage de programmation statistique utilisé pour l\'analyse de données, la visualisation et l\'intégration avec R Studio.', level: 2 },
     ],
   },
     {
@@ -386,18 +390,22 @@ const SKILL_GROUPS = [
       label: 'Dev Tools',
       skills: [
         { description: 'Versioning, branches, merge, rebase. Used on all multi-developer code projects.' },
-        { description: 'Repository hosting, issues, CI/CD. Institutional GitLab + GitHub for personal projects.' },
+        { description: 'Repository hosting, issues, CI/CD. Institutional repository hosting platform.' },
+        { description: 'Repository hosting, issues, CI/CD. Personal projects and open-source collaboration.' },
         { description: 'Main editor for web development, extensions, integrated debugging.' },
         { description: 'IntelliJ IDEA for Java, PhpStorm for PHP, CLion for C/C++. Full IDEs used in labs/projects.' },
         { description: 'Shell scripts, task automation, Linux system navigation.' },
+        { description: 'Document preparation system for professional scoping reports and technical documentation.' },
       ],
     },
     skills: [
-      { name: 'Git',               icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg', description: 'Versionning, branches, merge, rebase. Utilisé sur tous les projets de codes à plusieurs.', level: 3 },
-      { name: 'GitLab/GitHub',   icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/gitlab/gitlab-original.svg', description: 'Hébergement de dépôts, issues, CI/CD. GitLab institutionnel + GitHub pour projets personnels.', level: 3 },
+      { name: 'Git',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg', description: 'Versionning, branches, merge, rebase. Utilisé sur tous les projets de codes à plusieurs.', level: 3 },
+      { name: 'GitLab',   icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/gitlab/gitlab-original.svg', description: 'Hébergement de dépôts, issues, CI/CD. Plateforme de dépôt institutionnelle.', level: 3 },
+      { name: 'GitHub',   icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/github/github-original.svg', description: 'Hébergement de dépôts, issues, CI/CD. Projets personnels et collaboration open-source.', level: 3 },
       { name: 'VS Code',           icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vscode/vscode-original.svg', description: 'Éditeur principal pour le développement web, extensions, debugging intégré.', level: 5 },
       { name: 'JetBrains',         icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/jetbrains/jetbrains-original.svg', description: 'IntelliJ IDEA pour Java, PhpStorm pour PHP, CLion pour C/C++. IDE complets utilisés en TP/Projets.', level: 4 },
       { name: 'Bash',              icon: 'assets/images/bash.webp', description: 'Scripts shell, automatisation de tâches, navigation système Linux.', level: 3 },
+      { name: 'LaTeX',             icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/latex/latex-original.svg', description: 'Système de préparation de documents pour les dossiers de cadrage professionnel et la documentation technique.', level: 3 },
     ],
   },
   {
@@ -421,7 +429,6 @@ const SKILL_GROUPS = [
     en: {
       label: 'Design & Modeling',
       skills: [
-        { description: 'Standard modeling language for software architecture: class diagrams, sequence diagrams, use case diagrams.' },
         { description: 'UML CASE tool used for modeling and generating diagrams during projects.' },
         { description: 'Online diagram editor for flowcharts, UML and architecture schemas.' },
         { description: 'UI/UX design tool for prototyping and collaborative interface design.' },
@@ -429,7 +436,6 @@ const SKILL_GROUPS = [
       ],
     },
     skills: [
-      { name: 'UML',             icon: 'https://upload.wikimedia.org/wikipedia/commons/d/d5/UML_logo.svg',                                                                    description: 'Langage de modélisation standard pour l\'architecture logicielle : diagrammes de classes, de séquences, de cas d\'utilisation.', level: 3 },
       { name: 'Visual Paradigm', icon: 'https://www.visual-paradigm.com/favicon.ico',                                                                                         description: 'Outil CASE UML utilisé pour modéliser et générer des diagrammes lors de projets.',                                           level: 3 },
       { name: 'Draw.io',         icon: 'https://www.drawio.com/favicon.ico',                                                                                                   description: 'Éditeur de diagrammes en ligne pour flowcharts, UML et schémas d\'architecture.',                                           level: 4 },
       { name: 'Figma',           icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/figma/figma-original.svg',                                                   description: 'Outil de design UI/UX pour le prototypage et la conception collaborative d\'interfaces.',                                    level: 3 },
@@ -478,6 +484,7 @@ const SKILL_GROUPS = [
         { description: 'Used for web projects with PHP, administration via phpMyAdmin.' },
         { description: 'PostgreSQL web administration interface, schema and query management.' },
         { description: 'Data analytics and ETL tool for visual data processing, workflow automation, and data science.' },
+        { description: 'Statistical IDE for data analysis, visualization, and statistical modeling.' },
       ],
     },
     skills: [
@@ -486,6 +493,7 @@ const SKILL_GROUPS = [
       { name: 'MySQL',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mysql/mysql-original.svg', description: 'Utilisé pour des projets web avec PHP, administration via phpMyAdmin.', level: 1 },
       { name: 'phpPgAdmin', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg', description: 'Interface web d\'administration PostgreSQL, gestion des schémas et requêtes.', level: 2 },
       { name: 'KNIME',      icon: 'https://www.knime.com/sites/default/files/favicon.ico', description: 'Outil d\'analyse de données et d\'ETL pour le traitement visuel des données, l\'automatisation de workflows et la science des données.', level: 2 },
+      { name: 'R Studio',   icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/rstudio/rstudio-original.svg', description: 'IDE statistique intégré pour l\'analyse de données, la visualisation et la modélisation statistique.', level: 2 },
     ],
   },
   {
@@ -518,6 +526,24 @@ const SKILL_GROUPS = [
       { name: 'Qemu',       icon: 'https://gitlab.com/qemu-project/qemu/-/raw/864ab314f1d924129d06ac7b571f105a2b76a4b2/ui/icons/qemu.svg', description: 'Virtualisation légère pour tester des systèmes d\'exploitation et des configurations serveur.', level: 3 },
       { name: 'Proxmox',    icon: 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/proxmox-light.svg', description: 'Plateforme de virtualisation pour gérer des machines virtuelles et des conteneurs à grande échelle.', level: 2 },
       { name: 'Docker',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/docker/docker-original.svg', description: 'Conteneurisation d\'applications, gestion d\'images et de volumes, orchestration avec Docker Compose.', level: 1 },
+    ],
+  },
+  {
+    label: 'Jeux vidéo',
+    en: {
+      label: 'Game Development',
+      skills: [
+        { description: 'Open-source game engine: 2D/3D development, scripting with GDScript.' },
+        { description: 'GameMaker scripting language for 2D game development and game logic.' },
+        { description: 'Game development with libraries like Pygame for 2D games and simulations.' },
+        { description: 'Visual block-based programming platform for creative learning and game development.' },
+      ],
+    },
+    skills: [
+      { name: 'Godot',   icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/godot/godot-original.svg', description: 'Moteur de jeu open-source : développement 2D/3D, scripting avec GDScript.', level: 2 },
+      { name: 'GML',     icon: 'https://www.yoyogames.com/favicon.ico', description: 'Langage de script GameMaker pour le développement de jeux 2D et la logique de jeu.', level: 2 },
+      { name: 'Pygame',  icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/pygame/pygame-original.svg', description: 'Librairie Python pour le développement de jeux 2D et les simulations interactives.', level: 2 },
+      { name: 'Scratch',  icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/scratch/scratch-original.svg', description: 'Plateforme visuelle de programmation par blocs pour l\'apprentissage créatif et le développement de jeux.', level: 3 },
     ],
   },
 ];
