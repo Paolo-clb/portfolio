@@ -390,7 +390,6 @@ const SKILL_GROUPS = [
         { description: 'Main editor for web development, extensions, integrated debugging.' },
         { description: 'IntelliJ IDEA for Java, PhpStorm for PHP, CLion for C/C++. Full IDEs used in labs/projects.' },
         { description: 'Shell scripts, task automation, Linux system navigation.' },
-        { description: 'Testing framework for JavaScript and Node.js, used for unit and integration testing.' },
       ],
     },
     skills: [
@@ -399,7 +398,6 @@ const SKILL_GROUPS = [
       { name: 'VS Code',           icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vscode/vscode-original.svg', description: 'Éditeur principal pour le développement web, extensions, debugging intégré.', level: 5 },
       { name: 'JetBrains',         icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/jetbrains/jetbrains-original.svg', description: 'IntelliJ IDEA pour Java, PhpStorm pour PHP, CLion pour C/C++. IDE complets utilisés en TP/Projets.', level: 4 },
       { name: 'Bash',              icon: 'assets/images/bash.webp', description: 'Scripts shell, automatisation de tâches, navigation système Linux.', level: 3 },
-      { name: 'Mocha',              icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mocha/mocha-original.svg', description: 'Framework de test pour JavaScript et Node.js, utilisé pour les tests unitaires et d\'intégration.', level: 2 },
     ],
   },
   {
@@ -416,6 +414,44 @@ const SKILL_GROUPS = [
       { name: 'HTML / CSS', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg', description: 'Structure sémantique, Flexbox, Grid, animations CSS, responsive design mobile-first.', level: 4 },
       { name: 'React',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg', description: 'Composants, hooks, state management. Développement d\'interfaces modernes. Utilisé pour l\'Application web Aidémé.', level: 2 },
       { name: 'Symfony',      icon: 'assets/images/symfony.png', description: 'Framework PHP pour le développement d\'applications web robustes et maintenables.', level: 2 },
+    ],
+  },
+  {
+    label: 'Conception',
+    en: {
+      label: 'Design & Modeling',
+      skills: [
+        { description: 'Standard modeling language for software architecture: class diagrams, sequence diagrams, use case diagrams.' },
+        { description: 'UML CASE tool used for modeling and generating diagrams during projects.' },
+        { description: 'Online diagram editor for flowcharts, UML and architecture schemas.' },
+        { description: 'UI/UX design tool for prototyping and collaborative interface design.' },
+        { description: 'Visual collaboration tool for wireframes, flowcharts and brainstorming.' },
+      ],
+    },
+    skills: [
+      { name: 'UML',             icon: 'https://upload.wikimedia.org/wikipedia/commons/d/d5/UML_logo.svg',                                                                    description: 'Langage de modélisation standard pour l\'architecture logicielle : diagrammes de classes, de séquences, de cas d\'utilisation.', level: 3 },
+      { name: 'Visual Paradigm', icon: 'https://www.visual-paradigm.com/favicon.ico',                                                                                         description: 'Outil CASE UML utilisé pour modéliser et générer des diagrammes lors de projets.',                                           level: 3 },
+      { name: 'Draw.io',         icon: 'https://www.drawio.com/favicon.ico',                                                                                                   description: 'Éditeur de diagrammes en ligne pour flowcharts, UML et schémas d\'architecture.',                                           level: 4 },
+      { name: 'Figma',           icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/figma/figma-original.svg',                                                   description: 'Outil de design UI/UX pour le prototypage et la conception collaborative d\'interfaces.',                                    level: 3 },
+      { name: 'Whimsical',       icon: 'https://whimsical.com/favicon.ico',                                                                                                    description: 'Outil de collaboration visuelle pour wireframes, flowcharts et brainstorming.',                                              level: 3 },
+    ],
+  },
+  {
+    label: 'Tests',
+    en: {
+      label: 'Testing',
+      skills: [
+        { description: 'Testing framework for JavaScript and Node.js, used for unit and integration testing.' },
+        { description: 'End-to-end testing framework for web applications: assertions, mocking, CI integration.' },
+        { description: 'Unit testing framework for PHP, used to test back-end logic and services.' },
+        { description: 'Unit testing framework for Java, used for back-end and business logic validation.' },
+      ],
+    },
+    skills: [
+      { name: 'Mocha',   icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mocha/mocha-original.svg',   description: 'Framework de test pour JavaScript et Node.js, utilisé pour les tests unitaires et d\'intégration.', level: 2 },
+      { name: 'Cypress', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cypressio/cypressio-original.svg', description: 'Framework de tests end-to-end pour applications web : assertions, mocking, intégration CI.', level: 2 },
+      { name: 'PHPUnit', icon: 'https://phpunit.de/img/phpunit.svg',                                                   description: 'Framework de tests unitaires pour PHP, utilisé pour tester la logique back-end et les services.', level: 2 },
+      { name: 'JUnit',   icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/junit/junit-original.svg',   description: 'Framework de tests unitaires pour Java, utilisé pour la validation de la logique métier.',        level: 2 },
     ],
   },
   {
@@ -441,6 +477,7 @@ const SKILL_GROUPS = [
         { description: 'Embedded database for mobile applications and lightweight projects.' },
         { description: 'Used for web projects with PHP, administration via phpMyAdmin.' },
         { description: 'PostgreSQL web administration interface, schema and query management.' },
+        { description: 'Data analytics and ETL tool for visual data processing, workflow automation, and data science.' },
       ],
     },
     skills: [
@@ -448,6 +485,7 @@ const SKILL_GROUPS = [
       { name: 'SQLite',     icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/sqlite/sqlite-original.svg', description: 'Base embarquée pour applications mobiles et projets légers.', level: 2 },
       { name: 'MySQL',      icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mysql/mysql-original.svg', description: 'Utilisé pour des projets web avec PHP, administration via phpMyAdmin.', level: 1 },
       { name: 'phpPgAdmin', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/php/php-original.svg', description: 'Interface web d\'administration PostgreSQL, gestion des schémas et requêtes.', level: 2 },
+      { name: 'KNIME',      icon: 'https://www.knime.com/sites/default/files/favicon.ico', description: 'Outil d\'analyse de données et d\'ETL pour le traitement visuel des données, l\'automatisation de workflows et la science des données.', level: 2 },
     ],
   },
   {

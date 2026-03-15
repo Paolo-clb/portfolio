@@ -984,6 +984,7 @@ section.hero {
               inset 0 1px 0 rgba(255, 255, 255, 0.04);
   padding: 2rem 1.8rem;
   text-align: center;
+  position: relative;
   transform: translateY(20px) scale(0.96);
   transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
@@ -1056,7 +1057,35 @@ section.hero {
   color: var(--clr-text);
 }
 
-/* Dark theme overrides */
+/* Lang toggle inside weak popup — top-right corner, same style as navbar */
+.weak-popup__lang-toggle {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.3rem 0.45rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--clr-text-muted);
+  border-radius: 0.5rem;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+.weak-popup__lang-toggle:hover {
+  background: rgba(242, 162, 133, 0.12);
+  color: var(--clr-text);
+}
+.weak-popup__lang-toggle:hover .lang-toggle__icon {
+  transform: rotate(20deg);
+}
+[data-theme="dark"] .weak-popup__lang-toggle:hover {
+  background: rgba(156, 39, 176, 0.15);
+}
+[data-theme="nature"] .weak-popup__lang-toggle:hover {
+  background: rgba(94, 184, 58, 0.15);
+}
 [data-theme="dark"] .weak-popup {
   background: rgba(26, 0, 51, 0.88);
   border-color: rgba(63, 81, 181, 0.2);
@@ -1171,6 +1200,10 @@ section.hero {
 
 [data-animations="off"] .hero .section__title {
   margin-bottom: 1.3rem;
+}
+
+[data-animations="off"] .hero__title-row .section__title::after {
+  transform: none;
 }
 
 /* ==========================================================================

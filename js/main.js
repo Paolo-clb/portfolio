@@ -1204,11 +1204,55 @@ function showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY) {
   actions.appendChild(enableBtn);
   actions.appendChild(dismissBtn);
 
+  // Lang toggle — top-right of popup, mirrors the navbar button
+  var popupLangBtn = document.createElement('button');
+  popupLangBtn.className = 'weak-popup__lang-toggle';
+  popupLangBtn.setAttribute('aria-label', 'Switch language');
+  popupLangBtn.innerHTML =
+    '<svg class="lang-toggle__icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="12" cy="12" r="10"/>' +
+      '<ellipse cx="12" cy="12" rx="4" ry="10"/>' +
+      '<line x1="2" y1="12" x2="22" y2="12"/>' +
+    '</svg>';
+  var popupLangLabel = document.createElement('span');
+  popupLangLabel.className = 'lang-toggle__label';
+  popupLangLabel.textContent = siteLang === 'fr' ? 'FR' : 'EN';
+  popupLangBtn.appendChild(popupLangLabel);
+
+  popupLangBtn.addEventListener('click', function () {
+    // Toggle language — same logic as the navbar button
+    siteLang = siteLang === 'fr' ? 'en' : 'fr';
+    localStorage.setItem(SITE_LANG_KEY, siteLang);
+    document.documentElement.lang = siteLang;
+
+    // Animate both labels (navbar + popup) in sync
+    var navLabel = document.getElementById('lang-label');
+    [navLabel, popupLangLabel].forEach(function (lbl) {
+      if (!lbl) return;
+      lbl.classList.add('lang-toggle__label--swapping');
+      setTimeout(function () {
+        lbl.textContent = siteLang === 'fr' ? 'FR' : 'EN';
+        lbl.classList.remove('lang-toggle__label--swapping');
+      }, 200);
+    });
+
+    // Refresh popup text to new language
+    title.textContent = t('weakWarningTitle');
+    msg.textContent = t('weakWarningMsg');
+    lag.textContent = t('weakWarningLag');
+    enableBtn.textContent = t('weakWarningCta');
+    dismissBtn.textContent = t('weakWarningDismiss');
+
+    // Update the rest of the site (nav, projects, skills…)
+    updateSiteLanguage();
+  });
+
   popup.appendChild(icon);
   popup.appendChild(title);
   popup.appendChild(msg);
   popup.appendChild(lag);
   popup.appendChild(actions);
+  popup.appendChild(popupLangBtn);
   overlay.appendChild(popup);
   document.body.appendChild(overlay);
 
