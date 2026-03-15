@@ -199,6 +199,9 @@ window.createTypingGameAI = function (deps) {
     overlay.className = 'zen-popup-overlay';
     var popup = document.createElement('div');
     popup.className = 'zen-popup typing-game__ai-popup';
+    popup.setAttribute('role', 'dialog');
+    popup.setAttribute('aria-modal', 'true');
+    popup.setAttribute('aria-label', t('aiTitle'));
 
     popup.innerHTML =
       '<button class="modal__close zen-popup__close" aria-label="' + t('closeLbl') + '">&times;</button>' +
@@ -258,10 +261,12 @@ window.createTypingGameAI = function (deps) {
 
     overlay.offsetHeight;
     overlay.classList.add('zen-popup-overlay--visible');
+    var _aiTrap = window.__trapFocus ? window.__trapFocus(overlay) : null;
 
     setTimeout(function () { themeInput.focus(); }, 350);
 
     function close(generated) {
+      if (_aiTrap) { _aiTrap(); _aiTrap = null; }
       overlay.classList.remove('zen-popup-overlay--visible');
       overlay.addEventListener('transitionend', function handler() {
         overlay.removeEventListener('transitionend', handler);

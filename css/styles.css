@@ -1159,6 +1159,85 @@ section.hero {
 }
 
 /* ==========================================================================
+   Scroll Progress Bar
+   ========================================================================== */
+
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  z-index: 200;
+  pointer-events: none;
+  background: transparent;
+  overflow: hidden;
+}
+
+.scroll-progress__fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(90deg, var(--clr-primary), var(--clr-accent), var(--clr-primary-hover));
+  background-size: 200% 100%;
+  animation: scroll-progress-shimmer 3s ease infinite;
+  transition: width 0.08s linear;
+  box-shadow: 0 0 8px rgba(242, 162, 133, 0.5), 0 0 20px rgba(242, 162, 133, 0.2);
+}
+
+@keyframes scroll-progress-shimmer {
+  0%   { background-position: 0% 0; }
+  50%  { background-position: 100% 0; }
+  100% { background-position: 0% 0; }
+}
+
+/* ==========================================================================
+   Scroll Reveal
+   ========================================================================== */
+
+/* Applied to .container and .section__title inside sections — NOT the section
+   itself, so the translucent section background stays intact. */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger children inside grids */
+.reveal-child {
+  opacity: 0;
+  transform: translateY(30px) scale(0.97);
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-child--visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ==========================================================================
+   Hover Particles Canvas
+   ========================================================================== */
+
+.hover-particles-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* ==========================================================================
    Animations-Off overrides (data attribute on <html>)
    ========================================================================== */
 
@@ -1191,6 +1270,24 @@ section.hero {
 }
 
 [data-animations="off"] .hero__anim-speed {
+  display: none !important;
+}
+
+[data-animations="off"] .scroll-progress {
+  display: none !important;
+}
+
+[data-animations="off"] .reveal {
+  opacity: 1;
+  transform: none;
+}
+
+[data-animations="off"] .reveal-child {
+  opacity: 1;
+  transform: none;
+}
+
+[data-animations="off"] .hover-particles-canvas {
   display: none !important;
 }
 

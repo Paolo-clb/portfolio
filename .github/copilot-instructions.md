@@ -6,7 +6,7 @@ Static single-page portfolio — no build tools, no frameworks, no bundler. Host
 
 ```
 index.html              ← Single entry point; all sections live here
-css/styles.css          ← Core styles (~1200 lines) — variables, reset, layout, header, nav, buttons, hero, contact, footer, CV, cursor halo, theme toggle, animation controls, time-warp, weak device popup, dark/nature core overrides, responsive
+css/styles.css          ← Core styles (~1300 lines) — variables, reset, layout, header, nav, buttons, hero, contact, footer, CV, cursor halo, theme toggle, animation controls, time-warp, weak device popup, scroll progress, scroll reveal, hover particles canvas, dark/nature core overrides, responsive
 css/modals.css          ← Projects, Modal & Detail Modal styles (~400 lines) — cards, grid, overlays, detail sections, dark/nature overrides
 css/skills.css          ← Skills & Skill Popup styles (~300 lines) — groups, items, popup overlay, level bar, dark/nature overrides
 css/typing-game.css     ← Typing game core styles (~800 lines) — base, navbar, text, cursor, stats, zen, hardcore, dark/nature core overrides, tooltip
@@ -27,14 +27,15 @@ js/visualizer.js        ← Self-contained IIFE (~500 lines) — background freq
 js/rain-engine.js       ← Shared rain physics + rendering engine (~400 lines) — used by both worker and fallback, speed-aware
 js/rain.js              ← Self-contained IIFE (~400 lines) — rain effect controller (OffscreenCanvas + Worker) + speed/enable API
 js/rain-worker.js       ← Web Worker (~70 lines) — thin wrapper delegating to rain-engine.js
-js/main.js              ← DOM rendering, i18n, interactions, animation controls (~1500 lines) — depends on i18n.js + data.js globals
+js/particles.js         ← Self-contained IIFE (~240 lines) — hover micro-particles (lift + aura variants), theme-aware
+js/main.js              ← DOM rendering, i18n, interactions, animation controls (~1600 lines) — depends on i18n.js + data.js globals
 assets/images/          ← Static images (backgrounds, project covers, music covers, favicons per theme) + video backgrounds (.mp4) + poster images
 assets/music/           ← Audio files for the music player (.mp3)
 assets/doc/             ← CV PDF (CV_Paolo.pdf)
 worker/gemini-proxy.js  ← Cloudflare Worker source — Gemini API proxy (server-side prompt, key rotation)
 ```
 
-`index.html` loads scripts in order: `i18n.js` → `data.js` → `typing-texts.js` → `typing-game-i18n.js` → `typing-game-ai.js` → `typing-game-intro.js` → `typing-game.js` → `music-player.js` → `visualizer.js` → `rain-engine.js` → `rain.js` → `main.js`. Each IIFE boots on `DOMContentLoaded`. `main.js` initializes all non-game features in its own `DOMContentLoaded` handler. A pre-`<body>` inline `<script>` restores saved theme, language, animations state, and detects weak devices from `localStorage` to prevent flash.
+`index.html` loads scripts in order: `i18n.js` → `data.js` → `typing-texts.js` → `typing-game-i18n.js` → `typing-game-ai.js` → `typing-game-intro.js` → `typing-game.js` → `music-player.js` → `visualizer.js` → `rain-engine.js` → `rain.js` → `particles.js` → `main.js`. Each IIFE boots on `DOMContentLoaded`. `main.js` initializes all non-game features in its own `DOMContentLoaded` handler. A pre-`<body>` inline `<script>` restores saved theme, language, animations state, and detects weak devices from `localStorage` to prevent flash.
 
 ## Key Conventions
 
@@ -87,6 +88,10 @@ No libraries, no frameworks, no npm. Use the `createElement(tag, className, text
 - `__rainSetSpeed(factor)` — physics speed factor (curved)
 - `__rainSetEnabled(on)` — enable/disable rain system
 - `__rainIsEnabled()` — current enabled state
+
+**Typing game exposes:**
+- `__typingGameFocused()` — returns whether the typing game text area is focused
+- `__typingGameWPM()` — returns current WPM (via `calcWPM()`, 0 if unavailable)
 
 ### Typing Game Modular Architecture
 
@@ -307,13 +312,15 @@ Structure (in order):
 13. `updateStaticTexts()` / `updateSiteLanguage()` — i18n rendering + language change orchestration
 14. `initLangToggle()` — navbar language toggle with animated label swap + custom tooltip
 15. `setFooterYear()` — dynamic copyright year
-16. `DOMContentLoaded` handler — calls: `initLangToggle`, `updateStaticTexts`, `renderProjects`, `renderSkills`, `initNavToggle`, `initScrollSpy`, `initContactForm`, `setFooterYear`, `initScrollHint`, `initThemeToggle`, `initAnimationControls`, `initCursorHalo`
+16. `DOMContentLoaded` handler — calls: `initLangToggle`, `updateStaticTexts`, `renderProjects`, `renderSkills`, `initNavToggle`, `initScrollSpy`, `initContactForm`, `setFooterYear`, `initScrollHint`, `initThemeToggle`, `initAnimationControls`, `initCursorHalo`, `initScrollProgress`, `initScrollReveal`
 17. `initCursorHalo()` — custom cursor ring + dot with lerp animation, hover/click states, hidden on touch devices (`pointer: coarse`), hides during typing game input, fades in CV iframe area
 18. `initScrollHint()` — bouncing chevron, hidden after scroll > 80px or when typing game is focused
 19. `detectWeakDevice()` — checks `prefers-reduced-motion`, `hardwareConcurrency ≤ 2`, `deviceMemory ≤ 2`
 20. `showWeakDevicePopup()` — modal with "Enable anyway" / "OK, got it" actions, built-in lang toggle, scrolls to footer toggle on enable
 21. `initAnimationControls()` — footer settings panel with speed slider, animation on/off toggle, yolo mode placeholder, back-to-top button, copilot link, time-warp visual effect
 22. `initThemeToggle()` — theme toggle with animated sun↔moon↔leaf SVG, video management, background credit badge, preview tooltips
+23. `initScrollProgress()` — horizontal progress bar fixed at top, gradient fill with shimmer animation
+24. `initScrollReveal()` — IntersectionObserver-based reveal for sections + staggered children (`.reveal` / `.reveal-child` classes)
 
 ### Animation Controls (`initAnimationControls()`)
 
@@ -342,6 +349,27 @@ Global speed/animation control system in the footer:
 - `weakDeviceAnimDone` custom event signals typing game intro can proceed
 
 **i18n integration:** All labels listen to `sitelangchange` event via `updateAnimI18n()`
+
+### Hover Particles (`js/particles.js`)
+
+Self-contained IIFE creating snowflake micro-particles on interactive elements. Full-screen fixed `<canvas>` overlay (`pointer-events: none`, z-index 50).
+
+**Two variants:**
+- **Lift** — used on `.project-card` and `.skill-item`. Snowflakes silently accumulate over time (Map per element, 0.7/s rate, max 40). On `pointerenter`, burst spawns from the top edge of the element — count proportional to accumulated stockpile. Particles fly upward with horizontal scatter, as if propelled by the element's lift. No visible particles while not hovered.
+- **Aura** — used on `.typing-game__text`. Snowflakes spawn along all four edges on hover. **Conditional logic:** when the typing game is unfocused, particles appear on hover (1–2 per frame). When focused, particles appear only if WPM > 60 — intensity starts weaker (0.5/frame at 60 WPM) and scales linearly to slightly beyond unfocused hover (2.5/frame at 150+ WPM). Uses `window.__typingGameFocused()` and `window.__typingGameWPM()`.
+
+**Theme-aware colors:** Reads `data-theme` each frame to select palette:
+- Light: coral `242,162,133` / accent `191,153,160` / glow `242,128,128`
+- Dark: purple `200,140,255` / pink `255,78,203` / glow `156,39,176`
+- Nature: green `94,184,58` / cyan `74,181,214` / glow `123,218,78`
+
+**Rendering:** Each particle is a 6-branch crystalline snowflake (3 lines through center at 60° intervals + side barbs at 60% branch length) with glow shadow. Particles have spin rotation, twinkle opacity modulation, fade-in during first 20% of life. Pool capped at 600 particles.
+
+**Accumulation:** `liftAccum` Map stores `{ count }` per tracked element. A `setInterval` (500ms) silently increments counters at `ACCUM_RATE` (0.7/s). `MutationObserver` on `document.body` auto-tracks dynamically created elements (e.g. modal project cards).
+
+**Performance:** Canvas boots lazily on first hover/burst. `requestAnimationFrame` loop stops when no particles and no aura zone remain. Skips on touch devices (`pointer: coarse`). Disabled via `[data-animations="off"]`.
+
+**Delegated events:** Uses `pointerenter`/`pointerleave` with `event.target.closest(selector)` on `document` — works for dynamically created elements.
 
 ## Development
 
@@ -437,7 +465,9 @@ The typing game's AI mode uses a Cloudflare Worker as a proxy to the Google Gemi
 - The `tryLockWord()` function scans forward from `lockedIndex`, locks everything up to the furthest correct word found. Wrong words before a correct word get locked too but don't count for WPM.
 - `render()` uses direct span property comparisons (`span._cls !== cls`) to skip unnecessary DOM updates — this is the core performance optimization.
 - The visualizer's `tryConnect()` is called every frame until it successfully connects to the music player's audio graph. It creates an `AnalyserNode` and inserts it in parallel with the destination.
-- Popups (zen, hardcore, info, AI) all share the same overlay pattern: create overlay + popup div, force reflow, add `--visible` class, animate in. Close removes class, waits for `transitionend`, then removes from DOM.
+- Popups (zen, hardcore, info, AI, settings, weak device) all share the same overlay pattern: create overlay + popup div, force reflow, add `--visible` class, animate in. Close removes class, waits for `transitionend`, then removes from DOM. All popups/modals have `role="dialog"` + `aria-modal="true"` + `aria-label` on the inner dialog element.
+- **Focus trap:** `trapFocus(overlayEl)` utility in `main.js` (exposed as `window.__trapFocus`) traps Tab/Shift+Tab cycling within the overlay. Returns a cleanup function. Every modal/popup activates it on open and cleans up on close.
+- **CDN icon fallback:** Skill icon `<img>` elements have `onerror` handlers that replace the broken image with a styled `<span>` showing the skill's first letter (`.skill-item__icon--fallback` / `.skill-popup__icon--fallback`).
 - `MutationObserver` on `<html>` attribute changes re-renders the typing game on theme toggle (for trail/combo color updates).
 - Cursor halo uses `requestAnimationFrame` with `lerp` for smooth ring/dot following, opacity transitions, and auto-pause when mouse isn't moving.
 - Rain uses a **shared engine** (`rain-engine.js`) for both Worker and fallback paths — eliminates code duplication. Worker uses `importScripts`, main thread uses `<script>` tag.

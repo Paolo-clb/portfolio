@@ -42,6 +42,29 @@ function createElement(tag, className, textContent) {
 }
 
 // ---------------------------------------------------------------------------
+// Utility: trap focus inside a dialog overlay
+// ---------------------------------------------------------------------------
+function trapFocus(overlayEl) {
+  var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  function handler(e) {
+    if (e.key !== 'Tab') return;
+    var focusable = Array.prototype.slice.call(overlayEl.querySelectorAll(FOCUSABLE));
+    if (!focusable.length) return;
+    var first = focusable[0];
+    var last  = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }
+  overlayEl.addEventListener('keydown', handler);
+  // Return cleanup function
+  return function () { overlayEl.removeEventListener('keydown', handler); };
+}
+window.__trapFocus = trapFocus;
+
+// ---------------------------------------------------------------------------
 // Build a single project card element
 // ---------------------------------------------------------------------------
 function buildProjectCard(project) {
@@ -122,6 +145,9 @@ function createProjectsModal() {
   overlay.id = 'projects-modal';
 
   const modal = createElement('div', 'modal');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-label', siteT('allProjectsTitle'));
 
   // Mobile-only sticky close button (direct child of scroll container)
   const stickyClose = createElement('button', 'modal__close modal__close--sticky', '\u00D7');
@@ -178,6 +204,8 @@ function createScrollHint(modalEl, storageKey) {
   modalEl.addEventListener('scroll', onScroll, { passive: true });
 }
 
+var _projectsModalTrapCleanup = null;
+
 function openProjectsModal() {
   // Always recreate to pick up language changes
   createProjectsModal();
@@ -186,12 +214,17 @@ function openProjectsModal() {
   void overlay.offsetWidth;
   overlay.classList.add('modal-overlay--open');
   document.body.style.overflow = 'hidden';
+  _projectsModalTrapCleanup = trapFocus(overlay);
   // Scroll hint (first visit only)
   var modal = overlay.querySelector('.modal');
   if (modal) createScrollHint(modal, 'modal_projects_hint_seen');
+  // Focus the close button
+  var closeBtn = overlay.querySelector('.modal__close');
+  if (closeBtn) closeBtn.focus();
 }
 
 function closeProjectsModal() {
+  if (_projectsModalTrapCleanup) { _projectsModalTrapCleanup(); _projectsModalTrapCleanup = null; }
   const overlay = document.getElementById('projects-modal');
   if (!overlay) return;
   overlay.classList.remove('modal-overlay--open');
@@ -213,6 +246,9 @@ function openProjectDetail(index) {
   overlay.id = 'project-detail-modal';
 
   const modal = createElement('div', 'modal detail-modal');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-label', dataField(project, 'title'));
 
   // Close button
   const closeBtn = createElement('button', 'modal__close detail-modal__close', '\u00D7');
@@ -315,27 +351,30 @@ function openProjectDetail(index) {
   void overlay.offsetWidth;
   overlay.classList.add('modal-overlay--open');
   document.body.style.overflow = 'hidden';
+  var _detailTrapCleanup = trapFocus(overlay);
+  closeBtn.focus();
 
   // Scroll hint (first visit only)
   createScrollHint(modal, 'modal_detail_hint_seen');
 
   // Close handlers
-  closeBtn.addEventListener('click', () => closeProjectDetail());
+  closeBtn.addEventListener('click', () => closeProjectDetail(_detailTrapCleanup));
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeProjectDetail();
+    if (e.target === overlay) closeProjectDetail(_detailTrapCleanup);
   });
 
   // Escape key — close detail first, then projects modal
   const escHandler = (e) => {
     if (e.key === 'Escape') {
-      closeProjectDetail();
+      closeProjectDetail(_detailTrapCleanup);
       document.removeEventListener('keydown', escHandler);
     }
   };
   document.addEventListener('keydown', escHandler);
 }
 
-function closeProjectDetail() {
+function closeProjectDetail(trapCleanup) {
+  if (trapCleanup) trapCleanup();
   const overlay = document.getElementById('project-detail-modal');
   if (!overlay) return;
   overlay.classList.remove('modal-overlay--open');
@@ -382,6 +421,10 @@ function renderSkills() {
       iconEl.alt = skill.name;
       iconEl.className = 'skill-item__icon';
       iconEl.loading = 'lazy';
+      iconEl.onerror = function () {
+        var fb = createElement('span', 'skill-item__icon skill-item__icon--fallback', skill.name.charAt(0).toUpperCase());
+        this.replaceWith(fb);
+      };
       item.appendChild(iconEl);
 
       item.appendChild(createElement('div', 'skill-item__name', skill.name));
@@ -461,6 +504,9 @@ function openSkillPopup(skill, group, skillIndex) {
   overlay.id = 'skill-popup';
 
   var popup = createElement('div', 'skill-popup');
+  popup.setAttribute('role', 'dialog');
+  popup.setAttribute('aria-modal', 'true');
+  popup.setAttribute('aria-label', skill.name);
 
   // Close button
   var closeBtn = createElement('button', 'modal__close skill-popup__close', '\u00D7');
@@ -473,6 +519,10 @@ function openSkillPopup(skill, group, skillIndex) {
   icon.src = skill.icon;
   icon.alt = skill.name;
   icon.className = 'skill-popup__icon';
+  icon.onerror = function () {
+    var fb = createElement('span', 'skill-popup__icon skill-popup__icon--fallback', skill.name.charAt(0).toUpperCase());
+    this.replaceWith(fb);
+  };
   iconWrap.appendChild(icon);
   popup.appendChild(iconWrap);
 
@@ -525,15 +575,21 @@ function openSkillPopup(skill, group, skillIndex) {
   // Open with transition
   void overlay.offsetWidth;
   overlay.classList.add('modal-overlay--open');
+  var _skillTrapCleanup = trapFocus(overlay);
+  closeBtn.focus();
 
   // Close handlers
-  closeBtn.addEventListener('click', closeSkillPopup);
+  function doCloseSkillPopup() {
+    if (_skillTrapCleanup) { _skillTrapCleanup(); _skillTrapCleanup = null; }
+    closeSkillPopup();
+  }
+  closeBtn.addEventListener('click', doCloseSkillPopup);
   overlay.addEventListener('click', function (e) {
-    if (e.target === overlay) closeSkillPopup();
+    if (e.target === overlay) doCloseSkillPopup();
   });
   var escHandler = function (e) {
     if (e.key === 'Escape') {
-      closeSkillPopup();
+      doCloseSkillPopup();
       document.removeEventListener('keydown', escHandler);
     }
   };
@@ -856,6 +912,80 @@ function setFooterYear() {
 }
 
 // ---------------------------------------------------------------------------
+// Scroll Progress Bar
+// ---------------------------------------------------------------------------
+function initScrollProgress() {
+  var bar = createElement('div', 'scroll-progress');
+  var fill = createElement('div', 'scroll-progress__fill');
+  bar.appendChild(fill);
+  document.body.appendChild(bar);
+
+  var ticking = false;
+  window.addEventListener('scroll', function () {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(function () {
+        var scrollTop = window.scrollY;
+        var docH = document.documentElement.scrollHeight - window.innerHeight;
+        var pct = docH > 0 ? (scrollTop / docH) * 100 : 0;
+        fill.style.width = pct + '%';
+        ticking = false;
+      });
+    }
+  }, { passive: true });
+}
+
+// ---------------------------------------------------------------------------
+// Scroll Reveal (IntersectionObserver)
+// ---------------------------------------------------------------------------
+function initScrollReveal() {
+  // Tag .container inside sections (not sections themselves) so the
+  // translucent section background is never hidden by opacity:0.
+  var sections = document.querySelectorAll('.section');
+  sections.forEach(function (sec) {
+    if (sec.id === 'hero') return;
+    var cont = sec.querySelector('.container');
+    if (cont) cont.classList.add('reveal');
+
+    // Tag direct grid children for staggered reveal
+    var children = sec.querySelectorAll('.project-card, .skills-group, .cv-section__card, .contact__form, .form__group');
+    children.forEach(function (child) {
+      child.classList.add('reveal-child');
+    });
+  });
+
+  if (!('IntersectionObserver' in window)) {
+    // Fallback: just show everything
+    document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('reveal--visible'); });
+    document.querySelectorAll('.reveal-child').forEach(function (el) { el.classList.add('reveal-child--visible'); });
+    return;
+  }
+
+  var sectionObserver = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('reveal--visible');
+        sectionObserver.unobserve(entry.target);
+
+        // Stagger children
+        var children = entry.target.querySelectorAll('.reveal-child');
+        children.forEach(function (child, i) {
+          child.style.transitionDelay = (i * 0.09) + 's';
+          // Small timeout to ensure the delay is applied after the class
+          requestAnimationFrame(function () {
+            child.classList.add('reveal-child--visible');
+          });
+        });
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.reveal').forEach(function (el) {
+    sectionObserver.observe(el);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
@@ -871,6 +1001,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initThemeToggle();
   initAnimationControls();
   initCursorHalo();
+  initScrollProgress();
+  initScrollReveal();
 });
 
 // ---------------------------------------------------------------------------
@@ -1182,6 +1314,9 @@ function showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY) {
 
   var overlay = createElement('div', 'weak-popup-overlay');
   var popup = createElement('div', 'weak-popup');
+  popup.setAttribute('role', 'dialog');
+  popup.setAttribute('aria-modal', 'true');
+  popup.setAttribute('aria-label', t('weakWarningTitle'));
 
   // Warning icon
   var iconSvg = '<svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
@@ -1259,8 +1394,11 @@ function showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY) {
   // Force reflow then animate in
   overlay.offsetHeight;
   overlay.classList.add('weak-popup-overlay--visible');
+  var _weakTrapCleanup = trapFocus(overlay);
+  dismissBtn.focus();
 
   function close() {
+    if (_weakTrapCleanup) { _weakTrapCleanup(); _weakTrapCleanup = null; }
     overlay.classList.remove('weak-popup-overlay--visible');
     overlay.addEventListener('transitionend', function () { overlay.remove(); }, { once: true });
   }

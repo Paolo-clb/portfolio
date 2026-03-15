@@ -89,6 +89,32 @@
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
+.skill-item__icon--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: var(--clr-surface);
+  color: var(--clr-primary);
+  font-weight: 700;
+  font-size: 1.1rem;
+  filter: none;
+}
+
+.skill-popup__icon--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: var(--clr-surface);
+  color: var(--clr-primary);
+  font-weight: 700;
+  font-size: 2rem;
+  width: 100%;
+  height: 100%;
+  object-fit: unset;
+}
+
 .skill-item__name {
   font-weight: 500;
   font-size: 0.85rem;

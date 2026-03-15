@@ -132,6 +132,8 @@
   let wpmBoost = 0; // DEBUG: artificial WPM boost (Ctrl+ArrowUp/Down)
   let showErrors = false;
   let isFocused = true; // whether the game container has focus
+  window.__typingGameFocused = function () { return isFocused; };
+  window.__typingGameWPM = function () { return calcWPM ? calcWPM() : 0; };
   let blurHintTimer = null; // debounce timer for focus hint
   let trailTimestamps = []; // timestamps of recent correct keystrokes for trail speed calc
   let trailSpeed = 0; // 0–1 speed factor for trail intensity
@@ -1065,6 +1067,9 @@
     overlay.className = 'zen-popup-overlay';
     var popup = document.createElement('div');
     popup.className = 'zen-popup';
+    popup.setAttribute('role', 'dialog');
+    popup.setAttribute('aria-modal', 'true');
+    popup.setAttribute('aria-label', title);
     popup.innerHTML =
       '<div class="zen-popup__title">' + title + '</div>' +
       '<p class="zen-popup__text">' + text + '</p>' +
@@ -1075,11 +1080,14 @@
     // Force reflow then animate in
     overlay.offsetHeight;
     overlay.classList.add('zen-popup-overlay--visible');
+    var _trapCleanup = window.__trapFocus ? window.__trapFocus(overlay) : null;
+    popup.querySelector('.zen-popup__btn').focus();
 
     function onKeyDown(e) {
       if (e.key === 'Escape') close();
     }
     function close() {
+      if (_trapCleanup) { _trapCleanup(); _trapCleanup = null; }
       document.removeEventListener('keydown', onKeyDown);
       overlay.classList.remove('zen-popup-overlay--visible');
       overlay.addEventListener('transitionend', function handler() {
@@ -1105,6 +1113,9 @@
     overlay.className = 'zen-popup-overlay';
     var popup = document.createElement('div');
     popup.className = 'zen-popup typing-game__settings-popup';
+    popup.setAttribute('role', 'dialog');
+    popup.setAttribute('aria-modal', 'true');
+    popup.setAttribute('aria-label', t('settTitle'));
     var changed = false;
 
     var options = [
@@ -1148,11 +1159,15 @@
     // Animate in
     overlay.offsetHeight;
     overlay.classList.add('zen-popup-overlay--visible');
+    var _settTrap = window.__trapFocus ? window.__trapFocus(overlay) : null;
+    var firstCheck = popup.querySelector('.typing-game__settings-check');
+    if (firstCheck) firstCheck.focus();
 
     function onKeyDown(e) {
       if (e.key === 'Escape') close();
     }
     function close() {
+      if (_settTrap) { _settTrap(); _settTrap = null; }
       document.removeEventListener('keydown', onKeyDown);
       overlay.classList.remove('zen-popup-overlay--visible');
       overlay.addEventListener('transitionend', function handler() {
