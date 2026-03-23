@@ -1524,6 +1524,8 @@ function showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY) {
 // ---------------------------------------------------------------------------
 // Animation Controls (footer bar: speed slider + on/off toggle)
 // ---------------------------------------------------------------------------
+var isMobileWidth = function () { return window.innerWidth <= 768; };
+
 function initAnimationControls() {
   var SPEED_KEY  = 'portfolio_anim_speed';
   var TOGGLE_KEY = 'portfolio_animations';
@@ -2094,8 +2096,6 @@ function initThemeToggle() {
 
   // Manage video playback based on theme
   // On mobile (<=768px), skip video entirely — CSS shows poster via body::before
-  var isMobileWidth = function () { return window.innerWidth <= 768; };
-
   function manageVideos(theme) {
     var darkVideo = document.getElementById('bg-video-dark');
     var natureVideo = document.getElementById('bg-video-nature');
