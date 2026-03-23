@@ -323,7 +323,7 @@ Structure (in order):
 21. `initAnimationControls()` — footer settings panel with speed slider, animation on/off toggle, yolo mode placeholder, back-to-top button, copilot link, time-warp visual effect
 22. `initThemeToggle()` — theme toggle with animated sun↔moon↔leaf SVG, video management, background credit badge, preview tooltips
 23. `initScrollProgress()` — horizontal progress bar fixed at top, gradient fill with shimmer animation
-24. `initScrollReveal()` — IntersectionObserver-based reveal for sections + staggered children (`.reveal` / `.reveal-child` classes). Re-triggers on every scroll: sections un-reveal when scrolled out and re-animate when scrolling back. `.skills-group` excluded from `.reveal-child` to avoid conflicting with expand/collapse transitions
+24. `initScrollReveal()` — IntersectionObserver-based reveal for sections + staggered children (`.reveal` / `.reveal-child` classes). Re-triggers on every scroll: sections un-reveal when scrolled out and re-animate when scrolling back. **Direction-aware:** tracks scroll direction via `scroll` event listener; sections slide up (`reveal--from-below`) when scrolling down, slide down (`reveal--from-above`) when scrolling up. **Hysteresis:** uses dual thresholds `[0, 0.12]` — reveals at 12% visibility, un-reveals only when fully out of viewport (ratio 0) to prevent blinking at edges. `.skills-group` excluded from `.reveal-child` to avoid conflicting with expand/collapse transitions
 
 ### Animation Controls (`initAnimationControls()`)
 

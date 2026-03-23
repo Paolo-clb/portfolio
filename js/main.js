@@ -945,13 +945,17 @@ function initScrollReveal() {
   sections.forEach(function (sec) {
     if (sec.id === 'hero') return;
     var cont = sec.querySelector('.container');
-    if (cont) cont.classList.add('reveal');
+    if (cont) {
+      cont.classList.add('reveal');
+      cont.classList.add('reveal--from-below');  // default direction
+    }
 
     // Tag direct grid children for staggered reveal
     // Note: .skills-group excluded — it has its own expand/collapse animation
     var children = sec.querySelectorAll('.project-card, .cv-section__card, .contact__form, .form__group');
     children.forEach(function (child) {
       child.classList.add('reveal-child');
+      child.classList.add('reveal-child--from-below');
     });
   });
 
@@ -962,23 +966,74 @@ function initScrollReveal() {
     return;
   }
 
+  var lastScrollY = window.scrollY || 0;
+  var scrollDir = 'down';
+  window.addEventListener('scroll', function () {
+    var y = window.scrollY || 0;
+    if (y > lastScrollY + 2) scrollDir = 'down';
+    else if (y < lastScrollY - 2) scrollDir = 'up';
+    lastScrollY = y;
+  }, { passive: true });
+
+  function setDirection(el, dir) {
+    var fromBelow = 'reveal--from-below';
+    var fromAbove = 'reveal--from-above';
+    if (dir === 'down') {
+      el.classList.remove(fromAbove);
+      el.classList.add(fromBelow);
+    } else {
+      el.classList.remove(fromBelow);
+      el.classList.add(fromAbove);
+    }
+  }
+
+  function setChildDirection(child, dir) {
+    var fromBelow = 'reveal-child--from-below';
+    var fromAbove = 'reveal-child--from-above';
+    if (dir === 'down') {
+      child.classList.remove(fromAbove);
+      child.classList.add(fromBelow);
+    } else {
+      child.classList.remove(fromBelow);
+      child.classList.add(fromAbove);
+    }
+  }
+
+  // Two thresholds: 0 (fully out) and 0.12 (enough visible to reveal).
+  // Hysteresis: reveal at 12%, un-reveal only when fully out (ratio 0).
+  // This prevents blinking when a section is barely visible behind the navbar.
   var sectionObserver = new IntersectionObserver(function (entries) {
     entries.forEach(function (entry) {
-      if (entry.isIntersecting) {
+      var isRevealed = entry.target.classList.contains('reveal--visible');
+
+      if (!isRevealed && entry.isIntersecting && entry.intersectionRatio >= 0.12) {
+        // ── Reveal ──
+        setDirection(entry.target, scrollDir);
+        // Force reflow so the direction class applies before the visible transition
+        void entry.target.offsetWidth;
         entry.target.classList.add('reveal--visible');
 
-        // Stagger children
+        // Mark as settled once the reveal transition finishes
+        // so rain surfaces use final coordinates, not mid-animation ones
+        function onSettled(e) {
+          if (e.propertyName !== 'transform') return;
+          entry.target.removeEventListener('transitionend', onSettled);
+          entry.target.classList.add('reveal--settled');
+        }
+        entry.target.addEventListener('transitionend', onSettled);
+
         var children = entry.target.querySelectorAll('.reveal-child');
         children.forEach(function (child, i) {
-          child.style.transitionDelay = (i * 0.09) + 's';
-          // Small timeout to ensure the delay is applied after the class
+          setChildDirection(child, scrollDir);
+          child.style.transitionDelay = (i * 0.1) + 's';
           requestAnimationFrame(function () {
             child.classList.add('reveal-child--visible');
           });
         });
-      } else {
-        // Re-hide when scrolled out so it re-animates next time
+      } else if (isRevealed && !entry.isIntersecting && entry.intersectionRatio === 0) {
+        // ── Un-reveal: only when FULLY out of viewport ──
         entry.target.classList.remove('reveal--visible');
+        entry.target.classList.remove('reveal--settled');
 
         var children = entry.target.querySelectorAll('.reveal-child');
         children.forEach(function (child) {
@@ -987,7 +1042,7 @@ function initScrollReveal() {
         });
       }
     });
-  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  }, { threshold: [0, 0.12], rootMargin: '0px 0px -30px 0px' });
 
   document.querySelectorAll('.reveal').forEach(function (el) {
     sectionObserver.observe(el);

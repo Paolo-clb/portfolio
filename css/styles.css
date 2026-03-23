@@ -1199,28 +1199,44 @@ section.hero {
    itself, so the translucent section background stays intact. */
 .reveal {
   opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: opacity, transform;
+}
+
+/* Default: entering from below (scroll down) */
+.reveal.reveal--from-below {
+  transform: translateY(50px);
+}
+
+/* Entering from above (scroll up) */
+.reveal.reveal--from-above {
+  transform: translateY(-50px);
 }
 
 .reveal--visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) !important;
 }
 
 /* Stagger children inside grids */
 .reveal-child {
   opacity: 0;
-  transform: translateY(30px) scale(0.97);
-  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-child.reveal-child--from-below {
+  transform: translateY(35px) scale(0.97);
+}
+
+.reveal-child.reveal-child--from-above {
+  transform: translateY(-35px) scale(0.97);
 }
 
 .reveal-child--visible {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateY(0) scale(1) !important;
 }
 
 /* ==========================================================================
@@ -1279,12 +1295,12 @@ section.hero {
 
 [data-animations="off"] .reveal {
   opacity: 1;
-  transform: none;
+  transform: none !important;
 }
 
 [data-animations="off"] .reveal-child {
   opacity: 1;
-  transform: none;
+  transform: none !important;
 }
 
 [data-animations="off"] .hover-particles-canvas {
