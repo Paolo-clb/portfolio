@@ -391,6 +391,7 @@ function closeProjectDetail(trapCleanup) {
 // Render skill items into #skills-grid (grouped)
 // ---------------------------------------------------------------------------
 var skillsExpanded = false;
+var skillsCollapsing = false; // guards scroll-reveal during collapse
 
 function renderSkills() {
   const grid = document.getElementById('skills-grid');
@@ -451,22 +452,113 @@ function renderSkills() {
       var allGroups = grid.querySelectorAll('.skills-group');
 
       if (!skillsExpanded) {
-        // Expand
-        hiddenGroups.forEach(function (g) {
+        // ── Expand ── same animation as scroll reveal
+        hiddenGroups.forEach(function (g, gi) {
           g.classList.remove('skills-group--hidden');
           g.classList.add('skills-group--revealing');
-          // Trigger reflow for animation
           void g.offsetWidth;
           g.classList.add('skills-group--visible');
+
+          // Start with group hidden (no transition = instant)
+          g.style.opacity = '0';
+          g.style.transform = 'translateY(30px)';
+          g.style.transition = 'none';
+          var items = g.querySelectorAll('.skill-item');
+          items.forEach(function (item) {
+            item.style.opacity = '0';
+            item.style.transition = 'none';
+          });
+
+          setTimeout(function () {
+            // Slide group in
+            g.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            g.style.opacity = '1';
+            g.style.transform = 'translateY(0)';
+
+            // Then stagger items
+            setTimeout(function () {
+              items.forEach(function (item, ii) {
+                item.style.transition = 'opacity 0.35s ease';
+                item.style.transitionDelay = (ii * 0.04) + 's';
+                item.style.opacity = '1';
+                setTimeout(function () {
+                  item.style.opacity = '';
+                  item.style.transition = '';
+                  item.style.transitionDelay = '';
+                }, 400 + ii * 40);
+              });
+            }, 300);
+
+            setTimeout(function () {
+              g.style.opacity = '';
+              g.style.transform = '';
+              g.style.transition = '';
+            }, 600);
+          }, gi * 120);
         });
         btn.textContent = siteT('viewLess');
         skillsExpanded = true;
       } else {
-        // Collapse
+        // ── Collapse ── remember the button's viewport-relative position
+        // so we can restore it after the groups disappear.
+        skillsCollapsing = true; // prevent scroll-reveal from re-triggering
+        var btnRect = btn.getBoundingClientRect();
+        var btnViewportOffset = btnRect.top; // distance from viewport top
+
         var toCollapse = [];
         allGroups.forEach(function (g, i) {
           if (i >= VISIBLE_COUNT) toCollapse.push(g);
         });
+        var pending = toCollapse.length;
+        function afterAllCollapsed() {
+          // Where the button ended up after layout shift
+          var newBtnRect = btn.getBoundingClientRect();
+          var drift = newBtnRect.top - btnViewportOffset;
+          if (Math.abs(drift) < 2) { skillsCollapsing = false; return; } // negligible
+
+          var targetScroll = window.scrollY + drift;
+          if (targetScroll < 0) targetScroll = 0;
+
+          // rAF-based smooth scroll, aborts on any user scroll intent
+          var start = null;
+          var from = window.scrollY;
+          var distance = targetScroll - from;
+          var duration = Math.min(500, Math.abs(distance) * 1.2);
+          var cancelled = false;
+          var lastSetY = from;
+
+          function cancel() { cancelled = true; }
+
+          // Detect user-initiated scroll: if scroll position diverges
+          // from what we last set, the user is scrolling
+          function onScroll() {
+            if (Math.abs(window.scrollY - lastSetY) > 2) cancel();
+          }
+
+          window.addEventListener('scroll', onScroll, { passive: true });
+          window.addEventListener('wheel', cancel, { passive: true });
+          window.addEventListener('touchstart', cancel, { passive: true });
+          window.addEventListener('pointerdown', cancel, { passive: true });
+
+          function step(ts) {
+            if (cancelled) { cleanup(); return; }
+            if (!start) start = ts;
+            var t = Math.min((ts - start) / duration, 1);
+            var ease = 1 - Math.pow(1 - t, 3);
+            lastSetY = Math.round(from + distance * ease);
+            window.scrollTo(0, lastSetY);
+            if (t < 1) requestAnimationFrame(step);
+            else cleanup();
+          }
+          function cleanup() {
+            window.removeEventListener('scroll', onScroll);
+            window.removeEventListener('wheel', cancel);
+            window.removeEventListener('touchstart', cancel);
+            window.removeEventListener('pointerdown', cancel);
+            skillsCollapsing = false;
+          }
+          requestAnimationFrame(step);
+        }
         toCollapse.forEach(function (g) {
           g.classList.remove('skills-group--visible');
           g.classList.remove('skills-group--revealing');
@@ -478,6 +570,8 @@ function renderSkills() {
             g.removeEventListener('transitionend', onEnd);
             g.classList.remove('skills-group--collapsing');
             g.classList.add('skills-group--hidden');
+            pending--;
+            if (pending === 0) afterAllCollapsed();
           }
           g.addEventListener('transitionend', onEnd);
           setTimeout(onEnd, 500);
@@ -947,15 +1041,14 @@ function initScrollReveal() {
     var cont = sec.querySelector('.container');
     if (cont) {
       cont.classList.add('reveal');
-      cont.classList.add('reveal--from-below');  // default direction
     }
 
     // Tag direct grid children for staggered reveal
-    // Note: .skills-group excluded — it has its own expand/collapse animation
+    // .skills-group excluded — handled separately to avoid conflicting
+    // with expand/collapse transitions (--hidden, --collapsing, --visible)
     var children = sec.querySelectorAll('.project-card, .cv-section__card, .contact__form, .form__group');
     children.forEach(function (child) {
       child.classList.add('reveal-child');
-      child.classList.add('reveal-child--from-below');
     });
   });
 
@@ -966,51 +1059,18 @@ function initScrollReveal() {
     return;
   }
 
-  var lastScrollY = window.scrollY || 0;
-  var scrollDir = 'down';
-  window.addEventListener('scroll', function () {
-    var y = window.scrollY || 0;
-    if (y > lastScrollY + 2) scrollDir = 'down';
-    else if (y < lastScrollY - 2) scrollDir = 'up';
-    lastScrollY = y;
-  }, { passive: true });
-
-  function setDirection(el, dir) {
-    var fromBelow = 'reveal--from-below';
-    var fromAbove = 'reveal--from-above';
-    if (dir === 'down') {
-      el.classList.remove(fromAbove);
-      el.classList.add(fromBelow);
-    } else {
-      el.classList.remove(fromBelow);
-      el.classList.add(fromAbove);
-    }
-  }
-
-  function setChildDirection(child, dir) {
-    var fromBelow = 'reveal-child--from-below';
-    var fromAbove = 'reveal-child--from-above';
-    if (dir === 'down') {
-      child.classList.remove(fromAbove);
-      child.classList.add(fromBelow);
-    } else {
-      child.classList.remove(fromBelow);
-      child.classList.add(fromAbove);
-    }
-  }
-
   // Two thresholds: 0 (fully out) and 0.12 (enough visible to reveal).
   // Hysteresis: reveal at 12%, un-reveal only when fully out (ratio 0).
   // This prevents blinking when a section is barely visible behind the navbar.
   var sectionObserver = new IntersectionObserver(function (entries) {
     entries.forEach(function (entry) {
+      // Skip skills section during collapse to prevent re-animation
+      if (skillsCollapsing && entry.target.querySelector('.skills-group')) return;
+
       var isRevealed = entry.target.classList.contains('reveal--visible');
 
       if (!isRevealed && entry.isIntersecting && entry.intersectionRatio >= 0.12) {
         // ── Reveal ──
-        setDirection(entry.target, scrollDir);
-        // Force reflow so the direction class applies before the visible transition
-        void entry.target.offsetWidth;
         entry.target.classList.add('reveal--visible');
 
         // Mark as settled once the reveal transition finishes
@@ -1024,11 +1084,58 @@ function initScrollReveal() {
 
         var children = entry.target.querySelectorAll('.reveal-child');
         children.forEach(function (child, i) {
-          setChildDirection(child, scrollDir);
-          child.style.transitionDelay = (i * 0.1) + 's';
+          child.style.transitionDelay = (i * 0.07) + 's';
           requestAnimationFrame(function () {
             child.classList.add('reveal-child--visible');
           });
+        });
+
+        // Skills-groups: stagger with ephemeral inline styles so
+        // expand/collapse classes are never interfered with.
+        // Groups slide in first, then items fade in inside each group.
+        var groups = entry.target.querySelectorAll('.skills-group:not(.skills-group--hidden)');
+        var baseDelay = children.length * 70; // ms — after other children
+        groups.forEach(function (g, gi) {
+          // Initial hidden state (no transition so it's instant)
+          g.style.opacity = '0';
+          g.style.transform = 'translateY(30px)';
+          g.style.transition = 'none';
+          // Hide items inside
+          var items = g.querySelectorAll('.skill-item');
+          items.forEach(function (item) {
+            item.style.opacity = '0';
+            item.style.transition = 'none';
+          });
+
+          var groupDelay = baseDelay + gi * 120;
+          setTimeout(function () {
+            // Animate group in
+            g.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            g.style.opacity = '1';
+            g.style.transform = 'translateY(0)';
+
+            // After group appears, stagger items
+            setTimeout(function () {
+              items.forEach(function (item, ii) {
+                item.style.transition = 'opacity 0.35s ease';
+                item.style.transitionDelay = (ii * 0.04) + 's';
+                item.style.opacity = '1';
+                // Clean up item inline styles after animation completes
+                setTimeout(function () {
+                  item.style.opacity = '';
+                  item.style.transition = '';
+                  item.style.transitionDelay = '';
+                }, 400 + ii * 40);
+              });
+            }, 300); // slight gap after group slide-in starts
+
+            // Clean up group inline styles after animation
+            setTimeout(function () {
+              g.style.opacity = '';
+              g.style.transform = '';
+              g.style.transition = '';
+            }, 600);
+          }, groupDelay);
         });
       } else if (isRevealed && !entry.isIntersecting && entry.intersectionRatio === 0) {
         // ── Un-reveal: only when FULLY out of viewport ──
@@ -1039,6 +1146,14 @@ function initScrollReveal() {
         children.forEach(function (child) {
           child.classList.remove('reveal-child--visible');
           child.style.transitionDelay = '';
+        });
+
+        // Reset skills-groups & items to default (no inline styles)
+        entry.target.querySelectorAll('.skills-group').forEach(function (g) {
+          g.style.opacity = ''; g.style.transform = ''; g.style.transition = '';
+        });
+        entry.target.querySelectorAll('.skill-item').forEach(function (item) {
+          item.style.opacity = ''; item.style.transition = ''; item.style.transitionDelay = '';
         });
       }
     });

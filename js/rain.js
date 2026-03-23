@@ -147,7 +147,7 @@
 
   /* ── Resize ────────────────────────────────────────────── */
   function resize() {
-    W = window.innerWidth;
+    W = document.documentElement.clientWidth;
     H = window.innerHeight;
     dropCount = W < 600 ? MAX_DROPS_MOBILE : MAX_DROPS;
 
@@ -248,7 +248,7 @@
      Init
      ======================================================================= */
   function init() {
-    W = window.innerWidth;
+    W = document.documentElement.clientWidth;
     H = window.innerHeight;
     dropCount = W < 600 ? MAX_DROPS_MOBILE : MAX_DROPS;
 

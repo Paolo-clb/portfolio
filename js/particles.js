@@ -51,8 +51,8 @@
 
   var bflyMap = new Map();   // Map<el, { resting: [], fracAccum, type }>
   var BFLY_CFG = {
-    project: { rate: 0.12, max: 5, rMin: 8, rRange: 6 },   // bigger & more frequent
-    skill:   { rate: 0.04, max: 2, rMin: 4, rRange: 3 }    // smaller & rarer
+    project: { rate: 0.12, minMax: 5, maxMax: 8, rMin: 8, rRange: 6 },
+    skill:   { rate: 0.04, minMax: 2, maxMax: 4, rMin: 4, rRange: 3 }
   };
   var totalResting = 0;
   var bflyTicker = null;
@@ -62,6 +62,7 @@
 
   // Visibility: handles display:none parents + off-screen + overflow:hidden collapse
   function isElementVisible(el) {
+    if (!el.isConnected) return false;
     var rect = el.getBoundingClientRect();
     return rect.height > 0 && rect.bottom > 0 && rect.top < H;
   }
@@ -158,7 +159,13 @@
   function flutterFrom(el) {
     var info = bflyMap.get(el);
     if (!info || info.resting.length === 0) return;
-    var rect = el.getBoundingClientRect();
+    var rect;
+    if (info.type === 'project') {
+      var imgEl = el.querySelector('.project-card__image');
+      rect = imgEl ? imgEl.getBoundingClientRect() : el.getBoundingClientRect();
+    } else {
+      rect = el.getBoundingClientRect();
+    }
     for (var i = 0; i < info.resting.length; i++) {
       var b = info.resting[i];
       launchBfly(
@@ -183,13 +190,22 @@
       if (speedFactor <= 0) return;
       if (document.documentElement.getAttribute('data-animations') === 'off') return;
 
+      // Purge orphaned entries (elements removed from DOM)
+      bflyMap.forEach(function (info, el) {
+        if (!el.isConnected) {
+          totalResting -= info.resting.length;
+          bflyMap.delete(el);
+        }
+      });
+
       var added = false;
       bflyMap.forEach(function (info, el) {
         var cfg = BFLY_CFG[info.type] || BFLY_CFG.skill;
-        if (info.resting.length >= cfg.max) return;
+        var cap = info.max;
+        if (info.resting.length >= cap) return;
         if (!isElementVisible(el)) return;
         info.fracAccum += cfg.rate * dt * speedFactor;
-        while (info.fracAccum >= 1 && info.resting.length < cfg.max) {
+        while (info.fracAccum >= 1 && info.resting.length < cap) {
           info.fracAccum -= 1;
           info.resting.push({
             rx: 0.1 + Math.random() * 0.8,
@@ -218,7 +234,9 @@
 
   function trackBfly(el, type) {
     if (bflyMap.has(el)) return;
-    bflyMap.set(el, { resting: [], fracAccum: 0, type: type || 'skill' });
+    var cfg = BFLY_CFG[type] || BFLY_CFG.skill;
+    var max = cfg.minMax + Math.floor(Math.random() * (cfg.maxMax - cfg.minMax + 1));
+    bflyMap.set(el, { resting: [], fracAccum: 0, type: type || 'skill', max: max });
     startBflyTicker();
   }
 
@@ -321,9 +339,29 @@
     // ── 1. Render resting butterflies ──
     if (!animsOff) {
       bflyMap.forEach(function (info, el) {
+        // Purge orphaned entries (element removed from DOM by re-render)
+        if (!el.isConnected) {
+          totalResting -= info.resting.length;
+          bflyMap.delete(el);
+          return;
+        }
         if (info.resting.length === 0) return;
-        if (!isElementVisible(el)) return;
-        var rect = el.getBoundingClientRect();
+        if (!isElementVisible(el)) {
+          // Element scrolled out or hidden — clear resting butterflies
+          // so they don't get stuck at stale coordinates
+          totalResting -= info.resting.length;
+          info.resting = [];
+          info.fracAccum = 0;
+          return;
+        }
+        // For project cards, constrain butterflies to the image area
+        var rect;
+        if (info.type === 'project') {
+          var imgEl = el.querySelector('.project-card__image');
+          rect = imgEl ? imgEl.getBoundingClientRect() : el.getBoundingClientRect();
+        } else {
+          rect = el.getBoundingClientRect();
+        }
         for (var i = 0; i < info.resting.length; i++) {
           var b = info.resting[i];
           if (b.fadeIn < 1) b.fadeIn = Math.min(1, b.fadeIn + 0.02 * sf);
@@ -440,6 +478,7 @@
     mo.observe(document.body, { childList: true, subtree: true });
 
     document.addEventListener('pointerenter', function (e) {
+      if (!e.target || typeof e.target.closest !== 'function') return;
       var target = e.target.closest(selector);
       if (!target) return;
       if (document.documentElement.getAttribute('data-animations') === 'off') return;
@@ -450,6 +489,7 @@
 
   function attachAura(selector) {
     document.addEventListener('pointerenter', function (e) {
+      if (!e.target || typeof e.target.closest !== 'function') return;
       var target = e.target.closest(selector);
       if (!target) return;
       if (document.documentElement.getAttribute('data-animations') === 'off') return;
@@ -458,8 +498,13 @@
       ensureRunning();
     }, true);
     document.addEventListener('pointerleave', function (e) {
+      if (!e.target || typeof e.target.closest !== 'function') return;
       var target = e.target.closest(selector);
       if (!target) return;
+      // Only clear if pointer actually left the target element,
+      // not just moved between child elements within it
+      if (e.relatedTarget && typeof e.relatedTarget.closest === 'function' &&
+          e.relatedTarget.closest(selector) === target) return;
       if (auraHoveredEl === target) auraHoveredEl = null;
     }, true);
   }
