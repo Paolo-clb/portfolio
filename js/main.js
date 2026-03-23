@@ -948,7 +948,8 @@ function initScrollReveal() {
     if (cont) cont.classList.add('reveal');
 
     // Tag direct grid children for staggered reveal
-    var children = sec.querySelectorAll('.project-card, .skills-group, .cv-section__card, .contact__form, .form__group');
+    // Note: .skills-group excluded — it has its own expand/collapse animation
+    var children = sec.querySelectorAll('.project-card, .cv-section__card, .contact__form, .form__group');
     children.forEach(function (child) {
       child.classList.add('reveal-child');
     });
@@ -965,7 +966,6 @@ function initScrollReveal() {
     entries.forEach(function (entry) {
       if (entry.isIntersecting) {
         entry.target.classList.add('reveal--visible');
-        sectionObserver.unobserve(entry.target);
 
         // Stagger children
         var children = entry.target.querySelectorAll('.reveal-child');
@@ -975,6 +975,15 @@ function initScrollReveal() {
           requestAnimationFrame(function () {
             child.classList.add('reveal-child--visible');
           });
+        });
+      } else {
+        // Re-hide when scrolled out so it re-animates next time
+        entry.target.classList.remove('reveal--visible');
+
+        var children = entry.target.querySelectorAll('.reveal-child');
+        children.forEach(function (child) {
+          child.classList.remove('reveal-child--visible');
+          child.style.transitionDelay = '';
         });
       }
     });
@@ -1711,6 +1720,9 @@ function initAnimationControls() {
     }
     if (window.__setVisualizerSpeed) window.__setVisualizerSpeed(linear);
 
+    // Particles: linear
+    if (window.__setParticlesSpeed) window.__setParticlesSpeed(linear);
+
     // Rain: non-linear
     if (window.__rainSetSpeed) window.__rainSetSpeed(curved);
 
@@ -1766,6 +1778,7 @@ function initAnimationControls() {
     if (window.__setVisualizerFrozen) window.__setVisualizerFrozen(false);
     if (window.__rainSetEnabled) window.__rainSetEnabled(false);
     if (window.__setVisualizerEnabled) window.__setVisualizerEnabled(false);
+    if (window.__setParticlesSpeed) window.__setParticlesSpeed(0);
     // Reset music to normal speed and clear freeze
     timeFrozen = false;
     if (window.__musicPlayerSetFrozen) window.__musicPlayerSetFrozen(false);
