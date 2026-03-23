@@ -38,7 +38,7 @@ window.SITE_I18N = {
     viewLess: 'Voir moins',
 
     // Skill popup
-    levelLabel: 'Niveau',
+    levelLabel: 'Expérience',
     level1: 'Débutant',
     level2: 'Junior',
     level3: 'Intermédiaire',
@@ -134,7 +134,7 @@ window.SITE_I18N = {
     viewLess: 'View less',
 
     // Skill popup
-    levelLabel: 'Level',
+    levelLabel: 'Experience',
     level1: 'Beginner',
     level2: 'Junior',
     level3: 'Intermediate',

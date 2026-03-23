@@ -350,8 +350,10 @@
       attributeFilter: ['class', 'style', 'hidden']
     });
 
-    // ── Restore saved state ──
-    if (localStorage.getItem(STORAGE_KEY) === 'on') {
+    // ── Restore saved state (default: ON when animations enabled) ──
+    var saved = localStorage.getItem(STORAGE_KEY);
+    var animsOff = document.documentElement.getAttribute('data-animations') === 'off';
+    if (!animsOff && saved !== 'off') {
       start();
       btnEl.classList.add('rain-toggle--active');
     }

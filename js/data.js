@@ -10,13 +10,13 @@
 
 const PROJECTS = [
   {
-    title: 'Satablé : Application d\'organisation de banquets',
-    description: 'Développement d\'une Application lourde JavaFX d\'organisation de banquets — gestion d\'événements, invités, menus et plans de table.',
+    title: 'Satablé : Concevoir une application de gestion de banquets',
+    description: 'Développer une application JavaFX d\'organisation de banquets — gérer des événements, des invités, des menus et des plans de table.',
     image: 'assets/images/satable.jpg',
     tags: ['JavaFX', 'MVC', 'UML', 'Gestion de projet'],
     en: {
-      title: 'Satablé: Banquet Planning Application',
-      description: 'Development of a JavaFX desktop application for banquet planning — event, guest, menu and seating management.',
+      title: 'Satablé: Design a Banquet Planning Application',
+      description: 'Develop a JavaFX desktop application for banquet planning — manage events, guests, menus and seating arrangements.',
       tags: ['JavaFX', 'MVC', 'UML', 'Project Management'],
       details: {
         overview: 'The project consists of designing and developing a <em>JavaFX application</em> allowing any organizer to manage an event. The application works <em>offline</em> (desktop architecture) and relies on a <em>complete MVC model</em>. Carried out by a team of six, with milestone management, an institutional <em>GitLab</em> repository, and a final presentation.',
@@ -113,13 +113,13 @@ const PROJECTS = [
     },
   },
   {
-    title: 'Exploitation d\'une base de données',
-    description: 'Exploitation d\'une base de données open data sur les accidents de la route — démarche Data Science.',
+    title: 'Exploiter une base de données',
+    description: 'Exploiter une base de données open data sur les accidents de la route — mener une démarche Data Science.',
     image: 'assets/images/background.jpg',
     tags: ['PostgreSQL', 'SQL', 'Data Science', 'Visualisation'],
     en: {
-      title: 'Database Exploitation',
-      description: 'Exploitation of an open data database on road accidents — Data Science approach.',
+      title: 'Exploit a Database',
+      description: 'Exploit an open data database on road accidents — conduct a Data Science approach.',
       tags: ['PostgreSQL', 'SQL', 'Data Science', 'Visualization'],
       details: {
         overview: 'In this project, carried out in <em>pairs</em>, we took on the role of members of an association aiming to raise public awareness about <em>road accidents</em> in France. The main objective was to conduct a first <em>Data Science</em> approach from a public database provided by the national road safety observatory. This large and raw database covers bodily injury accidents between <em>2005 and 2023</em>.<br>Our work was organized in two main phases: the first, database-oriented, consisted of exploring, cleaning and transforming data using tools like <em>PostgreSQL</em>; the second, more statistical, aimed at producing <em>relevant visualizations</em> (graphs, tables) to answer a specific research question we defined. In parallel, we also wrote a <em>project scoping document</em> to identify constraints, required resources and potential risks.',
@@ -198,13 +198,13 @@ const PROJECTS = [
     },
   },
   {
-    title: 'Conception d\'une base de données',
-    description: 'Conception et mise en place d\'une base de données complète pour le club de bowling SuperBall.',
+    title: 'Concevoir une base de données',
+    description: 'Concevoir et mettre en place une base de données complète pour le club de bowling SuperBall.',
     image: 'assets/images/background.jpg',
     tags: ['PostgreSQL', 'SQL', 'Merise', 'Conception BD'],
     en: {
-      title: 'Database Design',
-      description: 'Design and implementation of a complete database for the SuperBall bowling club.',
+      title: 'Design a Database',
+      description: 'Design and implement a complete database for the SuperBall bowling club.',
       tags: ['PostgreSQL', 'SQL', 'Merise', 'DB Design'],
       details: {
         overview: 'The project aimed to design and implement, in <em>pairs</em>, a <em>complete database</em> for the <em>SuperBall</em> bowling club. From a provided specification and ER diagram, we:<br><br>• Derived the <em>relational schema</em> (RS) by applying translation rules covered in class<br>• Wrote a <em>create.sql</em> script creating tables, primary/foreign keys, CHECK, NOT NULL, and uniqueness constraints<br>• Wrote a <em>test.sql</em> script populating the database then verifying integrity via invalid insertions<br>• Developed <em>SQL queries</em> addressing six business needs (lane scheduling, shoe stock, availability, etc.)<br>• Evolved the database in step 3: handling <em>lane replacement</em>, extending the maximum number of games and critical project review.',
@@ -255,13 +255,13 @@ const PROJECTS = [
     },
   },
   {
-    title: 'Comparaison d\'approches algorithmiques',
-    description: 'Développement de méthodes de classification automatique de dépêches — génération de lexiques par apprentissage et comparaison K-NN.',
+    title: 'Comparer des approches algorithmiques',
+    description: 'Développer des méthodes de classification automatique de dépêches — générer des lexiques par apprentissage et comparer avec K-NN.',
     image: 'assets/images/background.jpg',
     tags: ['Java', 'Algorithmes', 'IA', 'IntelliJ'],
     en: {
-      title: 'Algorithmic Approach Comparison',
-      description: 'Development of automatic news dispatch classification methods — lexicon generation through machine learning and K-NN comparison.',
+      title: 'Compare Algorithmic Approaches',
+      description: 'Develop automatic news dispatch classification methods — generate lexicons through machine learning and compare with K-NN.',
       tags: ['Java', 'Algorithms', 'AI', 'IntelliJ'],
       details: {
         overview: 'This project, titled "<em>Automatic Classification</em>", aimed to improve a <em>news dispatch</em> sorting system by developing a method for <em>automatic lexicon generation</em>. Unlike the first part where lexicons were manual, we experimented with <em>machine learning</em> to generate more relevant lexicons and improve the classification system\'s accuracy.<br><br><em>Pair</em>: Paolo Colombat, Enzo Morello',

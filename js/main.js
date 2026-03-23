@@ -1167,7 +1167,7 @@ function initCursorHalo() {
   }, { passive: true });
 
   // ---- hover on interactive elements ----
-  var interactiveSelector = 'a, button:not(.anim-speed__icon), input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay, .music-popup-overlay, .weak-popup-overlay, .anim-toggle__track, .anim-toggle';
+  var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay, .music-popup-overlay, .weak-popup-overlay, .anim-toggle__track, .anim-toggle';
   var modalAllowedSelector = 'button, .modal__close, a, .btn';
 
   document.addEventListener('mouseover', function (e) {
@@ -1735,11 +1735,13 @@ function initAnimationControls() {
 
     speedLabel.textContent = linear.toFixed(2) + 'x';
 
-    // Clock animation: linear
+    // Clock animation: linear + frozen visual
     if (raw === 0) {
       speedWrap.style.setProperty('--clock-speed', '0s');
+      clockBtn.classList.add('anim-speed__icon--frozen');
     } else {
       speedWrap.style.setProperty('--clock-speed', (4 / linear) + 's');
+      clockBtn.classList.remove('anim-speed__icon--frozen');
     }
 
     // Music freeze logic
@@ -1813,6 +1815,25 @@ function initAnimationControls() {
       root.setAttribute('data-time-warp', 'slow');
     }
   }
+
+  // Clock icon click: toggle time freeze (like volume mute toggle)
+  var prevSpeed = 1;
+  clockBtn.addEventListener('click', function () {
+    var current = parseFloat(slider.value);
+    if (current > 0) {
+      // Freeze: store current speed, set to 0
+      prevSpeed = current;
+      slider.value = '0';
+    } else {
+      // Restore previous speed (default 1 if none stored)
+      slider.value = String(prevSpeed || 1);
+    }
+    var raw = parseFloat(slider.value);
+    applySpeed(raw);
+    applyTimeWarp(raw);
+    updateSliderFill();
+    localStorage.setItem(SPEED_KEY, raw);
+  });
 
   slider.addEventListener('input', function () {
     var raw = parseFloat(slider.value);
