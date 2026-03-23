@@ -49,6 +49,9 @@ body {
   background: var(--clr-bg);
   line-height: 1.6;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overscroll-behavior: none;
 }
 
 /* Fixed background via pseudo-element Ã¢â‚¬â€ GPU-accelerated, avoids Firefox scroll jank
@@ -291,6 +294,7 @@ em {
 
 section.hero {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -2525,9 +2529,20 @@ body::before,
 
 /* ---- Mobile backgrounds Ã¢â‚¬â€ same files as desktop ---- */
 @media (max-width: 768px) {
-  [data-theme="dark"] body::before,
+  /* Mobile: use poster images instead of video to save bandwidth + battery */
+  .bg-video--dark,
+  .bg-video--nature {
+    display: none !important;
+  }
+
+  [data-theme="dark"] body::before {
+    background-image: url('../assets/images/backgoundKatanaPoster.jpg');
+    opacity: 0.6;
+  }
+
   [data-theme="nature"] body::before {
-    opacity: 0;
+    background-image: url('../assets/images/hollowbackgroundPoster.jpg');
+    opacity: 0.6;
   }
 
   :not([data-theme="dark"]):not([data-theme="nature"]) body::before {

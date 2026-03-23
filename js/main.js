@@ -1789,7 +1789,7 @@ function initAnimationControls() {
     if (raw === 0) {
       if (darkVid && !darkVid.paused) darkVid.pause();
       if (natureVid && !natureVid.paused) natureVid.pause();
-    } else {
+    } else if (!isMobileWidth()) {
       if (darkVid) { darkVid.playbackRate = linear; if (darkVid.paused && document.documentElement.getAttribute('data-theme') === 'dark') darkVid.play().catch(function(){}); }
       if (natureVid) { natureVid.playbackRate = linear; if (natureVid.paused && document.documentElement.getAttribute('data-theme') === 'nature') natureVid.play().catch(function(){}); }
     }
@@ -1894,8 +1894,10 @@ function initAnimationControls() {
     var theme = document.documentElement.getAttribute('data-theme') || 'light';
     var darkVid = document.getElementById('bg-video-dark');
     var natureVid = document.getElementById('bg-video-nature');
-    if (darkVid && theme === 'dark') darkVid.play().catch(function(){});
-    if (natureVid && theme === 'nature') natureVid.play().catch(function(){});
+    if (!isMobileWidth()) {
+      if (darkVid && theme === 'dark') darkVid.play().catch(function(){});
+      if (natureVid && theme === 'nature') natureVid.play().catch(function(){});
+    }
     // Re-enable speed slider and re-apply stored speed (handles freeze if 0)
     slider.disabled = false;
     speedWrap.classList.remove('anim-speed--disabled');
@@ -2091,9 +2093,17 @@ function initThemeToggle() {
   }
 
   // Manage video playback based on theme
+  // On mobile (<=768px), skip video entirely — CSS shows poster via body::before
+  var isMobileWidth = function () { return window.innerWidth <= 768; };
+
   function manageVideos(theme) {
     var darkVideo = document.getElementById('bg-video-dark');
     var natureVideo = document.getElementById('bg-video-nature');
+    if (isMobileWidth()) {
+      if (darkVideo) darkVideo.pause();
+      if (natureVideo) natureVideo.pause();
+      return;
+    }
     if (darkVideo) {
       if (theme === 'dark') { darkVideo.play().catch(function(){}); }
       else { darkVideo.pause(); }

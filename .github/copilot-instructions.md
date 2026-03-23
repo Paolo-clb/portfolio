@@ -144,7 +144,7 @@ Three themes controlled by `data-theme` attribute on `<html>` — cycles: light 
 
 Theme toggle: `initThemeToggle()` in `main.js`, persisted in `localStorage('portfolio_theme')`. SVG icon morphs between sun (light) → moon (dark) → leaf (nature) with animated transitions. Inline `<script>` in `<head>` restores theme before paint. A second inline `<script>` after the toggle button sets SVG attributes immediately for correct initial icon state. Custom tooltip with label text + preview thumbnail of the next theme's background.
 
-**Video backgrounds:** Two `<video>` elements in `<body>` (before `<header>`), auto/muted/loop/playsinline, `preload="none"`, with poster images. `manageVideos(theme)` in `initThemeToggle()` plays/pauses the correct video on toggle.
+**Video backgrounds:** Two `<video>` elements in `<body>` (before `<header>`), auto/muted/loop/playsinline, `preload="none"`, with poster images. `manageVideos(theme)` in `initThemeToggle()` plays/pauses the correct video on toggle. **Mobile (≤768px):** videos hidden via CSS `display: none !important`, poster images shown via `body::before` instead. All JS video play calls (`manageVideos`, `applySpeed`, `enableAnimations`) skip on mobile via `isMobileWidth()` guard.
 
 **Background credit badge:** CSS `.bg-credit` element created by `initThemeToggle()`. Shows game/artwork credit (Katana Zero for dark, Hollow Knight for nature) for 3 seconds on theme switch. Auto-dismisses.
 
@@ -418,7 +418,8 @@ No install step. No build step. No environment variables. Web Audio features (mu
 ## Styling Rules
 
 - Mobile-first responsive: base styles → `@media (max-width: 768px)` overrides
-- Light theme uses `background.jpg` (static via `body::before`), dark/nature themes use `.mp4` video backgrounds
+- Mobile viewport stability: `body` uses `min-height: 100dvh`, `overflow-x: hidden`, `overscroll-behavior: none`. Hero section uses `min-height: 100dvh` to avoid address-bar jump on mobile
+- Light theme uses `background.jpg` (static via `body::before`), dark/nature themes use `.mp4` video backgrounds (desktop) or poster images via `body::before` (mobile ≤768px)
 - Colors, fonts, spacing all via CSS custom properties in `:root`:
   - Colors: `--clr-bg` (#100f18), `--clr-surface` (#1b1a27), `--clr-primary` (#F2A285), `--clr-primary-hover` (#F28080), `--clr-accent` (#BF99A0), `--clr-text` (#e8e3e4), `--clr-text-muted` (#A1A1A6), `--clr-border` (#2c2a3a)
   - Typography: `--ff-body` (Segoe UI / system-ui), `--fs-base/lg/xl/2xl`
