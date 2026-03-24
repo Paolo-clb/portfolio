@@ -158,7 +158,7 @@ window.SITE_I18N = {
     cvDownload: 'Download resume',
 
     // Footer
-    footerText: 'Paolo Colombat. Looking for an internship',
+    footerText: 'Paolo Colombat. Looking for an apprenticeship',
 
     // Rain
     rainEnable: 'Enable rain',
