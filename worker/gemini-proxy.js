@@ -94,7 +94,7 @@ export default {
       /* ---- Build Gemini request ---- */
       const geminiBody = JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-        contents: [{ parts: [{ text: 'Theme: "' + theme + '"' }] }],
+        contents: [{ parts: [{ text: 'Theme: ' + JSON.stringify(theme) }] }],
         generationConfig: {
           temperature: 0.9,
           maxOutputTokens: 16384,
@@ -168,7 +168,7 @@ export default {
       return respond(parsed, 200, corsHeaders);
     } catch (e) {
       if (e.name === 'AbortError') return respond({ error: 'TIMEOUT' }, 504, corsHeaders);
-      return respond({ error: e.message || 'Internal error' }, 500, corsHeaders);
+      return respond({ error: 'Internal error' }, 500, corsHeaders);
     }
   },
 };

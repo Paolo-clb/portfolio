@@ -15,6 +15,7 @@
 
   /* Typography */
   --ff-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --ff-heading: 'Segoe UI', system-ui, -apple-system, sans-serif;
   --fs-base: 1rem;
   --fs-lg: 1.25rem;
   --fs-xl: 2rem;
@@ -1265,7 +1266,7 @@ section.hero {
 }
 
 [data-animations="off"][data-theme="dark"] body::before {
-  background-image: url('../assets/images/backgoundKatanaPoster.jpg');
+  background-image: url('../assets/images/backgroundKatanaPoster.jpg');
   opacity: 0.6;
 }
 
@@ -2529,7 +2530,7 @@ body::before,
   }
 
   [data-theme="dark"] body::before {
-    background-image: url('../assets/images/backgoundKatanaPoster.jpg');
+    background-image: url('../assets/images/backgroundKatanaPoster.jpg');
     opacity: 0.6;
   }
 
@@ -2541,4 +2542,39 @@ body::before,
   :not([data-theme="dark"]):not([data-theme="nature"]) body::before {
     background-position: 60% center;
   }
+}
+
+/* ==========================================================================
+   Focus-visible — keyboard navigation indicator
+   ========================================================================== */
+
+:focus-visible {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+.btn:focus-visible,
+.nav__link:focus-visible,
+.modal__close:focus-visible,
+.theme-toggle:focus-visible,
+.rain-toggle:focus-visible {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 0;
+}
+
+[data-theme="dark"] :focus-visible {
+  outline-color: var(--clr-accent);
+}
+
+[data-theme="nature"] :focus-visible {
+  outline-color: var(--clr-primary);
 }

@@ -795,8 +795,19 @@ function initScrollSpy() {
     }
   }
 
-  window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', onScroll, { passive: true });
+  var ticking = false;
+  function onScrollThrottled() {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(function () {
+        onScroll();
+        ticking = false;
+      });
+    }
+  }
+
+  window.addEventListener('scroll', onScrollThrottled, { passive: true });
+  window.addEventListener('resize', onScrollThrottled, { passive: true });
   // Initial call
   onScroll();
 }
@@ -817,6 +828,7 @@ function initContactForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = form.querySelector('button[type="submit"]');
+    if (btn.disabled) return;
     const statusEl = document.getElementById('form-status');
 
     // Hide previous status
@@ -2162,7 +2174,7 @@ function initThemeToggle() {
   var THEME_TIP_KEYS = { light: 'themeToDark', dark: 'themeToNature', nature: 'themeToLight' };
   // Preview image for the *next* theme (what clicking will reveal)
   var THEME_PREVIEWS = {
-    light:  'assets/images/backgoundKatanaPoster.jpg',
+    light:  'assets/images/backgroundKatanaPoster.jpg',
     dark:   'assets/images/hollowbackgroundPoster.jpg',
     nature: 'assets/images/background.jpg'
   };

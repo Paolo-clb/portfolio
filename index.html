@@ -4,23 +4,38 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
   <meta name="description" content="Portfolio de Paolo Colombat — projets, compétences et expériences en développement web et logiciel." />
-  <title>My Portfolio</title>
+  <meta name="author" content="Paolo Colombat" />
+  <meta name="theme-color" content="#F2A285" />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Paolo Colombat — Portfolio" />
+  <meta property="og:description" content="Portfolio de Paolo Colombat — projets, compétences et expériences en développement web et logiciel." />
+  <meta property="og:url" content="https://colombatpaolo.github.io/portfolio/" />
+  <meta property="og:image" content="https://colombatpaolo.github.io/portfolio/assets/images/background.jpg" />
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Paolo Colombat — Portfolio" />
+  <meta name="twitter:description" content="Portfolio de Paolo Colombat — projets, compétences et expériences en développement web et logiciel." />
+  <meta name="twitter:image" content="https://colombatpaolo.github.io/portfolio/assets/images/background.jpg" />
+  <title>Paolo Colombat — Portfolio</title>
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg" />
+  <link rel="canonical" href="https://colombatpaolo.github.io/portfolio/" />
   <link rel="stylesheet" href="css/styles.css?v=4" />
-  <link rel="stylesheet" href="css/modals.css" />
-  <link rel="stylesheet" href="css/skills.css" />
-  <link rel="stylesheet" href="css/typing-game.css" />
-  <link rel="stylesheet" href="css/typing-game-ai.css" />
-  <link rel="stylesheet" href="css/typing-game-intro.css" />
-  <link rel="stylesheet" href="css/music-player.css" />
-  <link rel="stylesheet" href="css/visualizer.css" />
-  <link rel="stylesheet" href="css/rain.css" />
+  <link rel="stylesheet" href="css/modals.css?v=1" />
+  <link rel="stylesheet" href="css/skills.css?v=1" />
+  <link rel="stylesheet" href="css/typing-game.css?v=1" />
+  <link rel="stylesheet" href="css/typing-game-ai.css?v=1" />
+  <link rel="stylesheet" href="css/typing-game-intro.css?v=1" />
+  <link rel="stylesheet" href="css/music-player.css?v=1" />
+  <link rel="stylesheet" href="css/visualizer.css?v=1" />
+  <link rel="stylesheet" href="css/rain.css?v=1" />
   <!-- Restore saved theme + lang before any IIFE to avoid flash -->
-  <script>(function(){var t=localStorage.getItem('portfolio_theme');if(t==='dark'||t==='nature'){document.documentElement.setAttribute('data-theme',t);var f={dark:'assets/images/favicon-dark.svg',nature:'assets/images/favicon-nature.svg'};var l=document.querySelector('link[rel="icon"]');if(l)l.href=f[t];}var g=localStorage.getItem('portfolio_lang');if(g==='en')document.documentElement.lang='en';var a=localStorage.getItem('portfolio_animations');if(a==='off')document.documentElement.setAttribute('data-animations','off');if(!a){var w=false;if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)w=true;if(!w&&navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=2)w=true;if(!w&&navigator.deviceMemory&&navigator.deviceMemory<=2)w=true;if(w){window.__weakDeviceDetected=true;window.__weakDeviceAnimFlowActive=true;}}})()</script>
+  <script>(function(){var t=localStorage.getItem('portfolio_theme');if(t==='dark'||t==='nature'){document.documentElement.setAttribute('data-theme',t);var f={dark:'assets/images/favicon-dark.svg',nature:'assets/images/favicon-nature.svg'};var l=document.querySelector('link[rel="icon"]');if(l)l.href=f[t];var m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.content=t==='dark'?'#9c27b0':'#5eb83a';}var g=localStorage.getItem('portfolio_lang');if(g==='en')document.documentElement.lang='en';var a=localStorage.getItem('portfolio_animations');if(a==='off')document.documentElement.setAttribute('data-animations','off');if(!a){var w=false;if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)w=true;if(!w&&navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=2)w=true;if(!w&&navigator.deviceMemory&&navigator.deviceMemory<=2)w=true;if(w){window.__weakDeviceDetected=true;window.__weakDeviceAnimFlowActive=true;}}})()</script>
+  <noscript><style>body{background:#100f18;color:#e8e3e4;font-family:'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;margin:0}body>*:not(noscript){display:none!important}</style><p>Ce site nécessite JavaScript pour fonctionner. Veuillez l'activer dans les paramètres de votre navigateur.</p></noscript>
 </head>
 <body>
   <!-- Video backgrounds for dark & nature themes -->
-  <video class="bg-video bg-video--dark" id="bg-video-dark" autoplay muted loop playsinline preload="none" poster="assets/images/backgoundKatanaPoster.jpg">
+  <video class="bg-video bg-video--dark" id="bg-video-dark" autoplay muted loop playsinline preload="none" poster="assets/images/backgroundKatanaPoster.jpg">
     <source src="assets/images/backgroundKatana.mp4" type="video/mp4">
   </video>
   <video class="bg-video bg-video--nature" id="bg-video-nature" autoplay muted loop playsinline preload="none" poster="assets/images/hollowbackgroundPoster.jpg">

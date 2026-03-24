@@ -6,6 +6,12 @@
 (function () {
   'use strict';
 
+  /* ---- HTML escape helper ---- */
+
+  function escapeHTML(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   /* ---- Cookie helpers ---- */
 
   function setCookie(name, value, days) {
@@ -171,6 +177,12 @@
 
   let container, navbarEl, textEl, innerEl, wpmEl, accEl, timeEl, bestEl, restartEl, statsRow, focusHintEl, hardcoreCountdownEl;
   let heroTitleEl; // intro mode DOM ref
+
+  /* ---- Cleanup refs (prevent listener/observer stacking) ---- */
+  var _keydownHandler = null;
+  var _themeObserver = null;
+  var _focusHandler = null;
+  var _blurHandler = null;
 
   /* ---- Helpers ---- */
 
@@ -410,7 +422,7 @@
         }
       }
 
-      var ch = typed[i] === ' ' ? ' ' : typed[i];
+      var ch = typed[i] === ' ' ? ' ' : escapeHTML(typed[i]);
       html += '<span class="' + cls + '"' + trailAttr + '>' + ch + '</span>';
     }
 
@@ -540,8 +552,8 @@
       // Error display: swap innerHTML only for incorrect chars
       if (i < typed.length && typed[i] !== text[i]) {
         if (!span._err || span._wc !== typed[i]) {
-          var ch = text[i] === ' ' ? ' ' : text[i];
-          var wrong = typed[i] === ' ' ? '␣' : typed[i];
+          var ch = text[i] === ' ' ? ' ' : escapeHTML(text[i]);
+          var wrong = typed[i] === ' ' ? '␣' : escapeHTML(typed[i]);
           span.innerHTML = '<span class="typing-game__char-expected">' + ch +
             '</span><span class="typing-game__char-wrong">' + wrong + '</span>';
           span._err = true;
@@ -1584,10 +1596,15 @@
 
     // Make it focusable & listen for keys
     container.setAttribute('tabindex', '0');
-    container.addEventListener('keydown', handleKey);
+    if (_keydownHandler) container.removeEventListener('keydown', _keydownHandler);
+    _keydownHandler = handleKey;
+    container.addEventListener('keydown', _keydownHandler);
 
     // Focus / blur detection
-    container.addEventListener('focus', function () {
+    if (_focusHandler) container.removeEventListener('focus', _focusHandler);
+    if (_blurHandler) container.removeEventListener('blur', _blurHandler);
+
+    _focusHandler = function () {
       // Reject focus while the AI inline loader is active
       if (ai && ai.isInlineActive()) { container.blur(); return; }
       isFocused = true;
@@ -1615,9 +1632,9 @@
         if (!wpmInterval) wpmInterval = setInterval(updateStats, 200);
       }
       updateTextBackground(calcWPM());
-    });
+    };
 
-    container.addEventListener('blur', function () {
+    _blurHandler = function () {
       isFocused = false;
       container.classList.remove('typing-game--focused');
       container.classList.remove('typing-game--finished');
@@ -1645,12 +1662,17 @@
       // Faster transition when unfocusing
       if (textEl) textEl.style.transition = 'background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease';
       updateTextBackground(0);
-    });
+    };
+
+    container.addEventListener('focus', _focusHandler);
+    container.addEventListener('blur', _blurHandler);
 
     // Re-render on theme change to update trail/combo colors
-    new MutationObserver(function () {
+    if (_themeObserver) _themeObserver.disconnect();
+    _themeObserver = new MutationObserver(function () {
       if (!finished && typed.length > 0) render();
-    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    });
+    _themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
   /* ---- Initialisation ---- */

@@ -479,3 +479,31 @@ The typing game's AI mode uses a Cloudflare Worker as a proxy to the Google Gemi
 - Rain uses a **shared engine** (`rain-engine.js`) for both Worker and fallback paths — eliminates code duplication. Worker uses `importScripts`, main thread uses `<script>` tag.
 - Rain engine uses **swept collision** (`hitSurface`) checking previous frame position to never miss fast drops passing through thin surfaces.
 - Typing game uses **factory pattern + shared state object** for modular architecture: `createTypingGameAI(deps)` and `createTypingGameIntro(deps)` receive dependencies (translation fn, DOM getters, shared `aiState` object) and return public API objects. The `aiState` object is passed by reference so both the core IIFE and the AI module read/write the same state.
+
+## Known Issues & Technical Debt
+
+### Security
+
+- **innerHTML with data.js content (main.js):** `openProjectDetail()` uses `innerHTML` for `overview`, `objectifs`, `equipe`, `travailIndividuel`, `challenges` fields. Currently safe (data is hardcoded), but dangerous if data ever comes from an API/CMS. Should use `textContent` or escape HTML.
+- **No CSP meta tag:** No Content-Security-Policy header or meta tag. Consider adding a strict CSP.
+
+### Performance
+
+- **Zen mode full HTML rebuild:** `renderZen()` rebuilds the entire `innerHTML` on every keystroke (O(n) per key press). Normal mode uses DOM-reuse via `charSpans[]`, but zen doesn't. Could cause jank on weak devices during fast typing. Characters are escaped via `escapeHTML()`.
+- **Visualizer gradient recreation:** `createBarGradient()` creates 64 gradient objects per frame. Could be cached.
+
+### Memory / Cleanup
+
+- **Global listeners never removed (main.js):** ~30+ `scroll`, `resize`, `mousemove`, `mouseenter`, `mouseleave` listeners added in various `init*()` functions are never cleaned up. Acceptable for a single-page site but not ideal.
+
+### Consistency
+
+- **z-index conflicts:** `.music-player__playlist` (z-index 120) sits below `.modal-overlay` (200), so the playlist is hidden when a modal is open. `.scroll-progress` and `.modal-overlay` share z-index 200. (Intentionally kept — these cases never overlap in practice.)
+
+### Accessibility
+
+- **No `@media (prefers-reduced-motion: reduce)` in CSS:** Animations run regardless of user preference. JS detects it for the weak-device popup, but CSS animations/transitions are not suppressed. (Intentionally skipped — would conflict with JS-based animation enable/disable system.)
+
+### Browser Compatibility
+
+- **`:has()` selector without fallback:** Used in `typing-game-ai.css` and `typing-game-intro.css`. Not supported in Firefox <121 (Dec 2023) or older Safari. No JS fallback.
