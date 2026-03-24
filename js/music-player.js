@@ -196,6 +196,9 @@
     // Cover
     coverImg = document.createElement('img');
     coverImg.className = 'music-player__cover';
+    coverImg.decoding = 'async';
+    coverImg.width = 36;
+    coverImg.height = 36;
 
     // Info
     const info = document.createElement('div');
@@ -255,6 +258,7 @@
     volumeSlider.max = '1';
     volumeSlider.step = '0.01';
     volumeSlider.value = '0.5';
+    volumeSlider.setAttribute('aria-label', 'Volume');
     volumeSlider.setAttribute('tabindex', '-1');
 
     volWrap.appendChild(volumeIcon);
@@ -282,6 +286,10 @@
       cover.className = 'music-player__playlist-cover';
       cover.src = track.cover;
       cover.alt = track.title;
+      cover.loading = 'lazy';
+      cover.decoding = 'async';
+      cover.width = 40;
+      cover.height = 40;
 
       var info = document.createElement('div');
       info.className = 'music-player__playlist-info';
@@ -441,6 +449,10 @@
       cover.className = 'music-popup__playlist-cover';
       cover.src = track.cover;
       cover.alt = track.title;
+      cover.loading = 'lazy';
+      cover.decoding = 'async';
+      cover.width = 34;
+      cover.height = 34;
 
       var info = document.createElement('div');
       info.className = 'music-popup__playlist-info';
@@ -508,6 +520,9 @@
 
     popupCover = document.createElement('img');
     popupCover.className = 'music-popup__cover';
+    popupCover.decoding = 'async';
+    popupCover.width = 120;
+    popupCover.height = 120;
 
     var info = document.createElement('div');
     info.className = 'music-popup__info';

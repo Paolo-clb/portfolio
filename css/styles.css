@@ -1192,12 +1192,14 @@ section.hero {
 
 .scroll-progress__fill {
   height: 100%;
-  width: 0%;
+  width: 100%;
   border-radius: 0 2px 2px 0;
   background: linear-gradient(90deg, var(--clr-primary), var(--clr-accent), var(--clr-primary-hover));
   background-size: 200% 100%;
   animation: scroll-progress-shimmer 3s ease infinite;
-  transition: width 0.08s linear;
+  transform: scaleX(0);
+  transform-origin: left;
+  will-change: transform;
   box-shadow: 0 0 8px rgba(242, 162, 133, 0.5), 0 0 20px rgba(242, 162, 133, 0.2);
 }
 

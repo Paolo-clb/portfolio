@@ -76,6 +76,9 @@ function buildProjectCard(project) {
   img.src = project.image;
   img.alt = dataField(project, 'title');
   img.loading = 'lazy';
+  img.decoding = 'async';
+  img.width = 800;
+  img.height = 450;
   imgWrap.appendChild(img);
 
   // Body
@@ -260,6 +263,10 @@ function openProjectDetail(index) {
   const img = document.createElement('img');
   img.src = project.image;
   img.alt = dataField(project, 'title');
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.width = 800;
+  img.height = 450;
   imgWrap.appendChild(img);
   modal.appendChild(imgWrap);
 
@@ -422,6 +429,9 @@ function renderSkills() {
       iconEl.alt = skill.name;
       iconEl.className = 'skill-item__icon';
       iconEl.loading = 'lazy';
+      iconEl.decoding = 'async';
+      iconEl.width = 48;
+      iconEl.height = 48;
       iconEl.onerror = function () {
         var fb = createElement('span', 'skill-item__icon skill-item__icon--fallback', skill.name.charAt(0).toUpperCase());
         this.replaceWith(fb);
@@ -613,6 +623,9 @@ function openSkillPopup(skill, group, skillIndex) {
   icon.src = skill.icon;
   icon.alt = skill.name;
   icon.className = 'skill-popup__icon';
+  icon.decoding = 'async';
+  icon.width = 48;
+  icon.height = 48;
   icon.onerror = function () {
     var fb = createElement('span', 'skill-popup__icon skill-popup__icon--fallback', skill.name.charAt(0).toUpperCase());
     this.replaceWith(fb);
@@ -1033,8 +1046,8 @@ function initScrollProgress() {
       requestAnimationFrame(function () {
         var scrollTop = window.scrollY;
         var docH = document.documentElement.scrollHeight - window.innerHeight;
-        var pct = docH > 0 ? (scrollTop / docH) * 100 : 0;
-        fill.style.width = pct + '%';
+        var pct = docH > 0 ? scrollTop / docH : 0;
+        fill.style.transform = 'scaleX(' + pct + ')';
         ticking = false;
       });
     }
@@ -1725,6 +1738,7 @@ function initAnimationControls() {
   slider.max = '1';
   slider.step = '0.05';
   slider.value = '1';
+  slider.setAttribute('aria-label', 'Animation speed');
   slider.setAttribute('tabindex', '-1');
 
   var speedLabel = createElement('span', 'anim-speed__label', '1.00x');
@@ -1770,6 +1784,7 @@ function initAnimationControls() {
   var checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.checked = true;
+  checkbox.setAttribute('aria-label', 'Toggle animations');
   var track = createElement('span', 'anim-toggle__track');
   switchSlot.appendChild(checkbox);
   switchSlot.appendChild(track);

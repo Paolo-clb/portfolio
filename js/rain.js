@@ -230,7 +230,6 @@
      Uses the same full-quality RainEngine from rain-engine.js.
      ======================================================================= */
   function fbDraw() {
-    fbEngine.setSurfaces(querySurfaces());
     var result = fbEngine.draw();
     if (result === 'drained') {
       fbRafId = null;
