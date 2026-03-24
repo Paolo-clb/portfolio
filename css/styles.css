@@ -59,7 +59,13 @@ body {
 body::before {
   content: '';
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* Use 100lvh (largest viewport height) so the background does NOT jump
+     when mobile browsers show/hide the address bar. */
+  height: 100vh;
+  height: 100lvh;
   z-index: -1;
   background: url('../assets/images/background.jpg') no-repeat center center / cover;
 }
