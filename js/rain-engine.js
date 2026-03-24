@@ -28,6 +28,8 @@
     var RES          = 0.65;
     var CURSOR_R     = 22;
     var CORNER_R     = 12;
+    var EDGE_OFF_L   = 2;
+    var EDGE_OFF_R   = 2;
 
     /* ── State ──────────────────────────────────────────── */
     var speedFactor = 1;
@@ -150,7 +152,7 @@
       dp.sT   = s.top;
       dp.sB   = s.bottom;
       /* Position on the arc */
-      var cx = edge === -1 ? s.left + CORNER_R : s.right - CORNER_R;
+      var cx = (edge === -1 ? s.left + CORNER_R - EDGE_OFF_L : s.right - CORNER_R + EDGE_OFF_R);
       var cy = s.top + CORNER_R;
       dp.x    = cx + Math.cos(dp.ang) * CORNER_R * (edge === -1 ? -1 : 1);
       dp.y    = cy + Math.sin(dp.ang) * CORNER_R;
@@ -383,7 +385,7 @@
               dp.ang += dp.vy * sf;
               dp.vy += 0.0015 * sf; /* slight angular acceleration */
               if (dp.vy > 0.065) dp.vy = 0.065;
-              var cx0 = dp.edge === -1 ? rs.left + CORNER_R : rs.right - CORNER_R;
+              var cx0 = (dp.edge === -1 ? rs.left + CORNER_R - EDGE_OFF_L : rs.right - CORNER_R + EDGE_OFF_R);
               var cy0 = rs.top + CORNER_R;
               var cosA = Math.cos(dp.ang);
               var sinA = Math.sin(dp.ang);
@@ -395,13 +397,13 @@
               if (dp.ang >= 0) {
                 dp.phase = 1;
                 dp.y = rs.top + CORNER_R;
-                dp.x = (dp.edge === -1 ? rs.left : rs.right) + (dp.edge === -1 ? -0.5 : 0.5);
+                dp.x = (dp.edge === -1 ? rs.left - EDGE_OFF_L : rs.right + EDGE_OFF_R);
                 dp.vy = 0.35 + Math.random() * 0.5;
               }
             } else if (dp.phase === 1) {
               /* Phase 1: straight edge crawl */
               var edgeX = dp.edge === -1 ? rs.left : rs.right;
-              dp.x = edgeX + (dp.edge === -1 ? -0.5 : 0.5);
+              dp.x = edgeX + (dp.edge === -1 ? -EDGE_OFF_L : EDGE_OFF_R);
               dp.vy += 0.025 * sf;
               if (dp.vy > 2.8) dp.vy = 2.8;
               if (Math.random() < 1 - Math.pow(0.98, sf)) dp.vy *= 0.2;
@@ -420,7 +422,7 @@
               dp.ang += dp.vy * sf;
               dp.vy += 0.0018 * sf;
               if (dp.vy > 0.08) dp.vy = 0.08;
-              var cx2 = dp.edge === -1 ? rs.left + CORNER_R : rs.right - CORNER_R;
+              var cx2 = (dp.edge === -1 ? rs.left + CORNER_R - EDGE_OFF_L : rs.right - CORNER_R + EDGE_OFF_R);
               var cy2 = rs.bottom - CORNER_R;
               dp.x = cx2 + Math.cos(dp.ang) * CORNER_R * (dp.edge === -1 ? -1 : 1);
               dp.y = cy2 + Math.sin(dp.ang) * CORNER_R;
@@ -462,7 +464,7 @@
             if (!dp.free && rs && dp.phase === 0) {
               /* Tail follows the top arc */
               var tAng = dp.ang - dp.tail / CORNER_R;
-              var tcx = dp.edge === -1 ? rs.left + CORNER_R : rs.right - CORNER_R;
+              var tcx = (dp.edge === -1 ? rs.left + CORNER_R - EDGE_OFF_L : rs.right - CORNER_R + EDGE_OFF_R);
               var tcy = rs.top + CORNER_R;
               var tx = tcx + Math.cos(tAng) * CORNER_R * (dp.edge === -1 ? -1 : 1);
               var ty = tcy + Math.sin(tAng) * CORNER_R;
@@ -471,7 +473,7 @@
               /* Tail follows the bottom arc */
               var tAng2 = dp.ang - dp.tail / CORNER_R;
               if (tAng2 < 0) tAng2 = 0;
-              var tcx2 = dp.edge === -1 ? rs.left + CORNER_R : rs.right - CORNER_R;
+              var tcx2 = (dp.edge === -1 ? rs.left + CORNER_R - EDGE_OFF_L : rs.right - CORNER_R + EDGE_OFF_R);
               var tcy2 = rs.bottom - CORNER_R;
               var tx2 = tcx2 + Math.cos(tAng2) * CORNER_R * (dp.edge === -1 ? -1 : 1);
               var ty2 = tcy2 + Math.sin(tAng2) * CORNER_R;

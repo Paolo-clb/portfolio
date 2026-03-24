@@ -144,7 +144,7 @@
       vy: -(0.5 + Math.random() * 0.8),
       r: r, colIdx: colIdx,
       life: 1,
-      decay: 0.004 + Math.random() * 0.005,
+      decay: 0.0033 + Math.random() * 0.004,
       bodyAngle: (Math.random() - 0.5) * 0.4,
       bodyAngleTarget: 0,
       flapPhase: Math.random() * Math.PI * 2,
