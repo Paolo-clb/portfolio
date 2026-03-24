@@ -37,11 +37,17 @@
     window.addEventListener('resize', resize, { passive: true });
   }
 
+  var _lastW = 0;
+
   function resize() {
+    var w = window.innerWidth;
+    // Ignore height-only changes (mobile address bar show/hide)
+    if (_lastW && w === _lastW) return;
+    _lastW = w;
     dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = window.innerWidth; H = window.innerHeight;
+    W = w; H = canvas.clientHeight || window.innerHeight;
     canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    canvas.style.width = W + 'px'; canvas.style.height = '';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 

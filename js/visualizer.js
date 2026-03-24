@@ -359,10 +359,15 @@
   }
 
   /* ---- Resize handler ---- */
+  var _lastW = 0;
 
   function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    var w = window.innerWidth;
+    // Ignore height-only changes (mobile address bar show/hide)
+    if (_lastW && w === _lastW) return;
+    _lastW = w;
+    canvas.width  = w;
+    canvas.height = canvas.clientHeight || window.innerHeight;
     initParticles(canvas.width, canvas.height);
   }
 

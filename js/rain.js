@@ -146,9 +146,15 @@
   }
 
   /* ── Resize ────────────────────────────────────────────── */
+  var _lastW = 0;
+
   function resize() {
-    W = document.documentElement.clientWidth;
-    H = window.innerHeight;
+    var w = document.documentElement.clientWidth;
+    // Ignore height-only changes (mobile address bar show/hide)
+    if (_lastW && w === _lastW) return;
+    _lastW = w;
+    W = w;
+    H = canvas.clientHeight || window.innerHeight;
     dropCount = W < 600 ? MAX_DROPS_MOBILE : MAX_DROPS;
 
     if (useWorker) {
@@ -248,7 +254,6 @@
      ======================================================================= */
   function init() {
     W = document.documentElement.clientWidth;
-    H = window.innerHeight;
     dropCount = W < 600 ? MAX_DROPS_MOBILE : MAX_DROPS;
 
     // ── Create canvas ──
@@ -260,6 +265,10 @@
     var tint = document.querySelector('.bg-tint-overlay');
     if (tint) tint.after(canvas);
     else document.body.insertBefore(canvas, document.body.firstChild);
+
+    // Read stable height from CSS-sized element (100lvh) after it's in the DOM
+    H = canvas.clientHeight || window.innerHeight;
+    _lastW = W;
 
     // ── Try OffscreenCanvas + Worker ──
     var canUseWorker = typeof canvas.transferControlToOffscreen === 'function';
