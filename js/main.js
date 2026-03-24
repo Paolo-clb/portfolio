@@ -1015,7 +1015,7 @@ function initScrollProgress() {
   document.body.appendChild(bar);
 
   var ticking = false;
-  window.addEventListener('scroll', function () {
+  function update() {
     if (!ticking) {
       ticking = true;
       requestAnimationFrame(function () {
@@ -1026,7 +1026,12 @@ function initScrollProgress() {
         ticking = false;
       });
     }
-  }, { passive: true });
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  // Also update when page height changes (e.g. skills expand/collapse)
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(update).observe(document.documentElement);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1112,6 +1117,9 @@ function initScrollReveal() {
 
     // Skills-groups: stagger with ephemeral inline styles so
     // expand/collapse classes are never interfered with.
+    // Skip when animations are disabled — inline styles would override
+    // the CSS [data-animations="off"] rules and cause unwanted reveals.
+    if (document.documentElement.getAttribute('data-animations') === 'off') return;
     var groups = target.querySelectorAll('.skills-group:not(.skills-group--hidden)');
     var baseDelay = children.length * 70;
     groups.forEach(function (g, gi) {
@@ -1160,7 +1168,8 @@ function initScrollReveal() {
       if (entry.target.classList.contains('reveal--visible')) return;
 
       if (entry.isIntersecting && entry.intersectionRatio >= 0.12) {
-        if (scrollingDown) {
+        var animsOff = document.documentElement.getAttribute('data-animations') === 'off';
+        if (!animsOff && scrollingDown) {
           revealAnimated(entry.target);
         } else {
           revealInstant(entry.target);

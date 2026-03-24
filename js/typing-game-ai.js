@@ -385,6 +385,7 @@ window.createTypingGameAI = function (deps) {
 
   return {
     showPopup: showAiPopup,
-    isInlineActive: function () { return S.inlineActive; }
+    isInlineActive: function () { return S.inlineActive; },
+    isLoading: function () { return aiLoading; }
   };
 };

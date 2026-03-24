@@ -1752,6 +1752,13 @@
         var oldNav = navbarEl;
         var newNav = buildNavbar();
         if (oldNav.parentNode) oldNav.parentNode.replaceChild(newNav, oldNav);
+        // If AI is loading (popup or inline), only refresh navbar — don't reset the game
+        // or destroy the inline loader (the fetch callback will finish normally)
+        if (ai && (ai.isInlineActive() || ai.isLoading())) {
+          if (heroTitleEl && !introActive) heroTitleEl.innerHTML = t('heroTitleHTML');
+          window.scrollTo(0, scrollY);
+          return;
+        }
         // Refresh hints / stats / hero title
         startGame(false);
         // Restore scroll position (prevent jump to top)
