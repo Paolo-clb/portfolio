@@ -18,7 +18,7 @@
     /* ── Configuration ──────────────────────────────────── */
     var MAX_SPLASHES = 350;
     var MAX_RIPPLES  = 60;
-    var MAX_DRIPS    = 100;
+    var MAX_DRIPS    = 150;
     var DROP_MIN_SPD = 7;
     var DROP_MAX_SPD = 14;
     var DROP_W_MIN   = 1.2;
@@ -126,7 +126,7 @@
 
     function spawnDrip(hitX, surfIdx) {
       if (dripN >= MAX_DRIPS || draining) return;
-      if (Math.random() > 0.35) return;
+      if (Math.random() > 0.55) return;
       var s = surfs[surfIdx];
       if (!s) return;
       var surfH = s.bottom - s.top;
@@ -153,14 +153,14 @@
       dp.y    = cy + Math.sin(dp.ang) * CORNER_R;
       dp.vy   = 0.008 + Math.random() * 0.012; /* angular speed for arc phase */
       dp.vx   = 0;
-      dp.r    = 1.0 + Math.random() * 1.2;
+      dp.r    = 1.2 + Math.random() * 1.5;
       dp.lif  = 1;
-      dp.dec  = 1 / (110 + Math.random() * 90);
+      dp.dec  = 1 / (140 + Math.random() * 110);
       dp.free = false;
       dp.wobT = Math.random() * 6.28;
       dp.wobA = 0.15 + Math.random() * 0.25;
       dp.tail = 0;
-      dp.maxTail = 8 + Math.random() * 14;
+      dp.maxTail = 12 + Math.random() * 18;
     }
 
     /* ── Cursor hit test ────────────────────────────────── */
@@ -439,12 +439,12 @@
           }
 
           /* Draw bead + tail streak */
-          var da = dp.lif * 0.6;
+          var da = dp.lif * 0.75;
           var drawX = dp.x + (!dp.free && dp.phase === 1 ? dp.vx : 0);
           /* Tail — thin streak trailing behind the bead */
           if (dp.tail > 1.5) {
-            ctx.globalAlpha = da * 0.3;
-            ctx.lineWidth = dp.r * 0.45;
+            ctx.globalAlpha = da * 0.4;
+            ctx.lineWidth = dp.r * 0.6;
             ctx.beginPath();
             ctx.moveTo(drawX, dp.y);
             if (!dp.free && rs && dp.phase === 0) {

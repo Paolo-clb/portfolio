@@ -41,7 +41,6 @@
               box-shadow 0.4s ease,
               border-color 0.4s ease,
               backdrop-filter 0s ease 0.4s;
-  will-change: transform;
 }
 
 .project-card.reveal-child:hover {

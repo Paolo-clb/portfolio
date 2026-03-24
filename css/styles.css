@@ -1213,12 +1213,9 @@ section.hero {
               transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Only promote to composite layer when the element is actively entering —
-   avoids blowing Firefox's will-change memory budget (3× screen area)
-   by not promoting all sections at once. */
-.reveal:not(.reveal--visible) {
-  will-change: opacity, transform;
-}
+/* No will-change here — promoting all hidden sections at once blows
+   Firefox's memory budget (3× screen area = 314 976 px).  The browser
+   handles opacity + transform transitions efficiently without it. */
 
 .reveal--visible {
   opacity: 1;

@@ -51,8 +51,8 @@
 
   var bflyMap = new Map();   // Map<el, { resting: [], fracAccum, type }>
   var BFLY_CFG = {
-    project: { rate: 0.12, minMax: 5, maxMax: 8, rMin: 8, rRange: 6 },
-    skill:   { rate: 0.04, minMax: 2, maxMax: 4, rMin: 4, rRange: 3 }
+    project: { rate: 0.06, minMax: 5, maxMax: 8, rMin: 8, rRange: 6 },
+    skill:   { rate: 0.02, minMax: 2, maxMax: 4, rMin: 4, rRange: 3 }
   };
   var totalResting = 0;
   var bflyTicker = null;
@@ -140,18 +140,18 @@
     if (flyingBflies.length >= BFLY_FLY_MAX) return;
     flyingBflies.push({
       x: x, y: y,
-      vx: (Math.random() - 0.5) * 0.6,
-      vy: -(0.2 + Math.random() * 0.4),
+      vx: (Math.random() - 0.5) * 1.2,
+      vy: -(0.5 + Math.random() * 0.8),
       r: r, colIdx: colIdx,
       life: 1,
-      decay: 0.002 + Math.random() * 0.003,
+      decay: 0.004 + Math.random() * 0.005,
       bodyAngle: (Math.random() - 0.5) * 0.4,
       bodyAngleTarget: 0,
       flapPhase: Math.random() * Math.PI * 2,
-      flapSpeed: 3 + Math.random() * 2,
+      flapSpeed: 4 + Math.random() * 3,
       wobblePhase: Math.random() * Math.PI * 2,
-      wobbleFreq: 0.015 + Math.random() * 0.02,
-      wobbleAmp: 0.3 + Math.random() * 0.8
+      wobbleFreq: 0.02 + Math.random() * 0.03,
+      wobbleAmp: 0.5 + Math.random() * 1.0
     });
   }
 
@@ -204,8 +204,10 @@
         var cap = info.max;
         if (info.resting.length >= cap) return;
         if (!isElementVisible(el)) return;
-        info.fracAccum += cfg.rate * dt * speedFactor;
-        while (info.fracAccum >= 1 && info.resting.length < cap) {
+        // Per-element random jitter so butterflies don't spawn in sync
+        var jitter = 0.5 + Math.random();
+        info.fracAccum += cfg.rate * dt * speedFactor * jitter;
+        if (info.fracAccum >= 1 && info.resting.length < cap) {
           info.fracAccum -= 1;
           info.resting.push({
             rx: 0.1 + Math.random() * 0.8,
@@ -387,9 +389,9 @@
       fb.y += fb.vy * sf;
 
       // Gentle upward drift + random direction nudge
-      fb.vy -= 0.005 * sf;
-      fb.vx += (Math.random() - 0.5) * 0.02 * sf;
-      fb.vx *= 1 - 0.002 * sf;
+      fb.vy -= 0.01 * sf;
+      fb.vx += (Math.random() - 0.5) * 0.04 * sf;
+      fb.vx *= 1 - 0.003 * sf;
 
       // Body angle leans toward movement direction
       fb.bodyAngleTarget = fb.vx * 0.3;
