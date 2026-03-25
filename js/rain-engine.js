@@ -367,6 +367,10 @@
 
           var kill = false;
           var rs = (dp.sidx < surfs.length) ? surfs[dp.sidx] : null;
+          /* Fast-fade drips floating above their parent surface (scroll drift) */
+          if (rs && dp.y < rs.top - 8) {
+            dp.lif -= dp.dec * 4 * sf;
+          }
           if (dp.free) {
             /* Detached — falls freely with gravity */
             dp.vy += 0.35 * sf;

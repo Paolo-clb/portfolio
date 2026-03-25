@@ -147,6 +147,12 @@
 
   /* ── Resize ────────────────────────────────────────────── */
   var _lastW = 0;
+  var _tintEl = null;
+
+  function _stableH() {
+    if (canvas && canvas.offsetParent !== null) return canvas.clientHeight || window.innerHeight;
+    return (_tintEl && _tintEl.clientHeight) || window.innerHeight;
+  }
 
   function resize() {
     var w = document.documentElement.clientWidth;
@@ -154,7 +160,7 @@
     if (_lastW && w === _lastW) return;
     _lastW = w;
     W = w;
-    H = canvas.clientHeight || window.innerHeight;
+    H = _stableH();
     dropCount = W < 600 ? MAX_DROPS_MOBILE : MAX_DROPS;
 
     if (useWorker) {
@@ -263,11 +269,12 @@
     canvas.style.display = 'none';
 
     var tint = document.querySelector('.bg-tint-overlay');
+    _tintEl = tint;
     if (tint) tint.after(canvas);
     else document.body.insertBefore(canvas, document.body.firstChild);
 
-    // Read stable height from CSS-sized element (100lvh) after it's in the DOM
-    H = canvas.clientHeight || window.innerHeight;
+    // Read stable height from the tint overlay (always visible, height: 100lvh)
+    H = (tint && tint.clientHeight) || window.innerHeight;
     _lastW = W;
 
     // ── Try OffscreenCanvas + Worker ──
