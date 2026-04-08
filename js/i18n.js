@@ -97,6 +97,10 @@ window.SITE_I18N = {
     weakWarningDismiss: 'OK, compris',
     weakLagToast: 'Animations activées (performances réduites possibles)',
 
+    // Light Again
+    lightAgainPlay: 'Jouer à Light Again',
+    lightAgainTagline: 'Jeu Canvas 2D · En développement',
+
     // Misc
     closeLbl: 'Fermer',
     switchLang: 'English',
@@ -192,6 +196,10 @@ window.SITE_I18N = {
     weakWarningLag: 'You can still enable them, but this may cause lag.',
     weakWarningDismiss: 'OK, got it',
     weakLagToast: 'Animations enabled (reduced performance possible)',
+
+    // Light Again
+    lightAgainPlay: 'Play Light Again',
+    lightAgainTagline: 'Canvas 2D game · In development',
 
     // Misc
     closeLbl: 'Close',

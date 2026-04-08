@@ -1338,6 +1338,13 @@ function initCursorHalo() {
       }
       return;
     }
+    // Inside Light Again game modal: only close button gets hover; canvas/game area does not
+    if (e.target.closest('.light-again-modal')) {
+      if (e.target.closest('.modal__close')) {
+        halo.classList.add('cursor-halo--hover');
+      }
+      return;
+    }
     if (e.target.closest('.cv-section__viewer')) {
       targetOpacity = 0;
       ensureRunning();

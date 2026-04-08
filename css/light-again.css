@@ -1,0 +1,365 @@
+/* ==========================================================================
+   Light Again — Launcher + Modal
+   Fixed right-edge tab button + fullscreen canvas modal + kill-switch safety.
+   ========================================================================== */
+
+/* ============================================================
+   Launcher Button — Fixed right edge, vertical expandable tab
+   ============================================================ */
+
+/* Entry slide-in from right edge */
+@keyframes la-slide-in {
+  from { transform: translateY(-50%) translateX(48px); opacity: 0; }
+  to   { transform: translateY(-50%) translateX(0);    opacity: 1; }
+}
+
+.light-again-btn {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 90; /* below modals (200) and music playlist (120), above particles (50) */
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 44px; /* collapsed: tab strip only */
+  padding: 0;
+  background: rgba(16, 15, 24, 0.9);
+  border: 1.5px solid rgba(242, 162, 133, 0.22);
+  border-right: none; /* flush with screen edge */
+  border-radius: 8px 0 0 8px;
+  color: var(--clr-primary);
+  cursor: pointer;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: -2px 0 22px rgba(242, 162, 133, 0.1);
+  animation: la-slide-in 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transition:
+    width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.light-again-btn:hover,
+.light-again-btn:focus-visible {
+  width: 272px; /* panel (228px) + tab (44px) */
+  border-color: rgba(242, 162, 133, 0.48);
+  box-shadow: -4px 0 30px rgba(242, 162, 133, 0.2);
+  outline: none;
+}
+
+/* ---- Tab strip (always visible) ---- */
+
+.light-again-btn__tab {
+  width: 44px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 1.6rem 0;
+  min-height: 130px;
+  position: relative;
+  z-index: 1;
+}
+
+.light-again-btn__tab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(242, 162, 133, 0.04) 100%);
+  pointer-events: none;
+}
+
+.light-again-btn__icon {
+  width: 15px;
+  height: 15px;
+  fill: var(--clr-primary);
+  flex-shrink: 0;
+  opacity: 0.75;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.light-again-btn:hover .light-again-btn__icon {
+  transform: scale(1.3);
+  opacity: 1;
+}
+
+.light-again-btn__tab-text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--clr-text-muted);
+  user-select: none;
+  transition: color 0.3s ease;
+}
+
+.light-again-btn:hover .light-again-btn__tab-text {
+  color: var(--clr-primary);
+}
+
+/* ---- Expanding panel (hidden until hover) ---- */
+
+.light-again-btn__panel {
+  width: 228px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  opacity: 0;
+  transition: opacity 0.22s ease 0.14s;
+}
+
+.light-again-btn:hover .light-again-btn__panel,
+.light-again-btn:focus-visible .light-again-btn__panel {
+  opacity: 1;
+}
+
+/* ---- Placeholder image — glowing orb ---- */
+
+.light-again-btn__img-wrap {
+  width: 86px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 44% 56%, rgba(242, 162, 133, 0.72) 0%, rgba(242, 128, 128, 0.3) 28%, transparent 60%),
+    radial-gradient(circle at 70% 25%, rgba(255, 210, 180, 0.35) 0%, transparent 42%),
+    radial-gradient(circle at 20% 78%, rgba(191, 153, 160, 0.22) 0%, transparent 36%),
+    linear-gradient(155deg, #0b0919 0%, #1b1628 55%, #0d0b1a 100%);
+}
+
+/* Shimmer */
+.light-again-btn__img-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(220deg, rgba(255, 255, 255, 0.06) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+/* Placeholder marker */
+.light-again-btn__img-wrap::after {
+  content: '\2736'; /* ✶ */
+  position: absolute;
+  bottom: 6px;
+  right: 7px;
+  font-size: 0.58rem;
+  color: rgba(242, 162, 133, 0.45);
+  line-height: 1;
+}
+
+/* ---- Text info ---- */
+
+.light-again-btn__details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0.32rem;
+  padding: 0.8rem 0.8rem 0.8rem 0.75rem;
+  border-left: 1px solid rgba(242, 162, 133, 0.1);
+  text-align: left;
+}
+
+.light-again-btn__game-name {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--clr-text);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.light-again-btn__tagline {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--clr-text-muted);
+  line-height: 1.45;
+}
+
+/* ---- Hidden on touch smartphones ---- */
+
+@media (max-width: 600px) and (pointer: coarse) {
+  .light-again-btn {
+    display: none !important;
+  }
+}
+
+/* ---- Dark Theme ---- */
+
+[data-theme="dark"] .light-again-btn {
+  background: rgba(8, 6, 20, 0.92);
+  border-color: rgba(255, 78, 203, 0.2);
+  box-shadow: -2px 0 22px rgba(156, 39, 176, 0.12);
+}
+
+[data-theme="dark"] .light-again-btn:hover,
+[data-theme="dark"] .light-again-btn:focus-visible {
+  border-color: rgba(255, 78, 203, 0.5);
+  box-shadow: -4px 0 30px rgba(255, 78, 203, 0.22);
+}
+
+[data-theme="dark"] .light-again-btn__icon {
+  fill: #ff4ecb;
+}
+
+[data-theme="dark"] .light-again-btn:hover .light-again-btn__tab-text {
+  color: #ff4ecb;
+}
+
+[data-theme="dark"] .light-again-btn__img-wrap {
+  background:
+    radial-gradient(circle at 44% 56%, rgba(255, 78, 203, 0.6) 0%, rgba(156, 39, 176, 0.3) 32%, transparent 62%),
+    radial-gradient(circle at 70% 25%, rgba(140, 0, 255, 0.3) 0%, transparent 44%),
+    linear-gradient(155deg, #040310 0%, #100020 55%, #07000f 100%);
+}
+
+[data-theme="dark"] .light-again-btn__img-wrap::after {
+  color: rgba(255, 78, 203, 0.45);
+}
+
+[data-theme="dark"] .light-again-btn__details {
+  border-left-color: rgba(156, 39, 176, 0.15);
+}
+
+/* ---- Nature Theme ---- */
+
+[data-theme="nature"] .light-again-btn {
+  background: rgba(5, 10, 4, 0.92);
+  border-color: rgba(94, 184, 58, 0.22);
+  box-shadow: -2px 0 22px rgba(94, 184, 58, 0.1);
+}
+
+[data-theme="nature"] .light-again-btn:hover,
+[data-theme="nature"] .light-again-btn:focus-visible {
+  border-color: rgba(94, 184, 58, 0.5);
+  box-shadow: -4px 0 30px rgba(94, 184, 58, 0.22);
+}
+
+[data-theme="nature"] .light-again-btn__icon {
+  fill: var(--clr-primary);
+}
+
+[data-theme="nature"] .light-again-btn:hover .light-again-btn__tab-text {
+  color: var(--clr-primary);
+}
+
+[data-theme="nature"] .light-again-btn__img-wrap {
+  background:
+    radial-gradient(circle at 44% 56%, rgba(94, 184, 58, 0.55) 0%, rgba(74, 181, 214, 0.28) 32%, transparent 62%),
+    radial-gradient(circle at 70% 25%, rgba(123, 218, 78, 0.3) 0%, transparent 44%),
+    linear-gradient(155deg, #020701 0%, #0b1508 55%, #030a02 100%);
+}
+
+[data-theme="nature"] .light-again-btn__img-wrap::after {
+  color: rgba(94, 184, 58, 0.45);
+}
+
+[data-theme="nature"] .light-again-btn__details {
+  border-left-color: rgba(42, 69, 34, 0.2);
+}
+
+/* ============================================================
+   Modal Overlay
+   Extends .modal-overlay — adds game-specific stacking + entry animation.
+   ============================================================ */
+
+.light-again-overlay {
+  /* Sit above all other modals and the prefs zone */
+  z-index: 400;
+  /* Ensure centering is tight, no scroll */
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   Modal Panel
+   ============================================================ */
+
+.light-again-modal {
+  position: relative;
+  /* Near-fullscreen with breathing room */
+  width: 100%;
+  height: 100%;
+  max-width: min(1600px, calc(100vw - 2rem));
+  max-height: min(900px, calc(100vh - 2rem));
+  /* Opaque background for maximum game contrast */
+  background: #08080f;
+  border: 1px solid rgba(242, 162, 133, 0.12);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* Entry animation — matches projects / detail modal */
+  transform: translateY(22px) scale(0.97);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.light-again-overlay.modal-overlay--open .light-again-modal {
+  transform: translateY(0) scale(1);
+}
+
+/* Close button pinned top-right of the modal */
+.light-again-modal > .modal__close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 2;
+}
+
+/* ============================================================
+   Canvas
+   ============================================================ */
+
+.light-again-canvas {
+  display: block;
+  /* Fill the entire modal area */
+  width: 100%;
+  height: 100%;
+  /* Prevent cursor: text from canvas element default */
+  cursor: default;
+}
+
+/* ---- Dark Theme ---- */
+[data-theme="dark"] .light-again-modal {
+  background: #04040d;
+  border-color: rgba(156, 39, 176, 0.18);
+}
+
+[data-theme="dark"] .light-again-modal > .modal__close {
+  background: rgba(63, 81, 181, 0.15);
+  border-color: rgba(63, 81, 181, 0.25);
+}
+
+/* ---- Nature Theme ---- */
+[data-theme="nature"] .light-again-modal {
+  background: #030801;
+  border-color: rgba(42, 69, 34, 0.22);
+}
+
+[data-theme="nature"] .light-again-modal > .modal__close {
+  background: rgba(42, 69, 34, 0.15);
+  border-color: rgba(42, 69, 34, 0.25);
+}
+
+/* ---- Responsive: true fullscreen on small screens ---- */
+@media (max-width: 768px) {
+  .light-again-overlay {
+    padding: 0;
+  }
+
+  .light-again-modal {
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
+}
