@@ -141,7 +141,7 @@
 
     /* ── Dash ── */
     function tryDash() {
-      if (!player.dashAvailable || player.state === 'DASHING') return;
+      if (!player.dashAvailable || player.state === 'DASHING' || player.state === 'ATTACKING') return;
       var inp = getInputVector();
       var dx = inp.dx, dy = inp.dy;
       if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) {
@@ -161,7 +161,7 @@
 
     /* ── Torpedo attack ── */
     function tryAttack() {
-      if (!player.atkAvailable || player.state === 'ATTACKING') return;
+      if (!player.atkAvailable || player.state === 'ATTACKING' || player.state === 'DASHING') return;
       // Direction toward mouse click (world space)
       var cx = canvas.width / 2, cy = canvas.height / 2;
       var worldMx = mouseX - cx + camera.x;

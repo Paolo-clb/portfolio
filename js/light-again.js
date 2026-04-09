@@ -129,9 +129,14 @@
     // 3. Particles — restore speed
     if (typeof window.__setParticlesSpeed === 'function') window.__setParticlesSpeed(animSpeed);
 
-    // 4. Rain — restart if it was active
-    if (savedState.rainWasEnabled && typeof window.__rainSetEnabled === 'function') {
-      window.__rainSetEnabled(true);
+    // 4. Rain — always restore button visibility, then restart effect if it was active
+    if (typeof window.__rainSetEnabled === 'function') {
+      window.__rainSetEnabled(true); // un-hides the button (safe even if rain was off)
+    }
+    if (savedState.rainWasEnabled) {
+      // __rainSetEnabled(true) only shows the button; restart rain via toggle click
+      var rainBtn = document.querySelector('.rain-toggle');
+      if (rainBtn) rainBtn.click();
     }
 
     // 5. Visualizer — re-enable and unfreeze
