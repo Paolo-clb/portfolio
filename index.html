@@ -29,6 +29,7 @@
   <link rel="stylesheet" href="css/music-player.css?v=1" />
   <link rel="stylesheet" href="css/visualizer.css?v=1" />
   <link rel="stylesheet" href="css/rain.css?v=1" />
+  <link rel="stylesheet" href="css/light-again.css?v=1" />
   <!-- Restore saved theme + lang before any IIFE to avoid flash -->
   <script>(function(){var t=localStorage.getItem('portfolio_theme');if(t==='dark'||t==='nature'){document.documentElement.setAttribute('data-theme',t);var f={dark:'assets/images/favicon-dark.svg',nature:'assets/images/favicon-nature.svg'};var l=document.querySelector('link[rel="icon"]');if(l)l.href=f[t];var m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.content=t==='dark'?'#9c27b0':'#5eb83a';}var g=localStorage.getItem('portfolio_lang');if(g==='en')document.documentElement.lang='en';var a=localStorage.getItem('portfolio_animations');if(a==='off')document.documentElement.setAttribute('data-animations','off');if(!a){var w=false;if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)w=true;if(!w&&navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=2)w=true;if(!w&&navigator.deviceMemory&&navigator.deviceMemory<=2)w=true;if(w){window.__weakDeviceDetected=true;window.__weakDeviceAnimFlowActive=true;}}})()</script>
   <noscript><style>body{background:#100f18;color:#e8e3e4;font-family:'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;margin:0}body>*:not(noscript){display:none!important}</style><p>Ce site nécessite JavaScript pour fonctionner. Veuillez l'activer dans les paramètres de votre navigateur.</p></noscript>
@@ -214,5 +215,8 @@
   <script src="js/rain.js"></script>
   <script src="js/particles.js"></script>
   <script src="js/main.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script src="js/light-game.js"></script>
+  <script src="js/light-again.js"></script>
 </body>
 </html>

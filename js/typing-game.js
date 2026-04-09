@@ -1816,6 +1816,7 @@
       if (heroTitleEl) heroTitleEl.innerHTML = t('heroTitleHTML');
       buildGameDOM();
       startGame(true);
+      document.dispatchEvent(new CustomEvent('typinggameready'));
       return;
     }
 

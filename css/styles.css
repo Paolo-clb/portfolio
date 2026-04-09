@@ -1660,6 +1660,16 @@ body::before,
   transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
 }
 
+/* ---- Light Again game mode — larger ring ---- */
+.cursor-halo--game .cursor-halo__ring {
+  width: 38px;
+  height: 38px;
+}
+.cursor-halo--game.cursor-halo--hover .cursor-halo__ring {
+  width: 76px;
+  height: 76px;
+}
+
 /* ---- subtle breathing pulse ---- */
 @keyframes cursorPulse {
   0%, 100% { box-shadow: 0 0 6px rgba(242, 162, 133, 0.04); }

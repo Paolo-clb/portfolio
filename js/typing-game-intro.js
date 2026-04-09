@@ -226,6 +226,7 @@ window.createTypingGameIntro = function (deps) {
 
       setTimeout(function () {
         container.classList.remove('typing-game--reveal', 'typing-game--reveal-active');
+        document.dispatchEvent(new CustomEvent('typinggameready'));
       }, 700);
     }, 400);
   }
