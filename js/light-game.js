@@ -84,6 +84,7 @@
     var IFRAMES_DUR   = 800;      // ms — invincibility after taking damage
     var SPAWN_INTERVAL = 2000;    // ms — auto-spawn every 2s
     var SPAWN_DIST     = 600;     // px from player
+    var MAX_ENEMIES    = 40;      // hard cap — keeps O(n²) separation safe
     var SEPARATION_RADIUS = 30;   // px — soft collision radius between enemies
     var SEPARATION_FORCE  = 4.0;  // repulsion strength
     var REBOUND_IMP       = 14;   // attack rebound impulse (backward)
@@ -129,6 +130,157 @@
     var pcbThemeUsed = '';        // cache key to regenerate on theme change
     var _bgMat       = new DOMMatrix();  // reused for pattern transform
 
+    /* ================================================================
+       SPRITE CACHE — pre-rendered offscreen canvases (shadowBlur once)
+       Key format: 'r,g,b' for arrows; 'enemy' for the shared rusher sprite
+       Invalidated on theme change via _spriteTheme
+       ================================================================ */
+
+    var _spriteCache = {};
+    var _spriteTheme = '';
+    var _enemySprite = null;        // shared sprite for all rushers
+    var _enemySpriteSize = -1;     // track RUSHER_SIZE to detect changes
+
+    // Build one arrow sprite: full glow (shadowBlur) + additive layer + solid body,
+    // pre-rotated to angle=0 (tip pointing right). drawImage + rotate at runtime.
+    function _buildArrowSprite(r, g, b, s, blur, isDashAtk) {
+      var pad = blur + 4;
+      var W   = Math.ceil(s * 2.2 + pad * 2);
+      var H   = Math.ceil(s * 1.2 + pad * 2);
+      var oc  = document.createElement('canvas');
+      oc.width  = W;
+      oc.height = H;
+      var g2    = oc.getContext('2d');
+      var ox    = W / 2, oy = H / 2;  // origin within sprite
+
+      function path(g2, scale) {
+        g2.beginPath();
+        g2.moveTo(ox + s * scale,       oy);
+        g2.lineTo(ox - s * 0.6 * scale, oy - s * 0.55 * scale);
+        g2.lineTo(ox - s * 0.25 * scale, oy);
+        g2.lineTo(ox - s * 0.6 * scale, oy + s * 0.55 * scale);
+        g2.closePath();
+      }
+
+      // Outer corona for dash-attack
+      if (isDashAtk) {
+        g2.save();
+        g2.globalCompositeOperation = 'lighter';
+        g2.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',0.7)';
+        g2.shadowBlur  = 52;
+        path(g2, 1);
+        g2.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.04)';
+        g2.fill();
+        g2.shadowBlur = 0;
+        g2.restore();
+      }
+
+      // Neon glow (additive + shadowBlur — expensive, done only once)
+      g2.save();
+      g2.globalCompositeOperation = 'lighter';
+      g2.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',0.9)';
+      g2.shadowBlur  = blur;
+      path(g2, 1);
+      g2.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.35)';
+      g2.fill();
+      g2.shadowBlur = 0;
+      g2.restore();
+
+      // Solid body
+      path(g2, 1);
+      g2.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+      g2.fill();
+
+      return { canvas: oc, ox: ox, oy: oy };
+    }
+
+    // Build the shared enemy sprite (glow triangle + solid triangle, facing right)
+    function _buildEnemySprite(size) {
+      var gs  = size * 1.6;
+      var pad = 4;
+      var W   = Math.ceil(gs * 2 + pad * 2);
+      var H   = Math.ceil(gs * 0.5 + pad * 2);
+      var oc  = document.createElement('canvas');
+      oc.width  = W;
+      oc.height = H;
+      var g2    = oc.getContext('2d');
+      var ox    = W / 2, oy = H / 2;
+
+      // Additive glow triangle (oversized)
+      g2.save();
+      g2.globalCompositeOperation = 'lighter';
+      g2.beginPath();
+      g2.moveTo(ox + gs,          oy);
+      g2.lineTo(ox - gs * 0.5,   oy - gs * 0.22);
+      g2.lineTo(ox - gs * 0.5,   oy + gs * 0.22);
+      g2.closePath();
+      g2.fillStyle = 'rgba(255,0,68,0.18)';
+      g2.fill();
+      g2.restore();
+
+      // Solid body
+      g2.beginPath();
+      g2.moveTo(ox + size,          oy);
+      g2.lineTo(ox - size * 0.5,   oy - size * 0.18);
+      g2.lineTo(ox - size * 0.5,   oy + size * 0.18);
+      g2.closePath();
+      g2.fillStyle = '#FF0044';
+      g2.fill();
+
+      return { canvas: oc, ox: ox, oy: oy };
+    }
+
+    function _getSpriteKey(r, g, b, isDashAtk) {
+      return r + ',' + g + ',' + b + (isDashAtk ? ',da' : '');
+    }
+
+    function getArrowSprite(r, g, b, isDashAtk) {
+      var curTheme = document.documentElement.getAttribute('data-theme') || 'light';
+      if (curTheme !== _spriteTheme) {
+        _spriteCache = {};
+        _enemySprite = null;
+        _spriteTheme = curTheme;
+      }
+      var key = _getSpriteKey(r, g, b, isDashAtk);
+      if (!_spriteCache[key]) {
+        var s    = isDashAtk ? SIZE * 1.35 : SIZE;
+        var blur = isDashAtk ? 28 : 18;
+        _spriteCache[key] = _buildArrowSprite(r, g, b, s, blur, isDashAtk);
+      }
+      return _spriteCache[key];
+    }
+
+    function getEnemySprite() {
+      var curTheme = document.documentElement.getAttribute('data-theme') || 'light';
+      if (!_enemySprite || _enemySpriteSize !== RUSHER_SIZE || curTheme !== _spriteTheme) {
+        _enemySprite = _buildEnemySprite(RUSHER_SIZE);
+        _enemySpriteSize = RUSHER_SIZE;
+        // _spriteTheme updated in getArrowSprite or here:
+        if (curTheme !== _spriteTheme) { _spriteCache = {}; _spriteTheme = curTheme; }
+      }
+      return _enemySprite;
+    }
+
+    // Pre-warm all arrow sprite variants so first frames don't stutter
+    function prewarmSprites() {
+      var colors = getColors();
+      var variants = [
+        colors.cyan,        // MOVING, dash ready
+        colors.yellow,      // MOVING, dash on cooldown
+        [255, 30,  60],     // ATTACKING
+        [255, 20, 200],     // DASH_ATTACKING (normal)
+        colors.ghostViolet, // DASHING
+        [80,  80,  90],     // RECOVERY whiff
+      ];
+      for (var vi = 0; vi < variants.length; vi++) {
+        var c = variants[vi];
+        getArrowSprite(c[0], c[1], c[2], false);
+      }
+      // Dash-attack magenta corona variant
+      getArrowSprite(255, 20, 200, true);
+      getEnemySprite();
+    }
+
     var gameTime = 0;
     var prevTs   = null;
     var lastW    = 0;
@@ -147,61 +299,93 @@
     }
 
     /* ================================================================
-       PARTICLE MANAGER (additive glow explosions)
+       PARTICLE MANAGER — object pool (no GC allocations per explosion)
        ================================================================ */
 
-    var particles = [];
     var MAX_PARTICLES = 200;
+
+    // Pre-allocate fixed pool — no allocations at runtime
+    var _particlePool = (function () {
+      var pool = [];
+      for (var i = 0; i < MAX_PARTICLES; i++) {
+        pool.push({ active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0,
+                    decay: 0, size: 0, r: 0, g: 0, b: 0, friction: 0 });
+      }
+      return pool;
+    }());
 
     function spawnExplosion(x, y, color, count) {
       var n = count || 25;
-      for (var i = 0; i < n; i++) {
-        var angle = Math.random() * Math.PI * 2;
-        var speed = 120 + Math.random() * 280;
-        var sz    = 1.5 + Math.random() * 3;
-        particles.push({
-          x: x, y: y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          life: 1.0,
-          decay: 1.8 + Math.random() * 1.2,
-          size: sz,
-          r: color[0], g: color[1], b: color[2],
-          friction: 0.94,
-        });
+      var spawned = 0;
+      // First pass: fill inactive slots
+      for (var i = 0; i < MAX_PARTICLES && spawned < n; i++) {
+        var p = _particlePool[i];
+        if (!p.active) {
+          var angle = Math.random() * Math.PI * 2;
+          var speed = 120 + Math.random() * 280;
+          p.active   = true;
+          p.x        = x;
+          p.y        = y;
+          p.vx       = Math.cos(angle) * speed;
+          p.vy       = Math.sin(angle) * speed;
+          p.life     = 1.0;
+          p.decay    = 1.8 + Math.random() * 1.2;
+          p.size     = 1.5 + Math.random() * 3;
+          p.r        = color[0];
+          p.g        = color[1];
+          p.b        = color[2];
+          p.friction = 0.94;
+          spawned++;
+        }
       }
-      // Hard cap — trim oldest when over budget
-      if (particles.length > MAX_PARTICLES) {
-        particles.splice(0, particles.length - MAX_PARTICLES);
+      // Second pass: reuse oldest active slots if pool was full
+      if (spawned < n) {
+        for (var i = 0; i < MAX_PARTICLES && spawned < n; i++) {
+          var p = _particlePool[i];
+          var angle = Math.random() * Math.PI * 2;
+          var speed = 120 + Math.random() * 280;
+          p.active   = true;
+          p.x        = x;
+          p.y        = y;
+          p.vx       = Math.cos(angle) * speed;
+          p.vy       = Math.sin(angle) * speed;
+          p.life     = 1.0;
+          p.decay    = 1.8 + Math.random() * 1.2;
+          p.size     = 1.5 + Math.random() * 3;
+          p.r        = color[0];
+          p.g        = color[1];
+          p.b        = color[2];
+          p.friction = 0.94;
+          spawned++;
+        }
       }
     }
 
     function updateParticles(dt) {
-      for (var i = particles.length - 1; i >= 0; i--) {
-        var p = particles[i];
+      for (var i = 0; i < MAX_PARTICLES; i++) {
+        var p = _particlePool[i];
+        if (!p.active) continue;
         p.vx *= p.friction;
         p.vy *= p.friction;
         p.x  += p.vx * dt;
         p.y  += p.vy * dt;
         p.life -= p.decay * dt;
-        if (p.life <= 0) {
-          // Swap-and-pop: O(1) removal instead of O(n) splice
-          particles[i] = particles[particles.length - 1];
-          particles.pop();
-        }
+        if (p.life <= 0) p.active = false;
       }
     }
 
     function drawParticles() {
-      if (particles.length === 0) return;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      for (var i = 0; i < particles.length; i++) {
-        var p = particles[i];
-        var a = p.life * 0.9;
-        ctx.fillStyle = 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + a.toFixed(3) + ')';
-        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      for (var i = 0; i < MAX_PARTICLES; i++) {
+        var p = _particlePool[i];
+        if (!p.active) continue;
+        ctx.globalAlpha = p.life * 0.9;
+        ctx.fillStyle   = 'rgb(' + p.r + ',' + p.g + ',' + p.b + ')';
+        var px = p.x + _drawOffX, py = p.y + _drawOffY;
+        ctx.fillRect(px - p.size / 2, py - p.size / 2, p.size, p.size);
       }
+      ctx.globalAlpha = 1;
       ctx.restore();
     }
 
@@ -216,6 +400,7 @@
     var RUSHER_SIZE  = 14;       // half-length of the thin triangle
 
     function spawnRusher() {
+      if (enemies.length >= MAX_ENEMIES) return;  // hard cap
       var angle = Math.random() * Math.PI * 2;
       var ex = player.x + Math.cos(angle) * SPAWN_DIST;
       var ey = player.y + Math.sin(angle) * SPAWN_DIST;
@@ -292,55 +477,37 @@
       }
     }
 
+    // _drawOffX/_drawOffY: camera offset for setTransform batching, set in draw()
+    var _drawOffX = 0, _drawOffY = 0;
+
     function drawEnemies() {
+      if (enemies.length === 0) return;
+      var esp = getEnemySprite();
+      var eSpr = esp.canvas;
+      var eOx  = esp.ox, eOy = esp.oy;
+
       for (var i = 0; i < enemies.length; i++) {
         var e = enemies[i];
 
-        // Glitch trail
+        // Glitch trail — setTransform, no save/restore
         for (var ti = 0; ti < e.trail.length; ti++) {
           var tr = e.trail[ti];
-          ctx.save();
           ctx.globalAlpha = tr.a * 0.4;
-          ctx.translate(tr.x, tr.y);
-          ctx.rotate(tr.angle);
-          ctx.beginPath();
-          ctx.moveTo(e.size, 0);
-          ctx.lineTo(-e.size * 0.5, -e.size * 0.18);
-          ctx.lineTo(-e.size * 0.5,  e.size * 0.18);
-          ctx.closePath();
-          ctx.fillStyle = '#FF0044';
-          ctx.fill();
-          ctx.restore();
+          var tc = Math.cos(tr.angle), ts = Math.sin(tr.angle);
+          ctx.setTransform(tc, ts, -ts, tc, tr.x + _drawOffX, tr.y + _drawOffY);
+          ctx.drawImage(eSpr, -eOx, -eOy);
         }
 
         // Main body
-        ctx.save();
-        ctx.translate(e.x, e.y);
-        ctx.rotate(e.angle);
-
-        // Cheap glow (oversized triangle, additive, NO shadowBlur)
-        ctx.globalCompositeOperation = 'lighter';
-        var gs = e.size * 1.6;
-        ctx.beginPath();
-        ctx.moveTo(gs, 0);
-        ctx.lineTo(-gs * 0.5, -gs * 0.22);
-        ctx.lineTo(-gs * 0.5,  gs * 0.22);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(255,0,68,0.18)';
-        ctx.fill();
-        ctx.globalCompositeOperation = 'source-over';
-
-        // Solid body
-        ctx.beginPath();
-        ctx.moveTo(e.size, 0);
-        ctx.lineTo(-e.size * 0.5, -e.size * 0.18);
-        ctx.lineTo(-e.size * 0.5,  e.size * 0.18);
-        ctx.closePath();
-        ctx.fillStyle = '#FF0044';
-        ctx.fill();
-
-        ctx.restore();
+        var c = Math.cos(e.angle), s = Math.sin(e.angle);
+        ctx.globalAlpha = 1;
+        ctx.setTransform(c, s, -s, c, e.x + _drawOffX, e.y + _drawOffY);
+        ctx.drawImage(eSpr, -eOx, -eOy);
       }
+
+      // Reset transform
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1;
     }
 
     /* ================================================================
@@ -849,8 +1016,9 @@
       ctx.fillRect(0, 0, w, h);
     }
 
-    /* ── Ghost trail — cyan→violet for dash, magenta→orange for dash-attack ── */
+    /* ── Ghost trail — setTransform, no save/restore ── */
     function drawGhosts(colors) {
+      if (ghosts.length === 0) return;
       for (var gi = 0; gi < ghosts.length; gi++) {
         var gh = ghosts[gi];
         var cc = gh.c0 || colors.ghostCyan;
@@ -860,90 +1028,73 @@
         var cr = Math.round(cc[0] + (cv[0] - cc[0]) * t);
         var cg = Math.round(cc[1] + (cv[1] - cc[1]) * t);
         var cb = Math.round(cc[2] + (cv[2] - cc[2]) * t);
-        ctx.save();
+
         ctx.globalAlpha = gh.alpha * 0.6;
-        ctx.translate(gh.x, gh.y);
-        ctx.rotate(gh.angle);
+        var gc = Math.cos(gh.angle), gs2 = Math.sin(gh.angle);
+        ctx.setTransform(gc, gs2, -gs2, gc, gh.x + _drawOffX, gh.y + _drawOffY);
+
         var s = gh.size;
         ctx.beginPath();
-        ctx.moveTo(s, 0);                        // tip
-        ctx.lineTo(-s * 0.6, -s * 0.55);         // top wing
-        ctx.lineTo(-s * 0.25, 0);                 // notch
-        ctx.lineTo(-s * 0.6,  s * 0.55);          // bottom wing
+        ctx.moveTo(s, 0);
+        ctx.lineTo(-s * 0.6, -s * 0.55);
+        ctx.lineTo(-s * 0.25, 0);
+        ctx.lineTo(-s * 0.6,  s * 0.55);
         ctx.closePath();
         ctx.fillStyle = 'rgb(' + cr + ',' + cg + ',' + cb + ')';
         ctx.fill();
-        ctx.restore();
       }
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1;
     }
 
-    /* ── Arrow (the player) — neon glow via shadowBlur + lighter ── */
+    /* ── Arrow (the player) — drawImage from sprite cache ── */
     function drawArrow(colors) {
       // Invincibility blink: skip drawing every other ~80ms
       if (player.invincible && Math.floor(gameTime * 12.5) % 2 === 0) return;
 
       var clr;
-      if (player.state === 'DASH_ATTACKING') {
-        clr = [255, 20, 200];                 // hot magenta (dash+attack fused)
+      var isDashAtk = player.state === 'DASH_ATTACKING';
+      if (isDashAtk) {
+        clr = [255, 20, 200];
       } else if (player.state === 'ATTACKING') {
-        clr = [255, 30, 60];                  // neon red during torpedo
+        clr = [255, 30, 60];
       } else if (player.state === 'DASHING') {
-        clr = colors.ghostViolet;             // violet (same as ghost echoes)
+        clr = colors.ghostViolet;
       } else if (player.state === 'RECOVERY' && player.recoveryWhiff) {
-        clr = [80, 80, 90];                   // desaturated grey — exhausted whiff
+        clr = [80, 80, 90];
       } else {
-        // MOVING + normal RECOVERY: cyan if dash ready, yellow if not
         clr = player.dashAvailable ? colors.cyan : colors.yellow;
       }
+
       var r = clr[0], g = clr[1], b = clr[2];
-      var isDashAtk = player.state === 'DASH_ATTACKING';
       var isWhiffRecovery = player.state === 'RECOVERY' && player.recoveryWhiff;
+      var ac = Math.cos(player.angle), as2 = Math.sin(player.angle);
 
-      ctx.save();
-      ctx.translate(player.x, player.y);
-      ctx.rotate(player.angle);
-
-      // Arrow size: enlarged during dash attack for wider area feel
-      var s = isDashAtk ? SIZE * 1.35 : SIZE;
-      function arrowPath() {
+      if (isWhiffRecovery) {
+        // No glow — draw solid grey shape only via setTransform
+        ctx.setTransform(ac, as2, -as2, ac, player.x + _drawOffX, player.y + _drawOffY);
+        var s = SIZE;
         ctx.beginPath();
-        ctx.moveTo(s, 0);                          // tip
-        ctx.lineTo(-s * 0.6, -s * 0.55);           // top wing
-        ctx.lineTo(-s * 0.25, 0);                   // notch
-        ctx.lineTo(-s * 0.6,  s * 0.55);            // bottom wing
+        ctx.moveTo(s, 0);
+        ctx.lineTo(-s * 0.6, -s * 0.55);
+        ctx.lineTo(-s * 0.25, 0);
+        ctx.lineTo(-s * 0.6,  s * 0.55);
         ctx.closePath();
-      }
-
-      // Dash attack: wide outer corona before the normal glow
-      if (isDashAtk) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',0.7)';
-        ctx.shadowBlur  = 52;
-        arrowPath();
-        ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.05)';
+        ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
         ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.globalCompositeOperation = 'source-over';
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        return;
       }
 
-      // Neon glow layer (additive blend + shadowBlur) — suppressed during whiff
-      if (!isWhiffRecovery) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',0.9)';
-        ctx.shadowBlur  = isDashAtk ? 28 : 18;
-        arrowPath();
-        ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.35)';
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.globalCompositeOperation = 'source-over';
-      }
-
-      // Solid arrow body
-      arrowPath();
-      ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
-      ctx.fill();
-
-      ctx.restore();
+      // Normal/dash-atk: cached sprite with shadowBlur pre-baked
+      // Use 'lighter' composite so the glow additively blends against the background
+      var spr = getArrowSprite(r, g, b, isDashAtk);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.setTransform(ac, as2, -as2, ac, player.x + _drawOffX, player.y + _drawOffY);
+      ctx.drawImage(spr.canvas, -spr.ox, -spr.oy);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = 'source-over';
     }
 
     /* ================================================================
@@ -969,16 +1120,14 @@
       // Background (screen space)
       drawBackground(w, h, colors);
 
-      // Camera transform (world space)
-      ctx.save();
-      ctx.translate(cx - camera.x, cy - camera.y);
+      // Set camera offset for absolute setTransform used in drawGhosts/drawEnemies/drawArrow/drawParticles
+      _drawOffX = cx - camera.x;
+      _drawOffY = cy - camera.y;
 
       drawGhosts(colors);
       drawEnemies();
       drawArrow(colors);
       drawParticles();
-
-      ctx.restore();
 
       // HUD: dash cooldown bar (screen space, bottom-center)
       if (!player.dashAvailable) {
@@ -1031,7 +1180,8 @@
       lastH    = 0;
       ghosts   = [];
       keys     = {};
-      particles = [];
+      // Reset particle pool (mark all inactive)
+      for (var pi = 0; pi < MAX_PARTICLES; pi++) _particlePool[pi].active = false;
       enemies   = [];
       spawnTimer = 0;
       globalTimeScale = 1.0;
@@ -1073,6 +1223,9 @@
       document.addEventListener('keydown',   onKeyDown);
       document.addEventListener('keyup',     onKeyUp);
 
+      // Pre-render all arrow and enemy sprites so first frames don't stutter
+      prewarmSprites();
+
       rafId = requestAnimationFrame(loop);
     }
 
@@ -1086,7 +1239,7 @@
       document.removeEventListener('keyup',     onKeyUp);
       keys       = {};
       enemies    = [];
-      particles  = [];
+      for (var pi = 0; pi < MAX_PARTICLES; pi++) _particlePool[pi].active = false;
     }
 
     function pause() {
