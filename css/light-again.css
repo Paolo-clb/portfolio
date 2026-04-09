@@ -345,9 +345,12 @@
   border-color: rgba(156, 39, 176, 0.18);
 }
 
-[data-theme="dark"] .light-again-modal > .modal__close {
-  background: rgba(63, 81, 181, 0.15);
-  border-color: rgba(63, 81, 181, 0.25);
+/* Hover fix: dark-theme button overrides have higher specificity than :hover — spell them out */
+[data-theme="dark"] .light-again-modal .modal__close:hover,
+[data-theme="dark"] .light-again-help-btn:hover {
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+  border-color: transparent;
 }
 
 /* ---- Nature Theme ---- */
@@ -356,9 +359,12 @@
   border-color: rgba(42, 69, 34, 0.22);
 }
 
-[data-theme="nature"] .light-again-modal > .modal__close {
-  background: rgba(42, 69, 34, 0.15);
-  border-color: rgba(42, 69, 34, 0.25);
+/* Hover fix: same specificity issue for nature theme */
+[data-theme="nature"] .light-again-modal .modal__close:hover,
+[data-theme="nature"] .light-again-help-btn:hover {
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+  border-color: transparent;
 }
 
 /* ---- Responsive: true fullscreen on small screens ---- */
@@ -373,4 +379,148 @@
     border-radius: 0;
     border: none;
   }
+}
+
+/* ============================================================
+   Help Button (? — to the left of the × close button)
+   ============================================================ */
+
+.light-again-help-btn {
+  position: absolute;
+  top: 0.85rem;
+  right: calc(0.85rem + 2.5rem + 0.5rem); /* close width + gap */
+  z-index: 2;
+  background: rgba(191, 153, 160, 0.12);
+  border: 1px solid rgba(191, 153, 160, 0.2);
+  color: var(--clr-text);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.light-again-help-btn:hover {
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+  transform: scale(1.1);
+}
+
+/* ============================================================
+   Help Popup Overlay (covers the game canvas inside .light-again-modal)
+   ============================================================ */
+
+.light-again-help-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 16, 0.82);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  cursor: pointer; /* clickable backdrop */
+}
+
+.light-again-help-overlay--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---- Popup panel ---- */
+
+.light-again-help-popup {
+  position: relative;
+  background: rgba(12, 10, 24, 0.97);
+  border: 1px solid rgba(242, 162, 133, 0.25);
+  border-radius: var(--radius);
+  padding: 2rem 2.2rem 1.6rem;
+  max-width: min(480px, calc(100% - 2rem));
+  width: 100%;
+  transform: translateY(16px) scale(0.97);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.light-again-help-overlay--visible .light-again-help-popup {
+  transform: translateY(0) scale(1);
+}
+
+/* Close × inside popup */
+.light-again-help-popup__close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+}
+
+/* Title */
+.light-again-help-popup__title {
+  margin: 0 0 1.4rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+/* Controls grid (dt = action name, dd = description) */
+.light-again-help-popup__list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem 1rem;
+  margin: 0 0 1.6rem;
+  align-items: start;
+}
+
+.light-again-help-popup__action {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  border-right: 2px solid currentColor;
+  padding-right: 0.6rem;
+  line-height: 1.5;
+}
+
+.light-again-help-popup__desc {
+  font-size: 0.82rem;
+  color: var(--clr-text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Resume button — removed; kept selector for legacy safety */
+.light-again-help-popup__resume { display: none; }
+
+/* ---- Dark theme overrides ---- */
+[data-theme="dark"] .light-again-help-btn {
+  background: rgba(63, 81, 181, 0.15);
+  border-color: rgba(63, 81, 181, 0.25);
+}
+
+[data-theme="dark"] .light-again-help-popup {
+  background: rgba(8, 6, 20, 0.97);
+  border-color: rgba(156, 39, 176, 0.32);
+}
+
+/* ---- Nature theme overrides ---- */
+[data-theme="nature"] .light-again-help-btn {
+  background: rgba(42, 69, 34, 0.15);
+  border-color: rgba(42, 69, 34, 0.28);
+}
+
+[data-theme="nature"] .light-again-help-popup {
+  background: rgba(5, 10, 3, 0.97);
+  border-color: rgba(42, 69, 34, 0.32);
 }

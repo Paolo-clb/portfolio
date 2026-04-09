@@ -1255,6 +1255,7 @@ function initCursorHalo() {
   var currentOpacity = 0;
   var targetOpacity  = 0;
   var opacitySpeed   = 0.07;
+  var lightGameInterval = null;  // polling interval for atkReady hover check
 
   // Lerp speeds
   var lerpRing = 0.15;
@@ -1326,6 +1327,20 @@ function initCursorHalo() {
     mouseY = e.clientY;
   }, { passive: true });
 
+  // ---- game canvas atkReady polling (50 ms interval — stable regardless of mouse movement) ----
+  function startLightGameHoverPoll() {
+    if (lightGameInterval) return;
+    lightGameInterval = setInterval(function () {
+      var ready = typeof window.__lightGameAtkReady === 'function' && window.__lightGameAtkReady();
+      if (ready) { halo.classList.add('cursor-halo--hover'); }
+      else       { halo.classList.remove('cursor-halo--hover'); }
+    }, 50);
+  }
+  function stopLightGameHoverPoll() {
+    if (lightGameInterval) { clearInterval(lightGameInterval); lightGameInterval = null; }
+    halo.classList.remove('cursor-halo--hover');
+  }
+
   // ---- hover on interactive elements ----
   var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay, .music-popup-overlay, .weak-popup-overlay, .anim-toggle__track, .anim-toggle';
   var modalAllowedSelector = 'button, .modal__close, a, .btn';
@@ -1338,10 +1353,16 @@ function initCursorHalo() {
       }
       return;
     }
-    // Inside Light Again game modal: only close button gets hover; canvas/game area does not
+    // Inside Light Again game modal
     if (e.target.closest('.light-again-modal')) {
-      if (e.target.closest('.modal__close')) {
+      halo.classList.add('cursor-halo--game');
+      if (e.target.closest('button')) {
+        stopLightGameHoverPoll();
         halo.classList.add('cursor-halo--hover');
+      } else if (e.target.closest('.light-again-canvas')) {
+        startLightGameHoverPoll();
+      } else {
+        stopLightGameHoverPoll();
       }
       return;
     }
@@ -1385,6 +1406,17 @@ function initCursorHalo() {
     if (e.target.closest(interactiveSelector) || e.target.closest(modalAllowedSelector)) {
       halo.classList.remove('cursor-halo--hover');
     }
+    // Leaving the game canvas → stop poll (cursor-halo--game stays; still inside modal)
+    if (e.target.closest('.light-again-canvas') &&
+        !(e.relatedTarget && e.relatedTarget.closest('.light-again-canvas'))) {
+      stopLightGameHoverPoll();
+    }
+    // Leaving the modal entirely → stop poll + remove game class
+    if (e.target.closest('.light-again-modal') &&
+        !(e.relatedTarget && e.relatedTarget.closest('.light-again-modal'))) {
+      stopLightGameHoverPoll();
+      halo.classList.remove('cursor-halo--game');
+    }
     if (e.target.closest('.cv-section__viewer')) {
       targetOpacity = 1;
       ensureRunning();
@@ -1415,6 +1447,11 @@ function initCursorHalo() {
              node.classList.contains('music-popup-overlay') ||
              node.classList.contains('weak-popup-overlay'))) {
           halo.classList.remove('cursor-halo--hover');
+          // Clean up game-mode state when the light-again modal is removed from DOM
+          if (node.classList.contains('light-again-overlay')) {
+            if (lightGameInterval) { clearInterval(lightGameInterval); lightGameInterval = null; }
+            halo.classList.remove('cursor-halo--game');
+          }
         }
       });
       // Case 2: projects/detail modals stay in DOM but lose modal-overlay--open class

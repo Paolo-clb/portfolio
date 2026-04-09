@@ -7,11 +7,12 @@
 (function () {
   'use strict';
 
-  var btnEl       = null;  // Hero "Play Light Again" button
-  var overlayEl   = null;  // Active modal overlay (null when closed)
-  var trapCleanup = null;  // Focus-trap cleanup function
-  var savedState  = null;  // Snapshot saved by killPerformance()
-  var activeGame  = null;  // Running game instance (createLightGame)
+  var btnEl        = null;  // Hero "Play Light Again" button
+  var overlayEl    = null;  // Active modal overlay (null when closed)
+  var trapCleanup  = null;  // Focus-trap cleanup function
+  var savedState   = null;  // Snapshot saved by killPerformance()
+  var activeGame   = null;  // Running game instance (createLightGame)
+  var helpPopupEl  = null;  // Help popup (null when hidden)
 
   /* ---- i18n helper ---- */
   function t(key) {
@@ -148,6 +149,125 @@
   }
 
   /* ================================================================
+     HELP POPUP
+     ================================================================ */
+
+  function buildHelpRows() {
+    var lang   = localStorage.getItem('portfolio_lang') || 'fr';
+    var isFr   = lang !== 'en';
+
+    var rows = [
+      {
+        label:    t('lightAgainHelpMove'),
+        color:    '#00ffff',
+        descHtml: isFr
+          ? 'WASD &nbsp;&middot;&nbsp; ZQSD &nbsp;&middot;&nbsp; Touches fl\u00e9ch\u00e9es'
+          : 'WASD &nbsp;&middot;&nbsp; ZQSD &nbsp;&middot;&nbsp; Arrow keys',
+      },
+      {
+        label:    t('lightAgainHelpDash'),
+        color:    '#a000ff',
+        descHtml: isFr
+          ? 'Dash dans la direction du <span style="color:#00ffff">d\u00e9placement</span>'
+          : 'Dash in your <span style="color:#00ffff">movement</span> direction',
+      },
+      {
+        label:    t('lightAgainHelpAttack'),
+        color:    '#ff1e3c',
+        descHtml: isFr
+          ? 'Clic gauche \u2014 la fl\u00e8che se met en rotation vers le pointeur de la souris'
+          : 'Left click \u2014 the arrow spins rapidly toward your mouse cursor',
+      },
+      {
+        label:    t('lightAgainHelpDashAtk'),
+        color:    '#ff14c8',
+        descHtml: isFr
+          ? 'Clic gauche pendant un <span style="color:#a000ff">dash</span> \u2014 <span style="color:#ff1e3c">attaque torpille</span> boost\u00e9e\u00a0: plus rapide, zone plus large'
+          : 'Left click during a <span style="color:#a000ff">dash</span> \u2014 boosted <span style="color:#ff1e3c">torpedo attack</span>: faster, wider area',
+      },
+    ];
+
+    var dl = document.createElement('dl');
+    dl.className = 'light-again-help-popup__list';
+    rows.forEach(function (row) {
+      var dt = document.createElement('dt');
+      dt.className = 'light-again-help-popup__action';
+      dt.style.color = row.color;
+      dt.textContent = row.label;
+      var dd = document.createElement('dd');
+      dd.className = 'light-again-help-popup__desc';
+      dd.innerHTML = row.descHtml; // safe: developer-written, no user input
+      dl.appendChild(dt);
+      dl.appendChild(dd);
+    });
+    return dl;
+  }
+
+  function showHelpPopup() {
+    if (helpPopupEl || !overlayEl) return;
+    var modal = overlayEl.querySelector('.light-again-modal');
+    // Pause game loop
+    if (activeGame && typeof activeGame.pause === 'function') activeGame.pause();
+
+    helpPopupEl = document.createElement('div');
+    helpPopupEl.className = 'light-again-help-overlay';
+
+    var popup = document.createElement('div');
+    popup.className = 'light-again-help-popup';
+    popup.setAttribute('role', 'dialog');
+    popup.setAttribute('aria-modal', 'true');
+    popup.setAttribute('aria-label', t('lightAgainHelpTitle'));
+
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'modal__close light-again-help-popup__close';
+    closeBtn.textContent = '\u00D7';
+    closeBtn.setAttribute('aria-label', t('lightAgainHelpResume'));
+    closeBtn.addEventListener('click', function () { closeHelpPopup(false); });
+
+    var title = document.createElement('h2');
+    title.className = 'light-again-help-popup__title';
+    title.textContent = t('lightAgainHelpTitle');
+
+    var list = buildHelpRows();
+
+    popup.appendChild(closeBtn);
+    popup.appendChild(title);
+    popup.appendChild(list);
+    helpPopupEl.appendChild(popup);
+    if (modal) modal.appendChild(helpPopupEl);
+
+    // Click on backdrop (outside popup panel) → close help popup
+    helpPopupEl.addEventListener('click', function (e) {
+      if (e.target === helpPopupEl) closeHelpPopup(false);
+    });
+
+    void helpPopupEl.offsetHeight;
+    helpPopupEl.classList.add('light-again-help-overlay--visible');
+    closeBtn.focus();
+  }
+
+  function closeHelpPopup(skipResume) {
+    if (!helpPopupEl) return;
+    helpPopupEl.classList.remove('light-again-help-overlay--visible');
+    var toRemove = helpPopupEl;
+    helpPopupEl = null;
+    if (skipResume === true) {
+      // Immediate removal — game shutting down, transition will never complete
+      if (toRemove.parentNode) toRemove.parentNode.removeChild(toRemove);
+    } else {
+      var onEnd = function () {
+        toRemove.removeEventListener('transitionend', onEnd);
+        if (toRemove.parentNode) toRemove.parentNode.removeChild(toRemove);
+      };
+      toRemove.addEventListener('transitionend', onEnd);
+      // Resume game loop and return focus
+      if (activeGame && typeof activeGame.resume === 'function') activeGame.resume();
+      var hb = overlayEl && overlayEl.querySelector('.light-again-help-btn');
+      if (hb) hb.focus();
+    }
+  }
+
+  /* ================================================================
      MODAL — open
      ================================================================ */
 
@@ -171,10 +291,18 @@
     closeBtn.setAttribute('aria-label', t('closeLbl'));
     closeBtn.addEventListener('click', closeLightAgain);
 
+    // Help button (✓) — left of close, opens game instructions popup
+    var helpBtn = document.createElement('button');
+    helpBtn.className = 'light-again-help-btn';
+    helpBtn.textContent = '?';
+    helpBtn.setAttribute('aria-label', t('lightAgainHelp'));
+    helpBtn.addEventListener('click', showHelpPopup);
+
     // Canvas
     var canvas = document.createElement('canvas');
     canvas.className = 'light-again-canvas';
 
+    modal.appendChild(helpBtn);
     modal.appendChild(closeBtn);
     modal.appendChild(canvas);
     overlayEl.appendChild(modal);
@@ -200,9 +328,12 @@
     }
     closeBtn.focus();
 
-    /* --- Keyboard: Escape closes --- */
+    /* --- Keyboard: Escape closes help popup first, then game --- */
     overlayEl._onKeyDown = function (e) {
-      if (e.key === 'Escape') closeLightAgain();
+      if (e.key === 'Escape') {
+        if (helpPopupEl) { closeHelpPopup(false); }
+        else { closeLightAgain(); }
+      }
     };
     document.addEventListener('keydown', overlayEl._onKeyDown);
 
@@ -227,6 +358,9 @@
 
   function closeLightAgain() {
     if (!overlayEl) return;
+
+    // Close help popup immediately (whole modal is exiting — no animation needed)
+    closeHelpPopup(true);
 
     // Start CSS fade-out
     overlayEl.classList.remove('modal-overlay--open');
@@ -281,6 +415,13 @@
     // Keep button label in sync with site language
     document.addEventListener('sitelangchange', function () {
       updateBtnText();
+      // Update help button aria-label if the modal is open
+      if (overlayEl) {
+        var hb = overlayEl.querySelector('.light-again-help-btn');
+        if (hb) hb.setAttribute('aria-label', t('lightAgainHelp'));
+      }
+      // Close help popup on lang change — will reopen with fresh language
+      if (helpPopupEl) closeHelpPopup(true);
     });
   }
 
