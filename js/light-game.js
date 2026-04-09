@@ -17,9 +17,14 @@
        PALETTE — theme-aware, simplified
        ================================================================ */
 
+    var _colorCache = null;
+    var _colorTheme = '';
+
     function getColors() {
       var theme = document.documentElement.getAttribute('data-theme') || 'light';
-      if (theme === 'dark') return {
+      if (theme === _colorTheme) return _colorCache;
+      _colorTheme = theme;
+      if (theme === 'dark') _colorCache = {
         trailAlpha:  0.16,
         cyan:        [0, 255, 255],
         yellow:      [255, 220, 60],
@@ -29,7 +34,7 @@
         pcbVia:      'rgba(140,80,255,0.30)',
         pcbGlow:     'rgba(160,0,255,0.025)',
       };
-      if (theme === 'nature') return {
+      else if (theme === 'nature') _colorCache = {
         trailAlpha:  0.15,
         cyan:        [80, 255, 200],
         yellow:      [220, 240, 80],
@@ -39,7 +44,7 @@
         pcbVia:      'rgba(50,180,100,0.30)',
         pcbGlow:     'rgba(60,200,120,0.025)',
       };
-      return {
+      else _colorCache = {
         trailAlpha:  0.14,
         cyan:        [0, 255, 255],
         yellow:      [255, 220, 60],
@@ -49,6 +54,7 @@
         pcbVia:      'rgba(0,180,220,0.30)',
         pcbGlow:     'rgba(0,200,255,0.025)',
       };
+      return _colorCache;
     }
 
     /* ================================================================
@@ -68,6 +74,22 @@
     var DASH_ATK_IMP  = 30;       // dash attack: snapped full velocity
     var DASH_ATK_DUR  = 300;      // ms — slightly shorter than ATK_DUR
     var DASH_ATK_SPIN = 50;       // rad/s — much faster spin during dash attack
+    var RECOVERY_DUR  = 180;      // ms — recovery stun after normal attack ends
+    var RECOVERY_FRIC = 0.80;     // heavy friction during recovery
+    var DASHATK_WHIFF_DUR = 380;  // ms — punitive recovery after missed dash-attack
+    var DASHATK_WHIFF_FRIC = 0.70; // harsher friction than normal recovery
+    var DASHATK_CHAIN_EXT  = 40;  // ms — bonus time per cleave kill
+    var DASHATK_MAX_EXT    = 180; // ms — max total extension to prevent infinite dash
+    var HITSTOP_DUR   = 0.040;    // seconds — freeze on enemy kill
+    var IFRAMES_DUR   = 800;      // ms — invincibility after taking damage
+    var SPAWN_INTERVAL = 2000;    // ms — auto-spawn every 2s
+    var SPAWN_DIST     = 600;     // px from player
+    var SEPARATION_RADIUS = 30;   // px — soft collision radius between enemies
+    var SEPARATION_FORCE  = 4.0;  // repulsion strength
+    var REBOUND_IMP       = 14;   // attack rebound impulse (backward)
+    var SHOCKWAVE_RADIUS  = 90;   // px — AoE knockback radius on kill
+    var SHOCKWAVE_FORCE   = 10;   // knockback impulse on nearby enemies
+    var SHOCKWAVE_STUN    = 300;  // ms — stun duration on shocked enemies
     var CAM_SMOOTH  = 0.10;
     var WORLD_HALF  = 4000;
     var PCB_TILE    = 256;      // offscreen tile size (px) — larger = more varied repeat
@@ -81,7 +103,7 @@
       vx: 0, vy: 0,
       angle: 0,               // facing direction (toward mouse)
       spinAngle: 0,           // torpedo spin accumulator
-      state: 'MOVING',        // 'MOVING' | 'ATTACKING' | 'DASHING'
+      state: 'MOVING',        // 'MOVING' | 'ATTACKING' | 'DASHING' | 'DASH_ATTACKING' | 'RECOVERY'
       dashAvailable: true,
       dashCooldown:  0,
       dashTimer:     0,
@@ -90,6 +112,13 @@
       atkCooldown:  0,
       atkTimer:     0,
       atkDx: 0, atkDy: 0,
+      recoveryTimer: 0,       // RECOVERY state countdown
+      recoveryWhiff: false,    // true = whiff recovery (harsher + desaturated)
+      hasHitDuringDashAttack: false,  // chain/cleave tracking
+      dashAtkExtended: 0,     // ms of bonus time already granted
+      hp: 5,
+      invincible: false,
+      invincTimer: 0,          // iframes countdown
     };
 
     var camera  = { x: 0, y: 0 };
@@ -98,11 +127,221 @@
 
     var pcbPattern   = null;      // CanvasPattern from offscreen tile
     var pcbThemeUsed = '';        // cache key to regenerate on theme change
+    var _bgMat       = new DOMMatrix();  // reused for pattern transform
 
     var gameTime = 0;
     var prevTs   = null;
     var lastW    = 0;
     var lastH    = 0;
+
+    /* ================================================================
+       TIME MANAGEMENT — global time scale for hitstop
+       ================================================================ */
+
+    var globalTimeScale = 1.0;   // 1 = normal, 0 = fully frozen
+    var hitstopTimer    = 0;     // seconds remaining
+
+    function triggerHitstop(duration) {
+      hitstopTimer    = duration;
+      globalTimeScale = 0;
+    }
+
+    /* ================================================================
+       PARTICLE MANAGER (additive glow explosions)
+       ================================================================ */
+
+    var particles = [];
+    var MAX_PARTICLES = 200;
+
+    function spawnExplosion(x, y, color, count) {
+      var n = count || 25;
+      for (var i = 0; i < n; i++) {
+        var angle = Math.random() * Math.PI * 2;
+        var speed = 120 + Math.random() * 280;
+        var sz    = 1.5 + Math.random() * 3;
+        particles.push({
+          x: x, y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1.0,
+          decay: 1.8 + Math.random() * 1.2,
+          size: sz,
+          r: color[0], g: color[1], b: color[2],
+          friction: 0.94,
+        });
+      }
+      // Hard cap — trim oldest when over budget
+      if (particles.length > MAX_PARTICLES) {
+        particles.splice(0, particles.length - MAX_PARTICLES);
+      }
+    }
+
+    function updateParticles(dt) {
+      for (var i = particles.length - 1; i >= 0; i--) {
+        var p = particles[i];
+        p.vx *= p.friction;
+        p.vy *= p.friction;
+        p.x  += p.vx * dt;
+        p.y  += p.vy * dt;
+        p.life -= p.decay * dt;
+        if (p.life <= 0) {
+          // Swap-and-pop: O(1) removal instead of O(n) splice
+          particles[i] = particles[particles.length - 1];
+          particles.pop();
+        }
+      }
+    }
+
+    function drawParticles() {
+      if (particles.length === 0) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (var i = 0; i < particles.length; i++) {
+        var p = particles[i];
+        var a = p.life * 0.9;
+        ctx.fillStyle = 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + a.toFixed(3) + ')';
+        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      }
+      ctx.restore();
+    }
+
+    /* ================================================================
+       ENEMIES
+       ================================================================ */
+
+    var enemies = [];
+    var spawnTimer = 0;
+
+    var RUSHER_SPEED = 3.0;
+    var RUSHER_SIZE  = 14;       // half-length of the thin triangle
+
+    function spawnRusher() {
+      var angle = Math.random() * Math.PI * 2;
+      var ex = player.x + Math.cos(angle) * SPAWN_DIST;
+      var ey = player.y + Math.sin(angle) * SPAWN_DIST;
+      enemies.push({
+        type: 'rusher',
+        x: ex, y: ey,
+        vx: 0, vy: 0,
+        angle: 0,
+        hp: 1,
+        size: RUSHER_SIZE,
+        speed: RUSHER_SPEED + Math.random() * 0.8,
+        stunTimer: 0,          // ms remaining of stun (shockwave)
+        // Glitch trail
+        trail: [],
+      });
+    }
+
+    function updateEnemies(dt) {
+      var ms = dt * 1000;
+
+      // --- Soft separation (O(n²) — fine for <100 enemies) ---
+      for (var i = 0; i < enemies.length; i++) {
+        var a = enemies[i];
+        for (var j = i + 1; j < enemies.length; j++) {
+          var b = enemies[j];
+          var sdx = a.x - b.x;
+          var sdy = a.y - b.y;
+          var sd  = Math.sqrt(sdx * sdx + sdy * sdy);
+          if (sd < SEPARATION_RADIUS && sd > 0.01) {
+            var overlap = (SEPARATION_RADIUS - sd) / SEPARATION_RADIUS;
+            var fx = (sdx / sd) * SEPARATION_FORCE * overlap;
+            var fy = (sdy / sd) * SEPARATION_FORCE * overlap;
+            a.vx += fx;  a.vy += fy;
+            b.vx -= fx;  b.vy -= fy;
+          }
+        }
+      }
+
+      for (var i = 0; i < enemies.length; i++) {
+        var e = enemies[i];
+
+        // Stun countdown — stunned enemies drift but don't steer
+        if (e.stunTimer > 0) {
+          e.stunTimer -= ms;
+          e.vx *= 0.92;  // drag while stunned
+          e.vy *= 0.92;
+          e.x += e.vx;
+          e.y += e.vy;
+        } else {
+          // Always face player
+          var dx = player.x - e.x;
+          var dy = player.y - e.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > 0.1) {
+            e.angle = Math.atan2(dy, dx);
+            var ax = (dx / dist) * e.speed;
+            var ay = (dy / dist) * e.speed;
+            e.vx += (ax - e.vx) * 0.08;  // smooth steering
+            e.vy += (ay - e.vy) * 0.08;
+          }
+          e.x += e.vx;
+          e.y += e.vy;
+        }
+
+        // Glitch trail (small, sparse)
+        if (Math.random() < 0.2) {
+          e.trail.push({ x: e.x, y: e.y, a: 0.5, angle: e.angle });
+          if (e.trail.length > 4) e.trail.shift();
+        }
+        for (var ti = e.trail.length - 1; ti >= 0; ti--) {
+          e.trail[ti].a -= dt * 3;
+          if (e.trail[ti].a <= 0) e.trail.splice(ti, 1);
+        }
+      }
+    }
+
+    function drawEnemies() {
+      for (var i = 0; i < enemies.length; i++) {
+        var e = enemies[i];
+
+        // Glitch trail
+        for (var ti = 0; ti < e.trail.length; ti++) {
+          var tr = e.trail[ti];
+          ctx.save();
+          ctx.globalAlpha = tr.a * 0.4;
+          ctx.translate(tr.x, tr.y);
+          ctx.rotate(tr.angle);
+          ctx.beginPath();
+          ctx.moveTo(e.size, 0);
+          ctx.lineTo(-e.size * 0.5, -e.size * 0.18);
+          ctx.lineTo(-e.size * 0.5,  e.size * 0.18);
+          ctx.closePath();
+          ctx.fillStyle = '#FF0044';
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Main body
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(e.angle);
+
+        // Cheap glow (oversized triangle, additive, NO shadowBlur)
+        ctx.globalCompositeOperation = 'lighter';
+        var gs = e.size * 1.6;
+        ctx.beginPath();
+        ctx.moveTo(gs, 0);
+        ctx.lineTo(-gs * 0.5, -gs * 0.22);
+        ctx.lineTo(-gs * 0.5,  gs * 0.22);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255,0,68,0.18)';
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+
+        // Solid body
+        ctx.beginPath();
+        ctx.moveTo(e.size, 0);
+        ctx.lineTo(-e.size * 0.5, -e.size * 0.18);
+        ctx.lineTo(-e.size * 0.5,  e.size * 0.18);
+        ctx.closePath();
+        ctx.fillStyle = '#FF0044';
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
 
     /* ================================================================
        PCB TILE — pre-rendered offscreen, used as ctx.createPattern
@@ -227,6 +466,7 @@
         e.preventDefault();
         tryDash();
       }
+      if (e.code === 'KeyP' && !e.repeat) spawnRusher();
     }
     function onKeyUp(e)   { keys[e.code] = false; }
 
@@ -255,7 +495,7 @@
 
     /* ── Dash ── */
     function tryDash() {
-      if (!player.dashAvailable || player.state === 'DASHING' || player.state === 'ATTACKING' || player.state === 'DASH_ATTACKING') return;
+      if (!player.dashAvailable || player.state === 'DASHING' || player.state === 'ATTACKING' || player.state === 'DASH_ATTACKING' || player.state === 'RECOVERY') return;
       var inp = getInputVector();
       var dx = inp.dx, dy = inp.dy;
       if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) {
@@ -275,7 +515,7 @@
 
     /* ── Torpedo attack ── */
     function tryAttack() {
-      if (player.state === 'ATTACKING' || player.state === 'DASH_ATTACKING') return;
+      if (player.state === 'ATTACKING' || player.state === 'DASH_ATTACKING' || player.state === 'RECOVERY') return;
       if (player.state === 'DASHING') { triggerDashAttack(); return; } // dash attack!
       if (!player.atkAvailable) return;
       // Direction toward mouse click (world space)
@@ -320,9 +560,97 @@
       player.atkDx        = adx;
       player.atkDy        = ady;
       player.spinAngle    = 0;
+      player.hasHitDuringDashAttack = false;  // reset chain flag
+      player.dashAtkExtended = 0;
       // Consume the dash immediately
       player.dashTimer    = 0;
       player.dashCooldown = DASH_CD;
+    }
+
+    /* ================================================================
+       COLLISION — circle vs circle
+       ================================================================ */
+
+    function checkCollisions() {
+      var pRadius = SIZE * 0.6;
+      var isAtk     = player.state === 'ATTACKING';
+      var isDashAtk = player.state === 'DASH_ATTACKING';
+      var vulnerable = !isAtk && !isDashAtk && player.state !== 'DASHING';
+
+      for (var i = enemies.length - 1; i >= 0; i--) {
+        var e = enemies[i];
+        var dx = player.x - e.x;
+        var dy = player.y - e.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var hitDist = pRadius + e.size * 0.5;
+
+        if (dist < hitDist) {
+          if (isAtk) {
+            // Normal attack: kill 1, rebound backward, enter recovery
+            killEnemy(i);
+            player.state         = 'RECOVERY';
+            player.recoveryTimer = RECOVERY_DUR;
+            // Strong rebound: launch player opposite to attack direction
+            player.vx = -player.atkDx * REBOUND_IMP;
+            player.vy = -player.atkDy * REBOUND_IMP;
+            player.spinAngle   = 0;
+            player.atkTimer    = 0;
+            player.atkCooldown = ATK_CD;
+            return; // only 1 kill per frame
+          } else if (isDashAtk) {
+            // Dash-attack: kill, keep going (cleave)
+            killEnemy(i);
+            player.hasHitDuringDashAttack = true;
+            // Chain extension: extend dash duration (capped)
+            if (player.dashAtkExtended < DASHATK_MAX_EXT) {
+              var ext = Math.min(DASHATK_CHAIN_EXT, DASHATK_MAX_EXT - player.dashAtkExtended);
+              player.atkTimer += ext;
+              player.dashAtkExtended += ext;
+            }
+            // don't break — can hit more this frame
+          } else if (vulnerable && !player.invincible) {
+            // Player takes damage
+            player.hp -= 1;
+            player.invincible  = true;
+            player.invincTimer = IFRAMES_DUR;
+            // Knock player away from enemy
+            if (dist > 0.1) {
+              player.vx += (dx / dist) * 8;
+              player.vy += (dy / dist) * 8;
+            }
+          }
+        }
+      }
+    }
+
+    function killEnemy(index) {
+      var e = enemies[index];
+      var ex = e.x, ey = e.y;
+
+      // Explosion proportional to enemy size
+      var count = Math.round(20 + (e.size / RUSHER_SIZE) * 10);
+      spawnExplosion(ex, ey, [255, 40, 80], count);
+      // Pink/white secondary burst for extra juice
+      spawnExplosion(ex, ey, [255, 180, 200], Math.round(count * 0.4));
+
+      enemies.splice(index, 1);
+      triggerHitstop(HITSTOP_DUR);
+
+      // --- Shockwave: knockback + stun nearby enemies ---
+      for (var k = 0; k < enemies.length; k++) {
+        var o  = enemies[k];
+        var sdx = o.x - ex;
+        var sdy = o.y - ey;
+        var sd  = Math.sqrt(sdx * sdx + sdy * sdy);
+        if (sd < SHOCKWAVE_RADIUS) {
+          var falloff = 1.0 - (sd / SHOCKWAVE_RADIUS);  // stronger at center
+          var nx = sd > 0.1 ? sdx / sd : (Math.random() - 0.5);
+          var ny = sd > 0.1 ? sdy / sd : (Math.random() - 0.5);
+          o.vx += nx * SHOCKWAVE_FORCE * falloff;
+          o.vy += ny * SHOCKWAVE_FORCE * falloff;
+          o.stunTimer = SHOCKWAVE_STUN * falloff;
+        }
+      }
     }
 
     /* ================================================================
@@ -330,13 +658,44 @@
        ================================================================ */
 
     function update(dt) {
-      var ms = dt * 1000;
+      // --- Hitstop management (runs outside time scale) ---
+      if (hitstopTimer > 0) {
+        hitstopTimer -= dt;
+        if (hitstopTimer <= 0) {
+          hitstopTimer    = 0;
+          globalTimeScale = 1.0;
+        } else {
+          globalTimeScale = 0;
+        }
+      }
+
+      var scaledDt = dt * globalTimeScale;
+      var ms = scaledDt * 1000;
+      if (ms < 0.001) {
+        // Still frozen — only advance particles for lingering glow
+        updateParticles(dt);
+        return;
+      }
+
+      // --- Invincibility timer ---
+      if (player.invincible) {
+        player.invincTimer -= ms;
+        if (player.invincTimer <= 0) {
+          player.invincible  = false;
+          player.invincTimer = 0;
+        }
+      }
 
       // --- Movement input (only in MOVING state) ---
       if (player.state === 'MOVING') {
         var inp = getInputVector();
         player.vx = (player.vx + inp.dx * ACCEL) * FRICTION;
         player.vy = (player.vy + inp.dy * ACCEL) * FRICTION;
+      } else if (player.state === 'RECOVERY') {
+        // Heavy friction, no input — whiff is harsher
+        var rf = player.recoveryWhiff ? DASHATK_WHIFF_FRIC : RECOVERY_FRIC;
+        player.vx *= rf;
+        player.vy *= rf;
       } else {
         // While attacking or dashing, apply friction but no player input
         player.vx *= FRICTION;
@@ -375,17 +734,20 @@
       // --- Attack state ---
       if (player.state === 'ATTACKING') {
         player.atkTimer -= ms;
-        player.spinAngle += dt * ATK_SPIN;
+        player.spinAngle += scaledDt * ATK_SPIN;
         if (player.atkTimer <= 0) {
-          player.state       = 'MOVING';
-          player.atkCooldown = ATK_CD;
-          player.spinAngle   = 0;
+          // Attack expired without hitting → enter recovery (punishing whiff)
+          player.state         = 'RECOVERY';
+          player.recoveryTimer = RECOVERY_DUR;
+          player.recoveryWhiff = false;  // normal attack whiff = standard recovery
+          player.atkCooldown   = ATK_CD;
+          player.spinAngle     = 0;
         }
       }
       // --- Dash Attack state ---
       if (player.state === 'DASH_ATTACKING') {
         player.atkTimer -= ms;
-        player.spinAngle += dt * DASH_ATK_SPIN;
+        player.spinAngle += scaledDt * DASH_ATK_SPIN;
         // Dense phantom trail every frame: bigger, magenta→orange
         ghosts.push({
           x: player.x, y: player.y,
@@ -394,9 +756,27 @@
           c0: [255, 20, 200], c1: [255, 100, 0],
         });
         if (player.atkTimer <= 0) {
-          player.state       = 'MOVING';
+          if (player.hasHitDuringDashAttack) {
+            // Success: hit at least one enemy → instant control
+            player.state       = 'MOVING';
+          } else {
+            // Whiff: missed everything → punitive recovery
+            player.state         = 'RECOVERY';
+            player.recoveryTimer = DASHATK_WHIFF_DUR;
+            player.recoveryWhiff = true;
+            player.vx *= 0.05;  // near-instant stop
+            player.vy *= 0.05;
+          }
           player.atkCooldown = ATK_CD;
           player.spinAngle   = 0;
+        }
+      }
+      // --- Recovery state ---
+      if (player.state === 'RECOVERY') {
+        player.recoveryTimer -= ms;
+        if (player.recoveryTimer <= 0) {
+          player.state = 'MOVING';
+          player.recoveryTimer = 0;
         }
       }
       if (player.state !== 'ATTACKING' && player.state !== 'DASH_ATTACKING' && player.atkCooldown > 0) {
@@ -407,7 +787,10 @@
       // --- Ghost decay ---
       for (var g = ghosts.length - 1; g >= 0; g--) {
         ghosts[g].alpha -= dt * 3.5;
-        if (ghosts[g].alpha <= 0) ghosts.splice(g, 1);
+        if (ghosts[g].alpha <= 0) {
+          ghosts[g] = ghosts[ghosts.length - 1];
+          ghosts.pop();
+        }
       }
 
       // --- Arrow facing: toward mouse (screen→world) ---
@@ -424,6 +807,22 @@
       // Camera lerp
       camera.x += (player.x - camera.x) * CAM_SMOOTH;
       camera.y += (player.y - camera.y) * CAM_SMOOTH;
+
+      // --- Enemies ---
+      updateEnemies(scaledDt);
+
+      // --- Collisions ---
+      checkCollisions();
+
+      // --- Particles ---
+      updateParticles(scaledDt);
+
+      // --- Auto-spawner ---
+      spawnTimer += ms;
+      if (spawnTimer >= SPAWN_INTERVAL) {
+        spawnTimer -= SPAWN_INTERVAL;
+        spawnRusher();
+      }
 
       gameTime += dt;
     }
@@ -443,10 +842,9 @@
       if (!pcbPattern) return;
 
       // Translate pattern so it scrolls with the camera (world-space tiling)
-      ctx.save();
-      var mat = new DOMMatrix();
-      mat.translateSelf(-camera.x, -camera.y);
-      pcbPattern.setTransform(mat);
+      _bgMat.e = -camera.x;
+      _bgMat.f = -camera.y;
+      pcbPattern.setTransform(_bgMat);
       ctx.fillStyle = pcbPattern;
       ctx.fillRect(0, 0, w, h);
     }
@@ -481,6 +879,9 @@
 
     /* ── Arrow (the player) — neon glow via shadowBlur + lighter ── */
     function drawArrow(colors) {
+      // Invincibility blink: skip drawing every other ~80ms
+      if (player.invincible && Math.floor(gameTime * 12.5) % 2 === 0) return;
+
       var clr;
       if (player.state === 'DASH_ATTACKING') {
         clr = [255, 20, 200];                 // hot magenta (dash+attack fused)
@@ -488,12 +889,15 @@
         clr = [255, 30, 60];                  // neon red during torpedo
       } else if (player.state === 'DASHING') {
         clr = colors.ghostViolet;             // violet (same as ghost echoes)
+      } else if (player.state === 'RECOVERY' && player.recoveryWhiff) {
+        clr = [80, 80, 90];                   // desaturated grey — exhausted whiff
       } else {
-        var avail = player.dashAvailable && player.atkAvailable;
-        clr = avail ? colors.cyan : colors.yellow;
+        // MOVING + normal RECOVERY: cyan if dash ready, yellow if not
+        clr = player.dashAvailable ? colors.cyan : colors.yellow;
       }
       var r = clr[0], g = clr[1], b = clr[2];
       var isDashAtk = player.state === 'DASH_ATTACKING';
+      var isWhiffRecovery = player.state === 'RECOVERY' && player.recoveryWhiff;
 
       ctx.save();
       ctx.translate(player.x, player.y);
@@ -522,15 +926,17 @@
         ctx.globalCompositeOperation = 'source-over';
       }
 
-      // Neon glow layer (additive blend + shadowBlur)
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',0.9)';
-      ctx.shadowBlur  = isDashAtk ? 28 : 18;
-      arrowPath();
-      ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.35)';
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.globalCompositeOperation = 'source-over';
+      // Neon glow layer (additive blend + shadowBlur) — suppressed during whiff
+      if (!isWhiffRecovery) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',0.9)';
+        ctx.shadowBlur  = isDashAtk ? 28 : 18;
+        arrowPath();
+        ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.35)';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.globalCompositeOperation = 'source-over';
+      }
 
       // Solid arrow body
       arrowPath();
@@ -568,7 +974,9 @@
       ctx.translate(cx - camera.x, cy - camera.y);
 
       drawGhosts(colors);
+      drawEnemies();
       drawArrow(colors);
+      drawParticles();
 
       ctx.restore();
 
@@ -623,6 +1031,11 @@
       lastH    = 0;
       ghosts   = [];
       keys     = {};
+      particles = [];
+      enemies   = [];
+      spawnTimer = 0;
+      globalTimeScale = 1.0;
+      hitstopTimer    = 0;
 
       player.x             = 0;
       player.y             = 0;
@@ -641,6 +1054,13 @@
       player.atkTimer      = 0;
       player.atkDx         = 0;
       player.atkDy         = 0;
+      player.recoveryTimer = 0;
+      player.recoveryWhiff = false;
+      player.hasHitDuringDashAttack = false;
+      player.dashAtkExtended = 0;
+      player.hp            = 5;
+      player.invincible    = false;
+      player.invincTimer   = 0;
 
       camera.x = 0;
       camera.y = 0;
@@ -664,7 +1084,9 @@
       canvas.removeEventListener('mousemove',   onMouseMove);
       document.removeEventListener('keydown',   onKeyDown);
       document.removeEventListener('keyup',     onKeyUp);
-      keys = {};
+      keys       = {};
+      enemies    = [];
+      particles  = [];
     }
 
     function pause() {
