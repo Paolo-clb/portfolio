@@ -43,7 +43,7 @@
 
 .light-again-btn:hover,
 .light-again-btn:focus-visible {
-  width: 272px; /* panel (228px) + tab (44px) */
+  width: 228px; /* panel only — tab collapses out */
   border-color: rgba(242, 162, 133, 0.48);
   box-shadow: -4px 0 30px rgba(242, 162, 133, 0.2);
   outline: none;
@@ -52,8 +52,11 @@
 /* ---- Tab strip (always visible) ---- */
 
 .light-again-btn__tab {
+  order: -1; /* render before panel in flex layout — always visible in collapsed 44px window */
   width: 44px;
+  max-width: 44px;
   flex-shrink: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -63,6 +66,7 @@
   min-height: 130px;
   position: relative;
   z-index: 1;
+  transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s ease;
 }
 
 .light-again-btn__tab::before {
@@ -101,6 +105,13 @@
 
 .light-again-btn:hover .light-again-btn__tab-text {
   color: var(--clr-primary);
+}
+
+/* Tab collapses away when button is expanded */
+.light-again-btn:hover .light-again-btn__tab,
+.light-again-btn:focus-visible .light-again-btn__tab {
+  max-width: 0;
+  opacity: 0;
 }
 
 /* ---- Expanding panel (hidden until hover) ---- */
@@ -184,9 +195,9 @@
   line-height: 1.45;
 }
 
-/* ---- Hidden on touch smartphones ---- */
+/* ---- Hidden on all mobile/tablet ---- */
 
-@media (max-width: 600px) and (pointer: coarse) {
+@media (max-width: 768px) {
   .light-again-btn {
     display: none !important;
   }

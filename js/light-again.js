@@ -7,10 +7,11 @@
 (function () {
   'use strict';
 
-  var btnEl      = null;  // Hero "Play Light Again" button
-  var overlayEl  = null;  // Active modal overlay (null when closed)
-  var trapCleanup = null; // Focus-trap cleanup function
-  var savedState = null;  // Snapshot saved by killPerformance()
+  var btnEl       = null;  // Hero "Play Light Again" button
+  var overlayEl   = null;  // Active modal overlay (null when closed)
+  var trapCleanup = null;  // Focus-trap cleanup function
+  var savedState  = null;  // Snapshot saved by killPerformance()
+  var activeGame  = null;  // Running game instance (createLightGame)
 
   /* ---- i18n helper ---- */
   function t(key) {
@@ -207,6 +208,12 @@
 
     /* --- Kill switch --- */
     killPerformance();
+
+    /* --- Start game --- */
+    if (typeof window.createLightGame === 'function') {
+      activeGame = window.createLightGame(canvas);
+      activeGame.start();
+    }
   }
 
   /* ================================================================
@@ -227,6 +234,9 @@
     if (overlayEl._resizeCanvas) {
       window.removeEventListener('resize', overlayEl._resizeCanvas);
     }
+
+    // Stop game loop before tearing down DOM
+    if (activeGame) { activeGame.stop(); activeGame = null; }
 
     // Remove from DOM after transition (350ms, matching other modals)
     var toRemove = overlayEl;
