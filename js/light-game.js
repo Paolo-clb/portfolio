@@ -150,16 +150,11 @@
     }
 
     function drawFPS() {
-      var colors = getColors();
-      var fps    = _fpsDisplay;
-      var c; // rgb array
-      if (fps >= 55)      c = colors.cyan;
-      else if (fps >= 30) c = colors.yellow;
-      else                c = [255, 60, 60];
       ctx.save();
       ctx.font         = 'bold 13px monospace';
       ctx.textBaseline = 'top';
-      ctx.fillStyle    = 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+      var fps = _fpsDisplay;
+      ctx.fillStyle = fps >= 55 ? '#00ff88' : fps >= 30 ? '#ffcc00' : '#ff4444';
       ctx.fillText(fps + ' FPS', 10, 10);
       ctx.restore();
     }
