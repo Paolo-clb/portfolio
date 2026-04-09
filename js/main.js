@@ -1361,6 +1361,10 @@ function initCursorHalo() {
         halo.classList.add('cursor-halo--hover');
       } else if (e.target.closest('.light-again-canvas')) {
         startLightGameHoverPoll();
+      } else if (e.target.closest('.light-again-help-overlay') && !e.target.closest('.light-again-help-popup')) {
+        // Help overlay backdrop: click-outside area that closes the help popup
+        stopLightGameHoverPoll();
+        halo.classList.add('cursor-halo--hover');
       } else {
         stopLightGameHoverPoll();
       }
@@ -1404,6 +1408,11 @@ function initCursorHalo() {
 
   document.addEventListener('mouseout', function (e) {
     if (e.target.closest(interactiveSelector) || e.target.closest(modalAllowedSelector)) {
+      halo.classList.remove('cursor-halo--hover');
+    }
+    // Leaving the help overlay backdrop → remove hover
+    if (e.target.closest('.light-again-help-overlay') && !e.target.closest('.light-again-help-popup') &&
+        !(e.relatedTarget && e.relatedTarget.closest('.light-again-help-overlay') && !e.relatedTarget.closest('.light-again-help-popup'))) {
       halo.classList.remove('cursor-halo--hover');
     }
     // Leaving the game canvas → stop poll (cursor-halo--game stays; still inside modal)

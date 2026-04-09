@@ -1662,8 +1662,8 @@ body::before,
 
 /* ---- Light Again game mode — larger ring ---- */
 .cursor-halo--game .cursor-halo__ring {
-  width: 58px;
-  height: 58px;
+  width: 38px;
+  height: 38px;
 }
 .cursor-halo--game.cursor-halo--hover .cursor-halo__ring {
   width: 76px;
