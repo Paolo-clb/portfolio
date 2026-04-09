@@ -168,8 +168,8 @@
         label:    t('lightAgainHelpDash'),
         color:    '#a000ff',
         descHtml: isFr
-          ? 'Dash dans la direction du <span style="color:#00ffff">d\u00e9placement</span>'
-          : 'Dash in your <span style="color:#00ffff">movement</span> direction',
+          ? 'Right click &nbsp;&middot;&nbsp; Space &nbsp;&middot;&nbsp; Shift  Espace \u2014 Dash dans la direction du <span style="color:#00ffff">d\u00e9placement</span>'
+          : 'Right click &nbsp;&middot;&nbsp; Space &nbsp;&middot;&nbsp; Shift &nbsp;&middot;&nbsp; Arrow keys \u2014 Dash in your <span style="color:#00ffff">movement</span> direction',
       },
       {
         label:    t('lightAgainHelpAttack'),
