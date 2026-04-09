@@ -337,6 +337,13 @@
   height: 100%;
   /* Prevent cursor: text from canvas element default */
   cursor: default;
+  /* Ensure Phaser's auto-created canvas fills the container */
+  position: relative;
+}
+.light-again-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* ---- Dark Theme ---- */

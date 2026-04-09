@@ -298,25 +298,18 @@
     helpBtn.setAttribute('aria-label', t('lightAgainHelp'));
     helpBtn.addEventListener('click', showHelpPopup);
 
-    // Canvas
-    var canvas = document.createElement('canvas');
-    canvas.className = 'light-again-canvas';
+    // Phaser container (Phaser creates its own canvas inside)
+    var container = document.createElement('div');
+    container.className = 'light-again-canvas'; // reuses existing CSS sizing rules
+    container.style.width  = '100%';
+    container.style.height = '100%';
 
     modal.appendChild(helpBtn);
     modal.appendChild(closeBtn);
-    modal.appendChild(canvas);
+    modal.appendChild(container);
     overlayEl.appendChild(modal);
     document.body.appendChild(overlayEl);
     document.body.style.overflow = 'hidden';
-
-    /* --- Size canvas to fill modal content area --- */
-    function resizeCanvas() {
-      canvas.width  = modal.clientWidth;
-      canvas.height = modal.clientHeight;
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    overlayEl._resizeCanvas = resizeCanvas;
 
     /* --- Animate in (force reflow first) --- */
     void overlayEl.offsetHeight;
@@ -347,7 +340,7 @@
 
     /* --- Start game --- */
     if (typeof window.createLightGame === 'function') {
-      activeGame = window.createLightGame(canvas);
+      activeGame = window.createLightGame(container);
       activeGame.start();
     }
   }
@@ -369,9 +362,6 @@
     if (trapCleanup) { trapCleanup(); trapCleanup = null; }
     if (overlayEl._onKeyDown) {
       document.removeEventListener('keydown', overlayEl._onKeyDown);
-    }
-    if (overlayEl._resizeCanvas) {
-      window.removeEventListener('resize', overlayEl._resizeCanvas);
     }
 
     // Stop game loop before tearing down DOM
