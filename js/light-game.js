@@ -120,6 +120,7 @@
       hp: 5,
       invincible: false,
       invincTimer: 0,          // iframes countdown
+      history: [],             // positional trail: [{x,y,angle}, ...] last 6 frames
     };
 
     var camera  = { x: 0, y: 0 };
@@ -129,6 +130,39 @@
     var pcbPattern   = null;      // CanvasPattern from offscreen tile
     var pcbThemeUsed = '';        // cache key to regenerate on theme change
     var _bgMat       = new DOMMatrix();  // reused for pattern transform
+
+    /* ================================================================
+       FPS COUNTER
+       ================================================================ */
+
+    var _fpsFrames  = 0;
+    var _fpsTimer   = 0;    // accumulated seconds
+    var _fpsDisplay = 0;    // last computed FPS (updated ~every 0.5s)
+
+    function updateFPS(dt) {
+      _fpsFrames++;
+      _fpsTimer += dt;
+      if (_fpsTimer >= 0.5) {
+        _fpsDisplay = Math.round(_fpsFrames / _fpsTimer);
+        _fpsFrames  = 0;
+        _fpsTimer   = 0;
+      }
+    }
+
+    function drawFPS() {
+      var colors = getColors();
+      var fps    = _fpsDisplay;
+      var c; // rgb array
+      if (fps >= 55)      c = colors.cyan;
+      else if (fps >= 30) c = colors.yellow;
+      else                c = [255, 60, 60];
+      ctx.save();
+      ctx.font         = 'bold 13px monospace';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle    = 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+      ctx.fillText(fps + ' FPS', 10, 10);
+      ctx.restore();
+    }
 
     /* ================================================================
        SPRITE CACHE — pre-rendered offscreen canvases (shadowBlur once)
@@ -419,9 +453,12 @@
     }
 
     function updateEnemies(dt) {
-      var ms = dt * 1000;
+      var ms      = dt * 1000;
+      var sc60    = dt * 60;                         // fps normaliser
+      var stunDrg = Math.pow(0.92, sc60);            // stun drag (frame-rate independent)
+      var steerK  = 1 - Math.pow(1 - 0.08, sc60);   // steering lerp rate (frame-rate independent)
 
-      // --- Soft separation (O(n²) — fine for <100 enemies) ---
+      // --- Soft separation (O(n²) — fine for <MAX_ENEMIES enemies) ---
       for (var i = 0; i < enemies.length; i++) {
         var a = enemies[i];
         for (var j = i + 1; j < enemies.length; j++) {
@@ -431,8 +468,8 @@
           var sd  = Math.sqrt(sdx * sdx + sdy * sdy);
           if (sd < SEPARATION_RADIUS && sd > 0.01) {
             var overlap = (SEPARATION_RADIUS - sd) / SEPARATION_RADIUS;
-            var fx = (sdx / sd) * SEPARATION_FORCE * overlap;
-            var fy = (sdy / sd) * SEPARATION_FORCE * overlap;
+            var fx = (sdx / sd) * SEPARATION_FORCE * overlap * sc60;
+            var fy = (sdy / sd) * SEPARATION_FORCE * overlap * sc60;
             a.vx += fx;  a.vy += fy;
             b.vx -= fx;  b.vy -= fy;
           }
@@ -442,13 +479,17 @@
       for (var i = 0; i < enemies.length; i++) {
         var e = enemies[i];
 
+        // Record position history for trail (always, every frame)
+        e.trail.push({ x: e.x, y: e.y, angle: e.angle });
+        if (e.trail.length > 5) e.trail.shift();
+
         // Stun countdown — stunned enemies drift but don't steer
         if (e.stunTimer > 0) {
           e.stunTimer -= ms;
-          e.vx *= 0.92;  // drag while stunned
-          e.vy *= 0.92;
-          e.x += e.vx;
-          e.y += e.vy;
+          e.vx *= stunDrg;
+          e.vy *= stunDrg;
+          e.x += e.vx * sc60;
+          e.y += e.vy * sc60;
         } else {
           // Always face player
           var dx = player.x - e.x;
@@ -458,21 +499,11 @@
             e.angle = Math.atan2(dy, dx);
             var ax = (dx / dist) * e.speed;
             var ay = (dy / dist) * e.speed;
-            e.vx += (ax - e.vx) * 0.08;  // smooth steering
-            e.vy += (ay - e.vy) * 0.08;
+            e.vx += (ax - e.vx) * steerK;
+            e.vy += (ay - e.vy) * steerK;
           }
-          e.x += e.vx;
-          e.y += e.vy;
-        }
-
-        // Glitch trail (small, sparse)
-        if (Math.random() < 0.2) {
-          e.trail.push({ x: e.x, y: e.y, a: 0.5, angle: e.angle });
-          if (e.trail.length > 4) e.trail.shift();
-        }
-        for (var ti = e.trail.length - 1; ti >= 0; ti--) {
-          e.trail[ti].a -= dt * 3;
-          if (e.trail[ti].a <= 0) e.trail.splice(ti, 1);
+          e.x += e.vx * sc60;
+          e.y += e.vy * sc60;
         }
       }
     }
@@ -486,15 +517,17 @@
       var eSpr = esp.canvas;
       var eOx  = esp.ox, eOy = esp.oy;
 
+      ctx.globalCompositeOperation = 'lighter';
       for (var i = 0; i < enemies.length; i++) {
         var e = enemies[i];
+        var tLen = e.trail.length;
 
-        // Glitch trail — setTransform, no save/restore
-        for (var ti = 0; ti < e.trail.length; ti++) {
+        // Positional wake trail — sprite at past positions, fading out
+        for (var ti = 0; ti < tLen - 1; ti++) {
           var tr = e.trail[ti];
-          ctx.globalAlpha = tr.a * 0.4;
-          var tc = Math.cos(tr.angle), ts = Math.sin(tr.angle);
-          ctx.setTransform(tc, ts, -ts, tc, tr.x + _drawOffX, tr.y + _drawOffY);
+          ctx.globalAlpha = (ti + 1) / tLen * 0.38;
+          var tc = Math.cos(tr.angle), ts2 = Math.sin(tr.angle);
+          ctx.setTransform(tc, ts2, -ts2, tc, tr.x + _drawOffX, tr.y + _drawOffY);
           ctx.drawImage(eSpr, -eOx, -eOy);
         }
 
@@ -505,9 +538,10 @@
         ctx.drawImage(eSpr, -eOx, -eOy);
       }
 
-      // Reset transform
+      // Reset
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
     }
 
     /* ================================================================
@@ -837,6 +871,7 @@
       }
 
       var scaledDt = dt * globalTimeScale;
+      var scale60   = scaledDt * 60;    // normaliser: 1.0 at 60fps, 0.5 at 120fps, etc.
       var ms = scaledDt * 1000;
       if (ms < 0.001) {
         // Still frozen — only advance particles for lingering glow
@@ -854,23 +889,27 @@
       }
 
       // --- Movement input (only in MOVING state) ---
+      // Friction is frame-rate independent: Math.pow(f, scale60) decays the same
+      // per-second regardless of fps. Position scaled by scale60 for the same reason.
+      var frDt = Math.pow(FRICTION, scale60);
       if (player.state === 'MOVING') {
         var inp = getInputVector();
-        player.vx = (player.vx + inp.dx * ACCEL) * FRICTION;
-        player.vy = (player.vy + inp.dy * ACCEL) * FRICTION;
+        player.vx = (player.vx + inp.dx * ACCEL * scale60) * frDt;
+        player.vy = (player.vy + inp.dy * ACCEL * scale60) * frDt;
       } else if (player.state === 'RECOVERY') {
         // Heavy friction, no input — whiff is harsher
-        var rf = player.recoveryWhiff ? DASHATK_WHIFF_FRIC : RECOVERY_FRIC;
-        player.vx *= rf;
-        player.vy *= rf;
+        var rf   = player.recoveryWhiff ? DASHATK_WHIFF_FRIC : RECOVERY_FRIC;
+        var rfDt = Math.pow(rf, scale60);
+        player.vx *= rfDt;
+        player.vy *= rfDt;
       } else {
         // While attacking or dashing, apply friction but no player input
-        player.vx *= FRICTION;
-        player.vy *= FRICTION;
+        player.vx *= frDt;
+        player.vy *= frDt;
       }
 
-      player.x += player.vx;
-      player.y += player.vy;
+      player.x += player.vx * scale60;
+      player.y += player.vy * scale60;
 
       // World boundaries
       var margin = SIZE * 1.5;
@@ -962,7 +1001,6 @@
 
       // --- Arrow facing: toward mouse (screen→world) ---
       if (player.state === 'ATTACKING' || player.state === 'DASH_ATTACKING') {
-        // Torpedo / dash-attack: spin continuously
         player.angle = Math.atan2(player.atkDy, player.atkDx) + player.spinAngle;
       } else {
         var halfW = canvas.width / 2, halfH = canvas.height / 2;
@@ -971,9 +1009,9 @@
         player.angle = Math.atan2(wmy - player.y, wmx - player.x);
       }
 
-      // Camera lerp
-      camera.x += (player.x - camera.x) * CAM_SMOOTH;
-      camera.y += (player.y - camera.y) * CAM_SMOOTH;
+      // --- Positional trail history (after angle update so we store correct facing) ---
+      player.history.push({ x: player.x, y: player.y, angle: player.angle });
+      if (player.history.length > 6) player.history.shift();
 
       // --- Enemies ---
       updateEnemies(scaledDt);
@@ -990,6 +1028,12 @@
         spawnTimer -= SPAWN_INTERVAL;
         spawnRusher();
       }
+
+      // --- Camera lerp (LAST — after all position updates) ---
+      // Frame-rate independent lerp: same visual smoothing at any fps
+      var camAlpha = 1 - Math.pow(1 - CAM_SMOOTH, scale60);
+      camera.x += (player.x - camera.x) * camAlpha;
+      camera.y += (player.y - camera.y) * camAlpha;
 
       gameTime += dt;
     }
@@ -1088,9 +1132,21 @@
       }
 
       // Normal/dash-atk: cached sprite with shadowBlur pre-baked
-      // Use 'lighter' composite so the glow additively blends against the background
       var spr = getArrowSprite(r, g, b, isDashAtk);
+      var histLen = player.history.length;
+
+      // Positional wake trail — draw past frames using current sprite, fading out
       ctx.globalCompositeOperation = 'lighter';
+      for (var hi = 0; hi < histLen - 1; hi++) {
+        var hh = player.history[hi];
+        ctx.globalAlpha = (hi + 1) / histLen * 0.40;
+        var hc = Math.cos(hh.angle), hs = Math.sin(hh.angle);
+        ctx.setTransform(hc, hs, -hs, hc, hh.x + _drawOffX, hh.y + _drawOffY);
+        ctx.drawImage(spr.canvas, -spr.ox, -spr.oy);
+      }
+
+      // Main sprite — additive blend for neon glow
+      ctx.globalAlpha = 1;
       ctx.setTransform(ac, as2, -as2, ac, player.x + _drawOffX, player.y + _drawOffY);
       ctx.drawImage(spr.canvas, -spr.ox, -spr.oy);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1106,23 +1162,21 @@
       var colors = getColors();
       var cx = w / 2, cy = h / 2;
 
-      // Full clear on resize
+      // Resize tracking
       if (w !== lastW || h !== lastH) {
-        ctx.fillStyle = '#050510';
-        ctx.fillRect(0, 0, w, h);
         lastW = w; lastH = h;
       }
 
-      // Trail — semi-transparent fill → natural motion blur
-      ctx.fillStyle = 'rgba(5,5,16,' + colors.trailAlpha + ')';
+      // Opaque clear — avoid per-pixel read+blend of rgba fillRect
+      ctx.fillStyle = '#050510';
       ctx.fillRect(0, 0, w, h);
 
-      // Background (screen space)
+      // Background (screen space — pre-rendered PCB pattern, single fillRect)
       drawBackground(w, h, colors);
 
-      // Set camera offset for absolute setTransform used in drawGhosts/drawEnemies/drawArrow/drawParticles
-      _drawOffX = cx - camera.x;
-      _drawOffY = cy - camera.y;
+      // Set camera offset — round to integer pixel to eliminate sub-pixel jitter
+      _drawOffX = cx - Math.round(camera.x);
+      _drawOffY = cy - Math.round(camera.y);
 
       drawGhosts(colors);
       drawEnemies();
@@ -1152,6 +1206,9 @@
         ctx.fillStyle = 'rgba(' + yc[0] + ',' + yc[1] + ',' + yc[2] + ',0.75)';
         ctx.fillRect(aBarX, aBarY, aBarW * aFrac, aBarH);
       }
+
+      // FPS counter (drawn last, always on top)
+      drawFPS();
     }
 
     /* ================================================================
@@ -1163,6 +1220,7 @@
       if (prevTs === null) prevTs = ts;
       var dt = Math.min((ts - prevTs) / 1000, 0.05);
       prevTs = ts;
+      updateFPS(dt);
       update(dt);
       draw();
       rafId = requestAnimationFrame(loop);
@@ -1178,14 +1236,16 @@
       prevTs   = null;
       lastW    = 0;
       lastH    = 0;
-      ghosts   = [];
-      keys     = {};
+      ghosts         = [];
+      player.history = [];
+      keys           = {};
       // Reset particle pool (mark all inactive)
       for (var pi = 0; pi < MAX_PARTICLES; pi++) _particlePool[pi].active = false;
       enemies   = [];
       spawnTimer = 0;
       globalTimeScale = 1.0;
       hitstopTimer    = 0;
+      _fpsFrames = 0; _fpsTimer = 0; _fpsDisplay = 0;
 
       player.x             = 0;
       player.y             = 0;
