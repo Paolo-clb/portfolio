@@ -94,6 +94,20 @@
   var RUSHER_SPEED = 3.0;
   var RUSHER_SIZE  = 14;
 
+  var T2_SIZE      = 16;
+  var T2_SPEED     = 1.8;
+  var T2_KEEP_DIST = 280;
+  var T2_FIRE_CD   = 3200;
+  var T2_CHARGE_DUR = 500;
+  var T2_RECOIL    = 6;
+  var PROJ_SPEED   = 320;
+  var PROJ_RADIUS  = 5;
+  var PROJ_LIFE    = 4000;
+  var PROJ_REFLECT_MULT = 1.8;
+  var DEFLECT_HITSTOP   = 40;
+  var DEFLECT_HEAVY_HS  = 80;
+  var MAX_PROJECTILES   = 60;
+
   /* ================================================================
      TEXTURE GENERATORS
      ================================================================ */
@@ -176,6 +190,51 @@
     g2.fillStyle = '#FF0044';
     g2.fill();
 
+    tm.addCanvas(key, oc);
+  }
+
+  function _buildShooterTex(tm, key) {
+    if (tm.exists(key)) tm.remove(key);
+    var s = T2_SIZE, pad = 6;
+    var W = Math.ceil(s * 2.4 + pad * 2), H = Math.ceil(s * 2.4 + pad * 2);
+    var oc = document.createElement('canvas');
+    oc.width = W; oc.height = H;
+    var g2 = oc.getContext('2d');
+    var ox = W / 2, oy = H / 2;
+
+    g2.save();
+    g2.globalCompositeOperation = 'lighter';
+    g2.shadowColor = 'rgba(255,180,30,0.6)'; g2.shadowBlur = 14;
+    g2.beginPath();
+    g2.moveTo(ox + s, oy); g2.lineTo(ox, oy - s * 0.7);
+    g2.lineTo(ox - s, oy); g2.lineTo(ox, oy + s * 0.7);
+    g2.closePath();
+    g2.fillStyle = 'rgba(255,160,20,0.25)'; g2.fill();
+    g2.shadowBlur = 0; g2.restore();
+
+    g2.beginPath();
+    g2.moveTo(ox + s * 0.75, oy); g2.lineTo(ox, oy - s * 0.5);
+    g2.lineTo(ox - s * 0.75, oy); g2.lineTo(ox, oy + s * 0.5);
+    g2.closePath();
+    g2.fillStyle = '#FFaa22'; g2.fill();
+
+    tm.addCanvas(key, oc);
+  }
+
+  function _buildProjTex(tm, key) {
+    if (tm.exists(key)) tm.remove(key);
+    var S = 12;
+    var oc = document.createElement('canvas');
+    oc.width = S; oc.height = S;
+    var g2 = oc.getContext('2d');
+    g2.save();
+    g2.globalCompositeOperation = 'lighter';
+    g2.shadowColor = 'rgba(255,200,50,0.9)'; g2.shadowBlur = 6;
+    g2.fillStyle = '#ffcc33';
+    g2.beginPath(); g2.arc(S / 2, S / 2, 3.5, 0, Math.PI * 2); g2.fill();
+    g2.shadowBlur = 0; g2.restore();
+    g2.fillStyle = '#ffffff';
+    g2.beginPath(); g2.arc(S / 2, S / 2, 1.5, 0, Math.PI * 2); g2.fill();
     tm.addCanvas(key, oc);
   }
 
@@ -313,7 +372,7 @@
         atkDx: 0, atkDy: 0,
         recoveryTimer: 0, recoveryWhiff: false,
         hasHitDuringDashAttack: false, dashAtkExtended: 0,
-        hp: 5, invincible: false, invincTimer: 0,
+        hp: 5, invincible: false, invincTimer: 0, dashInvinc: false,
       };
 
       this.playerSpr = this.add.image(0, 0, '_ar_cyan');
@@ -372,6 +431,9 @@
         emitting: false,
       });
       this._emitter2.setDepth(39);
+
+      // Projectile pool (manual, no Arcade Physics group needed for manual collision)
+      this.projectiles = [];
 
       // Pool de cercles pour l'onde de choc de fin de dash
       this._waveRings = [];
@@ -446,6 +508,8 @@
       _buildArrowTex(tm, '_ar_whiff', 80,  80,  90, SIZE, 4, false);
 
       _buildEnemyTex(tm, '_enemy');
+      _buildShooterTex(tm, '_shooter');
+      _buildProjTex(tm, '_proj');
       _buildPCBTex(tm, '_pcb', c);
     },
 
@@ -458,8 +522,9 @@
       if (this.pcbTile) this.pcbTile.setTexture('_pcb');
       for (var i = 0; i < this.enemies.length; i++) {
         var e = this.enemies[i];
-        e.spr.setTexture('_enemy');
-        for (var j = 0; j < e.trSpr.length; j++) e.trSpr[j].setTexture('_enemy');
+        var texK = e.tier === 2 ? '_shooter' : '_enemy';
+        e.spr.setTexture(texK);
+        for (var j = 0; j < e.trSpr.length; j++) e.trSpr[j].setTexture(texK);
       }
     },
 
@@ -515,6 +580,22 @@
       if (al < 1) { adx = Math.cos(p.angle); ady = Math.sin(p.angle); }
       else { adx /= al; ady /= al; }
 
+      // Auto-aim: prioritise closest marked enemy in attack range, then follow mouse
+      var atkRange = SIZE * 0.6 + RUSHER_SIZE + ATK_DUR * 0.02 * ATK_IMP;
+      var bestMarkD = atkRange, bestMark = null;
+      for (var ne = 0; ne < this.enemies.length; ne++) {
+        var en = this.enemies[ne];
+        if (!en.isMarked) continue;
+        var ndx = en.x - p.x, ndy = en.y - p.y;
+        var nd = Math.sqrt(ndx * ndx + ndy * ndy);
+        if (nd < bestMarkD) { bestMarkD = nd; bestMark = en; }
+      }
+      if (bestMark) {
+        var mAdx = bestMark.x - p.x, mAdy = bestMark.y - p.y;
+        var mAl = Math.sqrt(mAdx * mAdx + mAdy * mAdy);
+        if (mAl > 0.1) { adx = mAdx / mAl; ady = mAdy / mAl; }
+      }
+
       p.vx += adx * ATK_IMP; p.vy += ady * ATK_IMP;
       p.state = 'ATTACKING'; p.atkAvailable = false;
       p.atkTimer = ATK_DUR; p.atkCooldown = 0;
@@ -557,17 +638,22 @@
       if (slots <= 0) return;
       count = Math.min(count, slots);
 
-      // Répartit les ennemis en arc autour du joueur pour former une vague
+      // Tier 2 shooters: 1 per wave after 10 enemies, 2 after 30
+      var shooterCount = 0;
+      if (this.enemies.length >= 30) shooterCount = 2;
+      else if (this.enemies.length >= 10) shooterCount = 1;
+      shooterCount = Math.min(shooterCount, count);
+
       var baseAng = Math.random() * Math.PI * 2;
       var spread  = (count > 1) ? (Math.PI * 0.9) : 0;
       for (var i = 0; i < count; i++) {
         var t   = count > 1 ? i / (count - 1) : 0.5;
         var ang = baseAng + (t - 0.5) * spread + (Math.random() - 0.5) * 0.3;
         var dist = SPAWN_DIST + Math.random() * 120;
-        this._spawnRusherAt(
-          this.p.x + Math.cos(ang) * dist,
-          this.p.y + Math.sin(ang) * dist
-        );
+        var sx = this.p.x + Math.cos(ang) * dist;
+        var sy = this.p.y + Math.sin(ang) * dist;
+        if (i < shooterCount) this._spawnShooterAt(sx, sy);
+        else this._spawnRusherAt(sx, sy);
       }
     },
 
@@ -591,6 +677,45 @@
         speed: RUSHER_SPEED + Math.random() * 0.8,
         stunTimer: 0, isMarked: false, markTimer: 0,
         trail: trData, trSpr: trSpr, _tw: 0, _tn: 0,
+        tier: 1, fireCD: 0, chargeTimer: 0, isCharging: false,
+      });
+    },
+
+    _spawnShooterAt: function (ex, ey) {
+      var spr = this.add.image(ex, ey, '_shooter');
+      spr.setBlendMode(Phaser.BlendModes.ADD);
+      spr.setDepth(20);
+
+      var trSpr = [], trData = [];
+      for (var t = 0; t < this.ENEMY_TRAIL_N; t++) {
+        var ts = this.add.image(ex, ey, '_shooter');
+        ts.setBlendMode(Phaser.BlendModes.ADD);
+        ts.setDepth(15); ts.setVisible(false);
+        trSpr.push(ts);
+        trData.push({ x: ex, y: ey, angle: 0 });
+      }
+
+      this.enemies.push({
+        spr: spr, x: ex, y: ey, vx: 0, vy: 0,
+        angle: 0, hp: 2, size: T2_SIZE,
+        speed: T2_SPEED + Math.random() * 0.4,
+        stunTimer: 0, isMarked: false, markTimer: 0,
+        trail: trData, trSpr: trSpr, _tw: 0, _tn: 0,
+        tier: 2, fireCD: T2_FIRE_CD * (0.8 + Math.random() * 0.4),
+        chargeTimer: 0, isCharging: false,
+      });
+    },
+
+    _spawnProjectile: function (ex, ey, angle, spd, shooter) {
+      if (this.projectiles.length >= MAX_PROJECTILES) return;
+      var spr = this.add.image(ex, ey, '_proj');
+      spr.setBlendMode(Phaser.BlendModes.ADD);
+      spr.setDepth(22);
+      this.projectiles.push({
+        spr: spr, x: ex, y: ey,
+        vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
+        life: PROJ_LIFE, isReflected: false, smashed: false,
+        shooterRef: shooter || null,
       });
     },
 
@@ -661,22 +786,36 @@
     },
 
     _triggerDetonation: function (markedIdx) {
+      var p = this.p;
       var e = this.enemies[markedIdx];
       var ex = e.x, ey = e.y;
+      var detRadius = SHOCKWAVE_RADIUS * 2.5;
 
       this._killEnemy(markedIdx);
 
-      // Destroy all remaining enemies with explosion on each
+      // Zone damage: 3 HP (one-shot everything) to all enemies in radius
       for (var i = this.enemies.length - 1; i >= 0; i--) {
         var o = this.enemies[i];
-        this._explode(o.x, o.y, [0, 255, 255], 20);
-        this._explode(o.x, o.y, [255, 255, 255], 8);
-        o.spr.destroy();
-        for (var t = 0; t < o.trSpr.length; t++) o.trSpr[t].destroy();
+        var odx = o.x - ex, ody = o.y - ey;
+        var od = Math.sqrt(odx * odx + ody * ody);
+        if (od < detRadius) {
+          this._explode(o.x, o.y, [0, 255, 255], 10);
+          this._killEnemy(i);
+        }
       }
-      this.enemies.length = 0;
 
-      this.cameras.main.flash(350, 200, 255, 255, false);
+      // Destroy projectiles in radius
+      for (var pi = this.projectiles.length - 1; pi >= 0; pi--) {
+        var pr = this.projectiles[pi];
+        var pdx = pr.x - ex, pdy = pr.y - ey;
+        if (Math.sqrt(pdx * pdx + pdy * pdy) < detRadius) {
+          this._explode(pr.x, pr.y, [0, 255, 255], 5);
+          pr.spr.destroy();
+          this.projectiles.splice(pi, 1);
+        }
+      }
+
+      this.cameras.main.flash(200, 0, 255, 255, false);
       this.cameras.main.shake(200, 0.018);
       this._triggerHitstop(DETONATION_HITSTOP);
       this._spawnWaveRing(ex, ey);
@@ -694,13 +833,22 @@
         var d = Math.sqrt(dx * dx + dy * dy);
         if (d < LANDING_BURST_RADIUS && d > 0.1) {
           var f = 1.0 - d / LANDING_BURST_RADIUS;
-          e.vx += (dx / d) * LANDING_BURST_FORCE * (0.5 + f * 0.5);
-          e.vy += (dy / d) * LANDING_BURST_FORCE * (0.5 + f * 0.5);
-          e.stunTimer = Math.max(e.stunTimer, LANDING_BURST_STUN * f);
+          // Reduced force so nearby enemies stay attackable
+          e.vx += (dx / d) * LANDING_BURST_FORCE * 0.25 * (0.5 + f * 0.5);
+          e.vy += (dy / d) * LANDING_BURST_FORCE * 0.25 * (0.5 + f * 0.5);
+          e.stunTimer = Math.max(e.stunTimer, LANDING_BURST_STUN * f * 0.5);
         }
       }
 
-      this._spawnWaveRing(p.x, p.y);
+      // Subtle visual ring (smaller, faster fade)
+      var ring = this._waveRings[this._waveRingW % this._waveRings.length];
+      this._waveRingW++;
+      ring.x = p.x; ring.y = p.y;
+      ring.r = 10; ring.alpha = 0.45; ring.active = true;
+      ring.gfx.setVisible(true);
+
+      // Dash-attack i-frames: cyan look
+      p.invincible = true; p.invincTimer = 250; p.dashInvinc = true;
     },
 
     _spawnWaveRing: function (x, y) {
@@ -751,29 +899,44 @@
           if (isAtk) {
             if (e.isMarked) {
               this._triggerDetonation(i);
-              // Instant recovery — player can act immediately
               p.state = 'MOVING';
               p.spinAngle = 0; p.atkTimer = 0;
               p.atkAvailable = true; p.atkCooldown = 0;
               return;
             }
-            this._killEnemy(i);
-            // Zero penalty on hit: instant recovery
+            e.hp -= 1;
+            if (e.hp <= 0) {
+              this._killEnemy(i);
+            } else {
+              // Push enemy away so it can't immediately counter-hit
+              if (dist > 0.1) { e.vx -= (dx / dist) * 10; e.vy -= (dy / dist) * 10; }
+              e.stunTimer = 300;
+              this._explode(e.x, e.y, [255, 200, 60], 8);
+              this._triggerHitstop(HITSTOP_DUR);
+            }
             p.state = 'MOVING';
             p.spinAngle = 0; p.atkTimer = 0;
             p.atkAvailable = true; p.atkCooldown = 0;
             p.vx *= 0.3; p.vy *= 0.3;
+            // Brief i-frames so the player can't be hit during state transition
+            if (!p.invincible) { p.invincible = true; p.invincTimer = 120; p.dashInvinc = true; }
             return;
           } else if (isDAtk) {
-            // Dash attack on marked enemy: normal kill, NO detonation
-            this._killEnemy(i);
+            e.hp -= 1;
+            if (e.hp <= 0) {
+              this._killEnemy(i);
+            } else {
+              e.stunTimer = 200;
+              this._explode(e.x, e.y, [255, 200, 60], 8);
+              this._triggerHitstop(HITSTOP_DUR);
+            }
             p.hasHitDuringDashAttack = true;
             if (p.dashAtkExtended < DASHATK_MAX_EXT) {
               var ext = Math.min(DASHATK_CHAIN_EXT, DASHATK_MAX_EXT - p.dashAtkExtended);
               p.atkTimer += ext; p.dashAtkExtended += ext;
             }
           } else if (vuln && !p.invincible) {
-            p.hp -= 1; p.invincible = true; p.invincTimer = IFRAMES_DUR;
+            p.hp -= 1; p.invincible = true; p.invincTimer = IFRAMES_DUR; p.dashInvinc = false;
             if (dist > 0.1) { p.vx += (dx / dist) * 8; p.vy += (dy / dist) * 8; }
           }
         }
@@ -809,7 +972,7 @@
 
       if (p.invincible) {
         p.invincTimer -= ms;
-        if (p.invincTimer <= 0) { p.invincible = false; p.invincTimer = 0; }
+        if (p.invincTimer <= 0) { p.invincible = false; p.invincTimer = 0; p.dashInvinc = false; }
       }
 
       var frDt = Math.pow(FRICTION, s60);
@@ -836,7 +999,10 @@
         if (Math.sqrt(p.vx * p.vx + p.vy * p.vy) > 2) {
           this._addGhost(p.x, p.y, 0.55, p.angle, false);
         }
-        if (p.dashTimer <= 0) { p.state = 'MOVING'; p.dashCooldown = DASH_CD; }
+        if (p.dashTimer <= 0) {
+          p.state = 'MOVING'; p.dashCooldown = DASH_CD;
+          p.invincible = true; p.invincTimer = 220; p.dashInvinc = true;
+        }
       }
       if (p.state !== 'DASHING' && p.dashCooldown > 0) {
         p.dashCooldown = Math.max(0, p.dashCooldown - ms);
@@ -896,6 +1062,7 @@
       }
 
       this._updateEnemies(sDt);
+      this._updateProjectiles(sDt);
       this._checkCollisions();
 
       this.spawnTimer += ms;
@@ -920,6 +1087,7 @@
 
       this._renderPlayer();
       this._renderEnemies();
+      this._renderProjectiles();
       this._renderHUD();
     },
 
@@ -997,7 +1165,47 @@
           e.stunTimer -= ms;
           e.vx *= stDrg; e.vy *= stDrg;
           e.x += e.vx * sc60; e.y += e.vy * sc60;
+        } else if (e.tier === 2) {
+          // Tier 2: keep distance, face player, charge & shoot
+          var dx2 = p.x - e.x, dy2 = p.y - e.y;
+          var d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+          if (d2 > 0.1) e.angle = Math.atan2(dy2, dx2);
+
+          if (d2 < T2_KEEP_DIST * 0.7) {
+            // too close — flee
+            var fx2 = d2 > 0.1 ? (-dx2 / d2) * e.speed * 1.5 : 0;
+            var fy2 = d2 > 0.1 ? (-dy2 / d2) * e.speed * 1.5 : 0;
+            e.vx += (fx2 - e.vx) * stK; e.vy += (fy2 - e.vy) * stK;
+          } else if (d2 > T2_KEEP_DIST * 1.3) {
+            // too far — approach
+            var ax2 = (dx2 / d2) * e.speed, ay2 = (dy2 / d2) * e.speed;
+            e.vx += (ax2 - e.vx) * stK; e.vy += (ay2 - e.vy) * stK;
+          } else {
+            // orbit range — slow drift
+            e.vx *= stDrg; e.vy *= stDrg;
+          }
+          e.x += e.vx * sc60; e.y += e.vy * sc60;
+
+          // Firing logic
+          e.fireCD -= ms;
+          if (e.fireCD <= 0 && !e.isCharging) {
+            e.isCharging = true; e.chargeTimer = T2_CHARGE_DUR;
+          }
+          if (e.isCharging) {
+            e.chargeTimer -= ms;
+            if (e.chargeTimer <= 0) {
+              // Fire!
+              var fAng = Math.atan2(p.y - e.y, p.x - e.x);
+              this._spawnProjectile(e.x, e.y, fAng, PROJ_SPEED, e);
+              // Recoil
+              e.vx -= Math.cos(fAng) * T2_RECOIL;
+              e.vy -= Math.sin(fAng) * T2_RECOIL;
+              e.isCharging = false;
+              e.fireCD = T2_FIRE_CD * (0.8 + Math.random() * 0.4);
+            }
+          }
         } else {
+          // Tier 1: rush toward player
           var dx = p.x - e.x, dy = p.y - e.y;
           var d = Math.sqrt(dx * dx + dy * dy);
           if (d > 0.1) {
@@ -1010,24 +1218,190 @@
       }
     },
 
+    _updateProjectiles: function (dt) {
+      var ms = dt * 1000, sc60 = dt * 60;
+      var p = this.p;
+      var pR = SIZE * 0.6;
+      var isAtk = p.state === 'ATTACKING';
+      var isDAtk = p.state === 'DASH_ATTACKING';
+      var vuln = !isAtk && !isDAtk && p.state !== 'DASHING';
+
+      for (var i = this.projectiles.length - 1; i >= 0; i--) {
+        var pr = this.projectiles[i];
+        pr.life -= ms;
+        pr.x += pr.vx * dt; pr.y += pr.vy * dt;
+        pr.spr.setPosition(pr.x, pr.y);
+
+        // Trail particles on reflected+smashed projectiles
+        if (pr.isReflected && pr.smashed && Math.random() < 0.5) {
+          this._emitter2.setPosition(pr.x, pr.y);
+          this._emitter2.setParticleTint(0x00ffff);
+          this._emitter2.explode(1);
+        }
+
+        // OOB / expired
+        if (pr.life <= 0 || Math.abs(pr.x) > WORLD_HALF || Math.abs(pr.y) > WORLD_HALF) {
+          pr.spr.destroy();
+          this.projectiles.splice(i, 1);
+          continue;
+        }
+
+        if (pr.isReflected) {
+          // Reflected projectile hits enemies
+          var hitEnemy = false;
+          for (var ei = this.enemies.length - 1; ei >= 0; ei--) {
+            var e = this.enemies[ei];
+            var edx = pr.x - e.x, edy = pr.y - e.y;
+            var ed = Math.sqrt(edx * edx + edy * edy);
+            if (ed < PROJ_RADIUS + e.size * 0.5) {
+              hitEnemy = true;
+              if (pr.smashed) {
+                // Smashed projectile: 2 damage + AoE
+                var smashAoe = SHOCKWAVE_RADIUS * 1.2;
+                e.hp -= 2;
+                if (e.hp <= 0) {
+                  this._killEnemy(ei);
+                } else {
+                  e.stunTimer = 300;
+                }
+                // AoE splash on nearby enemies
+                for (var si = this.enemies.length - 1; si >= 0; si--) {
+                  var se = this.enemies[si];
+                  var sdx2 = se.x - pr.x, sdy2 = se.y - pr.y;
+                  var sd2 = Math.sqrt(sdx2 * sdx2 + sdy2 * sdy2);
+                  if (sd2 < smashAoe && sd2 > 0.1) {
+                    se.hp -= 1;
+                    var sf = 1.0 - sd2 / smashAoe;
+                    se.vx += (sdx2 / sd2) * SHOCKWAVE_FORCE * 1.5 * sf;
+                    se.vy += (sdy2 / sd2) * SHOCKWAVE_FORCE * 1.5 * sf;
+                    se.stunTimer = Math.max(se.stunTimer, 250 * sf);
+                    if (se.hp <= 0) { this._killEnemy(si); }
+                  }
+                }
+                // Satisfying FX
+                this._explode(pr.x, pr.y, [0, 255, 255], 30);
+                this._explode(pr.x, pr.y, [255, 255, 255], 15);
+                this._explode(pr.x, pr.y, [100, 200, 255], 10);
+                this._triggerHitstop(DEFLECT_HEAVY_HS);
+                this.cameras.main.shake(80, 0.008);
+                this._spawnWaveRing(pr.x, pr.y);
+              } else {
+                // Normal reflect: 1 damage
+                e.hp -= 1;
+                if (e.hp <= 0) {
+                  this._killEnemy(ei);
+                } else {
+                  e.stunTimer = 200;
+                  this._explode(e.x, e.y, [0, 255, 255], 6);
+                }
+              }
+              pr.spr.destroy();
+              this.projectiles.splice(i, 1);
+              break;
+            }
+          }
+        } else {
+          // Enemy projectile hits player
+          if (vuln && !p.invincible) {
+            var pdx = p.x - pr.x, pdy = p.y - pr.y;
+            var pd = Math.sqrt(pdx * pdx + pdy * pdy);
+            if (pd < pR + PROJ_RADIUS) {
+              p.hp -= 1; p.invincible = true; p.invincTimer = IFRAMES_DUR; p.dashInvinc = false;
+              if (pd > 0.1) { p.vx += (pdx / pd) * 6; p.vy += (pdy / pd) * 6; }
+              pr.spr.destroy();
+              this.projectiles.splice(i, 1);
+              continue;
+            }
+          }
+
+          // Deflect: only dash attack can reflect projectiles
+          if (isDAtk) {
+            var ddx = p.x - pr.x, ddy = p.y - pr.y;
+            var dd = Math.sqrt(ddx * ddx + ddy * ddy);
+            if (dd < pR + PROJ_RADIUS + 8) {
+              var refSpd = PROJ_SPEED * PROJ_REFLECT_MULT;
+
+              // Aim back at the original shooter; fallback to closest Tier 2
+              var refAng;
+              if (pr.shooterRef && pr.shooterRef.hp > 0) {
+                refAng = Phaser.Math.Angle.Between(pr.x, pr.y, pr.shooterRef.x, pr.shooterRef.y);
+              } else {
+                var bestD = Infinity, bestE = null;
+                for (var hi = 0; hi < this.enemies.length; hi++) {
+                  var he = this.enemies[hi];
+                  if (he.tier !== 2) continue;
+                  var hdx = he.x - pr.x, hdy = he.y - pr.y;
+                  var hd = Math.sqrt(hdx * hdx + hdy * hdy);
+                  if (hd < bestD) { bestD = hd; bestE = he; }
+                }
+                if (bestE) {
+                  refAng = Phaser.Math.Angle.Between(pr.x, pr.y, bestE.x, bestE.y);
+                } else {
+                  refAng = Phaser.Math.Angle.Between(p.x, p.y, pr.x, pr.y);
+                }
+              }
+              pr.vx = Math.cos(refAng) * refSpd;
+              pr.vy = Math.sin(refAng) * refSpd;
+              pr.isReflected = true;
+              pr.smashed = true;
+              pr.life = PROJ_LIFE;
+              pr.spr.setTint(0x00ffff);
+
+              p.hasHitDuringDashAttack = true;
+              this._triggerHitstop(DEFLECT_HEAVY_HS);
+              this.cameras.main.shake(80, 0.008);
+              this._explode(pr.x, pr.y, [0, 255, 255], 15);
+            }
+          }
+        }
+      }
+    },
+
+    _renderProjectiles: function () {
+      var gt = this.gameTime;
+      for (var i = 0; i < this.projectiles.length; i++) {
+        var pr = this.projectiles[i];
+        if (pr.isReflected) {
+          // Cyan pulsing reflected projectile
+          var pa = 0.8 + 0.2 * Math.sin(gt * Math.PI * 20 + i);
+          pr.spr.setAlpha(pa);
+          pr.spr.setScale(pr.smashed ? 1.6 : 1.2);
+        } else {
+          pr.spr.setAlpha(1.0);
+          pr.spr.clearTint();
+          pr.spr.setScale(1.0);
+        }
+      }
+    },
+
     _renderPlayer: function () {
       var p = this.p;
       var key = this._pTexKey();
 
-      if (p.invincible && Math.floor(this.gameTime * 12.5) % 2 === 0) {
+      // Normal hit i-frames: flicker
+      if (p.invincible && !p.dashInvinc && Math.floor(this.gameTime * 12.5) % 2 === 0) {
         this.playerSpr.setVisible(false);
         for (var i = 0; i < this.TRAIL_CAP; i++) this._trail[i].spr.setVisible(false);
         return;
       }
 
       this.playerSpr.setTexture(key);
-      this.playerSpr.setAlpha(1.0);
       this.playerSpr.setPosition(p.x, p.y);
       this.playerSpr.setRotation(p.angle);
       this.playerSpr.setVisible(true);
-      this.playerSpr.setBlendMode(
-        (p.state === 'RECOVERY' && p.recoveryWhiff) ? Phaser.BlendModes.NORMAL : Phaser.BlendModes.ADD
-      );
+
+      // Dash i-frames: keep dash look (cyan tint, ADD blend, full alpha)
+      if (p.invincible && p.dashInvinc) {
+        this.playerSpr.setTint(0x00ffff);
+        this.playerSpr.setAlpha(0.85);
+        this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
+      } else {
+        this.playerSpr.clearTint();
+        this.playerSpr.setAlpha(1.0);
+        this.playerSpr.setBlendMode(
+          (p.state === 'RECOVERY' && p.recoveryWhiff) ? Phaser.BlendModes.NORMAL : Phaser.BlendModes.ADD
+        );
+      }
 
       for (var i = 0; i < this.TRAIL_CAP; i++) this._trail[i].spr.setVisible(false);
       for (var hi = 0; hi < this._trN; hi++) {
@@ -1040,7 +1414,10 @@
         sl.spr.setTexture(key);
         sl.spr.setPosition(sl.x, sl.y);
         sl.spr.setRotation(sl.angle);
-        sl.spr.setAlpha((hi + 1) / (this._trN + 1) * 0.35);
+        var trAlpha = (hi + 1) / (this._trN + 1) * (p.invincible && p.dashInvinc ? 0.55 : 0.35);
+        sl.spr.setAlpha(trAlpha);
+        if (p.invincible && p.dashInvinc) sl.spr.setTint(0x00ffff);
+        else sl.spr.clearTint();
         sl.spr.setVisible(true);
       }
     },
@@ -1053,18 +1430,27 @@
         e.spr.setRotation(e.angle);
 
         if (e.isMarked) {
-          // Urgence visuelle : pulse rapide entre blanc pur et cyan
-          var flick = Math.sin(gt * Math.PI * 22 + i);
-          var urgency = Math.max(0, 1 - e.markTimer / 3000); // 0→1 au fil du temps
-          var flickFreq = 22 + urgency * 20;                 // s'accélère avant expiration
-          flick = Math.sin(gt * Math.PI * flickFreq + i);
-          // Alterne entre cyan vif et blanc pour un effet "grésillant"
+          var urgency = Math.max(0, 1 - e.markTimer / 3000);
+          var flickFreq = 22 + urgency * 20;
+          var flick = Math.sin(gt * Math.PI * flickFreq + i);
           var tintColor = flick > 0 ? 0x00ffff : 0xffffff;
           e.spr.setTint(tintColor);
           e.spr.setAlpha(0.7 + Math.abs(flick) * 0.3);
-          // Scale légèrement pulsé
-          var sc = 1.0 + Math.abs(flick) * 0.15;
-          e.spr.setScale(sc);
+          e.spr.setScale(1.0 + Math.abs(flick) * 0.15);
+        } else if (e.tier === 2) {
+          // Tier 2 HP color: full=orange, damaged=red-orange
+          var t2tint = e.hp >= 2 ? 0xffaa22 : 0xff4422;
+          e.spr.setTint(t2tint);
+          // Charge visual: scale pulse when charging
+          if (e.isCharging) {
+            var chg = 1 - e.chargeTimer / T2_CHARGE_DUR;
+            var csc = 1.0 + chg * 0.35;
+            e.spr.setScale(csc);
+            e.spr.setAlpha(0.6 + chg * 0.4);
+          } else {
+            e.spr.setScale(1.0);
+            e.spr.setAlpha(1.0);
+          }
         } else {
           e.spr.clearTint();
           e.spr.setAlpha(1.0);
