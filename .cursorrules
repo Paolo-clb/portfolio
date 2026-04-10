@@ -1,0 +1,15 @@
+You are an expert in Phaser 3 game development and Vanilla JavaScript.
+
+CONTEXT:
+This workspace is a developer portfolio. Inside it, there is a WebGL game built with Phaser 3.
+The game logic is strictly isolated in js/light-game.js. The modal UI wrapper is in js/light-again.js.
+
+CRITICAL RULES:
+
+    DO NOT use TypeScript, React, or modern ES modules (import/export). Stick to ES5/ES6 with IIFEs.
+
+    Use var or let/const consistently with the existing code.
+
+    For the Phaser game, prioritize native features (Arcade Physics, this.add.particles(), this.add.graphics()) over manual math or Canvas 2D objects to maintain 60 FPS.
+
+    Respect the window.__GAME_ACTIVE variable: the game must properly pause/destroy when the modal is closed to save portfolio performance.

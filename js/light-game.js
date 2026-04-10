@@ -51,33 +51,43 @@
   var ACCEL       = 0.7;
   var FRICTION    = 0.92;
   var SIZE        = 20;
-  var DASH_IMP    = 16;
-  var DASH_DUR    = 200;
+  var DASH_IMP    = 28;
+  var DASH_DUR    = 120;
   var DASH_CD     = 1200;
-  var ATK_IMP     = 22;
-  var ATK_DUR     = 400;
-  var ATK_CD      = 600;
+  var ATK_IMP     = 18;
+  var ATK_DUR     = 280;
+  var ATK_CD      = 0;
   var ATK_SPIN    = 28;
   var DASH_ATK_IMP  = 30;
   var DASH_ATK_DUR  = 300;
   var DASH_ATK_SPIN = 50;
   var RECOVERY_DUR      = 180;
   var RECOVERY_FRIC     = 0.80;
+  var ATK_WHIFF_DUR     = 220;
   var DASHATK_WHIFF_DUR  = 380;
   var DASHATK_WHIFF_FRIC = 0.70;
   var DASHATK_CHAIN_EXT  = 40;
   var DASHATK_MAX_EXT    = 180;
-  var HITSTOP_DUR   = 40;
+  var HITSTOP_DUR        = 40;
+  var HITSTOP_MAX        = 80;
+  var DETONATION_HITSTOP = 120;
   var IFRAMES_DUR   = 800;
-  var SPAWN_INTERVAL = 2000;
-  var SPAWN_DIST     = 600;
-  var MAX_ENEMIES    = 40;
+  var SPAWN_INTERVAL  = 3500;
+  var SPAWN_DIST      = 650;
+  var MAX_ENEMIES     = 200;
+  var WAVE_BASE       = 4;
+  var WAVE_SCALE      = 0.06;
+  var WAVE_MAX        = 20;
   var SEPARATION_RADIUS = 30;
   var SEPARATION_FORCE  = 4.0;
   var REBOUND_IMP       = 14;
-  var SHOCKWAVE_RADIUS  = 90;
-  var SHOCKWAVE_FORCE   = 10;
+  var SHOCKWAVE_RADIUS  = 110;
+  var SHOCKWAVE_FORCE   = 14;
   var SHOCKWAVE_STUN    = 300;
+  var LANDING_BURST_RADIUS = 180;
+  var LANDING_BURST_FORCE  = 28;
+  var LANDING_BURST_STUN   = 500;
+  var DASH_MARK_RADIUS     = 30;
   var CAM_LERP    = 0.10;
   var WORLD_HALF  = 4000;
   var PCB_TILE    = 256;
@@ -298,7 +308,7 @@
         angle: 0, spinAngle: 0,
         state: 'MOVING',
         dashAvailable: true, dashCooldown: 0, dashTimer: 0,
-        dashDx: 0, dashDy: 0,
+        dashDx: 0, dashDy: 0, dashHitCount: 0,
         atkAvailable: true, atkCooldown: 0, atkTimer: 0,
         atkDx: 0, atkDy: 0,
         recoveryTimer: 0, recoveryWhiff: false,
@@ -337,15 +347,41 @@
       this.spawnTimer = 0;
 
       _buildPixelTex(this.textures, '_pxl');
+
+      // Emitter principal pour les explosions ennemies (overkill WebGL)
       this._emitter = this.add.particles(0, 0, '_pxl', {
-        speed: { min: 120, max: 400 },
-        lifespan: { min: 300, max: 700 },
-        scale: { start: 0.5, end: 0.1 },
-        alpha: { start: 0.9, end: 0 },
+        speed: { min: 60, max: 520 },
+        lifespan: { min: 250, max: 800 },
+        scale: { start: 0.9, end: 0 },
+        alpha: { start: 1.0, end: 0 },
+        gravityY: 0,
+        drag: 320,
         blendMode: Phaser.BlendModes.ADD,
         emitting: false,
       });
       this._emitter.setDepth(40);
+
+      // Second emitter — éclats secondaires plus doux
+      this._emitter2 = this.add.particles(0, 0, '_pxl', {
+        speed: { min: 20, max: 180 },
+        lifespan: { min: 400, max: 1000 },
+        scale: { start: 0.4, end: 0 },
+        alpha: { start: 0.7, end: 0 },
+        drag: 180,
+        blendMode: Phaser.BlendModes.ADD,
+        emitting: false,
+      });
+      this._emitter2.setDepth(39);
+
+      // Pool de cercles pour l'onde de choc de fin de dash
+      this._waveRings = [];
+      for (var wi = 0; wi < 4; wi++) {
+        var wg = this.add.graphics();
+        wg.setDepth(35);
+        wg.setVisible(false);
+        this._waveRings.push({ gfx: wg, x: 0, y: 0, r: 0, alpha: 0, active: false });
+      }
+      this._waveRingW = 0;
 
       this.hudGfx = this.add.graphics();
       this.hudGfx.setScrollFactor(0);
@@ -362,6 +398,11 @@
       this.gameTime = 0;
 
       cam.setBackgroundColor(getColors().bgColor);
+
+      // Bloom PostFX — néons qui bavent sans aveugler
+      if (cam.postFX) {
+        this._bloomFX = cam.postFX.addBloom(0xffffff, 1, 1, 0.6, 1.4, 4);
+      }
 
       this._keys = {};
       this.input.keyboard.on('keydown', function (ev) {
@@ -457,13 +498,14 @@
       p.dashTimer = DASH_DUR;
       p.dashCooldown = 0;
       p.dashDx = dx; p.dashDy = dy;
+      p.dashHitCount = 0;
     },
 
     _tryAttack: function () {
       var p = this.p;
-      if (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING' || p.state === 'RECOVERY') return;
+      if (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING') return;
+      if (p.state === 'RECOVERY') return;
       if (p.state === 'DASHING') { this._triggerDashAtk(); return; }
-      if (!p.atkAvailable) return;
 
       var cam = this.cameras.main;
       var wmx = this._mouseX + cam.scrollX;
@@ -499,11 +541,37 @@
 
     _spawnRusher: function () {
       if (this.enemies.length >= MAX_ENEMIES) return;
-      var p = this.p;
       var ang = Math.random() * Math.PI * 2;
-      var ex = p.x + Math.cos(ang) * SPAWN_DIST;
-      var ey = p.y + Math.sin(ang) * SPAWN_DIST;
+      this._spawnRusherAt(
+        this.p.x + Math.cos(ang) * SPAWN_DIST,
+        this.p.y + Math.sin(ang) * SPAWN_DIST
+      );
+    },
 
+    _spawnWave: function () {
+      var count = Math.min(
+        Math.round(WAVE_BASE + this.enemies.length * WAVE_SCALE),
+        WAVE_MAX
+      );
+      var slots = MAX_ENEMIES - this.enemies.length;
+      if (slots <= 0) return;
+      count = Math.min(count, slots);
+
+      // Répartit les ennemis en arc autour du joueur pour former une vague
+      var baseAng = Math.random() * Math.PI * 2;
+      var spread  = (count > 1) ? (Math.PI * 0.9) : 0;
+      for (var i = 0; i < count; i++) {
+        var t   = count > 1 ? i / (count - 1) : 0.5;
+        var ang = baseAng + (t - 0.5) * spread + (Math.random() - 0.5) * 0.3;
+        var dist = SPAWN_DIST + Math.random() * 120;
+        this._spawnRusherAt(
+          this.p.x + Math.cos(ang) * dist,
+          this.p.y + Math.sin(ang) * dist
+        );
+      }
+    },
+
+    _spawnRusherAt: function (ex, ey) {
       var spr = this.add.image(ex, ey, '_enemy');
       spr.setBlendMode(Phaser.BlendModes.ADD);
       spr.setDepth(20);
@@ -521,7 +589,7 @@
         spr: spr, x: ex, y: ey, vx: 0, vy: 0,
         angle: 0, hp: 1, size: RUSHER_SIZE,
         speed: RUSHER_SPEED + Math.random() * 0.8,
-        stunTimer: 0,
+        stunTimer: 0, isMarked: false, markTimer: 0,
         trail: trData, trSpr: trSpr, _tw: 0, _tn: 0,
       });
     },
@@ -548,20 +616,27 @@
     },
 
     _explode: function (x, y, color, n) {
+      var tint = Phaser.Display.Color.GetColor(color[0], color[1], color[2]);
       this._emitter.setPosition(x, y);
-      this._emitter.setParticleTint(
-        Phaser.Display.Color.GetColor(color[0], color[1], color[2])
-      );
+      this._emitter.setParticleTint(tint);
       this._emitter.explode(n || 25);
+      this._emitter2.setPosition(x, y);
+      this._emitter2.setParticleTint(tint);
+      this._emitter2.explode(Math.round((n || 25) * 0.5));
     },
 
     _killEnemy: function (idx) {
       var e = this.enemies[idx];
       var ex = e.x, ey = e.y;
 
-      var cnt = Math.round(20 + (e.size / RUSHER_SIZE) * 10);
-      this._explode(ex, ey, [255, 40, 80], cnt);
-      this._explode(ex, ey, [255, 180, 200], Math.round(cnt * 0.4));
+      // Explosion overkill — gerbe principale rouge/orange
+      var cnt = Math.round(30 + (e.size / RUSHER_SIZE) * 20);
+      cnt = Math.min(cnt, 50);
+      this._explode(ex, ey, [255, 30, 60], cnt);
+      // Halo rose — éclats secondaires
+      this._explode(ex, ey, [255, 160, 80], Math.round(cnt * 0.5));
+      // Flash blanc central
+      this._explode(ex, ey, [255, 255, 220], Math.round(cnt * 0.25));
 
       e.spr.destroy();
       for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
@@ -585,8 +660,61 @@
       }
     },
 
+    _triggerDetonation: function (markedIdx) {
+      var e = this.enemies[markedIdx];
+      var ex = e.x, ey = e.y;
+
+      this._killEnemy(markedIdx);
+
+      // Destroy all remaining enemies with explosion on each
+      for (var i = this.enemies.length - 1; i >= 0; i--) {
+        var o = this.enemies[i];
+        this._explode(o.x, o.y, [0, 255, 255], 20);
+        this._explode(o.x, o.y, [255, 255, 255], 8);
+        o.spr.destroy();
+        for (var t = 0; t < o.trSpr.length; t++) o.trSpr[t].destroy();
+      }
+      this.enemies.length = 0;
+
+      this.cameras.main.flash(350, 200, 255, 255, false);
+      this.cameras.main.shake(200, 0.018);
+      this._triggerHitstop(DETONATION_HITSTOP);
+      this._spawnWaveRing(ex, ey);
+
+      this._explode(ex, ey, [0, 255, 255], 50);
+      this._explode(ex, ey, [255, 255, 255], 30);
+    },
+
+    _triggerLandingBurst: function () {
+      var p = this.p;
+
+      for (var i = 0; i < this.enemies.length; i++) {
+        var e = this.enemies[i];
+        var dx = e.x - p.x, dy = e.y - p.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (d < LANDING_BURST_RADIUS && d > 0.1) {
+          var f = 1.0 - d / LANDING_BURST_RADIUS;
+          e.vx += (dx / d) * LANDING_BURST_FORCE * (0.5 + f * 0.5);
+          e.vy += (dy / d) * LANDING_BURST_FORCE * (0.5 + f * 0.5);
+          e.stunTimer = Math.max(e.stunTimer, LANDING_BURST_STUN * f);
+        }
+      }
+
+      this._spawnWaveRing(p.x, p.y);
+    },
+
+    _spawnWaveRing: function (x, y) {
+      var ring = this._waveRings[this._waveRingW % this._waveRings.length];
+      this._waveRingW++;
+      ring.x = x; ring.y = y;
+      ring.r = 10; ring.alpha = 0.9; ring.active = true;
+      ring.gfx.setVisible(true);
+    },
+
     _triggerHitstop: function (durMs) {
-      this.hitstopTimer = durMs;
+      // Ne s'additionne pas — prend le max, plafonné à HITSTOP_MAX
+      var cap = (durMs >= DETONATION_HITSTOP) ? DETONATION_HITSTOP : HITSTOP_MAX;
+      this.hitstopTimer = Math.min(Math.max(this.hitstopTimer, durMs), cap);
       this.timeScale = 0;
     },
 
@@ -595,7 +723,25 @@
       var pR = SIZE * 0.6;
       var isAtk = p.state === 'ATTACKING';
       var isDAtk = p.state === 'DASH_ATTACKING';
-      var vuln = !isAtk && !isDAtk && p.state !== 'DASHING';
+      var isDash = p.state === 'DASHING';
+      var vuln = !isAtk && !isDAtk && !isDash;
+
+      // Dash marks enemies instead of killing them
+      if (isDash) {
+        for (var mi = 0; mi < this.enemies.length; mi++) {
+          var me = this.enemies[mi];
+          if (me.isMarked) continue;
+          var mdx = p.x - me.x, mdy = p.y - me.y;
+          var md = Math.sqrt(mdx * mdx + mdy * mdy);
+          if (md < DASH_MARK_RADIUS + me.size * 0.5) {
+            me.isMarked = true;
+            me.markTimer = 3000;
+            me.stunTimer = 200;
+            p.dashHitCount++;
+            this._explode(me.x, me.y, [0, 255, 255], 8);
+          }
+        }
+      }
 
       for (var i = this.enemies.length - 1; i >= 0; i--) {
         var e = this.enemies[i];
@@ -603,12 +749,23 @@
         var dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < pR + e.size * 0.5) {
           if (isAtk) {
+            if (e.isMarked) {
+              this._triggerDetonation(i);
+              // Instant recovery — player can act immediately
+              p.state = 'MOVING';
+              p.spinAngle = 0; p.atkTimer = 0;
+              p.atkAvailable = true; p.atkCooldown = 0;
+              return;
+            }
             this._killEnemy(i);
-            p.state = 'RECOVERY'; p.recoveryTimer = RECOVERY_DUR;
-            p.vx = -p.atkDx * REBOUND_IMP; p.vy = -p.atkDy * REBOUND_IMP;
-            p.spinAngle = 0; p.atkTimer = 0; p.atkCooldown = ATK_CD;
+            // Zero penalty on hit: instant recovery
+            p.state = 'MOVING';
+            p.spinAngle = 0; p.atkTimer = 0;
+            p.atkAvailable = true; p.atkCooldown = 0;
+            p.vx *= 0.3; p.vy *= 0.3;
             return;
           } else if (isDAtk) {
+            // Dash attack on marked enemy: normal kill, NO detonation
             this._killEnemy(i);
             p.hasHitDuringDashAttack = true;
             if (p.dashAtkExtended < DASHATK_MAX_EXT) {
@@ -689,8 +846,10 @@
       if (p.state === 'ATTACKING') {
         p.atkTimer -= ms; p.spinAngle += sDt * ATK_SPIN;
         if (p.atkTimer <= 0) {
-          p.state = 'RECOVERY'; p.recoveryTimer = RECOVERY_DUR;
-          p.recoveryWhiff = false; p.atkCooldown = ATK_CD; p.spinAngle = 0;
+          // Whiff — attack missed, short recovery
+          p.state = 'RECOVERY'; p.recoveryTimer = ATK_WHIFF_DUR;
+          p.recoveryWhiff = true; p.spinAngle = 0;
+          p.vx *= 0.15; p.vy *= 0.15;
         }
       }
 
@@ -698,12 +857,12 @@
         p.atkTimer -= ms; p.spinAngle += sDt * DASH_ATK_SPIN;
         this._addGhost(p.x, p.y, 0.70, p.angle, true);
         if (p.atkTimer <= 0) {
-          if (p.hasHitDuringDashAttack) { p.state = 'MOVING'; }
+          if (p.hasHitDuringDashAttack) { this._triggerLandingBurst(); p.state = 'MOVING'; }
           else {
             p.state = 'RECOVERY'; p.recoveryTimer = DASHATK_WHIFF_DUR;
             p.recoveryWhiff = true; p.vx *= 0.05; p.vy *= 0.05;
           }
-          p.atkCooldown = ATK_CD; p.spinAngle = 0;
+          p.spinAngle = 0;
         }
       }
 
@@ -711,9 +870,8 @@
         p.recoveryTimer -= ms;
         if (p.recoveryTimer <= 0) { p.state = 'MOVING'; p.recoveryTimer = 0; }
       }
-      if (p.state !== 'ATTACKING' && p.state !== 'DASH_ATTACKING' && p.atkCooldown > 0) {
-        p.atkCooldown = Math.max(0, p.atkCooldown - ms);
-        if (p.atkCooldown <= 0) p.atkAvailable = true;
+      if (p.state !== 'ATTACKING' && p.state !== 'DASH_ATTACKING') {
+        p.atkAvailable = true;
       }
 
       this._decayGhosts(dt);
@@ -743,7 +901,7 @@
       this.spawnTimer += ms;
       if (this.spawnTimer >= SPAWN_INTERVAL) {
         this.spawnTimer -= SPAWN_INTERVAL;
-        this._spawnRusher();
+        this._spawnWave();
       }
 
       var cam = this.cameras.main;
@@ -757,9 +915,36 @@
 
       this.gameTime += dt;
 
+      // Anneaux d'onde de choc
+      this._updateWaveRings(dt);
+
       this._renderPlayer();
       this._renderEnemies();
       this._renderHUD();
+    },
+
+    _updateWaveRings: function (dt) {
+      var c = getColors();
+      for (var i = 0; i < this._waveRings.length; i++) {
+        var ring = this._waveRings[i];
+        if (!ring.active) continue;
+        ring.r     += dt * LANDING_BURST_RADIUS * 3.5;
+        ring.alpha -= dt * 3.2;
+        if (ring.alpha <= 0) {
+          ring.active = false;
+          ring.gfx.clear();
+          ring.gfx.setVisible(false);
+          continue;
+        }
+        ring.gfx.clear();
+        ring.gfx.lineStyle(2.5, c.cyan, ring.alpha);
+        ring.gfx.strokeCircle(ring.x, ring.y, ring.r);
+        // Second anneau intérieur plus fin
+        if (ring.r > 20) {
+          ring.gfx.lineStyle(1, c.cyan, ring.alpha * 0.4);
+          ring.gfx.strokeCircle(ring.x, ring.y, ring.r * 0.6);
+        }
+      }
     },
 
     _updateEnemies: function (dt) {
@@ -790,6 +975,24 @@
         tSl.x = e.x; tSl.y = e.y; tSl.angle = e.angle;
         e._tw++; if (e._tn < this.ENEMY_TRAIL_N) e._tn++;
 
+        // Mark expiry timer
+        if (e.isMarked) {
+          e.markTimer -= ms;
+          if (e.markTimer <= 0) {
+            e.isMarked = false; e.markTimer = 0;
+          }
+        }
+
+        // Micro-particles on marked enemies (instability visual)
+        if (e.isMarked && Math.random() < 0.18) {
+          this._emitter2.setPosition(
+            e.x + (Math.random() - 0.5) * 12,
+            e.y + (Math.random() - 0.5) * 8
+          );
+          this._emitter2.setParticleTint(0x00ffff);
+          this._emitter2.explode(1);
+        }
+
         if (e.stunTimer > 0) {
           e.stunTimer -= ms;
           e.vx *= stDrg; e.vy *= stDrg;
@@ -818,6 +1021,7 @@
       }
 
       this.playerSpr.setTexture(key);
+      this.playerSpr.setAlpha(1.0);
       this.playerSpr.setPosition(p.x, p.y);
       this.playerSpr.setRotation(p.angle);
       this.playerSpr.setVisible(true);
@@ -842,10 +1046,30 @@
     },
 
     _renderEnemies: function () {
+      var gt = this.gameTime;
       for (var i = 0; i < this.enemies.length; i++) {
         var e = this.enemies[i];
         e.spr.setPosition(e.x, e.y);
         e.spr.setRotation(e.angle);
+
+        if (e.isMarked) {
+          // Urgence visuelle : pulse rapide entre blanc pur et cyan
+          var flick = Math.sin(gt * Math.PI * 22 + i);
+          var urgency = Math.max(0, 1 - e.markTimer / 3000); // 0→1 au fil du temps
+          var flickFreq = 22 + urgency * 20;                 // s'accélère avant expiration
+          flick = Math.sin(gt * Math.PI * flickFreq + i);
+          // Alterne entre cyan vif et blanc pour un effet "grésillant"
+          var tintColor = flick > 0 ? 0x00ffff : 0xffffff;
+          e.spr.setTint(tintColor);
+          e.spr.setAlpha(0.7 + Math.abs(flick) * 0.3);
+          // Scale légèrement pulsé
+          var sc = 1.0 + Math.abs(flick) * 0.15;
+          e.spr.setScale(sc);
+        } else {
+          e.spr.clearTint();
+          e.spr.setAlpha(1.0);
+          e.spr.setScale(1.0);
+        }
 
         for (var t = 0; t < this.ENEMY_TRAIL_N; t++) e.trSpr[t].setVisible(false);
         for (var ti = 0; ti < e._tn; ti++) {
@@ -854,6 +1078,8 @@
           ts.setPosition(tr.x, tr.y);
           ts.setRotation(tr.angle);
           ts.setAlpha((ti + 1) / (e._tn + 1) * 0.30);
+          if (e.isMarked) ts.setTint(0x00ffff);
+          else ts.clearTint();
           ts.setVisible(true);
         }
       }
@@ -875,13 +1101,15 @@
         this.hudGfx.fillRect(bX, bY, bW * f, bH);
       }
 
-      if (!p.atkAvailable) {
-        var aW = 60, aH = 3, aX = cx - 30, aY = h - 38;
-        var af = p.state === 'ATTACKING' ? 0 : 1 - p.atkCooldown / ATK_CD;
-        this.hudGfx.fillStyle(0xffffff, 0.08);
-        this.hudGfx.fillRect(aX, aY, aW, aH);
-        this.hudGfx.fillStyle(c.yellow, 0.75);
-        this.hudGfx.fillRect(aX, aY, aW * af, aH);
+      // Marked enemy count indicator
+      var markedN = 0;
+      for (var mi = 0; mi < this.enemies.length; mi++) {
+        if (this.enemies[mi].isMarked) markedN++;
+      }
+      if (markedN > 0) {
+        this.hudGfx.fillStyle(0x00ffff, 0.85);
+        var mTxt = markedN + ' MARKED';
+        this.hudGfx.fillRect(cx - 32, h - 44, 64, 2);
       }
     },
   });
