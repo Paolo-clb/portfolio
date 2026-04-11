@@ -97,16 +97,21 @@
   var T2_SIZE      = 16;
   var T2_SPEED     = 1.8;
   var T2_KEEP_DIST = 280;
-  var T2_FIRE_CD   = 3200;
+  var T2_FIRE_CD   = 4500;
   var T2_CHARGE_DUR = 500;
   var T2_RECOIL    = 6;
-  var PROJ_SPEED   = 320;
-  var PROJ_RADIUS  = 5;
+  var PROJ_SPEED   = 380;
+  var PROJ_RADIUS  = 7;
   var PROJ_LIFE    = 4000;
   var PROJ_REFLECT_MULT = 1.8;
   var DEFLECT_HITSTOP   = 40;
   var DEFLECT_HEAVY_HS  = 80;
   var MAX_PROJECTILES   = 60;
+
+  var T3_SIZE           = 24;
+  var T3_SPEED          = 1.2;
+  var T3_SPAWN_CD       = 3500;
+  var T3_SHIELD_RADIUS  = 42;
 
   /* ================================================================
      TEXTURE GENERATORS
@@ -223,18 +228,50 @@
 
   function _buildProjTex(tm, key) {
     if (tm.exists(key)) tm.remove(key);
-    var S = 12;
+    var S = 30;
     var oc = document.createElement('canvas');
     oc.width = S; oc.height = S;
     var g2 = oc.getContext('2d');
+    var cx = S / 2, cy = S / 2;
+
+    // Outer glow halo
     g2.save();
     g2.globalCompositeOperation = 'lighter';
-    g2.shadowColor = 'rgba(255,200,50,0.9)'; g2.shadowBlur = 6;
-    g2.fillStyle = '#ffcc33';
-    g2.beginPath(); g2.arc(S / 2, S / 2, 3.5, 0, Math.PI * 2); g2.fill();
-    g2.shadowBlur = 0; g2.restore();
+    g2.shadowColor = 'rgba(255,200,30,1)';
+    g2.shadowBlur = 14;
+    g2.beginPath();
+    g2.moveTo(cx,       cy - 13);
+    g2.lineTo(cx + 4.5, cy);
+    g2.lineTo(cx,       cy + 13);
+    g2.lineTo(cx - 4.5, cy);
+    g2.closePath();
+    g2.fillStyle = 'rgba(255,180,20,0.4)';
+    g2.fill();
+    g2.shadowBlur = 0;
+    g2.restore();
+
+    // Solid diamond body
+    g2.beginPath();
+    g2.moveTo(cx,       cy - 12);
+    g2.lineTo(cx + 4,   cy);
+    g2.lineTo(cx,       cy + 12);
+    g2.lineTo(cx - 4,   cy);
+    g2.closePath();
+    g2.fillStyle = '#ffaa22';
+    g2.fill();
+
+    // Bright core ridge
+    g2.beginPath();
+    g2.moveTo(cx,       cy - 8);
+    g2.lineTo(cx + 1.5, cy);
+    g2.lineTo(cx,       cy + 8);
+    g2.lineTo(cx - 1.5, cy);
+    g2.closePath();
     g2.fillStyle = '#ffffff';
-    g2.beginPath(); g2.arc(S / 2, S / 2, 1.5, 0, Math.PI * 2); g2.fill();
+    g2.globalAlpha = 0.7;
+    g2.fill();
+    g2.globalAlpha = 1;
+
     tm.addCanvas(key, oc);
   }
 
@@ -326,6 +363,59 @@
     g.lineWidth = 0.6; g.strokeStyle = viaCol;
     g.strokeRect(S*0.06,S*0.42,S*0.06,S*0.04);
     g.strokeRect(S*0.70,S*0.58,S*0.04,S*0.06);
+
+    tm.addCanvas(key, oc);
+  }
+
+  function _buildBruiserTex(tm, key) {
+    if (tm.exists(key)) tm.remove(key);
+    var s = T3_SIZE, pad = 10;
+    var W = Math.ceil(s * 2.6 + pad * 2), H = Math.ceil(s * 2.6 + pad * 2);
+    var oc = document.createElement('canvas');
+    oc.width = W; oc.height = H;
+    var g2 = oc.getContext('2d');
+    var ox = W / 2, oy = H / 2, r = s * 1.1;
+
+    g2.save();
+    g2.globalCompositeOperation = 'lighter';
+    g2.shadowColor = 'rgba(92,0,153,0.7)'; g2.shadowBlur = 16;
+    g2.beginPath();
+    for (var hi = 0; hi < 6; hi++) {
+      var ha = Math.PI / 3 * hi - Math.PI / 6;
+      var hx = ox + Math.cos(ha) * r * 1.15;
+      var hy = oy + Math.sin(ha) * r * 1.15;
+      if (hi === 0) g2.moveTo(hx, hy); else g2.lineTo(hx, hy);
+    }
+    g2.closePath();
+    g2.fillStyle = 'rgba(92,0,153,0.18)';
+    g2.fill();
+    g2.shadowBlur = 0;
+    g2.restore();
+
+    g2.beginPath();
+    for (var hi2 = 0; hi2 < 6; hi2++) {
+      var ha2 = Math.PI / 3 * hi2 - Math.PI / 6;
+      var hx2 = ox + Math.cos(ha2) * r;
+      var hy2 = oy + Math.sin(ha2) * r;
+      if (hi2 === 0) g2.moveTo(hx2, hy2); else g2.lineTo(hx2, hy2);
+    }
+    g2.closePath();
+    g2.fillStyle = '#6a0dad';
+    g2.fill();
+
+    g2.beginPath();
+    var ri = r * 0.55;
+    for (var hi3 = 0; hi3 < 6; hi3++) {
+      var ha3 = Math.PI / 3 * hi3 - Math.PI / 6;
+      var hx3 = ox + Math.cos(ha3) * ri;
+      var hy3 = oy + Math.sin(ha3) * ri;
+      if (hi3 === 0) g2.moveTo(hx3, hy3); else g2.lineTo(hx3, hy3);
+    }
+    g2.closePath();
+    g2.fillStyle = '#ffffff';
+    g2.globalAlpha = 0.25;
+    g2.fill();
+    g2.globalAlpha = 1;
 
     tm.addCanvas(key, oc);
   }
@@ -432,6 +522,20 @@
       });
       this._emitter2.setDepth(39);
 
+      // Pool global de sprites pour les traînes de projectiles
+      // Reflété = ~2× plus de segments que normal (traîne plus longue au renvoi)
+      var PROJ_TRAIL_PER = 12;
+      this._PROJ_TRAIL_PER = PROJ_TRAIL_PER;
+      this._projTrailPool = [];
+      for (var pti = 0; pti < MAX_PROJECTILES * PROJ_TRAIL_PER; pti++) {
+        var pts = this.add.image(0, 0, '_proj');
+        pts.setBlendMode(Phaser.BlendModes.ADD);
+        pts.setDepth(21);
+        pts.setVisible(false);
+        this._projTrailPool.push({ spr: pts, x: 0, y: 0, alpha: 0, active: false });
+      }
+      this._projTrailPoolW = 0;
+
       // Projectile pool (manual, no Arcade Physics group needed for manual collision)
       this.projectiles = [];
 
@@ -444,6 +548,16 @@
         this._waveRings.push({ gfx: wg, x: 0, y: 0, r: 0, alpha: 0, active: false });
       }
       this._waveRingW = 0;
+
+      // Pool de faisceaux d'invocation pour la Ruche
+      this._hiveBeams = [];
+      for (var hbi = 0; hbi < 12; hbi++) {
+        var hbg = this.add.graphics();
+        hbg.setDepth(24);
+        hbg.setVisible(false);
+        this._hiveBeams.push({ gfx: hbg, x1: 0, y1: 0, x2: 0, y2: 0, alpha: 0, active: false });
+      }
+      this._hiveBeamW = 0;
 
       this.hudGfx = this.add.graphics();
       this.hudGfx.setScrollFactor(0);
@@ -458,6 +572,72 @@
       this.hitstopTimer = 0;
       this.timeScale = 1.0;
       this.gameTime = 0;
+
+      // Score & Combo
+      this.score = 0;
+      this.comboMultiplier = 1;
+      this.comboTimer = 0;
+      this._comboPulse = 0;
+      this._batchScore = 0;
+      this._batchLabel = '';
+      this._batchActive = false;
+
+      this._scoreTxt = this.add.text(cam.width / 2, 16, '0', {
+        fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold', color: '#00ffff',
+        stroke: '#003344', strokeThickness: 3,
+      });
+      this._scoreTxt.setScrollFactor(0);
+      this._scoreTxt.setOrigin(0.5, 0);
+      this._scoreTxt.setDepth(102);
+      this._scoreTxt.setBlendMode(Phaser.BlendModes.ADD);
+      this._scoreTxt.setAlpha(0.95);
+
+      this._comboTxt = this.add.text(cam.width / 2, 48, '', {
+        fontFamily: 'monospace', fontSize: '22px', fontStyle: 'bold', color: '#ffcc00',
+        stroke: '#332200', strokeThickness: 2,
+      });
+      this._comboTxt.setScrollFactor(0);
+      this._comboTxt.setOrigin(0.5, 0);
+      this._comboTxt.setDepth(102);
+      this._comboTxt.setBlendMode(Phaser.BlendModes.ADD);
+      this._comboTxt.setAlpha(0);
+
+      // Combo FX: x10+ trail emitter (reuse _pxl)
+      this._comboTrailEmitter = this.add.particles(0, 0, '_pxl', {
+        speed: { min: 20, max: 80 },
+        lifespan: { min: 200, max: 500 },
+        scale: { start: 0.55, end: 0 },
+        alpha: { start: 0.9, end: 0 },
+        drag: 60,
+        blendMode: Phaser.BlendModes.ADD,
+        emitting: false,
+      });
+      this._comboTrailEmitter.setDepth(28);
+      this._comboTrailEmitter.setParticleTint(0x00ffff);
+      this._comboTrailActive = false;
+
+      // Combo FX: x50+ aura graphics
+      this._comboAuraGfx = this.add.graphics();
+      this._comboAuraGfx.setDepth(29);
+      this._comboAuraGfx.setVisible(false);
+      this._comboAuraRot = 0;
+      this._comboAuraActive = false;
+
+      // Combo FX: x50+ spark emitter
+      this._comboSparkEmitter = this.add.particles(0, 0, '_pxl', {
+        speed: { min: 100, max: 320 },
+        lifespan: { min: 100, max: 300 },
+        scale: { start: 0.65, end: 0 },
+        alpha: { start: 1.0, end: 0 },
+        drag: 180,
+        blendMode: Phaser.BlendModes.ADD,
+        emitting: false,
+      });
+      this._comboSparkEmitter.setDepth(31);
+      this._comboSparkEmitter.setParticleTint(0x00ffff);
+      this._comboSparkActive = false;
+
+      this._chromaFX = null;
 
       cam.setBackgroundColor(getColors().bgColor);
 
@@ -509,6 +689,7 @@
 
       _buildEnemyTex(tm, '_enemy');
       _buildShooterTex(tm, '_shooter');
+      _buildBruiserTex(tm, '_bruiser');
       _buildProjTex(tm, '_proj');
       _buildPCBTex(tm, '_pcb', c);
     },
@@ -522,7 +703,7 @@
       if (this.pcbTile) this.pcbTile.setTexture('_pcb');
       for (var i = 0; i < this.enemies.length; i++) {
         var e = this.enemies[i];
-        var texK = e.tier === 2 ? '_shooter' : '_enemy';
+        var texK = e.tier === 3 ? '_bruiser' : e.tier === 2 ? '_shooter' : '_enemy';
         e.spr.setTexture(texK);
         for (var j = 0; j < e.trSpr.length; j++) e.trSpr[j].setTexture(texK);
       }
@@ -644,6 +825,11 @@
       else if (this.enemies.length >= 10) shooterCount = 1;
       shooterCount = Math.min(shooterCount, count);
 
+      // Tier 3 bruisers: 1 per wave after 50 enemies
+      var bruiserCount = 0;
+      if (this.enemies.length >= 50) bruiserCount = 1;
+      bruiserCount = Math.min(bruiserCount, count - shooterCount);
+
       var baseAng = Math.random() * Math.PI * 2;
       var spread  = (count > 1) ? (Math.PI * 0.9) : 0;
       for (var i = 0; i < count; i++) {
@@ -652,7 +838,8 @@
         var dist = SPAWN_DIST + Math.random() * 120;
         var sx = this.p.x + Math.cos(ang) * dist;
         var sy = this.p.y + Math.sin(ang) * dist;
-        if (i < shooterCount) this._spawnShooterAt(sx, sy);
+        if (i < bruiserCount) this._spawnBruiserAt(sx, sy);
+        else if (i < bruiserCount + shooterCount) this._spawnShooterAt(sx, sy);
         else this._spawnRusherAt(sx, sy);
       }
     },
@@ -697,12 +884,46 @@
 
       this.enemies.push({
         spr: spr, x: ex, y: ey, vx: 0, vy: 0,
-        angle: 0, hp: 2, size: T2_SIZE,
+        angle: 0, hp: 1, size: T2_SIZE,
         speed: T2_SPEED + Math.random() * 0.4,
         stunTimer: 0, isMarked: false, markTimer: 0,
         trail: trData, trSpr: trSpr, _tw: 0, _tn: 0,
         tier: 2, fireCD: T2_FIRE_CD * (0.8 + Math.random() * 0.4),
-        chargeTimer: 0, isCharging: false,
+        chargeTimer: 0, isCharging: false, fireFlashTimer: 0,
+      });
+    },
+
+    _spawnBruiserAt: function (ex, ey) {
+      var spr = this.add.image(ex, ey, '_bruiser');
+      spr.setBlendMode(Phaser.BlendModes.ADD);
+      spr.setDepth(20);
+
+      var trSpr = [], trData = [];
+      for (var t = 0; t < this.ENEMY_TRAIL_N; t++) {
+        var ts = this.add.image(ex, ey, '_bruiser');
+        ts.setBlendMode(Phaser.BlendModes.ADD);
+        ts.setDepth(15); ts.setVisible(false);
+        trSpr.push(ts);
+        trData.push({ x: ex, y: ey, angle: 0 });
+      }
+
+      var shieldGfx = this.add.graphics();
+      shieldGfx.setDepth(23);
+
+      this.enemies.push({
+        spr: spr, x: ex, y: ey, vx: 0, vy: 0,
+        angle: 0, hp: 2, size: T3_SIZE,
+        speed: T3_SPEED + Math.random() * 0.3,
+        stunTimer: 0, isMarked: false, markTimer: 0,
+        trail: trData, trSpr: trSpr, _tw: 0, _tn: 0,
+        tier: 3, fireCD: 0, chargeTimer: 0, isCharging: false, fireFlashTimer: 0,
+        hasShield: true,
+        shieldGfx: shieldGfx,
+        shieldRot: 0,
+        spawnCD: T3_SPAWN_CD * (0.7 + Math.random() * 0.6),
+        spawnCycle: 0,
+        targetWaypoint: { x: ex, y: ey },
+        waypointTimer: 0,
       });
     },
 
@@ -716,7 +937,18 @@
         vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
         life: PROJ_LIFE, isReflected: false, smashed: false,
         shooterRef: shooter || null,
+        rotSpeed: 8,
+        trailSlots: [],
       });
+    },
+
+    _destroyProjectile: function (pr) {
+      for (var si = 0; si < pr.trailSlots.length; si++) {
+        pr.trailSlots[si].active = false;
+        pr.trailSlots[si].spr.setVisible(false);
+      }
+      pr.trailSlots.length = 0;
+      pr.spr.destroy();
     },
 
     _addGhost: function (x, y, alpha, angle, isDashAtk) {
@@ -750,21 +982,38 @@
       this._emitter2.explode(Math.round((n || 25) * 0.5));
     },
 
-    _killEnemy: function (idx) {
+    // ctx: { batch: bool, reflected: bool }
+    _killEnemy: function (idx, ctx) {
       var e = this.enemies[idx];
       var ex = e.x, ey = e.y;
+      var killTier = e.tier;
+      ctx = ctx || {};
 
-      // Explosion overkill — gerbe principale rouge/orange
+      // Scoring
+      var basePts = e.tier === 3 ? 100 : e.tier === 2 ? 30 : 10;
+      var pts = basePts * this.comboMultiplier;
+      if (ctx.reflected) pts *= 2;
+      this.score += pts;
+      this.comboTimer = 2000;
+      this.comboMultiplier++;
+      this._comboPulse = 1.0;
+
+      if (ctx.batch) {
+        this._batchScore += pts;
+      } else {
+        this._floatScore(ex, ey, pts, killTier);
+      }
+
+      // Explosion overkill
       var cnt = Math.round(30 + (e.size / RUSHER_SIZE) * 20);
       cnt = Math.min(cnt, 50);
       this._explode(ex, ey, [255, 30, 60], cnt);
-      // Halo rose — éclats secondaires
       this._explode(ex, ey, [255, 160, 80], Math.round(cnt * 0.5));
-      // Flash blanc central
       this._explode(ex, ey, [255, 255, 220], Math.round(cnt * 0.25));
 
       e.spr.destroy();
       for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
+      if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
       this.enemies.splice(idx, 1);
 
       this._triggerHitstop(HITSTOP_DUR);
@@ -772,6 +1021,7 @@
 
       for (var k = 0; k < this.enemies.length; k++) {
         var o = this.enemies[k];
+        if (o.tier === 3) continue;
         var sdx = o.x - ex, sdy = o.y - ey;
         var sd = Math.sqrt(sdx * sdx + sdy * sdy);
         if (sd < SHOCKWAVE_RADIUS) {
@@ -785,32 +1035,48 @@
       }
     },
 
+    _breakShield: function (e) {
+      if (!e.hasShield) return;
+      e.hasShield = false;
+      this._explode(e.x, e.y, [0, 255, 255], 20);
+      this._explode(e.x, e.y, [255, 255, 255], 10);
+      this.cameras.main.shake(60, 0.006);
+      this._triggerHitstop(HITSTOP_DUR);
+    },
+
     _triggerDetonation: function (markedIdx) {
       var p = this.p;
       var e = this.enemies[markedIdx];
       var ex = e.x, ey = e.y;
       var detRadius = SHOCKWAVE_RADIUS * 2.5;
 
-      this._killEnemy(markedIdx);
+      this._beginBatch('NUKE');
+      this._killEnemy(markedIdx, { batch: true });
 
-      // Zone damage: 3 HP (one-shot everything) to all enemies in radius
       for (var i = this.enemies.length - 1; i >= 0; i--) {
         var o = this.enemies[i];
         var odx = o.x - ex, ody = o.y - ey;
         var od = Math.sqrt(odx * odx + ody * ody);
         if (od < detRadius) {
           this._explode(o.x, o.y, [0, 255, 255], 10);
-          this._killEnemy(i);
+          if (o.tier === 3 && o.hasShield) {
+            this._breakShield(o);
+          } else if (o.tier === 3) {
+            o.hp -= 2;
+            if (o.hp <= 0) this._killEnemy(i, { batch: true });
+          } else {
+            this._killEnemy(i, { batch: true });
+          }
         }
       }
+      this._endBatch();
 
-      // Destroy projectiles in radius
       for (var pi = this.projectiles.length - 1; pi >= 0; pi--) {
         var pr = this.projectiles[pi];
         var pdx = pr.x - ex, pdy = pr.y - ey;
         if (Math.sqrt(pdx * pdx + pdy * pdy) < detRadius) {
           this._explode(pr.x, pr.y, [0, 255, 255], 5);
-          pr.spr.destroy();
+          this._destroyProjectile(pr);
           this.projectiles.splice(pi, 1);
         }
       }
@@ -829,6 +1095,7 @@
 
       for (var i = 0; i < this.enemies.length; i++) {
         var e = this.enemies[i];
+        if (e.tier !== 1) continue;
         var dx = e.x - p.x, dy = e.y - p.y;
         var d = Math.sqrt(dx * dx + dy * dy);
         if (d < LANDING_BURST_RADIUS && d > 0.1) {
@@ -859,11 +1126,135 @@
       ring.gfx.setVisible(true);
     },
 
+    _hiveSpawnBeam: function (x1, y1, x2, y2) {
+      var b = this._hiveBeams[this._hiveBeamW % this._hiveBeams.length];
+      this._hiveBeamW++;
+      b.x1 = x1; b.y1 = y1; b.x2 = x2; b.y2 = y2;
+      b.alpha = 1.0; b.active = true;
+      b.gfx.setVisible(true);
+    },
+
+    _updateHiveBeams: function (dt) {
+      for (var i = 0; i < this._hiveBeams.length; i++) {
+        var b = this._hiveBeams[i];
+        if (!b.active) continue;
+        b.alpha -= dt * 2.2;
+        if (b.alpha <= 0) {
+          b.active = false;
+          b.gfx.clear();
+          b.gfx.setVisible(false);
+          continue;
+        }
+        b.gfx.clear();
+        // Thick glow core
+        b.gfx.lineStyle(6, 0xbb00ff, b.alpha * 0.55);
+        b.gfx.beginPath();
+        b.gfx.moveTo(b.x1, b.y1);
+        b.gfx.lineTo(b.x2, b.y2);
+        b.gfx.strokePath();
+        // Bright inner line
+        b.gfx.lineStyle(2.5, 0xdd66ff, b.alpha * 0.95);
+        b.gfx.beginPath();
+        b.gfx.moveTo(b.x1, b.y1);
+        b.gfx.lineTo(b.x2, b.y2);
+        b.gfx.strokePath();
+        // White hot center
+        b.gfx.lineStyle(1, 0xffffff, b.alpha * 0.7);
+        b.gfx.beginPath();
+        b.gfx.moveTo(b.x1, b.y1);
+        b.gfx.lineTo(b.x2, b.y2);
+        b.gfx.strokePath();
+      }
+    },
+
     _triggerHitstop: function (durMs) {
       // Ne s'additionne pas — prend le max, plafonné à HITSTOP_MAX
       var cap = (durMs >= DETONATION_HITSTOP) ? DETONATION_HITSTOP : HITSTOP_MAX;
       this.hitstopTimer = Math.min(Math.max(this.hitstopTimer, durMs), cap);
       this.timeScale = 0;
+    },
+
+    _breakCombo: function () {
+      if (this.comboMultiplier <= 1) return;
+      // Flash the combo text red briefly before resetting
+      var self = this;
+      this._comboTxt.setColor('#ff2222');
+      this._comboTxt.setAlpha(1.0);
+      this.tweens.add({
+        targets: this._comboTxt, alpha: 0, duration: 350, ease: 'Cubic.easeIn',
+        onComplete: function () { self._comboTxt.setAlpha(0); },
+      });
+      this.comboMultiplier = 1;
+      this.comboTimer = 0;
+      this._comboPulse = 0;
+    },
+
+    _floatScore: function (wx, wy, pts, tier) {
+      var col, sz;
+      if (tier === 3) {
+        col = '#6a0dad';
+        sz = '22px';
+      } else if (tier === 2) {
+        col = '#ffaa22';
+        sz = '18px';
+      } else {
+        col = '#ff0044';
+        sz = '15px';
+      }
+      var txt = this.add.text(wx, wy - 10, '+' + pts, {
+        fontFamily: 'monospace', fontSize: sz, fontStyle: 'bold', color: col,
+        stroke: '#000022', strokeThickness: 3,
+      });
+      txt.setOrigin(0.5, 1); txt.setDepth(55);
+      txt.setBlendMode(Phaser.BlendModes.ADD);
+      txt.setAlpha(1.0);
+      txt.setScale(1.1);
+      this.tweens.add({
+        targets: txt,
+        y: wy - 55,
+        scaleX: 0.7, scaleY: 0.7,
+        alpha: 0,
+        duration: 750,
+        ease: 'Cubic.easeOut',
+        onComplete: function () { txt.destroy(); },
+      });
+    },
+
+    _floatScoreBig: function (label, pts) {
+      var cam = this.cameras.main;
+      var sx = cam.width / 2, sy = cam.height * 0.3;
+      var col = label === 'PARADE' ? '#aa44ff' : label === 'NUKE' ? '#00ffff' : '#ffcc00';
+      var txt = this.add.text(sx, sy, '+' + pts + ' ' + label + '!', {
+        fontFamily: 'monospace', fontSize: '32px', fontStyle: 'bold', color: col,
+      });
+      txt.setOrigin(0.5); txt.setDepth(105);
+      txt.setScrollFactor(0);
+      txt.setBlendMode(Phaser.BlendModes.ADD);
+      txt.setScale(0.5);
+      this.tweens.add({
+        targets: txt, scaleX: 1.1, scaleY: 1.1,
+        duration: 150, ease: 'Back.easeOut',
+        yoyo: true, hold: 100,
+      });
+      this.tweens.add({
+        targets: txt, y: sy - 50, alpha: 0,
+        duration: 1200, ease: 'Cubic.easeOut', delay: 300,
+        onComplete: function () { txt.destroy(); },
+      });
+    },
+
+    _beginBatch: function (label) {
+      this._batchScore = 0;
+      this._batchLabel = label;
+      this._batchActive = true;
+    },
+
+    _endBatch: function () {
+      if (!this._batchActive) return;
+      this._batchActive = false;
+      if (this._batchScore > 0) {
+        this._floatScoreBig(this._batchLabel, this._batchScore);
+      }
     },
 
     _checkCollisions: function () {
@@ -897,6 +1288,7 @@
         var dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < pR + e.size * 0.5) {
           if (isAtk) {
+            // Detonation on marked enemy — ignores shield entirely
             if (e.isMarked) {
               this._triggerDetonation(i);
               p.state = 'MOVING';
@@ -904,11 +1296,22 @@
               p.atkAvailable = true; p.atkCooldown = 0;
               return;
             }
-            e.hp -= 1;
+            // Shield blocks basic attack — rebound
+            if (e.tier === 3 && e.hasShield) {
+              if (dist > 0.1) { p.vx = (dx / dist) * REBOUND_IMP; p.vy = (dy / dist) * REBOUND_IMP; }
+              this._explode(e.x, e.y, [0, 255, 255], 6);
+              this._triggerHitstop(HITSTOP_DUR);
+              p.state = 'MOVING';
+              p.spinAngle = 0; p.atkTimer = 0;
+              p.atkAvailable = true; p.atkCooldown = 0;
+              if (!p.invincible) { p.invincible = true; p.invincTimer = 120; p.dashInvinc = true; }
+              return;
+            }
+            var atkDmg = (e.tier === 3) ? 1 : 1;
+            e.hp -= atkDmg;
             if (e.hp <= 0) {
               this._killEnemy(i);
             } else {
-              // Push enemy away so it can't immediately counter-hit
               if (dist > 0.1) { e.vx -= (dx / dist) * 10; e.vy -= (dy / dist) * 10; }
               e.stunTimer = 300;
               this._explode(e.x, e.y, [255, 200, 60], 8);
@@ -918,11 +1321,25 @@
             p.spinAngle = 0; p.atkTimer = 0;
             p.atkAvailable = true; p.atkCooldown = 0;
             p.vx *= 0.3; p.vy *= 0.3;
-            // Brief i-frames so the player can't be hit during state transition
             if (!p.invincible) { p.invincible = true; p.invincTimer = 120; p.dashInvinc = true; }
             return;
           } else if (isDAtk) {
-            e.hp -= 1;
+            if (e.tier === 3 && e.hasShield) {
+              this._breakShield(e);
+              p.vx = 0; p.vy = 0;
+              if (dist > 0.1) {
+                p.x = e.x + (dx / dist) * (e.size * 0.5 + pR + 2);
+                p.y = e.y + (dy / dist) * (e.size * 0.5 + pR + 2);
+              }
+              p.hasHitDuringDashAttack = true;
+              p.atkTimer = 0;
+              p.state = 'MOVING';
+              p.spinAngle = 0;
+              this._triggerLandingBurst();
+              return;
+            }
+            var datkDmg = (e.tier === 3) ? 2 : 1;
+            e.hp -= datkDmg;
             if (e.hp <= 0) {
               this._killEnemy(i);
             } else {
@@ -938,6 +1355,7 @@
           } else if (vuln && !p.invincible) {
             p.hp -= 1; p.invincible = true; p.invincTimer = IFRAMES_DUR; p.dashInvinc = false;
             if (dist > 0.1) { p.vx += (dx / dist) * 8; p.vy += (dy / dist) * 8; }
+            this._breakCombo();
           }
         }
       }
@@ -1082,9 +1500,21 @@
 
       this.gameTime += dt;
 
+      // Combo timer decay
+      if (this.comboTimer > 0) {
+        this.comboTimer -= ms;
+        if (this.comboTimer <= 0) {
+          this.comboTimer = 0;
+          this.comboMultiplier = 1;
+          this._comboPulse = 0;
+        }
+      }
+
       // Anneaux d'onde de choc
       this._updateWaveRings(dt);
+      this._updateHiveBeams(dt);
 
+      this._updateComboFX(sDt);
       this._renderPlayer();
       this._renderEnemies();
       this._renderProjectiles();
@@ -1131,8 +1561,13 @@
             var ov = (SEPARATION_RADIUS - sd) / SEPARATION_RADIUS;
             var fx = (sdx / sd) * SEPARATION_FORCE * ov * sc60;
             var fy = (sdy / sd) * SEPARATION_FORCE * ov * sc60;
-            a.vx += fx; a.vy += fy;
-            b.vx -= fx; b.vy -= fy;
+            // Mass ratio: heavier tier receives less push, lighter tier receives more.
+            // mass: T1=1, T2=2.5, T3=6
+            var massA = a.tier === 3 ? 6.0 : a.tier === 2 ? 2.5 : 1.0;
+            var massB = b.tier === 3 ? 6.0 : b.tier === 2 ? 2.5 : 1.0;
+            var total = massA + massB;
+            a.vx += fx * (massB / total); a.vy += fy * (massB / total);
+            b.vx -= fx * (massA / total); b.vy -= fy * (massA / total);
           }
         }
       }
@@ -1166,6 +1601,7 @@
           e.vx *= stDrg; e.vy *= stDrg;
           e.x += e.vx * sc60; e.y += e.vy * sc60;
         } else if (e.tier === 2) {
+          if (e.fireFlashTimer > 0) e.fireFlashTimer -= ms;
           // Tier 2: keep distance, face player, charge & shoot
           var dx2 = p.x - e.x, dy2 = p.y - e.y;
           var d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
@@ -1201,8 +1637,91 @@
               e.vx -= Math.cos(fAng) * T2_RECOIL;
               e.vy -= Math.sin(fAng) * T2_RECOIL;
               e.isCharging = false;
+              e.fireFlashTimer = 180;
               e.fireCD = T2_FIRE_CD * (0.8 + Math.random() * 0.4);
             }
+          }
+        } else if (e.tier === 3) {
+          // Always face player for visual clarity, but movement is independent
+          var dx3 = p.x - e.x, dy3 = p.y - e.y;
+          var d3 = Math.sqrt(dx3 * dx3 + dy3 * dy3);
+          if (d3 > 0.1) e.angle = Math.atan2(dy3, dx3);
+
+          // Bunker Mobile: drift toward a fixed waypoint near the player
+          e.waypointTimer -= ms;
+          var wpDx = e.targetWaypoint.x - e.x;
+          var wpDy = e.targetWaypoint.y - e.y;
+          var wpD = Math.sqrt(wpDx * wpDx + wpDy * wpDy);
+
+          if (wpD < 22 || e.waypointTimer <= 0) {
+            // Anchored or timer expired — pick a new waypoint
+            // Waypoint is placed relative to the Hive's *current position*, not the player,
+            // so it drifts independently. A bias keeps it loosely within the arena.
+            var wpAng = Math.random() * Math.PI * 2;
+            // Vary radius widely so behaviour feels unpredictable
+            var wpR = 250 + Math.random() * 350;
+            var candidateX = e.x + Math.cos(wpAng) * wpR;
+            var candidateY = e.y + Math.sin(wpAng) * wpR;
+            // Soft bias: if the candidate drifts further than ~700px from the player,
+            // nudge it back by blending 30% toward a point near the player instead
+            var candDx = candidateX - p.x, candDy = candidateY - p.y;
+            var candD = Math.sqrt(candDx * candDx + candDy * candDy);
+            if (candD > 700) {
+              var pullAng = Math.random() * Math.PI * 2;
+              var nearR = 350 + Math.random() * 200;
+              candidateX = candidateX * 0.35 + (p.x + Math.cos(pullAng) * nearR) * 0.65;
+              candidateY = candidateY * 0.35 + (p.y + Math.sin(pullAng) * nearR) * 0.65;
+            }
+            // Clamp to world bounds (generous, allows slight off-screen)
+            var wM3 = WORLD_HALF - T3_SIZE * 2;
+            e.targetWaypoint.x = Math.max(-wM3, Math.min(wM3, candidateX));
+            e.targetWaypoint.y = Math.max(-wM3, Math.min(wM3, candidateY));
+            e.waypointTimer = 3500 + Math.random() * 2000;
+            if (wpD < 22) { e.vx *= 0.05; e.vy *= 0.05; }
+          } else {
+            // Glide toward waypoint with heavy inertia
+            var T3_DRIFT_SPD = 1.4;
+            var T3_ACCEL_K = 0.018;
+            var wpNx = wpDx / wpD, wpNy = wpDy / wpD;
+            var targetVx = wpNx * T3_DRIFT_SPD;
+            var targetVy = wpNy * T3_DRIFT_SPD;
+            e.vx += (targetVx - e.vx) * T3_ACCEL_K * sc60;
+            e.vy += (targetVy - e.vy) * T3_ACCEL_K * sc60;
+          }
+          e.x += e.vx * sc60; e.y += e.vy * sc60;
+
+          // Spawner logic
+          e.spawnCD -= ms;
+          if (e.spawnCD <= 0) {
+            e.spawnCD = T3_SPAWN_CD * (0.7 + Math.random() * 0.6);
+            e.spawnCycle++;
+            if (e.spawnCycle % 3 === 0) {
+              // 1 in 3: spawn a T2
+              if (this.enemies.length < MAX_ENEMIES) {
+                var sx2 = e.x + (Math.random() - 0.5) * 40;
+                var sy2 = e.y + (Math.random() - 0.5) * 40;
+                this._spawnShooterAt(sx2, sy2);
+                this._hiveSpawnBeam(e.x, e.y, sx2, sy2);
+                this._explode(sx2, sy2, [187, 0, 255], 14);
+                this._explode(sx2, sy2, [255, 150, 255], 7);
+              }
+            } else {
+              // 2 in 3: spawn 3 T1 in an arc with outward impulse
+              for (var sw = 0; sw < 3; sw++) {
+                if (this.enemies.length >= MAX_ENEMIES) break;
+                var sAng = e.angle + Math.PI + (sw - 1) * 0.7;
+                var spx = e.x + Math.cos(sAng) * 35;
+                var spy = e.y + Math.sin(sAng) * 35;
+                this._spawnRusherAt(spx, spy);
+                var spawned = this.enemies[this.enemies.length - 1];
+                spawned.vx = Math.cos(sAng) * 6;
+                spawned.vy = Math.sin(sAng) * 6;
+                this._hiveSpawnBeam(e.x, e.y, spx, spy);
+              }
+              this._explode(e.x, e.y, [187, 0, 255], 12);
+              this._explode(e.x, e.y, [255, 150, 255], 6);
+            }
+            this.cameras.main.shake(40, 0.0015);
           }
         } else {
           // Tier 1: rush toward player
@@ -1231,71 +1750,100 @@
         pr.life -= ms;
         pr.x += pr.vx * dt; pr.y += pr.vy * dt;
         pr.spr.setPosition(pr.x, pr.y);
+        pr.spr.rotation += pr.rotSpeed * dt;
 
-        // Trail particles on reflected+smashed projectiles
-        if (pr.isReflected && pr.smashed && Math.random() < 0.5) {
+        // Traîne sprite : injection d'un nouveau slot dans le pool global
+        var spd = Math.sqrt(pr.vx * pr.vx + pr.vy * pr.vy);
+        if (spd > 0.1) {
+          var slot = this._projTrailPool[this._projTrailPoolW % this._projTrailPool.length];
+          this._projTrailPoolW++;
+          slot.x = pr.x;
+          slot.y = pr.y;
+          slot.alpha = pr.isReflected ? 0.85 : 0.55;
+          slot.tint = pr.isReflected ? 0xaa44ff : 0xffaa22;
+          slot.rot = pr.spr.rotation;
+          slot.active = true;
+          slot.spr.setVisible(true);
+          pr.trailSlots.push(slot);
+          var maxTrail = pr.isReflected ? this._PROJ_TRAIL_PER : Math.ceil(this._PROJ_TRAIL_PER * 0.45);
+          if (pr.trailSlots.length > maxTrail) {
+            pr.trailSlots.shift();
+          }
+        }
+
+        // Boost visuel violet sur renvoi smashed
+        if (pr.isReflected && pr.smashed && Math.random() < 0.3) {
           this._emitter2.setPosition(pr.x, pr.y);
-          this._emitter2.setParticleTint(0x00ffff);
+          this._emitter2.setParticleTint(0xaa44ff);
           this._emitter2.explode(1);
         }
 
         // OOB / expired
         if (pr.life <= 0 || Math.abs(pr.x) > WORLD_HALF || Math.abs(pr.y) > WORLD_HALF) {
-          pr.spr.destroy();
+          this._destroyProjectile(pr);
           this.projectiles.splice(i, 1);
           continue;
         }
 
         if (pr.isReflected) {
           // Reflected projectile hits enemies
-          var hitEnemy = false;
           for (var ei = this.enemies.length - 1; ei >= 0; ei--) {
             var e = this.enemies[ei];
             var edx = pr.x - e.x, edy = pr.y - e.y;
             var ed = Math.sqrt(edx * edx + edy * edy);
             if (ed < PROJ_RADIUS + e.size * 0.5) {
-              hitEnemy = true;
+              // Shield intercept: reflected proj breaks shield
+              if (e.tier === 3 && e.hasShield) {
+                this._breakShield(e);
+                this._destroyProjectile(pr);
+                this.projectiles.splice(i, 1);
+                break;
+              }
               if (pr.smashed) {
-                // Smashed projectile: 2 damage + AoE
-                var smashAoe = SHOCKWAVE_RADIUS * 1.2;
-                e.hp -= 2;
+                this._beginBatch('PARADE');
+                var smashAoe = SHOCKWAVE_RADIUS * 0.75;
+                var directDmg = (e.tier === 3) ? 2 : 2;
+                e.hp -= directDmg;
                 if (e.hp <= 0) {
-                  this._killEnemy(ei);
+                  this._killEnemy(ei, { batch: true, reflected: true });
                 } else {
                   e.stunTimer = 300;
                 }
-                // AoE splash on nearby enemies
                 for (var si = this.enemies.length - 1; si >= 0; si--) {
                   var se = this.enemies[si];
                   var sdx2 = se.x - pr.x, sdy2 = se.y - pr.y;
                   var sd2 = Math.sqrt(sdx2 * sdx2 + sdy2 * sdy2);
                   if (sd2 < smashAoe && sd2 > 0.1) {
-                    se.hp -= 1;
+                    if (se.tier === 3 && se.hasShield) {
+                      this._breakShield(se);
+                    } else {
+                      var aoeDmg = (se.tier === 3) ? 1 : 1;
+                      se.hp -= aoeDmg;
+                      if (se.hp <= 0) { this._killEnemy(si, { batch: true, reflected: true }); }
+                    }
                     var sf = 1.0 - sd2 / smashAoe;
                     se.vx += (sdx2 / sd2) * SHOCKWAVE_FORCE * 1.5 * sf;
                     se.vy += (sdy2 / sd2) * SHOCKWAVE_FORCE * 1.5 * sf;
                     se.stunTimer = Math.max(se.stunTimer, 250 * sf);
-                    if (se.hp <= 0) { this._killEnemy(si); }
                   }
                 }
-                // Satisfying FX
-                this._explode(pr.x, pr.y, [0, 255, 255], 30);
+                this._endBatch();
+                this._explode(pr.x, pr.y, [170, 68, 255], 30);
                 this._explode(pr.x, pr.y, [255, 255, 255], 15);
-                this._explode(pr.x, pr.y, [100, 200, 255], 10);
+                this._explode(pr.x, pr.y, [200, 120, 255], 10);
                 this._triggerHitstop(DEFLECT_HEAVY_HS);
                 this.cameras.main.shake(80, 0.008);
                 this._spawnWaveRing(pr.x, pr.y);
               } else {
-                // Normal reflect: 1 damage
                 e.hp -= 1;
                 if (e.hp <= 0) {
-                  this._killEnemy(ei);
+                  this._killEnemy(ei, { reflected: true });
                 } else {
                   e.stunTimer = 200;
                   this._explode(e.x, e.y, [0, 255, 255], 6);
                 }
               }
-              pr.spr.destroy();
+              this._destroyProjectile(pr);
               this.projectiles.splice(i, 1);
               break;
             }
@@ -1308,7 +1856,8 @@
             if (pd < pR + PROJ_RADIUS) {
               p.hp -= 1; p.invincible = true; p.invincTimer = IFRAMES_DUR; p.dashInvinc = false;
               if (pd > 0.1) { p.vx += (pdx / pd) * 6; p.vy += (pdy / pd) * 6; }
-              pr.spr.destroy();
+              this._breakCombo();
+              this._destroyProjectile(pr);
               this.projectiles.splice(i, 1);
               continue;
             }
@@ -1321,7 +1870,6 @@
             if (dd < pR + PROJ_RADIUS + 8) {
               var refSpd = PROJ_SPEED * PROJ_REFLECT_MULT;
 
-              // Aim back at the original shooter; fallback to closest Tier 2
               var refAng;
               if (pr.shooterRef && pr.shooterRef.hp > 0) {
                 refAng = Phaser.Math.Angle.Between(pr.x, pr.y, pr.shooterRef.x, pr.shooterRef.y);
@@ -1329,7 +1877,7 @@
                 var bestD = Infinity, bestE = null;
                 for (var hi = 0; hi < this.enemies.length; hi++) {
                   var he = this.enemies[hi];
-                  if (he.tier !== 2) continue;
+                  if (he.tier < 2) continue;
                   var hdx = he.x - pr.x, hdy = he.y - pr.y;
                   var hd = Math.sqrt(hdx * hdx + hdy * hdy);
                   if (hd < bestD) { bestD = hd; bestE = he; }
@@ -1345,31 +1893,114 @@
               pr.isReflected = true;
               pr.smashed = true;
               pr.life = PROJ_LIFE;
-              pr.spr.setTint(0x00ffff);
+              pr.rotSpeed = 28;
+              pr.spr.setTint(0xaa44ff);
 
               p.hasHitDuringDashAttack = true;
               this._triggerHitstop(DEFLECT_HEAVY_HS);
               this.cameras.main.shake(80, 0.008);
-              this._explode(pr.x, pr.y, [0, 255, 255], 15);
+              this._explode(pr.x, pr.y, [170, 68, 255], 15);
             }
           }
         }
       }
     },
 
+    _updateComboFX: function (dt) {
+      var p = this.p;
+      var cm = this.comboMultiplier;
+
+      // Tier 1: x10+ cyan particle trail — burst per frame at player world pos
+      if (cm >= 10) {
+        this._comboTrailActive = true;
+        var trailQty = cm >= 50 ? 3 : cm >= 25 ? 2 : 1;
+        this._comboTrailEmitter.setPosition(p.x, p.y);
+        this._comboTrailEmitter.explode(trailQty);
+      } else if (this._comboTrailActive) {
+        this._comboTrailActive = false;
+      }
+
+      // Tier 2: x25+ Warp/Barrel distortion PostFX
+      if (cm >= 25) {
+        var chromaStr = Math.min(8, (cm - 25) * 0.15 + 1);
+        if (!this._chromaFX && this.cameras.main.postFX) {
+          this._chromaFX = this.cameras.main.postFX.addBarrel(1.0);
+        }
+        if (this._chromaFX) {
+          this._chromaFX.amount = 1.0 + chromaStr * 0.004;
+        }
+      } else if (this._chromaFX) {
+        this.cameras.main.postFX.remove(this._chromaFX);
+        this._chromaFX = null;
+      }
+
+      // Tier 3: x50+ small rotating arcs + sparks
+      if (cm >= 50) {
+        this._comboAuraActive = true;
+        this._comboSparkActive = true;
+        this._comboAuraGfx.setVisible(true);
+      } else if (this._comboAuraActive) {
+        this._comboAuraGfx.setVisible(false);
+        this._comboAuraGfx.clear();
+        this._comboAuraActive = false;
+        this._comboSparkActive = false;
+      }
+
+      if (this._comboAuraActive) {
+        this._comboAuraRot += dt * 18;
+        this._comboAuraGfx.clear();
+        // 3 short bright arcs rotating around player — small, dynamic, not a full shield
+        var aR = SIZE * 1.5;
+        var aPulse = 0.6 + 0.35 * Math.sin(this.gameTime * Math.PI * 8);
+        for (var ai2 = 0; ai2 < 3; ai2++) {
+          var baseA = this._comboAuraRot + (Math.PI * 2 / 3) * ai2;
+          this._comboAuraGfx.lineStyle(2.5, 0x00ffff, aPulse);
+          this._comboAuraGfx.beginPath();
+          this._comboAuraGfx.arc(p.x, p.y, aR, baseA, baseA + 0.55);
+          this._comboAuraGfx.strokePath();
+        }
+
+        // Sparks: 2 per frame at random offsets around player
+        this._comboSparkEmitter.setPosition(
+          p.x + (Math.random() - 0.5) * SIZE * 2,
+          p.y + (Math.random() - 0.5) * SIZE * 2
+        );
+        this._comboSparkEmitter.explode(2);
+      }
+    },
+
     _renderProjectiles: function () {
       var gt = this.gameTime;
+
+      // Decay de tous les slots de traîne actifs
+      for (var si = 0; si < this._projTrailPool.length; si++) {
+        var sl = this._projTrailPool[si];
+        if (!sl.active) continue;
+        sl.alpha -= 0.07;
+        if (sl.alpha <= 0) {
+          sl.active = false;
+          sl.spr.setVisible(false);
+        } else {
+          sl.spr.setPosition(sl.x, sl.y);
+          sl.spr.setRotation(sl.rot);
+          sl.spr.setTint(sl.tint);
+          sl.spr.setAlpha(sl.alpha);
+          sl.spr.setScale(0.6 + sl.alpha * 0.5);
+        }
+      }
+
       for (var i = 0; i < this.projectiles.length; i++) {
         var pr = this.projectiles[i];
         if (pr.isReflected) {
-          // Cyan pulsing reflected projectile
-          var pa = 0.8 + 0.2 * Math.sin(gt * Math.PI * 20 + i);
+          var pa = 0.75 + 0.25 * Math.sin(gt * Math.PI * 28 + i);
           pr.spr.setAlpha(pa);
-          pr.spr.setScale(pr.smashed ? 1.6 : 1.2);
+          pr.spr.setScale(pr.smashed ? 1.7 : 1.3);
+          pr.spr.setTint(0xaa44ff);
         } else {
+          var ys = 1.0 + 0.12 * Math.sin(gt * Math.PI * 16 + i * 1.3);
           pr.spr.setAlpha(1.0);
-          pr.spr.clearTint();
-          pr.spr.setScale(1.0);
+          pr.spr.setScale(ys);
+          pr.spr.setTint(0xffaa22);
         }
       }
     },
@@ -1429,7 +2060,56 @@
         e.spr.setPosition(e.x, e.y);
         e.spr.setRotation(e.angle);
 
-        if (e.isMarked) {
+        if (e.tier === 3) {
+          // T3: apply mark visual OR normal tint
+          if (e.isMarked) {
+            var urgency = Math.max(0, 1 - e.markTimer / 3000);
+            var flickFreq = 22 + urgency * 20;
+            var flick = Math.sin(gt * Math.PI * flickFreq + i);
+            var tintColor = flick > 0 ? 0x00ffff : 0xffffff;
+            e.spr.setTint(tintColor);
+            e.spr.setAlpha(0.7 + Math.abs(flick) * 0.3);
+            e.spr.setScale(1.0 + Math.abs(flick) * 0.15);
+          } else {
+            var t3tint = e.hp >= 2 ? 0x5c0099 : 0x8b0000;
+            e.spr.setTint(t3tint);
+            e.spr.setAlpha(1.0);
+            e.spr.setScale(1.0);
+          }
+
+          // Shield ring — ALWAYS updated so it tracks position
+          if (e.shieldGfx) {
+            e.shieldGfx.clear();
+            if (e.hasShield) {
+              e.shieldRot += 0.015;
+              var sPulse, sAlpha, sR;
+              if (e.isMarked) {
+                // Marked: shield looks cracked/weak — dim, shrunk, fast flicker
+                var mFlick2 = Math.sin(gt * Math.PI * 28 + i);
+                sPulse = 0.6 + 0.15 * Math.abs(mFlick2);
+                sAlpha = 0.40 + 0.55 * Math.abs(mFlick2);
+                sR = T3_SHIELD_RADIUS * sPulse;
+                var shCol = mFlick2 > 0 ? 0x00ffff : 0x4488ff;
+                e.shieldGfx.lineStyle(2, shCol, sAlpha);
+              } else {
+                sPulse = 0.85 + 0.15 * Math.sin(gt * Math.PI * 3);
+                sAlpha = 0.55 + 0.2 * Math.sin(gt * Math.PI * 4);
+                sR = T3_SHIELD_RADIUS * sPulse;
+                e.shieldGfx.lineStyle(3, 0x00ffff, sAlpha);
+              }
+              e.shieldGfx.strokeCircle(e.x, e.y, sR);
+              e.shieldGfx.lineStyle(1.5, 0xffffff, sAlpha * 0.4);
+              e.shieldGfx.strokeCircle(e.x, e.y, sR * 0.8);
+              for (var ai = 0; ai < 4; ai++) {
+                var arcA = e.shieldRot + (Math.PI / 2) * ai;
+                e.shieldGfx.lineStyle(2, 0x00ffff, sAlpha * 0.7);
+                e.shieldGfx.beginPath();
+                e.shieldGfx.arc(e.x, e.y, sR + 3, arcA, arcA + 0.4);
+                e.shieldGfx.strokePath();
+              }
+            }
+          }
+        } else if (e.isMarked) {
           var urgency = Math.max(0, 1 - e.markTimer / 3000);
           var flickFreq = 22 + urgency * 20;
           var flick = Math.sin(gt * Math.PI * flickFreq + i);
@@ -1438,16 +2118,26 @@
           e.spr.setAlpha(0.7 + Math.abs(flick) * 0.3);
           e.spr.setScale(1.0 + Math.abs(flick) * 0.15);
         } else if (e.tier === 2) {
-          // Tier 2 HP color: full=orange, damaged=red-orange
-          var t2tint = e.hp >= 2 ? 0xffaa22 : 0xff4422;
-          e.spr.setTint(t2tint);
-          // Charge visual: scale pulse when charging
-          if (e.isCharging) {
+          if (e.fireFlashTimer > 0) {
+            // Tir : jaune brillant bref
+            var flash = e.fireFlashTimer / 180;
+            e.spr.setTint(0xffff66);
+            e.spr.setScale(1.0 + (1 - flash) * 0.45);
+            e.spr.setAlpha(0.95 + flash * 0.05);
+          } else if (e.isCharging) {
+            // Charge : glissement lent vers l'orange (courbe > 1 = reste jaune-orange longtemps)
             var chg = 1 - e.chargeTimer / T2_CHARGE_DUR;
-            var csc = 1.0 + chg * 0.35;
+            var slow = Math.pow(chg, 1.85);
+            var csc = 1.0 + chg * 0.32;
+            var g0 = 195, g1 = 72;
+            var b0 = 45, b1 = 8;
+            var cg = Math.round(g0 + (g1 - g0) * slow);
+            var cb = Math.round(b0 + (b1 - b0) * slow);
+            e.spr.setTint(Phaser.Display.Color.GetColor(255, cg, cb));
             e.spr.setScale(csc);
-            e.spr.setAlpha(0.6 + chg * 0.4);
+            e.spr.setAlpha(0.62 + chg * 0.38);
           } else {
+            e.spr.setTint(0xffaa22);
             e.spr.setScale(1.0);
             e.spr.setAlpha(1.0);
           }
@@ -1494,8 +2184,44 @@
       }
       if (markedN > 0) {
         this.hudGfx.fillStyle(0x00ffff, 0.85);
-        var mTxt = markedN + ' MARKED';
         this.hudGfx.fillRect(cx - 32, h - 44, 64, 2);
+      }
+
+      // Score display — recentered each frame to handle resize
+      var cx2 = cam.width / 2;
+      this._scoreTxt.setPosition(cx2, 16);
+      this._scoreTxt.setText(this.score);
+
+      // Combo multiplier
+      if (this.comboMultiplier > 1) {
+        this._comboTxt.setPosition(cx2, 48);
+        this._comboTxt.setText('x' + this.comboMultiplier);
+        // Pulse animation on increment
+        if (this._comboPulse > 0) {
+          var ps = 1.0 + this._comboPulse * 0.45;
+          this._comboTxt.setScale(ps);
+          this._comboPulse = Math.max(0, this._comboPulse - 0.055);
+        } else {
+          this._comboTxt.setScale(1.0);
+        }
+        // Timer urgency: flash alpha when running low
+        var comboRatio = this.comboTimer / 2000;
+        var comboAlpha = comboRatio > 0.3 ? 0.95 : 0.35 + 0.6 * Math.abs(Math.sin(this.gameTime * Math.PI * 10));
+        this._comboTxt.setAlpha(comboAlpha);
+        // Color escalation
+        if (this.comboMultiplier >= 50) this._comboTxt.setColor('#00ffff');
+        else if (this.comboMultiplier >= 25) this._comboTxt.setColor('#ff6600');
+        else if (this.comboMultiplier >= 10) this._comboTxt.setColor('#ffcc00');
+        else this._comboTxt.setColor('#ffffff');
+        // Combo timer bar centered under the multiplier text
+        var timerW = 100;
+        var timerCol = this.comboMultiplier >= 50 ? 0x00ffff : this.comboMultiplier >= 25 ? 0xff6600 : 0xffcc00;
+        this.hudGfx.fillStyle(0xffffff, 0.08);
+        this.hudGfx.fillRect(cx2 - timerW / 2, 76, timerW, 3);
+        this.hudGfx.fillStyle(timerCol, 0.75);
+        this.hudGfx.fillRect(cx2 - timerW / 2, 76, timerW * comboRatio, 3);
+      } else {
+        this._comboTxt.setAlpha(0);
       }
     },
   });
