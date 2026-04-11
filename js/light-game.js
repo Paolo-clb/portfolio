@@ -72,12 +72,8 @@
   var HITSTOP_MAX        = 80;
   var DETONATION_HITSTOP = 120;
   var IFRAMES_DUR   = 800;
-  var SPAWN_INTERVAL  = 3500;
   var SPAWN_DIST      = 650;
   var MAX_ENEMIES     = 200;
-  var WAVE_BASE       = 4;
-  var WAVE_SCALE      = 0.06;
-  var WAVE_MAX        = 20;
   var SEPARATION_RADIUS = 30;
   var SEPARATION_FORCE  = 4.0;
   var REBOUND_IMP       = 14;
@@ -655,6 +651,7 @@
       this.enemies = [];
       this.ENEMY_TRAIL_N = 4;
       this.spawnTimer = 0;
+      this.nextSpawnDelay = 3500;
 
       _buildPixelTex(this.textures, '_pxl');
 
@@ -1009,35 +1006,44 @@
     },
 
     _spawnWave: function () {
-      var count = Math.min(
-        Math.round(WAVE_BASE + this.enemies.length * WAVE_SCALE),
-        WAVE_MAX
-      );
+      var t1Progress = Math.min(this.totalKills / 350, 1.0);
+      var minT1 = Math.floor(2 + t1Progress * 4);
+      var maxT1 = Math.floor(3 + t1Progress * 4);
+      var t1Count = Phaser.Math.Between(minT1, maxT1);
+
+      var probProgress = Math.min(this.totalKills / 500, 1.0);
+      var chance1T2 = probProgress * 0.50;
+      var chance2T2 = probProgress * 0.25;
+      var chance1T3 = probProgress * 0.333;
+
+      var spawnQueue = [];
+      for (var i = 0; i < t1Count; i++) spawnQueue.push(1);
+
+      var rollT2 = Math.random();
+      if (rollT2 < chance2T2) {
+        spawnQueue.push(2, 2);
+      } else if (rollT2 < chance2T2 + chance1T2) {
+        spawnQueue.push(2);
+      }
+
+      if (Math.random() < chance1T3) spawnQueue.push(3);
+
       var slots = MAX_ENEMIES - this.enemies.length;
       if (slots <= 0) return;
-      count = Math.min(count, slots);
-
-      // Tier 2 shooters: 1 per wave after 10 enemies, 2 after 30
-      var shooterCount = 0;
-      if (this.enemies.length >= 30) shooterCount = 2;
-      else if (this.enemies.length >= 10) shooterCount = 1;
-      shooterCount = Math.min(shooterCount, count);
-
-      // Tier 3 bruisers: 1 per wave after 50 enemies
-      var bruiserCount = 0;
-      if (this.enemies.length >= 50) bruiserCount = 1;
-      bruiserCount = Math.min(bruiserCount, count - shooterCount);
+      var finalCount = Math.min(spawnQueue.length, slots);
 
       var baseAng = Math.random() * Math.PI * 2;
-      var spread  = (count > 1) ? (Math.PI * 0.9) : 0;
-      for (var i = 0; i < count; i++) {
-        var t   = count > 1 ? i / (count - 1) : 0.5;
+      var spread = (finalCount > 1) ? (Math.PI * 0.9) : 0;
+      for (var j = 0; j < finalCount; j++) {
+        var t = finalCount > 1 ? j / (finalCount - 1) : 0.5;
         var ang = baseAng + (t - 0.5) * spread + (Math.random() - 0.5) * 0.3;
         var dist = SPAWN_DIST + Math.random() * 120;
         var sx = this.p.x + Math.cos(ang) * dist;
         var sy = this.p.y + Math.sin(ang) * dist;
-        if (i < bruiserCount) this._spawnBruiserAt(sx, sy);
-        else if (i < bruiserCount + shooterCount) this._spawnShooterAt(sx, sy);
+
+        var tier = spawnQueue[j];
+        if (tier === 3) this._spawnBruiserAt(sx, sy);
+        else if (tier === 2) this._spawnShooterAt(sx, sy);
         else this._spawnRusherAt(sx, sy);
       }
     },
@@ -1534,12 +1540,16 @@
         '">' + t('laGoReplay') + '</button>' +
         '<div style="font-size:.55rem;color:#556688;letter-spacing:.06em;margin-bottom:.6rem">' + t('laGoEnterHint') + '</div>';
 
-      // Leaderboard placeholder
+      // Leaderboard placeholder (outer = relative pour overlay post-submit)
+      var lbSpinRow =
+        '<div style="width:18px;height:18px;border:2px solid rgba(0,255,255,0.15);border-top-color:rgba(0,255,255,0.7);border-radius:50%;animation:la-go-spin .7s linear infinite"></div>' +
+        '<span style="margin-left:.5rem;font-size:.65rem;color:#6688aa">' + t('laGoLoading') + '</span>';
       var lbHtml =
         '<div style="' + sSection + '">' + t('laGoWorldRecord') + '</div>' +
-        '<div id="_la-go-lb" style="min-height:60px;display:flex;align-items:center;justify-content:center">' +
-          '<div style="width:18px;height:18px;border:2px solid rgba(0,255,255,0.15);border-top-color:rgba(0,255,255,0.7);border-radius:50%;animation:la-go-spin .7s linear infinite"></div>' +
-          '<span style="margin-left:.5rem;font-size:.65rem;color:#6688aa">' + t('laGoLoading') + '</span>' +
+        '<div id="_la-go-lb" style="position:relative;min-height:60px">' +
+          '<div id="_la-go-lb-body" style="min-height:60px;display:flex;align-items:center;justify-content:center">' +
+            lbSpinRow +
+          '</div>' +
         '</div>';
 
       panel.innerHTML = row1 + row2 + btnHtml + lbHtml;
@@ -1589,18 +1599,66 @@
       /** Dernier top affiché (restauration si le poll post-submit échoue). */
       var lastRenderedLbItems = null;
 
+      function getLbBody() {
+        return lbEl.querySelector('#_la-go-lb-body') || lbEl;
+      }
+
+      function removeLbOverlay() {
+        var sh = lbEl.querySelector('#_la-go-lb-shade');
+        if (sh) sh.remove();
+        var body = getLbBody();
+        if (body !== lbEl) {
+          body.style.opacity = '';
+          body.style.pointerEvents = '';
+          body.style.transition = '';
+        }
+      }
+
+      function setLbBodyHtml(inner) {
+        removeLbOverlay();
+        var body = getLbBody();
+        body.innerHTML = inner;
+      }
+
+      /** Chargement initial (pas de tableau) : spinner seul. Après submit : tableau visible + overlay. */
       function renderLeaderboardLoading() {
         lbEl.style.display = 'block';
-        lbEl.innerHTML =
-          '<div style="min-height:60px;display:flex;align-items:center;justify-content:center">' +
-            '<div style="width:18px;height:18px;border:2px solid rgba(0,255,255,0.15);border-top-color:rgba(0,255,255,0.7);border-radius:50%;animation:la-go-spin .7s linear infinite"></div>' +
-            '<span style="margin-left:.5rem;font-size:.65rem;color:#6688aa">' + t('laGoLoading') + '</span>' +
-          '</div>';
+        var body = getLbBody();
+        var spinWrap = '<div style="min-height:60px;display:flex;align-items:center;justify-content:center">' + lbSpinRow + '</div>';
+        if (body.querySelector('table')) {
+          body.style.transition = 'opacity .22s ease';
+          body.style.opacity = '0.48';
+          body.style.pointerEvents = 'none';
+          var shade = lbEl.querySelector('#_la-go-lb-shade');
+          if (!shade) {
+            shade = document.createElement('div');
+            shade.id = '_la-go-lb-shade';
+            shade.style.cssText =
+              'position:absolute;left:0;top:0;right:0;bottom:0;z-index:2;display:flex;' +
+              'align-items:center;justify-content:center;background:rgba(4,12,24,0.35);' +
+              'backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px)';
+            shade.innerHTML = spinWrap;
+            lbEl.appendChild(shade);
+          } else {
+            shade.innerHTML = spinWrap;
+            shade.style.display = 'flex';
+          }
+        } else {
+          removeLbOverlay();
+          body.style.display = 'flex';
+          body.style.alignItems = 'center';
+          body.style.justifyContent = 'center';
+          body.innerHTML = spinWrap;
+        }
       }
 
       function renderLeaderboard(items) {
         items = items || [];
         lastRenderedLbItems = items.slice();
+        removeLbOverlay();
+        var body = getLbBody();
+        body.style.display = 'block';
+        body.style.width = '100%';
         var html = '<table style="width:100%;border-collapse:collapse;font-size:.68rem">';
         html += '<tr style="color:#5577aa;text-transform:uppercase;letter-spacing:.08em"><td style="text-align:left;padding:.2rem .3rem">#</td><td style="text-align:left;padding:.2rem .3rem">Player</td><td style="text-align:right;padding:.2rem .3rem">Score</td></tr>';
         for (var i = 0; i < items.length; i++) {
@@ -1618,7 +1676,7 @@
         }
         html += '</table>';
         lbEl.style.display = 'block';
-        lbEl.innerHTML = html;
+        body.innerHTML = html;
       }
 
       /**
@@ -1631,7 +1689,7 @@
           if (err2 || !items2) {
             if (triesLeft <= 1) {
               if (lastRenderedLbItems && lastRenderedLbItems.length) renderLeaderboard(lastRenderedLbItems);
-              else lbEl.innerHTML = '<span style="font-size:.65rem;color:#775555">' + t('laGoError') + '</span>';
+              else setLbBodyHtml('<span style="font-size:.65rem;color:#775555">' + t('laGoError') + '</span>');
               return;
             }
             setTimeout(function () {
@@ -1719,7 +1777,7 @@
       // Fetch leaderboard
       _llGetTop(10, function (err, items) {
         if (err || !items) {
-          lbEl.innerHTML = '<span style="font-size:.65rem;color:#775555">' + t('laGoError') + '</span>';
+          setLbBodyHtml('<span style="font-size:.65rem;color:#775555">' + t('laGoError') + '</span>');
           return;
         }
         renderLeaderboard(items);
@@ -2089,8 +2147,9 @@
       // Guard: skip spawn if game over flag
       if (this.spawnTimer > -999000) {
         this.spawnTimer += ms;
-        if (this.spawnTimer >= SPAWN_INTERVAL) {
-          this.spawnTimer -= SPAWN_INTERVAL;
+        if (this.spawnTimer >= this.nextSpawnDelay) {
+          this.spawnTimer = 0;
+          this.nextSpawnDelay = Phaser.Math.Between(3000, 5000);
           this._spawnWave();
         }
       }
