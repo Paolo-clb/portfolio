@@ -504,11 +504,16 @@
 
   function _llGetTop(count, cb) {
     if (!_llToken) { cb('no_session', null); return; }
-    fetch(LL_API + '/game/leaderboards/' + LL_LB_KEY + '/list?count=' + count, {
-      headers: { 'x-session-token': _llToken },
+    var bust = '&_=' + Date.now();
+    fetch(LL_API + '/game/leaderboards/' + LL_LB_KEY + '/list?count=' + count + bust, {
+      headers: { 'x-session-token': _llToken, 'Cache-Control': 'no-cache' },
+      cache: 'no-store',
     })
-    .then(function (r) { return r.json(); })
-    .then(function (d) { cb(null, d.items || []); })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (!res.ok) { cb('http', null); return; }
+      cb(null, (res.d && res.d.items) ? res.d.items : []);
+    })
     .catch(function () { cb('network', null); });
   }
 
@@ -526,14 +531,44 @@
 
   function _llSubmitScore(score, cb) {
     if (!_llToken) { cb('no_session'); return; }
+    var scoreInt = Math.round(Number(score));
     fetch(LL_API + '/game/leaderboards/' + LL_LB_KEY + '/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-session-token': _llToken },
-      body: JSON.stringify({ member_id: String(_llPlayerId), score: score }),
+      body: JSON.stringify({ member_id: String(_llPlayerId), score: scoreInt }),
     })
-    .then(function (r) { return r.json(); })
-    .then(function (d) { cb(null, d); })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      var d = res.d;
+      if (!res.ok || (d && d.success === false)) {
+        var msg = (d && (d.message || d.error || (d.messages && d.messages[0]) || d.text)) || 'submit_failed';
+        cb(msg, d);
+        return;
+      }
+      cb(null, d);
+    })
     .catch(function () { cb('network', null); });
+  }
+
+  /** Meilleur score déjà présent sur le classement API pour ce guest, ou null. */
+  function _llGetMyBestSubmittedWorldScore(playerId, apiItems) {
+    var pid = String(playerId);
+    var best = null;
+    var i, sc;
+    for (i = 0; i < (apiItems || []).length; i++) {
+      if (String(apiItems[i].member_id) !== pid) continue;
+      sc = Number(apiItems[i].score);
+      if (best === null || sc > best) best = sc;
+    }
+    return best;
+  }
+
+  function _llCountScoresStrictlyAbove(apiItems, playerScore) {
+    var n = 0;
+    for (var i = 0; i < (apiItems || []).length; i++) {
+      if (Number(apiItems[i].score) > playerScore) n++;
+    }
+    return n;
   }
 
   /* ================================================================
@@ -1551,8 +1586,21 @@
 
       // ----- Leaderboard fetch -----
       var lbEl = panel.querySelector('#_la-go-lb');
+      /** Dernier top affiché (restauration si le poll post-submit échoue). */
+      var lastRenderedLbItems = null;
+
+      function renderLeaderboardLoading() {
+        lbEl.style.display = 'block';
+        lbEl.innerHTML =
+          '<div style="min-height:60px;display:flex;align-items:center;justify-content:center">' +
+            '<div style="width:18px;height:18px;border:2px solid rgba(0,255,255,0.15);border-top-color:rgba(0,255,255,0.7);border-radius:50%;animation:la-go-spin .7s linear infinite"></div>' +
+            '<span style="margin-left:.5rem;font-size:.65rem;color:#6688aa">' + t('laGoLoading') + '</span>' +
+          '</div>';
+      }
 
       function renderLeaderboard(items) {
+        items = items || [];
+        lastRenderedLbItems = items.slice();
         var html = '<table style="width:100%;border-collapse:collapse;font-size:.68rem">';
         html += '<tr style="color:#5577aa;text-transform:uppercase;letter-spacing:.08em"><td style="text-align:left;padding:.2rem .3rem">#</td><td style="text-align:left;padding:.2rem .3rem">Player</td><td style="text-align:right;padding:.2rem .3rem">Score</td></tr>';
         for (var i = 0; i < items.length; i++) {
@@ -1561,8 +1609,9 @@
           var isMe = String(it.member_id) === String(_llPlayerId);
           var rowCol = isMe ? 'color:#00ffff;font-weight:700' : 'color:#ccddef';
           var bg = i % 2 === 0 ? 'background:rgba(0,255,255,0.03)' : '';
+          var rankDisp = it.rank;
           html += '<tr style="' + bg + ';' + rowCol + '">';
-          html += '<td style="text-align:left;padding:.22rem .3rem;color:#5577aa;font-weight:700">' + it.rank + '</td>';
+          html += '<td style="text-align:left;padding:.22rem .3rem;color:#5577aa;font-weight:700">' + rankDisp + '</td>';
           html += '<td style="text-align:left;padding:.22rem .3rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">' + _escHtml(name) + '</td>';
           html += '<td style="text-align:right;padding:.22rem .3rem;font-weight:700">' + it.score + '</td>';
           html += '</tr>';
@@ -1570,6 +1619,48 @@
         html += '</table>';
         lbEl.style.display = 'block';
         lbEl.innerHTML = html;
+      }
+
+      /**
+       * Après submit, la liste LootLocker peut rester un instant sur l’ancien score (CDN / propagation).
+       * Re-fetch avec délais ; en dernier recours, corrige la ligne locale du joueur pour l’affichage.
+       */
+      function pollLeaderboardAfterSubmit(expectedScore, submittedName, triesLeft, delayMs) {
+        var exp = Number(expectedScore);
+        _llGetTop(10, function (err2, items2) {
+          if (err2 || !items2) {
+            if (triesLeft <= 1) {
+              if (lastRenderedLbItems && lastRenderedLbItems.length) renderLeaderboard(lastRenderedLbItems);
+              else lbEl.innerHTML = '<span style="font-size:.65rem;color:#775555">' + t('laGoError') + '</span>';
+              return;
+            }
+            setTimeout(function () {
+              pollLeaderboardAfterSubmit(expectedScore, submittedName, triesLeft - 1, Math.min(Math.round(delayMs * 1.65), 4000));
+            }, delayMs);
+            return;
+          }
+          var mine = null;
+          var ri;
+          for (ri = 0; ri < items2.length; ri++) {
+            if (String(items2[ri].member_id) === String(_llPlayerId)) {
+              mine = items2[ri];
+              break;
+            }
+          }
+          var listOk = mine && Number(mine.score) >= exp;
+          if (listOk || triesLeft <= 1) {
+            if (mine && Number(mine.score) < exp) {
+              mine.score = exp;
+              mine.player = mine.player || {};
+              mine.player.name = submittedName;
+            }
+            renderLeaderboard(items2);
+            return;
+          }
+          setTimeout(function () {
+            pollLeaderboardAfterSubmit(expectedScore, submittedName, triesLeft - 1, Math.min(Math.round(delayMs * 1.65), 4000));
+          }, delayMs);
+        });
       }
 
       function showSubmitForm() {
@@ -1613,10 +1704,8 @@
                 return;
               }
               form.innerHTML = '<span style="font-size:.7rem;color:#00ff88">' + t('laGoSubmitted') + '</span>';
-              // Refresh leaderboard
-              _llGetTop(10, function (err2, items2) {
-                if (!err2 && items2) renderLeaderboard(items2);
-              });
+              renderLeaderboardLoading();
+              pollLeaderboardAfterSubmit(playerScore, name, 8, 200);
             });
           });
         });
@@ -1634,9 +1723,11 @@
           return;
         }
         renderLeaderboard(items);
-        // Check if player qualifies for top 10
-        var qualifies = items.length < 10 || (items.length >= 10 && playerScore > items[items.length - 1].score);
-        if (qualifies && _llToken) showSubmitForm();
+        var submittedBest = _llGetMyBestSubmittedWorldScore(_llPlayerId, items);
+        var beatsSubmittedWorld = (submittedBest === null) || (playerScore > submittedBest);
+        var strictlyBetter = _llCountScoresStrictlyAbove(items, playerScore);
+        var qualifiesTop10 = strictlyBetter < 10;
+        if (qualifiesTop10 && beatsSubmittedWorld && _llToken) showSubmitForm();
       });
     },
 
