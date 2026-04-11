@@ -431,6 +431,112 @@
   }
 
   /* ================================================================
+     LOOTLOCKER — Guest session & Leaderboard helpers
+     ================================================================ */
+
+  function _escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /** Game-over strings: resolve even when __siteT only returns the key (missing SITE_I18N row, unknown lang, etc.). */
+  function _laGoT(key) {
+    var FB_FR = {
+      laGoScore: 'Score', laGoBestCombo: 'Meilleur combo', laGoKills: 'Ennemis éliminés',
+      laGoRecord: 'Record personnel', laGoReplay: 'Rejouer', laGoEnterHint: 'ou appuie sur Entrée',
+      laGoWorldRecord: 'Top 10 mondial', laGoLoading: 'Chargement…', laGoError: 'Hors-ligne',
+      laGoSubmit: 'Soumettre', laGoSubmitted: 'Envoyé !', laGoNewRecord: 'Nouveau record !',
+      laGoNamePlc: 'Ton pseudo',
+    };
+    var FB_EN = {
+      laGoScore: 'Score', laGoBestCombo: 'Best combo', laGoKills: 'Enemies eliminated',
+      laGoRecord: 'Personal best', laGoReplay: 'Play again', laGoEnterHint: 'or press Enter',
+      laGoWorldRecord: 'World Top 10', laGoLoading: 'Loading…', laGoError: 'Offline',
+      laGoSubmit: 'Submit', laGoSubmitted: 'Submitted!', laGoNewRecord: 'New record!',
+      laGoNamePlc: 'Your name',
+    };
+    var lang = 'fr';
+    try {
+      lang = (localStorage.getItem('portfolio_lang') || document.documentElement.getAttribute('lang') || 'fr').toLowerCase().slice(0, 2);
+    } catch (e) { /* ignore */ }
+    var FB = lang === 'en' ? FB_EN : FB_FR;
+    var si = window.SITE_I18N;
+    if (si) {
+      var row = si[lang] || si.en || si.fr;
+      if (row && row[key]) return row[key];
+      if (si.fr && si.fr[key]) return si.fr[key];
+    }
+    if (typeof window.__siteT === 'function') {
+      var r = window.__siteT(key);
+      if (r && r !== key) return r;
+    }
+    return FB[key] || key;
+  }
+
+  var LL_API      = 'https://api.lootlocker.io';
+  var LL_GAME_KEY = 'dev_9c2377a4f943498fb6c581ffa111a7e4';
+  var LL_LB_KEY   = 'global_high_scores';
+  var _llToken    = null;
+  var _llPlayerId = null;
+  var _llPlayerIdentifier = null;
+
+  function _llInit(cb) {
+    var stored = localStorage.getItem('ll_player_id');
+    var body = { game_key: LL_GAME_KEY, game_version: '1.0.0' };
+    if (stored) body.player_identifier = stored;
+
+    fetch(LL_API + '/game/v2/session/guest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d.success) {
+        _llToken = d.session_token;
+        _llPlayerId = d.player_id;
+        _llPlayerIdentifier = d.player_identifier;
+        localStorage.setItem('ll_player_id', d.player_identifier);
+      }
+      if (cb) cb(d.success ? null : 'login_failed');
+    })
+    .catch(function () { if (cb) cb('network'); });
+  }
+
+  function _llGetTop(count, cb) {
+    if (!_llToken) { cb('no_session', null); return; }
+    fetch(LL_API + '/game/leaderboards/' + LL_LB_KEY + '/list?count=' + count, {
+      headers: { 'x-session-token': _llToken },
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) { cb(null, d.items || []); })
+    .catch(function () { cb('network', null); });
+  }
+
+  function _llSetName(name, cb) {
+    if (!_llToken) { cb('no_session'); return; }
+    fetch(LL_API + '/game/player/name', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-session-token': _llToken },
+      body: JSON.stringify({ name: name }),
+    })
+    .then(function (r) { return r.json(); })
+    .then(function () { cb(null); })
+    .catch(function () { cb('network'); });
+  }
+
+  function _llSubmitScore(score, cb) {
+    if (!_llToken) { cb('no_session'); return; }
+    fetch(LL_API + '/game/leaderboards/' + LL_LB_KEY + '/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-session-token': _llToken },
+      body: JSON.stringify({ member_id: String(_llPlayerId), score: score }),
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) { cb(null, d); })
+    .catch(function () { cb('network', null); });
+  }
+
+  /* ================================================================
      PHASER SCENE
      ================================================================ */
 
@@ -445,6 +551,12 @@
       var self = this;
       this._texTheme = '';
       this._genTextures();
+      // Loader is removed after WARM_UP_FRAMES updates (see update())
+      this._loaderRemoved = false;
+      this._warmupFrames  = 0;
+
+      // LootLocker guest session (fire-and-forget, non-blocking)
+      if (!_llToken) _llInit(null);
 
       var cam = this.cameras.main;
       this.pcbTile = this.add.tileSprite(0, 0, cam.width, cam.height, '_pcb');
@@ -462,8 +574,22 @@
         atkDx: 0, atkDy: 0,
         recoveryTimer: 0, recoveryWhiff: false,
         hasHitDuringDashAttack: false, dashAtkExtended: 0,
-        hp: 5, invincible: false, invincTimer: 0, dashInvinc: false,
+        hp: 1, invincible: false, invincTimer: 0, dashInvinc: false,
       };
+
+      // Shield orbs — start with 1
+      this.playerShields = 1;
+      this.MAX_SHIELDS   = 3;
+      this._shieldAngle  = 0;
+      this._shieldOrbs   = [];
+      var SHIELD_ORBS_N  = 3;
+      for (var oi = 0; oi < SHIELD_ORBS_N; oi++) {
+        var og = this.add.graphics();
+        og.setDepth(35);
+        og.setBlendMode(Phaser.BlendModes.ADD);
+        og.setVisible(false);
+        this._shieldOrbs.push(og);
+      }
 
       this.playerSpr = this.add.image(0, 0, '_ar_cyan');
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
@@ -559,6 +685,26 @@
       }
       this._hiveBeamW = 0;
 
+      // World-space border: glow wall at the arena edge
+      var WH = WORLD_HALF;
+      var bGfx = this.add.graphics();
+      bGfx.setDepth(-5);
+      // Soft inner glow (wide transparent band)
+      bGfx.lineStyle(28, 0x00ffff, 0.06);
+      bGfx.strokeRect(-WH, -WH, WH * 2, WH * 2);
+      bGfx.lineStyle(16, 0x00ffff, 0.12);
+      bGfx.strokeRect(-WH, -WH, WH * 2, WH * 2);
+      // Crisp visible border line
+      bGfx.lineStyle(3, 0x00ffff, 0.70);
+      bGfx.strokeRect(-WH, -WH, WH * 2, WH * 2);
+      // Corner accent squares
+      var cS = 18;
+      var corners = [[-WH, -WH], [WH - cS, -WH], [-WH, WH - cS], [WH - cS, WH - cS]];
+      bGfx.lineStyle(2, 0x00ffff, 0.90);
+      for (var ci = 0; ci < corners.length; ci++) {
+        bGfx.strokeRect(corners[ci][0], corners[ci][1], cS, cS);
+      }
+
       this.hudGfx = this.add.graphics();
       this.hudGfx.setScrollFactor(0);
       this.hudGfx.setDepth(100);
@@ -575,6 +721,8 @@
 
       // Score & Combo
       this.score = 0;
+      this.totalKills = 0;
+      this.bestCombo = 1;
       this.comboMultiplier = 1;
       this.comboTimer = 0;
       this._comboPulse = 0;
@@ -670,6 +818,21 @@
       });
 
       this.game.canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+      // Expose attack-ready flag for the cursor-halo hover poll in main.js
+      window.__lightGameAtkReady = function () {
+        var p = self.p;
+        if (!p) return false;
+        if (p.state === 'DEAD') return false;
+        if (p.invincible && !p.dashInvinc) return false; // hit i-frames (flicker) → not ready
+        if (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING') return false;
+        if (p.state === 'RECOVERY') return false;
+        return true;
+      };
+      // Clean up on scene shutdown (restart / close)
+      this.events.once('shutdown', function () {
+        window.__lightGameAtkReady = null;
+      });
     },
 
     _genTextures: function () {
@@ -990,13 +1153,27 @@
       ctx = ctx || {};
 
       // Scoring
+      this.totalKills++;
       var basePts = e.tier === 3 ? 100 : e.tier === 2 ? 30 : 10;
       var pts = basePts * this.comboMultiplier;
       if (ctx.reflected) pts *= 2;
       this.score += pts;
       this.comboTimer = 2000;
       this.comboMultiplier++;
+      if (this.comboMultiplier > this.bestCombo) this.bestCombo = this.comboMultiplier;
       this._comboPulse = 1.0;
+
+      // Shield acquisition at exact combo milestones
+      var newCm = this.comboMultiplier;
+      if (newCm === 10 || newCm === 50) {
+        if (this.playerShields < this.MAX_SHIELDS) {
+          this.playerShields++;
+          var shLabel = 'Combo X' + newCm + ' : +1 SHIELD';
+          this._floatLabel(this.p.x, this.p.y - 30, shLabel, '#00ffff');
+          // Quick cyan screen flash
+          this.cameras.main.flash(180, 0, 220, 255);
+        }
+      }
 
       if (ctx.batch) {
         this._batchScore += pts;
@@ -1174,6 +1351,296 @@
       this.timeScale = 0;
     },
 
+    // Generic floating label (shield acquire / game-over annotation)
+    _floatLabel: function (wx, wy, label, col) {
+      var cam = this.cameras.main;
+      var txt = this.add.text(wx - cam.scrollX, wy - cam.scrollY, label, {
+        fontFamily: 'monospace', fontSize: '22px', fontStyle: 'bold', color: col,
+        stroke: '#000000', strokeThickness: 2,
+        shadow: { offsetX: 0, offsetY: 2, color: col, blur: 8, fill: true },
+      });
+      txt.setOrigin(0.5, 1); txt.setDepth(70); txt.setScrollFactor(0);
+      // Hold fully visible for 1.2 s, then fade out over 1 s while drifting up
+      this.tweens.add({
+        targets: txt, y: txt.y - 30, duration: 600, ease: 'Linear',
+      });
+      this.tweens.add({
+        targets: txt, alpha: 0, duration: 400, ease: 'Cubic.easeIn', delay: 400,
+        onComplete: function () { txt.destroy(); },
+      });
+    },
+
+    // Centralised player damage handler
+    _damagePlayer: function (nx, ny) {
+      var p = this.p;
+      if (p.invincible) return;
+
+      if (this.playerShields > 0) {
+        // Consume one shield
+        this.playerShields--;
+        this._breakCombo();
+        // Orb-burst particles at shield orb position (approximated at player)
+        this._explode(p.x, p.y, [0, 255, 255], 18);
+        this._explode(p.x, p.y, [255, 255, 255], 12);
+        this.cameras.main.shake(200, 0.022);
+        this._triggerHitstop(90);
+        // Standard I-frames with flicker
+        p.invincible = true; p.invincTimer = IFRAMES_DUR; p.dashInvinc = false;
+        // Knockback
+        if (nx !== 0 || ny !== 0) { p.vx += nx * 8; p.vy += ny * 8; }
+      } else {
+        // No shields — instant death
+        this._triggerGameOver();
+      }
+    },
+
+    _triggerGameOver: function () {
+      var p = this.p;
+      if (p.state === 'DEAD') return; // guard against multiple calls in same frame
+      p.state = 'DEAD';
+      p.invincible = true; p.invincTimer = 99999;
+      // Freeze all gameplay time immediately
+      this.timeScale = 0;
+      this.hitstopTimer = 0;
+      // Explosion at player
+      this._explode(p.x, p.y, [255, 60, 0], 60);
+      this._explode(p.x, p.y, [255, 220, 50], 30);
+      this._explode(p.x, p.y, [255, 255, 255], 20);
+      // Moderate shake + flash
+      this.cameras.main.shake(280, 0.016);
+      this.cameras.main.flash(300, 255, 60, 0);
+      // Hide player sprite and orbs
+      this.playerSpr.setVisible(false);
+      for (var ti = 0; ti < this.TRAIL_CAP; ti++) this._trail[ti].spr.setVisible(false);
+      for (var oi = 0; oi < this._shieldOrbs.length; oi++) this._shieldOrbs[oi].setVisible(false);
+      // Stop enemy spawning
+      this.spawnTimer = -999999;
+      // Show Game Over popup after short delay (camera effects still run via real time)
+      var self = this;
+      this.time.delayedCall(900, function () {
+        self._showGameOverScreen();
+      });
+    },
+
+    _showGameOverScreen: function () {
+      if (document.getElementById('_la-go-overlay')) return;
+
+      var canvas    = this.game.canvas;
+      var container = canvas.parentElement;
+      var playerScore = this.score;
+      var bestCombo   = Math.max(this.bestCombo || 1, this.comboMultiplier);
+      var totalKills  = this.totalKills || 0;
+      var sceneRef    = this;
+
+      // ----- Local record -----
+      var prevRecord = parseInt(localStorage.getItem('lightGameHighScore'), 10) || 0;
+      var isNewRecord = playerScore > prevRecord;
+      if (isNewRecord) localStorage.setItem('lightGameHighScore', playerScore);
+      var localBest = Math.max(playerScore, prevRecord);
+
+      // ----- i18n (robust: never show raw keys + values run together on missing SITE_I18N) -----
+      var t = _laGoT;
+
+      // ----- Inject keyframes -----
+      if (!document.getElementById('_la-go-styles')) {
+        var st = document.createElement('style');
+        st.id = '_la-go-styles';
+        st.textContent =
+          '@keyframes la-go-fade-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}' +
+          '@keyframes la-go-glow{0%,100%{box-shadow:0 0 0 0 rgba(0,255,255,0.2)}50%{box-shadow:0 0 22px 4px rgba(0,255,255,0.12)}}' +
+          '@keyframes la-go-spin{to{transform:rotate(360deg)}}';
+        document.head.appendChild(st);
+      }
+
+      // ----- CSS helpers -----
+      var sLbl = 'font-size:.55rem;letter-spacing:.1em;color:#7799bb;text-transform:uppercase;display:block;margin-bottom:.15rem';
+      var sVal = function (c) { return 'font-size:1.2rem;font-weight:700;color:' + c + ';text-shadow:0 0 8px ' + c + '44'; };
+      var sSection = 'font-size:.55rem;letter-spacing:.12em;color:#5577aa;text-transform:uppercase;margin:1rem 0 .4rem;text-align:left';
+
+      // ----- Build overlay -----
+      var overlay = document.createElement('div');
+      overlay.id  = '_la-go-overlay';
+      overlay.style.cssText = 'position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;pointer-events:none;font-family:monospace';
+
+      var panel = document.createElement('div');
+      panel.style.cssText = [
+        'pointer-events:auto', 'text-align:center',
+        'padding:1.3rem 1.8rem 1rem', 'border:1px solid rgba(0,255,255,0.28)', 'border-radius:14px',
+        'background:rgba(4,5,18,0.72)', 'max-width:420px', 'width:92%', 'color:#e0e0ff',
+        'max-height:85vh', 'overflow-y:auto',
+        'animation:la-go-fade-in 0.4s cubic-bezier(0.22,1,0.36,1) both,la-go-glow 2.4s ease infinite',
+      ].join(';');
+
+      // Row 1: Score / Best Combo / Kills
+      var statCol = 'display:flex;flex-direction:column;align-items:center;gap:.12rem;min-width:0';
+      var row1 =
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem .6rem;margin-bottom:.5rem">' +
+          '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoScore') + '</span><span style="' + sVal('#00ffff') + '">' + playerScore + '</span></div>' +
+          '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoBestCombo') + '</span><span style="' + sVal('#ffcc00') + '">x' + bestCombo + '</span></div>' +
+          '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoKills') + '</span><span style="' + sVal('#ff6644') + '">' + totalKills + '</span></div>' +
+        '</div>';
+
+      // Row 2: Personal Record
+      var recColor = isNewRecord ? '#00ff88' : '#aabbcc';
+      var recExtra = isNewRecord ? '  <span style="font-size:.6rem;color:#00ff88;margin-left:.4rem">' + t('laGoNewRecord') + '</span>' : '';
+      var row2 =
+        '<div style="margin-bottom:.6rem;display:flex;flex-direction:column;align-items:center;gap:.12rem">' +
+          '<span style="' + sLbl + '">' + t('laGoRecord') + '</span>' +
+          '<span style="' + sVal(recColor) + '">' + localBest + '</span>' + recExtra +
+        '</div>';
+
+      // Replay button
+      var btnHtml =
+        '<button id="_la-go-replay" style="' +
+          'padding:.55rem 1.8rem;border:1.5px solid rgba(0,255,255,0.5);border-radius:8px;' +
+          'background:rgba(0,255,255,0.08);color:#00ffff;font-family:monospace;font-size:.88rem;' +
+          'font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;' +
+          'transition:background .2s,box-shadow .2s;display:block;margin:0 auto .4rem' +
+        '">' + t('laGoReplay') + '</button>' +
+        '<div style="font-size:.55rem;color:#556688;letter-spacing:.06em;margin-bottom:.6rem">' + t('laGoEnterHint') + '</div>';
+
+      // Leaderboard placeholder
+      var lbHtml =
+        '<div style="' + sSection + '">' + t('laGoWorldRecord') + '</div>' +
+        '<div id="_la-go-lb" style="min-height:60px;display:flex;align-items:center;justify-content:center">' +
+          '<div style="width:18px;height:18px;border:2px solid rgba(0,255,255,0.15);border-top-color:rgba(0,255,255,0.7);border-radius:50%;animation:la-go-spin .7s linear infinite"></div>' +
+          '<span style="margin-left:.5rem;font-size:.65rem;color:#6688aa">' + t('laGoLoading') + '</span>' +
+        '</div>';
+
+      panel.innerHTML = row1 + row2 + btnHtml + lbHtml;
+      overlay.appendChild(panel);
+
+      // ----- Wire replay button -----
+      var btn = panel.querySelector('#_la-go-replay');
+      btn.addEventListener('mouseenter', function () { btn.style.background = 'rgba(0,255,255,0.16)'; btn.style.boxShadow = '0 0 16px rgba(0,255,255,0.22)'; });
+      btn.addEventListener('mouseleave', function () { btn.style.background = 'rgba(0,255,255,0.08)'; btn.style.boxShadow = ''; });
+
+      var _submitActive = false;
+      function clearGameOverHostFlag() {
+        try { delete container.dataset.laGameover; } catch (e) { /* ignore */ }
+      }
+      function doReplay() {
+        if (_submitActive) return;
+        clearGameOverHostFlag();
+        overlay.remove();
+        document.removeEventListener('keydown', onKey);
+        sceneRef.scene.resume();
+        sceneRef.scene.restart();
+      }
+      function onKey(e) {
+        if (e.key === 'Enter' && !_submitActive) { e.preventDefault(); doReplay(); }
+      }
+      btn.addEventListener('click', doReplay);
+      document.addEventListener('keydown', onKey);
+      this.events.once('shutdown', function () {
+        document.removeEventListener('keydown', onKey);
+        clearGameOverHostFlag();
+        var el = document.getElementById('_la-go-overlay');
+        if (el) el.remove();
+      });
+
+      container.style.position = 'relative';
+      container.dataset.laGameover = '1';
+      container.appendChild(overlay);
+
+      // Pause scene
+      var self2 = this;
+      this.time.delayedCall(50, function () { self2.scene.pause(); });
+
+      // ----- Leaderboard fetch -----
+      var lbEl = panel.querySelector('#_la-go-lb');
+
+      function renderLeaderboard(items) {
+        var html = '<table style="width:100%;border-collapse:collapse;font-size:.68rem">';
+        html += '<tr style="color:#5577aa;text-transform:uppercase;letter-spacing:.08em"><td style="text-align:left;padding:.2rem .3rem">#</td><td style="text-align:left;padding:.2rem .3rem">Player</td><td style="text-align:right;padding:.2rem .3rem">Score</td></tr>';
+        for (var i = 0; i < items.length; i++) {
+          var it = items[i];
+          var name = (it.player && it.player.name) ? it.player.name : ('Player ' + it.member_id);
+          var isMe = String(it.member_id) === String(_llPlayerId);
+          var rowCol = isMe ? 'color:#00ffff;font-weight:700' : 'color:#ccddef';
+          var bg = i % 2 === 0 ? 'background:rgba(0,255,255,0.03)' : '';
+          html += '<tr style="' + bg + ';' + rowCol + '">';
+          html += '<td style="text-align:left;padding:.22rem .3rem;color:#5577aa;font-weight:700">' + it.rank + '</td>';
+          html += '<td style="text-align:left;padding:.22rem .3rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">' + _escHtml(name) + '</td>';
+          html += '<td style="text-align:right;padding:.22rem .3rem;font-weight:700">' + it.score + '</td>';
+          html += '</tr>';
+        }
+        html += '</table>';
+        lbEl.style.display = 'block';
+        lbEl.innerHTML = html;
+      }
+
+      function showSubmitForm() {
+        var formId = '_la-go-submit-form';
+        if (document.getElementById(formId)) return;
+        var form = document.createElement('div');
+        form.id = formId;
+        form.style.cssText = 'margin:.6rem 0;display:flex;gap:.4rem;justify-content:center;align-items:center';
+        form.innerHTML =
+          '<input id="_la-go-name" type="text" maxlength="16" placeholder="' + _escHtml(t('laGoNamePlc')) + '" style="' +
+            'padding:.35rem .6rem;border:1px solid rgba(0,255,255,0.35);border-radius:6px;' +
+            'background:rgba(0,0,0,0.35);color:#e0e0ff;font-family:monospace;font-size:.75rem;' +
+            'width:120px;outline:none' +
+          '">' +
+          '<button id="_la-go-send" style="' +
+            'padding:.35rem .8rem;border:1.5px solid rgba(0,255,255,0.5);border-radius:6px;' +
+            'background:rgba(0,255,255,0.10);color:#00ffff;font-family:monospace;font-size:.72rem;' +
+            'font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;' +
+            'transition:background .2s' +
+          '">' + t('laGoSubmit') + '</button>';
+        lbEl.parentNode.insertBefore(form, lbEl);
+
+        var nameIn = form.querySelector('#_la-go-name');
+        var sendBtn = form.querySelector('#_la-go-send');
+        // Retrieve last used name
+        var savedName = localStorage.getItem('ll_player_name') || '';
+        if (savedName) nameIn.value = savedName;
+
+        _submitActive = true;
+
+        sendBtn.addEventListener('click', function () {
+          var name = nameIn.value.trim();
+          if (!name) { nameIn.style.borderColor = '#ff4444'; return; }
+          sendBtn.disabled = true;
+          sendBtn.textContent = '…';
+          localStorage.setItem('ll_player_name', name);
+
+          _llSetName(name, function () {
+            _llSubmitScore(playerScore, function (err) {
+              if (err) {
+                sendBtn.textContent = t('laGoError');
+                _submitActive = false;
+                return;
+              }
+              form.innerHTML = '<span style="font-size:.7rem;color:#00ff88">' + t('laGoSubmitted') + '</span>';
+              _submitActive = false;
+              // Refresh leaderboard
+              _llGetTop(10, function (err2, items2) {
+                if (!err2 && items2) renderLeaderboard(items2);
+              });
+            });
+          });
+        });
+
+        nameIn.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); sendBtn.click(); }
+        });
+        nameIn.focus();
+      }
+
+      // Fetch leaderboard
+      _llGetTop(10, function (err, items) {
+        if (err || !items) {
+          lbEl.innerHTML = '<span style="font-size:.65rem;color:#775555">' + t('laGoError') + '</span>';
+          return;
+        }
+        renderLeaderboard(items);
+        // Check if player qualifies for top 10
+        var qualifies = items.length < 10 || (items.length >= 10 && playerScore > items[items.length - 1].score);
+        if (qualifies && _llToken) showSubmitForm();
+      });
+    },
+
     _breakCombo: function () {
       if (this.comboMultiplier <= 1) return;
       // Flash the combo text red briefly before resetting
@@ -1190,34 +1657,59 @@
     },
 
     _floatScore: function (wx, wy, pts, tier) {
-      var col, sz;
+      // Fill colors match enemy body tints (_enemy #FF0044, _shooter #FFaa22, bruiser purple family).
+      var col, sz, shCol;
       if (tier === 3) {
-        col = '#6a0dad';
-        sz = '22px';
+        col = '#b44dff'; sz = '30px'; shCol = 'rgba(40,0,72,0.75)';
       } else if (tier === 2) {
-        col = '#ffaa22';
-        sz = '18px';
+        col = '#ffaa22'; sz = '26px'; shCol = 'rgba(48,24,0,0.72)';
       } else {
-        col = '#ff0044';
-        sz = '15px';
+        col = '#ff0044'; sz = '22px'; shCol = 'rgba(40,0,12,0.75)';
       }
       var txt = this.add.text(wx, wy - 10, '+' + pts, {
-        fontFamily: 'monospace', fontSize: sz, fontStyle: 'bold', color: col,
-        stroke: '#000022', strokeThickness: 3,
+        fontFamily: 'monospace', fontSize: sz, fontStyle: 'normal', color: col,
+        stroke: '#ffffff', strokeThickness: 1,
+        shadow: { offsetX: 0, offsetY: 2, color: shCol, blur: 5, stroke: true, fill: true },
       });
-      txt.setOrigin(0.5, 1); txt.setDepth(55);
+      txt.setOrigin(0.5, 1); txt.setDepth(60);
       txt.setBlendMode(Phaser.BlendModes.ADD);
       txt.setAlpha(1.0);
-      txt.setScale(1.1);
+      txt.setScale(1.38);
       this.tweens.add({
         targets: txt,
-        y: wy - 55,
-        scaleX: 0.7, scaleY: 0.7,
+        y: wy - 80,
+        scaleX: 0.92, scaleY: 0.92,
         alpha: 0,
-        duration: 750,
+        duration: 950,
         ease: 'Cubic.easeOut',
         onComplete: function () { txt.destroy(); },
       });
+    },
+
+    _renderShieldOrbs: function () {
+      var p = this.p;
+      var ORB_RADIUS = 38;
+      var ORB_SIZE   = 5;
+      for (var oi = 0; oi < this._shieldOrbs.length; oi++) {
+        var og = this._shieldOrbs[oi];
+        if (oi >= this.playerShields) {
+          og.setVisible(false);
+          continue;
+        }
+        og.setVisible(true);
+        // Evenly spaced around the player, rotating
+        var baseAng = (Math.PI * 2 / this.MAX_SHIELDS) * oi + this._shieldAngle;
+        var ox = p.x + Math.cos(baseAng) * ORB_RADIUS;
+        var oy = p.y + Math.sin(baseAng) * ORB_RADIUS;
+        og.clear();
+        // Outer glow ring
+        og.lineStyle(4, 0x00ffff, 0.30);
+        og.strokeCircle(0, 0, ORB_SIZE + 4);
+        // Bright core
+        og.fillStyle(0x00ffff, 0.95);
+        og.fillCircle(0, 0, ORB_SIZE);
+        og.setPosition(ox, oy);
+      }
     },
 
     _floatScoreBig: function (label, pts) {
@@ -1353,9 +1845,9 @@
               p.atkTimer += ext; p.dashAtkExtended += ext;
             }
           } else if (vuln && !p.invincible) {
-            p.hp -= 1; p.invincible = true; p.invincTimer = IFRAMES_DUR; p.dashInvinc = false;
-            if (dist > 0.1) { p.vx += (dx / dist) * 8; p.vy += (dy / dist) * 8; }
-            this._breakCombo();
+            var cnx = dist > 0.1 ? dx / dist : 0;
+            var cny = dist > 0.1 ? dy / dist : 0;
+            this._damagePlayer(cnx, cny);
           }
         }
       }
@@ -1363,6 +1855,22 @@
 
     update: function (_time, delta) {
       var dt = Math.min(delta / 1000, 0.05);
+
+      // Loader: stay opaque for WARM_UP_FRAMES then fade out.
+      // This covers the initial shader-compilation spike that causes the first-launch stutter.
+      if (!this._loaderRemoved) {
+        this._warmupFrames = (this._warmupFrames || 0) + 1;
+        if (this._warmupFrames >= 45) {
+          this._loaderRemoved = true;
+          var loEl = document.getElementById('_la-loading');
+          if (loEl) {
+            loEl.style.transition = 'opacity 0.55s ease';
+            loEl.style.opacity = '0';
+            setTimeout(function () { if (loEl.parentNode) loEl.parentNode.removeChild(loEl); }, 600);
+          }
+        }
+        // Keep playing/rendering every frame during warmup (no early return)
+      }
 
       this._checkTheme();
 
@@ -1387,6 +1895,11 @@
       }
 
       var p = this.p;
+
+      // Skip all gameplay while dead — scene is fully frozen
+      if (p.state === 'DEAD') {
+        return;
+      }
 
       if (p.invincible) {
         p.invincTimer -= ms;
@@ -1483,11 +1996,18 @@
       this._updateProjectiles(sDt);
       this._checkCollisions();
 
-      this.spawnTimer += ms;
-      if (this.spawnTimer >= SPAWN_INTERVAL) {
-        this.spawnTimer -= SPAWN_INTERVAL;
-        this._spawnWave();
+      // Guard: skip spawn if game over flag
+      if (this.spawnTimer > -999000) {
+        this.spawnTimer += ms;
+        if (this.spawnTimer >= SPAWN_INTERVAL) {
+          this.spawnTimer -= SPAWN_INTERVAL;
+          this._spawnWave();
+        }
       }
+
+      // Rotate shield orbs
+      this._shieldAngle += sDt * 1.8;
+      this._renderShieldOrbs();
 
       var cam = this.cameras.main;
       var cA = 1 - Math.pow(1 - CAM_LERP, s60);
@@ -1734,6 +2254,15 @@
           }
           e.x += e.vx * sc60; e.y += e.vy * sc60;
         }
+
+        // --- World border clamp: bounce off arena walls ---
+        var eHalf = e.tier === 3 ? T3_SIZE : e.tier === 2 ? T2_SIZE : SIZE;
+        var eMargin = WORLD_HALF - eHalf * 1.2;
+        var BOUNCE = 0.55;
+        if (e.x < -eMargin) { e.x = -eMargin; if (e.vx < 0) e.vx = Math.abs(e.vx) * BOUNCE; }
+        if (e.x >  eMargin) { e.x =  eMargin; if (e.vx > 0) e.vx = -Math.abs(e.vx) * BOUNCE; }
+        if (e.y < -eMargin) { e.y = -eMargin; if (e.vy < 0) e.vy = Math.abs(e.vy) * BOUNCE; }
+        if (e.y >  eMargin) { e.y =  eMargin; if (e.vy > 0) e.vy = -Math.abs(e.vy) * BOUNCE; }
       }
     },
 
@@ -1854,9 +2383,9 @@
             var pdx = p.x - pr.x, pdy = p.y - pr.y;
             var pd = Math.sqrt(pdx * pdx + pdy * pdy);
             if (pd < pR + PROJ_RADIUS) {
-              p.hp -= 1; p.invincible = true; p.invincTimer = IFRAMES_DUR; p.dashInvinc = false;
-              if (pd > 0.1) { p.vx += (pdx / pd) * 6; p.vy += (pdy / pd) * 6; }
-              this._breakCombo();
+              var pnx = pd > 0.1 ? pdx / pd : 0;
+              var pny = pd > 0.1 ? pdy / pd : 0;
+              this._damagePlayer(pnx, pny);
               this._destroyProjectile(pr);
               this.projectiles.splice(i, 1);
               continue;
@@ -2021,6 +2550,23 @@
       this.playerSpr.setRotation(p.angle);
       this.playerSpr.setVisible(true);
 
+      // Arrow scale escalates with combo (kept subtle vs older, larger steps)
+      var cm = this.comboMultiplier;
+      var baseScale, scaleLabel;
+      if (cm >= 50) {
+        baseScale = 1.30 + 0.08 * Math.sin(this.gameTime * Math.PI * 14);
+      } else if (cm >= 25) {
+        baseScale = 1.14 + 0.055 * Math.sin(this.gameTime * Math.PI * 9);
+      } else if (cm >= 10) {
+        baseScale = 1.06 + 0.035 * Math.sin(this.gameTime * Math.PI * 5);
+      } else if (cm >= 5) {
+        baseScale = 1.025 + 0.02 * Math.sin(this.gameTime * Math.PI * 4);
+      } else {
+        baseScale = 1.0;
+      }
+      if (p.state === 'DASH_ATTACKING') baseScale *= 1.08;
+      this.playerSpr.setScale(baseScale);
+
       // Dash i-frames: keep dash look (cyan tint, ADD blend, full alpha)
       if (p.invincible && p.dashInvinc) {
         this.playerSpr.setTint(0x00ffff);
@@ -2047,6 +2593,7 @@
         sl.spr.setRotation(sl.angle);
         var trAlpha = (hi + 1) / (this._trN + 1) * (p.invincible && p.dashInvinc ? 0.55 : 0.35);
         sl.spr.setAlpha(trAlpha);
+        sl.spr.setScale(baseScale * ((hi + 1) / (this._trN + 1) * 0.5 + 0.5));
         if (p.invincible && p.dashInvinc) sl.spr.setTint(0x00ffff);
         else sl.spr.clearTint();
         sl.spr.setVisible(true);
@@ -2168,6 +2715,7 @@
 
       this.hudGfx.clear();
 
+      // Dash cooldown bar (only while recharging)
       if (!p.dashAvailable) {
         var bW = 80, bH = 4, bX = cx - 40, bY = h - 28;
         var f = p.state === 'DASHING' ? 0 : 1 - p.dashCooldown / DASH_CD;
@@ -2175,16 +2723,6 @@
         this.hudGfx.fillRect(bX, bY, bW, bH);
         this.hudGfx.fillStyle(c.cyan, 0.8);
         this.hudGfx.fillRect(bX, bY, bW * f, bH);
-      }
-
-      // Marked enemy count indicator
-      var markedN = 0;
-      for (var mi = 0; mi < this.enemies.length; mi++) {
-        if (this.enemies[mi].isMarked) markedN++;
-      }
-      if (markedN > 0) {
-        this.hudGfx.fillStyle(0x00ffff, 0.85);
-        this.hudGfx.fillRect(cx - 32, h - 44, 64, 2);
       }
 
       // Score display — recentered each frame to handle resize
@@ -2235,6 +2773,31 @@
     var game = null;
 
     function start() {
+      // Inject a loading overlay while Phaser initialises.
+      // It is removed on the FIRST update() call (first stable rendered frame).
+      // Not re-injected on scene.restart() — only on cold start.
+      var bgCol = getColors().bgColor;
+      // Convert Phaser hex int to CSS hex string
+      var bgCss = '#' + ('000000' + bgCol.toString(16)).slice(-6);
+      if (!document.getElementById('_la-loading')) {
+        var lo = document.createElement('div');
+        lo.id = '_la-loading';
+        lo.style.cssText = [
+          'position:absolute', 'inset:0', 'z-index:80',
+          'display:flex', 'align-items:center', 'justify-content:center',
+          'background:' + bgCss,
+          'pointer-events:none',
+        ].join(';');
+        lo.innerHTML =
+          '<style>@keyframes _la-spin{to{transform:rotate(360deg)}}@keyframes _la-pulse{0%,100%{opacity:.5}50%{opacity:1}}</style>' +
+          '<div style="display:flex;flex-direction:column;align-items:center;gap:1rem">' +
+            '<div style="width:36px;height:36px;border:2.5px solid rgba(0,255,255,0.15);border-top-color:rgba(0,255,255,0.85);border-radius:50%;animation:_la-spin .7s linear infinite"></div>' +
+            '<span style="font-family:monospace;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(0,255,255,0.45);animation:_la-pulse 1.4s ease-in-out infinite">Light Again</span>' +
+          '</div>';
+        parentEl.style.position = 'relative';
+        parentEl.appendChild(lo);
+      }
+
       game = new Phaser.Game({
         type: Phaser.WEBGL,
         parent: parentEl,

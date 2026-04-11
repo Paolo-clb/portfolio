@@ -131,6 +131,64 @@
   opacity: 1;
 }
 
+/* While the game modal is open: never expand on hover/focus (tab stays visible, panel hidden) */
+.light-again-btn.light-again-btn--modal-open,
+.light-again-btn.light-again-btn--modal-open:hover,
+.light-again-btn.light-again-btn--modal-open:focus,
+.light-again-btn.light-again-btn--modal-open:focus-visible {
+  width: 44px;
+  border-color: rgba(242, 162, 133, 0.22);
+  box-shadow: -2px 0 22px rgba(242, 162, 133, 0.1);
+  outline: none;
+  pointer-events: none;
+}
+
+.light-again-btn.light-again-btn--modal-open .light-again-btn__tab,
+.light-again-btn.light-again-btn--modal-open:hover .light-again-btn__tab,
+.light-again-btn.light-again-btn--modal-open:focus-visible .light-again-btn__tab {
+  max-width: 44px;
+  opacity: 1;
+}
+
+.light-again-btn.light-again-btn--modal-open .light-again-btn__panel,
+.light-again-btn.light-again-btn--modal-open:hover .light-again-btn__panel,
+.light-again-btn.light-again-btn--modal-open:focus-visible .light-again-btn__panel {
+  opacity: 0;
+}
+
+.light-again-btn.light-again-btn--modal-open .light-again-btn__icon,
+.light-again-btn.light-again-btn--modal-open:hover .light-again-btn__icon {
+  transform: none;
+  opacity: 0.75;
+}
+
+.light-again-btn.light-again-btn--modal-open .light-again-btn__tab-text,
+.light-again-btn.light-again-btn--modal-open:hover .light-again-btn__tab-text {
+  color: var(--clr-text-muted);
+}
+
+[data-theme="dark"] .light-again-btn.light-again-btn--modal-open,
+[data-theme="dark"] .light-again-btn.light-again-btn--modal-open:hover,
+[data-theme="dark"] .light-again-btn.light-again-btn--modal-open:focus-visible {
+  border-color: rgba(255, 78, 203, 0.2);
+  box-shadow: -2px 0 22px rgba(156, 39, 176, 0.12);
+}
+
+[data-theme="dark"] .light-again-btn.light-again-btn--modal-open:hover .light-again-btn__tab-text {
+  color: var(--clr-text-muted);
+}
+
+[data-theme="nature"] .light-again-btn.light-again-btn--modal-open,
+[data-theme="nature"] .light-again-btn.light-again-btn--modal-open:hover,
+[data-theme="nature"] .light-again-btn.light-again-btn--modal-open:focus-visible {
+  border-color: rgba(94, 184, 58, 0.22);
+  box-shadow: -2px 0 22px rgba(94, 184, 58, 0.1);
+}
+
+[data-theme="nature"] .light-again-btn.light-again-btn--modal-open:hover .light-again-btn__tab-text {
+  color: var(--clr-text-muted);
+}
+
 /* ---- Placeholder image — glowing orb ---- */
 
 .light-again-btn__img-wrap {
@@ -427,7 +485,8 @@
 .light-again-help-overlay {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  /* Above in-canvas game-over UI (z-index ~50); below cold-start loading overlay (80) */
+  z-index: 70;
   display: flex;
   align-items: center;
   justify-content: center;

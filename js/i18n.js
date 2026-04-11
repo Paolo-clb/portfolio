@@ -99,12 +99,27 @@ window.SITE_I18N = {
 
     // Light Again
     lightAgainPlay: 'Jouer à Light Again',
-    lightAgainTagline: 'Jeu Canvas 2D · En développement',    lightAgainHelp:      'Aide',
+    lightAgainTagline: 'Jeu Canvas 2D · En développement',
+    lightAgainHelp:      'Aide',
     lightAgainHelpTitle: 'Comment jouer',
     lightAgainHelpMove:   'Se déplacer',
     lightAgainHelpDash:   'Dash',
     lightAgainHelpAttack: 'Attaque Torpille',
     lightAgainHelpDashAtk: 'Dash-Attaque',
+    // Game Over screen
+    laGoScore:      'Score',
+    laGoBestCombo:  'Meilleur combo',
+    laGoKills:      'Ennemis éliminés',
+    laGoRecord:     'Record personnel',
+    laGoReplay:     'Rejouer',
+    laGoEnterHint:  'ou appuie sur Entrée',
+    laGoWorldRecord:'Top 10 mondial',
+    laGoLoading:    'Chargement…',
+    laGoError:      'Hors-ligne',
+    laGoSubmit:     'Soumettre',
+    laGoSubmitted:  'Envoyé !',
+    laGoNewRecord:  'Nouveau record !',
+    laGoNamePlc:    'Ton pseudo',
 
     // Misc
     closeLbl: 'Fermer',
@@ -211,6 +226,20 @@ window.SITE_I18N = {
     lightAgainHelpDash:   'Dash',
     lightAgainHelpAttack: 'Torpedo Attack',
     lightAgainHelpDashAtk: 'Dash-Attack',
+    // Game Over screen
+    laGoScore:      'Score',
+    laGoBestCombo:  'Best combo',
+    laGoKills:      'Enemies eliminated',
+    laGoRecord:     'Personal best',
+    laGoReplay:     'Play again',
+    laGoEnterHint:  'or press Enter',
+    laGoWorldRecord:'World Top 10',
+    laGoLoading:    'Loading…',
+    laGoError:      'Offline',
+    laGoSubmit:     'Submit',
+    laGoSubmitted:  'Submitted!',
+    laGoNewRecord:  'New record!',
+    laGoNamePlc:    'Your name',
 
     // Misc
     closeLbl: 'Close',

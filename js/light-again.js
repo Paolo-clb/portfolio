@@ -246,6 +246,12 @@
     closeBtn.focus();
   }
 
+  function isLightAgainGameOverOpen() {
+    if (!overlayEl) return false;
+    var host = overlayEl.querySelector('.light-again-canvas');
+    return !!(host && host.dataset && host.dataset.laGameover === '1');
+  }
+
   function closeHelpPopup(skipResume) {
     if (!helpPopupEl) return;
     helpPopupEl.classList.remove('light-again-help-overlay--visible');
@@ -260,8 +266,8 @@
         if (toRemove.parentNode) toRemove.parentNode.removeChild(toRemove);
       };
       toRemove.addEventListener('transitionend', onEnd);
-      // Resume game loop and return focus
-      if (activeGame && typeof activeGame.resume === 'function') activeGame.resume();
+      // Resume game loop unless the game-over panel is open (scene must stay paused)
+      if (!isLightAgainGameOverOpen() && activeGame && typeof activeGame.resume === 'function') activeGame.resume();
       var hb = overlayEl && overlayEl.querySelector('.light-again-help-btn');
       if (hb) hb.focus();
     }
@@ -315,6 +321,9 @@
     void overlayEl.offsetHeight;
     overlayEl.classList.add('modal-overlay--open');
 
+    // Keep launcher tab visually collapsed — ignore hover/focus while game is open
+    if (btnEl) btnEl.classList.add('light-again-btn--modal-open');
+
     /* --- Focus management --- */
     if (typeof window.__trapFocus === 'function') {
       trapCleanup = window.__trapFocus(overlayEl);
@@ -351,6 +360,8 @@
 
   function closeLightAgain() {
     if (!overlayEl) return;
+
+    if (btnEl) btnEl.classList.remove('light-again-btn--modal-open');
 
     // Close help popup immediately (whole modal is exiting — no animation needed)
     closeHelpPopup(true);
