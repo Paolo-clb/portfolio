@@ -3,7 +3,6 @@
    Injects hero button (after typing game unlock), fullscreen canvas modal,
    and performance kill switch. No gameplay — infrastructure only.
    ========================================================================== */
-
 (function () {
   'use strict';
 
