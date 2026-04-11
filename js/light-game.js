@@ -1515,12 +1515,10 @@
       btn.addEventListener('mouseenter', function () { btn.style.background = 'rgba(0,255,255,0.16)'; btn.style.boxShadow = '0 0 16px rgba(0,255,255,0.22)'; });
       btn.addEventListener('mouseleave', function () { btn.style.background = 'rgba(0,255,255,0.08)'; btn.style.boxShadow = ''; });
 
-      var _submitActive = false;
       function clearGameOverHostFlag() {
         try { delete container.dataset.laGameover; } catch (e) { /* ignore */ }
       }
       function doReplay() {
-        if (_submitActive) return;
         clearGameOverHostFlag();
         overlay.remove();
         document.removeEventListener('keydown', onKey);
@@ -1528,7 +1526,11 @@
         sceneRef.scene.restart();
       }
       function onKey(e) {
-        if (e.key === 'Enter' && !_submitActive) { e.preventDefault(); doReplay(); }
+        if (e.key !== 'Enter') return;
+        var ae = document.activeElement;
+        if (ae && ae.id === '_la-go-name') return;
+        e.preventDefault();
+        doReplay();
       }
       btn.addEventListener('click', doReplay);
       document.addEventListener('keydown', onKey);
@@ -1596,8 +1598,6 @@
         var savedName = localStorage.getItem('ll_player_name') || '';
         if (savedName) nameIn.value = savedName;
 
-        _submitActive = true;
-
         sendBtn.addEventListener('click', function () {
           var name = nameIn.value.trim();
           if (!name) { nameIn.style.borderColor = '#ff4444'; return; }
@@ -1608,12 +1608,11 @@
           _llSetName(name, function () {
             _llSubmitScore(playerScore, function (err) {
               if (err) {
+                sendBtn.disabled = false;
                 sendBtn.textContent = t('laGoError');
-                _submitActive = false;
                 return;
               }
               form.innerHTML = '<span style="font-size:.7rem;color:#00ff88">' + t('laGoSubmitted') + '</span>';
-              _submitActive = false;
               // Refresh leaderboard
               _llGetTop(10, function (err2, items2) {
                 if (!err2 && items2) renderLeaderboard(items2);
