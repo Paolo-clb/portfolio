@@ -74,6 +74,20 @@
   var IFRAMES_DUR   = 800;
   var SPAWN_DIST      = 650;
   var MAX_ENEMIES     = 200;
+  /** Vague T1 : plus d’unités, montée plus rapide, plateau à plus de kills (min/max restent décalés de +1). */
+  var SPAWN_T1_RAMP_KILLS = 950;
+  var SPAWN_T1_MIN_BASE   = 4;
+  var SPAWN_T1_MIN_SPAN   = 12;
+  var SPAWN_T1_MAX_BASE   = 5;
+  var SPAWN_T1_MAX_SPAN   = 12;
+  /** T2 : pic de proba à ~SPAWN_T2_RAMP_KILLS kills (plus bas = montée plus rapide). */
+  var SPAWN_T2_RAMP_KILLS = 450;
+  var SPAWN_T2_CHANCE_1   = 0.56;
+  var SPAWN_T2_CHANCE_2   = 0.28;
+  /** T3 : pas avant START ; pic à START+RAMP kills, toujours > SPAWN_T2_RAMP_KILLS. */
+  var SPAWN_T3_START_KILLS = 75;
+  var SPAWN_T3_RAMP_KILLS  = 520;
+  var SPAWN_T3_CHANCE_1    = 0.36;
   var SEPARATION_RADIUS = 30;
   var SEPARATION_FORCE  = 4.0;
   var REBOUND_IMP       = 14;
@@ -1006,15 +1020,19 @@
     },
 
     _spawnWave: function () {
-      var t1Progress = Math.min(this.totalKills / 350, 1.0);
-      var minT1 = Math.floor(2 + t1Progress * 4);
-      var maxT1 = Math.floor(3 + t1Progress * 4);
+      var t1Progress = Math.min(this.totalKills / SPAWN_T1_RAMP_KILLS, 1.0);
+      var minT1 = Math.floor(SPAWN_T1_MIN_BASE + t1Progress * SPAWN_T1_MIN_SPAN);
+      var maxT1 = Math.floor(SPAWN_T1_MAX_BASE + t1Progress * SPAWN_T1_MAX_SPAN);
+      if (maxT1 < minT1) maxT1 = minT1;
       var t1Count = Phaser.Math.Between(minT1, maxT1);
 
-      var probProgress = Math.min(this.totalKills / 500, 1.0);
-      var chance1T2 = probProgress * 0.50;
-      var chance2T2 = probProgress * 0.25;
-      var chance1T3 = probProgress * 0.333;
+      var t2Progress = Math.min(this.totalKills / SPAWN_T2_RAMP_KILLS, 1.0);
+      var chance1T2 = t2Progress * SPAWN_T2_CHANCE_1;
+      var chance2T2 = t2Progress * SPAWN_T2_CHANCE_2;
+
+      var t3Eff = Math.max(0, this.totalKills - SPAWN_T3_START_KILLS);
+      var t3Progress = Math.min(t3Eff / SPAWN_T3_RAMP_KILLS, 1.0);
+      var chance1T3 = t3Progress * SPAWN_T3_CHANCE_1;
 
       var spawnQueue = [];
       for (var i = 0; i < t1Count; i++) spawnQueue.push(1);
