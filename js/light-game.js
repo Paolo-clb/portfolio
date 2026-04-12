@@ -96,6 +96,10 @@
   var SPAWN_LATE_MULT_T1     = 1.7;
   var SPAWN_LATE_MULT_T2     = 2.0;
   var SPAWN_LATE_MULT_T3     = 1.9;
+  /** >1000 kills : chance de doubler la vague (×2 effectifs) ; plafond 50 % à 2000 kills, plus fort si peu d’ennemis. */
+  var SPAWN_DOUBLE_KILLS_START = 1000;
+  var SPAWN_DOUBLE_KILLS_FULL  = 2000;
+  var SPAWN_DOUBLE_PROB_MAX    = 0.5;
   var SEPARATION_RADIUS = 30;
   var SEPARATION_FORCE  = 4.0;
   var REBOUND_IMP       = 14;
@@ -1093,6 +1097,19 @@
       for (var qi = 0; qi < n1; qi++) spawnQueue.push(1);
       for (var qj = 0; qj < n2; qj++) spawnQueue.push(2);
       for (var qk = 0; qk < n3; qk++) spawnQueue.push(3);
+
+      var tk2 = this.totalKills;
+      if (tk2 > SPAWN_DOUBLE_KILLS_START && spawnQueue.length > 0) {
+        var dProg = Math.min(
+          (tk2 - SPAWN_DOUBLE_KILLS_START) / (SPAWN_DOUBLE_KILLS_FULL - SPAWN_DOUBLE_KILLS_START),
+          1
+        );
+        var pMax = dProg * SPAWN_DOUBLE_PROB_MAX;
+        var emptyF = (MAX_ENEMIES - this.enemies.length) / MAX_ENEMIES;
+        if (pMax > 0 && emptyF > 0 && Math.random() < pMax * emptyF) {
+          spawnQueue = spawnQueue.concat(spawnQueue.slice());
+        }
+      }
 
       var slots = MAX_ENEMIES - this.enemies.length;
       if (slots <= 0) return;
