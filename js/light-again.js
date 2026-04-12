@@ -12,6 +12,7 @@
   var savedState   = null;  // Snapshot saved by killPerformance()
   var activeGame   = null;  // Running game instance (createLightGame)
   var helpPopupEl  = null;  // Help popup (null when hidden)
+  var userPaused   = false; // Pause manuel (ne pas resume à la fermeture de l’aide)
 
   /* ---- i18n helper ---- */
   function t(key) {
@@ -64,6 +65,34 @@
     btnEl.setAttribute('aria-label', t('lightAgainPlay'));
     var tagline = btnEl.querySelector('.light-again-btn__tagline');
     if (tagline) tagline.textContent = t('lightAgainTagline');
+  }
+
+  function pauseIconSvg() {
+    return '<svg class="light-again-pause-btn__icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z"/></svg>';
+  }
+
+  function playIconSvg() {
+    return '<svg class="light-again-pause-btn__icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polygon points="9 6 9 18 18 12 9 6"/></svg>';
+  }
+
+  function updatePauseBtnUi(btn) {
+    if (!btn) return;
+    btn.innerHTML = userPaused ? playIconSvg() : pauseIconSvg();
+    btn.setAttribute('aria-label', userPaused ? t('lightAgainResume') : t('lightAgainPause'));
+    btn.setAttribute('aria-pressed', userPaused ? 'true' : 'false');
+  }
+
+  function toggleGamePause() {
+    if (!activeGame || helpPopupEl) return;
+    if (isLightAgainGameOverOpen()) return;
+    userPaused = !userPaused;
+    if (userPaused) {
+      if (typeof activeGame.pause === 'function') activeGame.pause();
+    } else {
+      if (typeof activeGame.resume === 'function') activeGame.resume();
+    }
+    var pb = overlayEl && overlayEl.querySelector('.light-again-pause-btn');
+    updatePauseBtnUi(pb);
   }
 
   /* ================================================================
@@ -158,17 +187,17 @@
     var rows = [
       {
         label:    t('lightAgainHelpMove'),
-        color:    '#00ffff',
+        color:    '#ffcc00',
         descHtml: isFr
           ? 'WASD &nbsp;&middot;&nbsp; ZQSD &nbsp;&middot;&nbsp; Touches fl\u00e9ch\u00e9es'
           : 'WASD &nbsp;&middot;&nbsp; ZQSD &nbsp;&middot;&nbsp; Arrow keys',
       },
       {
         label:    t('lightAgainHelpDash'),
-        color:    '#a000ff',
+        color:    '#00ffff',
         descHtml: isFr
-          ? 'Right click &nbsp;&middot;&nbsp; Space &nbsp;&middot;&nbsp; Shift  Espace \u2014 Dash dans la direction du <span style="color:#00ffff">d\u00e9placement</span>'
-          : 'Right click &nbsp;&middot;&nbsp; Space &nbsp;&middot;&nbsp; Shift &nbsp;&middot;&nbsp; Arrow keys \u2014 Dash in your <span style="color:#00ffff">movement</span> direction',
+          ? 'Right click &nbsp;&middot;&nbsp; Space &nbsp;&middot;&nbsp; Shift &nbsp;&middot;&nbsp; Fl\u00e8ches \u2014 Dash dans la direction du <span style="color:#ffcc00">d\u00e9placement</span>'
+          : 'Right click &nbsp;&middot;&nbsp; Space &nbsp;&middot;&nbsp; Shift &nbsp;&middot;&nbsp; Arrow keys \u2014 Dash in your <span style="color:#ffcc00">movement</span> direction',
       },
       {
         label:    t('lightAgainHelpAttack'),
@@ -181,8 +210,22 @@
         label:    t('lightAgainHelpDashAtk'),
         color:    '#ff14c8',
         descHtml: isFr
-          ? 'Clic gauche pendant un <span style="color:#a000ff">dash</span> \u2014 <span style="color:#ff1e3c">attaque torpille</span> boost\u00e9e\u00a0: plus rapide, zone plus large'
-          : 'Left click during a <span style="color:#a000ff">dash</span> \u2014 boosted <span style="color:#ff1e3c">torpedo attack</span>: faster, wider area',
+          ? 'Clic gauche pendant un <span class="la-help-dash">dash</span> \u2014 <span style="color:#ff1e3c">attaque torpille</span> boost\u00e9e\u00a0: plus rapide, zone plus large'
+          : 'Left click during a <span class="la-help-dash">dash</span> \u2014 boosted <span style="color:#ff1e3c">torpedo attack</span>: faster, wider area',
+      },
+      {
+        label:    t('lightAgainHelpParry'),
+        color:    '#6F09C3',
+        descHtml: isFr
+          ? 'Une <span style="color:#ff14c8">dash-attaque</span> sur un projectile le renvoie \u00e0 l\u2019envoyeur. L\u2019<span style="color:#ff1e3c">attaque torpille</span> ne renvoie pas.'
+          : 'A <span style="color:#ff14c8">dash-attack</span> on a projectile sends it back to the shooter. <span style="color:#ff1e3c">Torpedo attack</span> does not reflect.',
+      },
+      {
+        label:    t('lightAgainHelpNuke'),
+        color:    '#005a8c',
+        descHtml: isFr
+          ? 'En <span class="la-help-dash">dash</span>, touche un ennemi pour le <span style="color:#005a8c">marquer</span> \u2014 il clignote avec des \u00e9tincelles \u2014 puis une <span style="color:#ff1e3c">attaque torpille</span> d\u00e9clenche la nuke. La <span style="color:#ff14c8">dash-attaque</span> ne d\u00e9clenche <strong>pas</strong> la nuke.'
+          : 'While <span class="la-help-dash">dashing</span>, hit an enemy to <span style="color:#005a8c">mark</span> it \u2014 it blinks with sparks \u2014 then a <span style="color:#ff1e3c">torpedo attack</span> triggers the nuke. <span style="color:#ff14c8">Dash-attack</span> does <strong>not</strong> trigger the nuke.',
       },
     ];
 
@@ -265,9 +308,11 @@
         if (toRemove.parentNode) toRemove.parentNode.removeChild(toRemove);
       };
       toRemove.addEventListener('transitionend', onEnd);
-      // Resume game loop unless the game-over panel is open (scene must stay paused)
-      if (!isLightAgainGameOverOpen() && activeGame && typeof activeGame.resume === 'function') activeGame.resume();
-      var hb = overlayEl && overlayEl.querySelector('.light-again-help-btn');
+      // Resume sauf si pause manuelle ou game-over (scène doit rester figée)
+      if (!isLightAgainGameOverOpen() && !userPaused && activeGame && typeof activeGame.resume === 'function') {
+        activeGame.resume();
+      }
+      var hb = overlayEl && overlayEl.querySelector('.light-again-help-btn:not(.light-again-pause-btn)');
       if (hb) hb.focus();
     }
   }
@@ -296,7 +341,15 @@
     closeBtn.setAttribute('aria-label', t('closeLbl'));
     closeBtn.addEventListener('click', closeLightAgain);
 
-    // Help button (✓) — left of close, opens game instructions popup
+    // Pause — même style que l’aide, à gauche du ?
+    var pauseBtn = document.createElement('button');
+    pauseBtn.type = 'button';
+    pauseBtn.className = 'light-again-help-btn light-again-pause-btn';
+    pauseBtn.setAttribute('aria-pressed', 'false');
+    updatePauseBtnUi(pauseBtn);
+    pauseBtn.addEventListener('click', toggleGamePause);
+
+    // Help button (?) — left of close, opens game instructions popup
     var helpBtn = document.createElement('button');
     helpBtn.className = 'light-again-help-btn';
     helpBtn.textContent = '?';
@@ -309,6 +362,7 @@
     container.style.width  = '100%';
     container.style.height = '100%';
 
+    modal.appendChild(pauseBtn);
     modal.appendChild(helpBtn);
     modal.appendChild(closeBtn);
     modal.appendChild(container);
@@ -338,11 +392,6 @@
     };
     document.addEventListener('keydown', overlayEl._onKeyDown);
 
-    /* --- Backdrop click closes (click on overlay itself, not modal panel) --- */
-    overlayEl.addEventListener('click', function (e) {
-      if (e.target === overlayEl) closeLightAgain();
-    });
-
     /* --- Kill switch --- */
     killPerformance();
 
@@ -361,6 +410,8 @@
     if (!overlayEl) return;
 
     if (btnEl) btnEl.classList.remove('light-again-btn--modal-open');
+
+    userPaused = false;
 
     // Close help popup immediately (whole modal is exiting — no animation needed)
     closeHelpPopup(true);
@@ -415,10 +466,10 @@
     // Keep button label in sync with site language
     document.addEventListener('sitelangchange', function () {
       updateBtnText();
-      // Update help button aria-label if the modal is open
       if (overlayEl) {
-        var hb = overlayEl.querySelector('.light-again-help-btn');
+        var hb = overlayEl.querySelector('.light-again-help-btn:not(.light-again-pause-btn)');
         if (hb) hb.setAttribute('aria-label', t('lightAgainHelp'));
+        updatePauseBtnUi(overlayEl.querySelector('.light-again-pause-btn'));
       }
       // Close help popup on lang change — will reopen with fresh language
       if (helpPopupEl) closeHelpPopup(true);

@@ -20,7 +20,8 @@
     if (theme === 'dark') _colorCache = {
       cyan:   0x00ffff,  cyanArr:   [0,255,255],
       yellow: 0xffdc3c,  yellowArr: [255,220,60],
-      ghostVioletArr: [160,0,255],
+      /** Flèche + fantômes de dash (identique au thème nature : bleu, pas violet) */
+      dashArrowArr: [60, 120, 200],
       pcbTrace: 0x643cdc, pcbTraceA: 0.22,
       pcbVia:   0x8c50ff, pcbViaA:   0.30,
       bgColor:  0x04040d,
@@ -28,7 +29,7 @@
     else if (theme === 'nature') _colorCache = {
       cyan:   0x50ffc8,  cyanArr: [80,255,200],
       yellow: 0xdcf050,  yellowArr: [220,240,80],
-      ghostVioletArr: [60,120,200],
+      dashArrowArr: [60, 120, 200],
       pcbTrace: 0x1e7850, pcbTraceA: 0.22,
       pcbVia:   0x32b464, pcbViaA:   0.30,
       bgColor:  0x030801,
@@ -36,9 +37,10 @@
     else _colorCache = {
       cyan:   0x00ffff,  cyanArr: [0,255,255],
       yellow: 0xffdc3c,  yellowArr: [255,220,60],
-      ghostVioletArr: [160,0,255],
-      pcbTrace: 0x00508c, pcbTraceA: 0.22,
-      pcbVia:   0x00b4dc, pcbViaA:   0.30,
+      dashArrowArr: [60, 120, 200],
+      /* PCB tout en tons orange (palette claire #F2A285) pour un rendu uni */
+      pcbTrace: 0xf2a285, pcbTraceA: 0.20,
+      pcbVia:   0xf2a285, pcbViaA:   0.28,
       bgColor:  0x08080f,
     };
     return _colorCache;
@@ -88,6 +90,12 @@
   var SPAWN_T3_START_KILLS = 75;
   var SPAWN_T3_RAMP_KILLS  = 520;
   var SPAWN_T3_CHANCE_1    = 0.36;
+  /** 500→1000 kills : facteurs par tier (×1 → max), linéaire entre START et END. */
+  var SPAWN_LATE_START_KILLS = 500;
+  var SPAWN_LATE_END_KILLS   = 1000;
+  var SPAWN_LATE_MULT_T1     = 1.7;
+  var SPAWN_LATE_MULT_T2     = 2.0;
+  var SPAWN_LATE_MULT_T3     = 1.9;
   var SEPARATION_RADIUS = 30;
   var SEPARATION_FORCE  = 4.0;
   var REBOUND_IMP       = 14;
@@ -625,6 +633,8 @@
       // Shield orbs — start with 1
       this.playerShields = 1;
       this.MAX_SHIELDS   = 3;
+      /** Décale les labels « +1 SHIELD » s’il y en a plusieurs la même frame (nuke). */
+      this._shieldFloatStack = 0;
       this._shieldAngle  = 0;
       this._shieldOrbs   = [];
       var SHIELD_ORBS_N  = 3;
@@ -847,7 +857,18 @@
           ev.preventDefault();
           self._tryDash();
         }
-        if (ev.code === 'KeyP' && !ev.repeat) self._spawnRusher();
+        if (ev.code === 'KeyI' && !ev.repeat) {
+          ev.preventDefault();
+          self._debugSpawnTestTier(1, 20);
+        }
+        if (ev.code === 'KeyO' && !ev.repeat) {
+          ev.preventDefault();
+          self._debugSpawnTestTier(2, 10);
+        }
+        if (ev.code === 'KeyP' && !ev.repeat) {
+          ev.preventDefault();
+          self._debugSpawnTestTier(3, 5);
+        }
       });
       this.input.keyboard.on('keyup', function (ev) {
         self._keys[ev.code] = false;
@@ -892,8 +913,8 @@
       _buildArrowTex(tm, '_ar_yel',   ya[0], ya[1], ya[2], SIZE, 18, false);
       _buildArrowTex(tm, '_ar_atk',   255, 30, 60,  SIZE, 18, false);
       _buildArrowTex(tm, '_ar_datk',  255, 20, 200, SIZE * 1.35, 28, true);
-      var va = c.ghostVioletArr;
-      _buildArrowTex(tm, '_ar_dash',  va[0], va[1], va[2], SIZE, 18, false);
+      var da = c.dashArrowArr;
+      _buildArrowTex(tm, '_ar_dash',  da[0], da[1], da[2], SIZE, 18, false);
       _buildArrowTex(tm, '_ar_whiff', 80,  80,  90, SIZE, 4, false);
 
       _buildEnemyTex(tm, '_enemy');
@@ -1046,6 +1067,33 @@
 
       if (Math.random() < chance1T3) spawnQueue.push(3);
 
+      var kills = this.totalKills;
+      var lateP = 0;
+      if (kills > SPAWN_LATE_START_KILLS) {
+        lateP = Math.min(
+          (kills - SPAWN_LATE_START_KILLS) / (SPAWN_LATE_END_KILLS - SPAWN_LATE_START_KILLS),
+          1
+        );
+      }
+      var lm1 = 1 + lateP * (SPAWN_LATE_MULT_T1 - 1);
+      var lm2 = 1 + lateP * (SPAWN_LATE_MULT_T2 - 1);
+      var lm3 = 1 + lateP * (SPAWN_LATE_MULT_T3 - 1);
+      var cnt1 = 0;
+      var cnt2 = 0;
+      var cnt3 = 0;
+      for (var si = 0; si < spawnQueue.length; si++) {
+        if (spawnQueue[si] === 1) cnt1++;
+        else if (spawnQueue[si] === 2) cnt2++;
+        else if (spawnQueue[si] === 3) cnt3++;
+      }
+      var n1 = Math.max(1, Math.round(cnt1 * lm1));
+      var n2 = Math.max(0, Math.round(cnt2 * lm2));
+      var n3 = Math.max(0, Math.round(cnt3 * lm3));
+      spawnQueue = [];
+      for (var qi = 0; qi < n1; qi++) spawnQueue.push(1);
+      for (var qj = 0; qj < n2; qj++) spawnQueue.push(2);
+      for (var qk = 0; qk < n3; qk++) spawnQueue.push(3);
+
       var slots = MAX_ENEMIES - this.enemies.length;
       if (slots <= 0) return;
       var finalCount = Math.min(spawnQueue.length, slots);
@@ -1060,6 +1108,26 @@
         var sy = this.p.y + Math.sin(ang) * dist;
 
         var tier = spawnQueue[j];
+        if (tier === 3) this._spawnBruiserAt(sx, sy);
+        else if (tier === 2) this._spawnShooterAt(sx, sy);
+        else this._spawnRusherAt(sx, sy);
+      }
+    },
+
+    /** Test dev : I=20×T1, O=10×T2, P=5×T3 (même arc que les vagues). */
+    _debugSpawnTestTier: function (tier, want) {
+      if (!this.p || this.p.state === 'DEAD') return;
+      var slots = MAX_ENEMIES - this.enemies.length;
+      var n = Math.min(want, slots);
+      if (n <= 0) return;
+      var baseAng = Math.random() * Math.PI * 2;
+      var spread = n > 1 ? Math.PI * 0.9 : 0;
+      for (var j = 0; j < n; j++) {
+        var t = n > 1 ? j / (n - 1) : 0.5;
+        var ang = baseAng + (t - 0.5) * spread + (Math.random() - 0.5) * 0.3;
+        var dist = SPAWN_DIST + Math.random() * 120;
+        var sx = this.p.x + Math.cos(ang) * dist;
+        var sy = this.p.y + Math.sin(ang) * dist;
         if (tier === 3) this._spawnBruiserAt(sx, sy);
         else if (tier === 2) this._spawnShooterAt(sx, sy);
         else this._spawnRusherAt(sx, sy);
@@ -1218,18 +1286,21 @@
       if (ctx.reflected) pts *= 2;
       this.score += pts;
       this.comboTimer = 2000;
+      var prevCm = this.comboMultiplier;
       this.comboMultiplier++;
-      if (this.comboMultiplier > this.bestCombo) this.bestCombo = this.comboMultiplier;
+      var newCm = this.comboMultiplier;
+      if (newCm > this.bestCombo) this.bestCombo = newCm;
       this._comboPulse = 1.0;
 
-      // Shield acquisition at exact combo milestones
-      var newCm = this.comboMultiplier;
-      if (newCm === 10 || newCm === 50) {
-        if (this.playerShields < this.MAX_SHIELDS) {
+      // Shield acquisition aux paliers 10 et 50 (plusieurs paliers possibles si combo bondit d’un coup)
+      var shieldMilestones = [10, 50];
+      for (var sm = 0; sm < shieldMilestones.length; sm++) {
+        var ms = shieldMilestones[sm];
+        if (prevCm < ms && newCm >= ms && this.playerShields < this.MAX_SHIELDS) {
           this.playerShields++;
-          var shLabel = 'Combo X' + newCm + ' : +1 SHIELD';
-          this._floatLabel(this.p.x, this.p.y - 30, shLabel, '#00ffff');
-          // Quick cyan screen flash
+          var shLabel = 'Combo X' + ms + ' : +1 SHIELD';
+          var stk = this._shieldFloatStack++;
+          this._floatLabel(this.p.x, this.p.y - 30 - stk * 28, shLabel, '#00ffff', stk);
           this.cameras.main.flash(180, 0, 220, 255);
         }
       }
@@ -1411,20 +1482,21 @@
     },
 
     // Generic floating label (shield acquire / game-over annotation)
-    _floatLabel: function (wx, wy, label, col) {
+    // stackIdx : décale légèrement l’anim si plusieurs labels (évite superposition visuelle)
+    _floatLabel: function (wx, wy, label, col, stackIdx) {
       var cam = this.cameras.main;
+      var stagger = (stackIdx || 0) * 45;
       var txt = this.add.text(wx - cam.scrollX, wy - cam.scrollY, label, {
         fontFamily: 'monospace', fontSize: '22px', fontStyle: 'bold', color: col,
         stroke: '#000000', strokeThickness: 2,
         shadow: { offsetX: 0, offsetY: 2, color: col, blur: 8, fill: true },
       });
-      txt.setOrigin(0.5, 1); txt.setDepth(70); txt.setScrollFactor(0);
-      // Hold fully visible for 1.2 s, then fade out over 1 s while drifting up
+      txt.setOrigin(0.5, 1); txt.setDepth(70 + (stackIdx || 0)); txt.setScrollFactor(0);
       this.tweens.add({
-        targets: txt, y: txt.y - 30, duration: 600, ease: 'Linear',
+        targets: txt, y: txt.y - 30, duration: 600, ease: 'Linear', delay: stagger,
       });
       this.tweens.add({
-        targets: txt, alpha: 0, duration: 400, ease: 'Cubic.easeIn', delay: 400,
+        targets: txt, alpha: 0, duration: 400, ease: 'Cubic.easeIn', delay: 400 + stagger,
         onComplete: function () { txt.destroy(); },
       });
     },
@@ -2021,6 +2093,7 @@
 
     update: function (_time, delta) {
       var dt = Math.min(delta / 1000, 0.05);
+      this._shieldFloatStack = 0;
 
       // Loader: stay opaque for WARM_UP_FRAMES then fade out.
       // This covers the initial shader-compilation spike that causes the first-launch stutter.
@@ -2377,38 +2450,44 @@
           }
           e.x += e.vx * sc60; e.y += e.vy * sc60;
 
-          // Spawner logic
+          // Spawner logic — pas d’anim / cooldown long si la limite d’ennemis est déjà atteinte
           e.spawnCD -= ms;
           if (e.spawnCD <= 0) {
-            e.spawnCD = T3_SPAWN_CD * (0.7 + Math.random() * 0.6);
-            e.spawnCycle++;
-            if (e.spawnCycle % 3 === 0) {
-              // 1 in 3: spawn a T2
-              if (this.enemies.length < MAX_ENEMIES) {
+            var hiveSlots = MAX_ENEMIES - this.enemies.length;
+            if (hiveSlots <= 0) {
+              e.spawnCD = 120;
+            } else {
+              e.spawnCD = T3_SPAWN_CD * (0.7 + Math.random() * 0.6);
+              e.spawnCycle++;
+              var hiveDid = false;
+              if (e.spawnCycle % 3 === 0) {
                 var sx2 = e.x + (Math.random() - 0.5) * 40;
                 var sy2 = e.y + (Math.random() - 0.5) * 40;
                 this._spawnShooterAt(sx2, sy2);
+                hiveDid = true;
                 this._hiveSpawnBeam(e.x, e.y, sx2, sy2);
                 this._explode(sx2, sy2, [187, 0, 255], 14);
                 this._explode(sx2, sy2, [255, 150, 255], 7);
+              } else {
+                for (var sw = 0; sw < 3; sw++) {
+                  if (this.enemies.length >= MAX_ENEMIES) break;
+                  var sAng = e.angle + Math.PI + (sw - 1) * 0.7;
+                  var spx = e.x + Math.cos(sAng) * 35;
+                  var spy = e.y + Math.sin(sAng) * 35;
+                  this._spawnRusherAt(spx, spy);
+                  var spawned = this.enemies[this.enemies.length - 1];
+                  spawned.vx = Math.cos(sAng) * 6;
+                  spawned.vy = Math.sin(sAng) * 6;
+                  this._hiveSpawnBeam(e.x, e.y, spx, spy);
+                  hiveDid = true;
+                }
+                if (hiveDid) {
+                  this._explode(e.x, e.y, [187, 0, 255], 12);
+                  this._explode(e.x, e.y, [255, 150, 255], 6);
+                }
               }
-            } else {
-              // 2 in 3: spawn 3 T1 in an arc with outward impulse
-              for (var sw = 0; sw < 3; sw++) {
-                if (this.enemies.length >= MAX_ENEMIES) break;
-                var sAng = e.angle + Math.PI + (sw - 1) * 0.7;
-                var spx = e.x + Math.cos(sAng) * 35;
-                var spy = e.y + Math.sin(sAng) * 35;
-                this._spawnRusherAt(spx, spy);
-                var spawned = this.enemies[this.enemies.length - 1];
-                spawned.vx = Math.cos(sAng) * 6;
-                spawned.vy = Math.sin(sAng) * 6;
-                this._hiveSpawnBeam(e.x, e.y, spx, spy);
-              }
-              this._explode(e.x, e.y, [187, 0, 255], 12);
-              this._explode(e.x, e.y, [255, 150, 255], 6);
+              if (hiveDid) this.cameras.main.shake(40, 0.0015);
             }
-            this.cameras.main.shake(40, 0.0015);
           }
         } else {
           // Tier 1: rush toward player
