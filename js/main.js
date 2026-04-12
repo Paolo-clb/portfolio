@@ -1353,6 +1353,13 @@ function initCursorHalo() {
       }
       return;
     }
+    // Light Again: bandes latérales / marges (overlay plein écran sans le panneau) — pas de halo « clic »
+    if (e.target.closest('.light-again-overlay') && !e.target.closest('.light-again-modal')) {
+      stopLightGameHoverPoll();
+      halo.classList.remove('cursor-halo--hover');
+      halo.classList.remove('cursor-halo--game');
+      return;
+    }
     // Inside Light Again game modal
     if (e.target.closest('.light-again-modal')) {
       halo.classList.add('cursor-halo--game');

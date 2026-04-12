@@ -447,13 +447,12 @@
 }
 
 /* ============================================================
-   Help Button (? — to the left of the × close button)
+   Help (?) + Pause (⏸) — même base ; offsets séparés (pause | ? | ×)
    ============================================================ */
 
 .light-again-help-btn {
   position: absolute;
   top: 0.85rem;
-  right: calc(0.85rem + 2.5rem + 0.5rem); /* close width + gap */
   z-index: 2;
   background: rgba(191, 153, 160, 0.12);
   border: 1px solid rgba(191, 153, 160, 0.2);
@@ -470,6 +469,23 @@
   transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
+}
+
+/* ? — entre pause et × */
+.light-again-help-btn:not(.light-again-pause-btn) {
+  right: calc(0.85rem + 2.5rem + 0.5rem); /* close width + gap */
+}
+
+/* ⏸ — à gauche du ? (même style, autre offset) */
+.light-again-help-btn.light-again-pause-btn {
+  right: calc(0.85rem + 2 * (2.5rem + 0.5rem));
+}
+
+.light-again-pause-btn__icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentColor;
+  display: block;
 }
 
 .light-again-help-btn:hover {
@@ -564,6 +580,16 @@
   color: var(--clr-text-muted);
   margin: 0;
   line-height: 1.4;
+}
+
+/* Cyan fixe pour le mot « dash » dans les explications (indépendant du thème) */
+.light-again-help-popup__desc .la-help-dash {
+  color: #00ffff !important;
+}
+
+.light-again-help-popup__desc strong {
+  color: var(--clr-text);
+  font-weight: 700;
 }
 
 /* Resume button — removed; kept selector for legacy safety */
