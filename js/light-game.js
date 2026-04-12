@@ -75,7 +75,7 @@
   var DETONATION_HITSTOP = 120;
   var IFRAMES_DUR   = 800;
   var SPAWN_DIST      = 650;
-  var MAX_ENEMIES     = 200;
+  var MAX_ENEMIES     = 300;
   /** Vague T1 : plus d’unités, montée plus rapide, plateau à plus de kills (min/max restent décalés de +1). */
   var SPAWN_T1_RAMP_KILLS = 950;
   var SPAWN_T1_MIN_BASE   = 4;
@@ -100,6 +100,9 @@
   var SPAWN_DOUBLE_KILLS_START = 1000;
   var SPAWN_DOUBLE_KILLS_FULL  = 2000;
   var SPAWN_DOUBLE_PROB_MAX    = 0.5;
+  /** Overlay plein jeu : frames avant fade ; relance = plus court que le 1er chargement. */
+  var LOADER_WARMUP_FRAMES        = 45;
+  var LOADER_RESTART_WARMUP_FRAMES = 24;
   var SEPARATION_RADIUS = 30;
   var SEPARATION_FORCE  = 4.0;
   var REBOUND_IMP       = 14;
@@ -465,14 +468,14 @@
     var FB_FR = {
       laGoScore: 'Score', laGoBestCombo: 'Meilleur combo', laGoKills: 'Ennemis éliminés',
       laGoRecord: 'Record personnel', laGoReplay: 'Rejouer', laGoEnterHint: 'ou appuie sur Entrée',
-      laGoWorldRecord: 'Top 10 mondial', laGoLoading: 'Chargement…', laGoError: 'Hors-ligne',
+      laGoWorldRecord: 'Top 10 mondial', laGoLoading: 'Chargement…', laGoRestarting: 'Relance…', laGoError: 'Hors-ligne',
       laGoSubmit: 'Soumettre', laGoSubmitted: 'Envoyé !', laGoNewRecord: 'Nouveau record !',
       laGoNamePlc: 'Ton pseudo',
     };
     var FB_EN = {
       laGoScore: 'Score', laGoBestCombo: 'Best combo', laGoKills: 'Enemies eliminated',
       laGoRecord: 'Personal best', laGoReplay: 'Play again', laGoEnterHint: 'or press Enter',
-      laGoWorldRecord: 'World Top 10', laGoLoading: 'Loading…', laGoError: 'Offline',
+      laGoWorldRecord: 'World Top 10', laGoLoading: 'Loading…', laGoRestarting: 'Restarting…', laGoError: 'Offline',
       laGoSubmit: 'Submit', laGoSubmitted: 'Submitted!', laGoNewRecord: 'New record!',
       laGoNamePlc: 'Your name',
     };
@@ -492,6 +495,31 @@
       if (r && r !== key) return r;
     }
     return FB[key] || key;
+  }
+
+  function _injectLaRestartLoader(host) {
+    if (!host || document.getElementById('_la-restart-loading')) return;
+    var bgCol = getColors().bgColor;
+    var bgCss = '#' + ('000000' + bgCol.toString(16)).slice(-6);
+    var label = _escHtml(_laGoT('laGoRestarting'));
+    var lo = document.createElement('div');
+    lo.id = '_la-restart-loading';
+    lo.setAttribute('role', 'status');
+    lo.setAttribute('aria-live', 'polite');
+    lo.style.cssText = [
+      'position:absolute', 'inset:0', 'z-index:82',
+      'display:flex', 'align-items:center', 'justify-content:center',
+      'background:' + bgCss,
+      'pointer-events:none',
+    ].join(';');
+    lo.innerHTML =
+      '<style>@keyframes _la-rs-spin{to{transform:rotate(360deg)}}@keyframes _la-rs-pulse{0%,100%{opacity:.42}50%{opacity:.95}}</style>' +
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:.55rem">' +
+        '<div style="width:26px;height:26px;border:2px solid rgba(0,255,255,0.1);border-top-color:rgba(0,255,255,0.72);border-radius:50%;animation:_la-rs-spin .55s linear infinite"></div>' +
+        '<span style="font-family:monospace;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(0,255,255,0.4);animation:_la-rs-pulse .95s ease-in-out infinite">' + label + '</span>' +
+      '</div>';
+    host.style.position = 'relative';
+    host.appendChild(lo);
   }
 
   var LL_API      = 'https://api.lootlocker.io';
@@ -608,7 +636,14 @@
       var self = this;
       this._texTheme = '';
       this._genTextures();
-      // Loader is removed after WARM_UP_FRAMES updates (see update())
+      var restartPending = typeof window !== 'undefined' && window.__laRestartPending;
+      if (restartPending) window.__laRestartPending = false;
+      this._warmupTargetFrames = restartPending ? LOADER_RESTART_WARMUP_FRAMES : LOADER_WARMUP_FRAMES;
+      this._loaderOverlayId = restartPending ? '_la-restart-loading' : '_la-loading';
+      if (restartPending && this.game && this.game.canvas && this.game.canvas.parentElement) {
+        _injectLaRestartLoader(this.game.canvas.parentElement);
+      }
+      // Loader froid (_la-loading) est injecté dans start() ; relance : _la-restart-loading (voir ci-dessus).
       this._loaderRemoved = false;
       this._warmupFrames  = 0;
 
@@ -1674,6 +1709,7 @@
         clearGameOverHostFlag();
         overlay.remove();
         document.removeEventListener('keydown', onKey);
+        try { window.__laRestartPending = true; } catch (e) { /* ignore */ }
         sceneRef.scene.resume();
         sceneRef.scene.restart();
       }
@@ -2112,20 +2148,23 @@
       var dt = Math.min(delta / 1000, 0.05);
       this._shieldFloatStack = 0;
 
-      // Loader: stay opaque for WARM_UP_FRAMES then fade out.
-      // This covers the initial shader-compilation spike that causes the first-launch stutter.
+      // Loader : couvre le pic shader au 1er frame ; relance = moins de frames + fade plus court.
       if (!this._loaderRemoved) {
         this._warmupFrames = (this._warmupFrames || 0) + 1;
-        if (this._warmupFrames >= 45) {
+        var wTarget = this._warmupTargetFrames != null ? this._warmupTargetFrames : LOADER_WARMUP_FRAMES;
+        if (this._warmupFrames >= wTarget) {
           this._loaderRemoved = true;
-          var loEl = document.getElementById('_la-loading');
+          var lid = this._loaderOverlayId || '_la-loading';
+          var loEl = document.getElementById(lid);
           if (loEl) {
-            loEl.style.transition = 'opacity 0.55s ease';
+            var isRestart = lid === '_la-restart-loading';
+            var fadeSec = isRestart ? '0.38s' : '0.55s';
+            var removeMs = isRestart ? 450 : 600;
+            loEl.style.transition = 'opacity ' + fadeSec + ' ease';
             loEl.style.opacity = '0';
-            setTimeout(function () { if (loEl.parentNode) loEl.parentNode.removeChild(loEl); }, 600);
+            setTimeout(function () { if (loEl.parentNode) loEl.parentNode.removeChild(loEl); }, removeMs);
           }
         }
-        // Keep playing/rendering every frame during warmup (no early return)
       }
 
       this._checkTheme();
@@ -3036,9 +3075,7 @@
     var game = null;
 
     function start() {
-      // Inject a loading overlay while Phaser initialises.
-      // It is removed on the FIRST update() call (first stable rendered frame).
-      // Not re-injected on scene.restart() — only on cold start.
+      // Overlay _la-loading (long) pendant l’init WebGL ; la relance utilise _la-restart-loading dans create().
       var bgCol = getColors().bgColor;
       // Convert Phaser hex int to CSS hex string
       var bgCss = '#' + ('000000' + bgCol.toString(16)).slice(-6);
