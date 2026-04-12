@@ -640,10 +640,8 @@
       if (restartPending) window.__laRestartPending = false;
       this._warmupTargetFrames = restartPending ? LOADER_RESTART_WARMUP_FRAMES : LOADER_WARMUP_FRAMES;
       this._loaderOverlayId = restartPending ? '_la-restart-loading' : '_la-loading';
-      if (restartPending && this.game && this.game.canvas && this.game.canvas.parentElement) {
-        _injectLaRestartLoader(this.game.canvas.parentElement);
-      }
-      // Loader froid (_la-loading) est injecté dans start() ; relance : _la-restart-loading (voir ci-dessus).
+      // Loader relance : injecté dans doReplay() avant restart() pour qu’il soit peint avant le pic GPU.
+      // Loader froid (_la-loading) : injecté dans start().
       this._loaderRemoved = false;
       this._warmupFrames  = 0;
 
@@ -1710,8 +1708,14 @@
         overlay.remove();
         document.removeEventListener('keydown', onKey);
         try { window.__laRestartPending = true; } catch (e) { /* ignore */ }
-        sceneRef.scene.resume();
-        sceneRef.scene.restart();
+        _injectLaRestartLoader(container);
+        try { void container.offsetHeight; } catch (e2) { /* ignore */ }
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            sceneRef.scene.resume();
+            sceneRef.scene.restart();
+          });
+        });
       }
       function onKey(e) {
         if (e.key !== 'Enter') return;
