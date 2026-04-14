@@ -96,7 +96,7 @@
             }
             if (pr.smashed) {
               this._beginBatch('PARADE');
-              var smashAoe = C.SHOCKWAVE_RADIUS * 0.75;
+              var smashAoe = C.SHOCKWAVE_RADIUS * 1.1; // buffed vs 0.75 before, stays under nuke (×2.5)
               var smashAoeSq = smashAoe * smashAoe;
               var directDmg = (e.tier === 3) ? 2 : 2;
               e.hp -= directDmg;
@@ -165,7 +165,18 @@
         // Deflect: only dash attack can reflect projectiles
         if (isDAtk) {
           var ddx = p.x - pr.x, ddy = p.y - pr.y;
-          var ddThresh = pR + C.PROJ_RADIUS + 8;
+          // Parrybox: generous base, diminishes as arrow grows (combo + star buff arrow size)
+          var cm = this.comboMultiplier;
+          var arrowScale;
+          if      (cm >= 50) arrowScale = 1.34;
+          else if (cm >= 25) arrowScale = 1.17;
+          else if (cm >= 10) arrowScale = 1.08;
+          else if (cm >= 5)  arrowScale = 1.035;
+          else               arrowScale = 1.0;
+          arrowScale *= 1.08; // always DASH_ATTACKING here
+          if (this.isStarPowered) arrowScale *= 1.25;
+          var parryBonus = (pR * 1.5) / arrowScale; // ~16px at base, shrinks with bigger arrow
+          var ddThresh = pR + C.PROJ_RADIUS + parryBonus;
           if (ddx * ddx + ddy * ddy < ddThresh * ddThresh) {
             var refSpd = C.PROJ_SPEED * C.PROJ_REFLECT_MULT;
 

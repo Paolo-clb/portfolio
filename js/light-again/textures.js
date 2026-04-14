@@ -256,6 +256,55 @@
     g.strokeRect(S*0.70,S*0.58,S*0.04,S*0.06);
 
     tm.addCanvas(key, oc);
+
+    /* Glow overlay: brighter, thicker traces with neon tint */
+    var gk = key + 'Glow';
+    if (tm.exists(gk)) tm.remove(gk);
+    var oc2 = document.createElement('canvas');
+    oc2.width = S; oc2.height = S;
+    var g2 = oc2.getContext('2d');
+
+    var cr = (colors.pcbTrace >> 16) & 0xff;
+    var cg2 = (colors.pcbTrace >> 8) & 0xff;
+    var cb = colors.pcbTrace & 0xff;
+    var glowCol = 'rgba(' + cr + ',' + cg2 + ',' + cb + ',0.38)';
+    var glowVia = 'rgba(' + cr + ',' + cg2 + ',' + cb + ',0.50)';
+
+    g2.strokeStyle = glowCol; g2.lineWidth = 2.2; g2.lineCap = 'round';
+    g2.beginPath();
+    g2.moveTo(0,S*0.22); g2.lineTo(S*0.61,S*0.22);
+    g2.moveTo(S*0.68,S*0.22); g2.lineTo(S,S*0.22);
+    g2.moveTo(0,S*0.71); g2.lineTo(S*0.38,S*0.71);
+    g2.moveTo(S*0.45,S*0.71); g2.lineTo(S,S*0.71);
+    g2.moveTo(S*0.18,0); g2.lineTo(S*0.18,S*0.55);
+    g2.moveTo(S*0.18,S*0.62); g2.lineTo(S*0.18,S);
+    g2.moveTo(S*0.77,0); g2.lineTo(S*0.77,S*0.34);
+    g2.moveTo(S*0.77,S*0.41); g2.lineTo(S*0.77,S);
+    g2.stroke();
+
+    g2.lineWidth = 1.4; g2.beginPath();
+    g2.moveTo(S*0.18,S*0.44); g2.lineTo(S*0.52,S*0.44);
+    g2.moveTo(S*0.52,S*0.55); g2.lineTo(S*0.77,S*0.55);
+    g2.moveTo(0,S*0.88); g2.lineTo(S*0.40,S*0.88);
+    g2.moveTo(S*0.60,S*0.10); g2.lineTo(S,S*0.10);
+    g2.moveTo(S*0.38,S*0.22); g2.lineTo(S*0.38,S*0.71);
+    g2.moveTo(S*0.61,0); g2.lineTo(S*0.61,S*0.22);
+    g2.moveTo(S*0.52,S*0.44); g2.lineTo(S*0.52,S*0.55);
+    g2.moveTo(S*0.88,S*0.71); g2.lineTo(S*0.88,S);
+    g2.moveTo(S*0.18,S*0.55); g2.lineTo(S*0.18,S*0.62);
+    g2.moveTo(S*0.77,S*0.34); g2.lineTo(S*0.61,S*0.34);
+    g2.moveTo(S*0.61,S*0.22); g2.lineTo(S*0.61,S*0.34);
+    g2.moveTo(S*0.38,S*0.71); g2.lineTo(S*0.38,S*0.88);
+    g2.stroke();
+
+    g2.fillStyle = glowVia;
+    for (var gi = 0; gi < vias.length; gi++) {
+      g2.beginPath();
+      g2.arc(S * vias[gi][0], S * vias[gi][1], vias[gi][2] + 0.8, 0, Math.PI * 2);
+      g2.fill();
+    }
+
+    tm.addCanvas(gk, oc2);
   };
 
   LA.buildBruiserTex = function (tm, key) {

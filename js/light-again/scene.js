@@ -35,6 +35,21 @@
       this.pcbTile.setScrollFactor(0);
       this.pcbTile.setDepth(-10);
 
+      // --- Glow overlay (bioluminescence) ---
+      this.pcbGlow = this.add.tileSprite(0, 0, cam.width, cam.height, '_pcbGlow');
+      this.pcbGlow.setOrigin(0, 0);
+      this.pcbGlow.setScrollFactor(0);
+      this.pcbGlow.setDepth(-9);
+      this.pcbGlow.setBlendMode(Phaser.BlendModes.ADD);
+      this.pcbGlow.setAlpha(0);
+
+      // --- Vignette (canvas radial gradient texture) ---
+      this._vignetteSprite = null; // reset stale reference from previous scene lifecycle
+      this._drawVignette();
+
+      // Redraw vignette when Scale manager finalises dimensions (fixes first-launch offset)
+      this.scale.on('resize', function () { self._drawVignette(); });
+
       this.p = {
         x: 0, y: 0, vx: 0, vy: 0,
         angle: 0, spinAngle: 0,
@@ -45,7 +60,7 @@
         atkDx: 0, atkDy: 0,
         recoveryTimer: 0, recoveryWhiff: false,
         hasHitDuringDashAttack: false, dashAtkExtended: 0,
-        hp: 1, invincible: false, invincTimer: 0, dashInvinc: false,
+        hp: 1, invincible: false, invincTimer: 0, dashInvinc: false, dashCoyote: false,
       };
 
       // Shield orbs — start with 1
@@ -118,6 +133,7 @@
         emitting: false,
       });
       this._emitter2.setDepth(39);
+
 
       var PROJ_TRAIL_PER = 12;
       this._PROJ_TRAIL_PER = PROJ_TRAIL_PER;
@@ -249,6 +265,19 @@
 
       this._chromaFX = null;
 
+      // Star Power collectible state
+      this._starPickups = [];
+      this.isStarPowered = false;
+      this._starPowerTimer = 0;
+      this._starPowerWarning = false;
+      this._starWarnCall = null;
+      this._starEndCall = null;
+
+      this._starAuraGfx = this.add.graphics();
+      this._starAuraGfx.setDepth(27);
+      this._starAuraGfx.setBlendMode(Phaser.BlendModes.ADD);
+      this._starAuraGfx.setVisible(false);
+
       cam.setBackgroundColor(LA.getColors().bgColor);
 
       if (cam.postFX) {
@@ -273,6 +302,12 @@
         if (ev.code === 'KeyP' && !ev.repeat) {
           ev.preventDefault();
           self._debugSpawnTestTier(3, 5);
+        }
+        if (ev.code === 'KeyL' && !ev.repeat) {
+          ev.preventDefault();
+          var ox = self.p.x + (Math.random() - 0.5) * 200;
+          var oy = self.p.y + (Math.random() - 0.5) * 200;
+          self._spawnStar(ox, oy);
         }
       });
       this.input.keyboard.on('keyup', function (ev) {
@@ -302,6 +337,9 @@
       };
       this.events.once('shutdown', function () {
         window.__lightGameAtkReady = null;
+        self._vignetteSprite = null;
+        self._chromaFX = null;
+        self._bloomFX = null;
       });
     },
 
@@ -365,7 +403,7 @@
 
       if (p.invincible) {
         p.invincTimer -= ms;
-        if (p.invincTimer <= 0) { p.invincible = false; p.invincTimer = 0; p.dashInvinc = false; }
+        if (p.invincTimer <= 0) { p.invincible = false; p.invincTimer = 0; p.dashInvinc = false; p.dashCoyote = false; }
       }
 
       var frDt = Math.pow(C.FRICTION, s60);
@@ -395,6 +433,7 @@
         if (p.dashTimer <= 0) {
           p.state = 'MOVING'; p.dashCooldown = C.DASH_CD;
           p.invincible = true; p.invincTimer = 220; p.dashInvinc = true;
+          p.dashCoyote = true; // coyote window: attack within post-dash iframes → Dash-Attack
         }
       }
       if (p.state !== 'DASHING' && p.dashCooldown > 0) {
@@ -415,8 +454,15 @@
         p.atkTimer -= ms; p.spinAngle += sDt * C.DASH_ATK_SPIN;
         this._addGhost(p.x, p.y, 0.70, p.angle, true);
         if (p.atkTimer <= 0) {
-          if (p.hasHitDuringDashAttack) { this._triggerLandingBurst(); p.state = 'MOVING'; }
-          else {
+          if (p.hasHitDuringDashAttack) {
+            this._triggerLandingBurst();
+            p.state = 'MOVING';
+            // Star Power: instant cooldown reset — spammable like normal attack
+            if (this.isStarPowered) {
+              p.atkAvailable = true; p.atkCooldown = 0;
+              p.dashCooldown = 0; p.dashAvailable = true;
+            }
+          } else {
             p.state = 'RECOVERY'; p.recoveryTimer = C.DASHATK_WHIFF_DUR;
             p.recoveryWhiff = true; p.vx *= 0.05; p.vy *= 0.05;
           }
@@ -435,13 +481,17 @@
       this._decayGhosts(dt);
 
       if (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING') {
+        // During attack: snap toward attack target (mouse at time of attack)
         p.angle = Math.atan2(p.atkDy, p.atkDx) + p.spinAngle;
+      } else if (p.state === 'DASHING') {
+        // During dash: point in dash direction
+        p.angle = Math.atan2(p.dashDy, p.dashDx);
       } else {
-        var cam = this.cameras.main;
-        p.angle = Phaser.Math.Angle.Between(
-          p.x, p.y,
-          this._mouseX + cam.scrollX, this._mouseY + cam.scrollY
-        );
+        // Normal movement: follow input direction; keep last angle if no input
+        var inp = this._inputVec();
+        if (Math.abs(inp.dx) > 0.01 || Math.abs(inp.dy) > 0.01) {
+          p.angle = Math.atan2(inp.dy, inp.dx);
+        }
       }
 
       var tdx = p.x - this._trLX, tdy = p.y - this._trLY;
@@ -456,6 +506,13 @@
       this._updateEnemies(sDt);
       this._updateProjectiles(sDt);
       this._checkCollisions();
+      this._checkStarPickup();
+
+      // Star power timer countdown (for HUD bar)
+      if (this.isStarPowered) {
+        this._starPowerTimer -= ms;
+        if (this._starPowerTimer < 0) this._starPowerTimer = 0;
+      }
 
       if (this.spawnTimer > -999000) {
         this.spawnTimer += ms;
@@ -477,6 +534,35 @@
       this.pcbTile.tilePositionX = cam.scrollX;
       this.pcbTile.tilePositionY = cam.scrollY;
       this.pcbTile.setSize(cam.width, cam.height);
+
+      // --- Glow pulse (bioluminescence) ---
+      var t = this.gameTime;
+      // Floor at 0.06 so glow never fully disappears — max ~0.34
+      var glowAlpha = Math.max(0.06,
+        0.22 + 0.16 * Math.sin(t * 0.40) +   // main ~15.7s period
+        0.06 * Math.sin(t * 1.05) +           // secondary ~6s period
+        0.03 * Math.sin(t * 2.30)             // micro variation ~2.7s
+      ) * 0.72;
+      this.pcbGlow.setAlpha(glowAlpha);
+      this.pcbGlow.tilePositionX = cam.scrollX;
+      this.pcbGlow.tilePositionY = cam.scrollY;
+      this.pcbGlow.setSize(cam.width, cam.height);
+
+      // --- Vignette combo intensity — pulsing urgency ---
+      if (this._vignetteSprite) {
+        // comboRatio: 0 at x1, 1 at x50+
+        var vigComboRatio = Math.min(Math.max(this.comboMultiplier - 1, 0), 49) / 49;
+        // pulseRatio: 0 until x5, then ramps to 1 at x50
+        var vigPulseRatio = Math.min(Math.max(this.comboMultiplier - 5, 0), 45) / 45;
+        // Base alpha rises with combo (0.65 → 0.90)
+        var vigBase = 0.65 + vigComboRatio * 0.25;
+        // Pulse amplitude: 0 at low combo, up to ±0.42 at x50
+        var vigAmp  = vigPulseRatio * 0.42;
+        // Pulse frequency: 1 Hz at x5, 5.5 Hz (rapid heartbeat) at x50
+        var vigFreq = 1.0 + vigPulseRatio * 4.5;
+        var vigA = vigBase + vigAmp * Math.sin(this.gameTime * vigFreq * Math.PI * 2);
+        this._vignetteSprite.setAlpha(Math.min(1.0, Math.max(0.30, vigA)));
+      }
 
       this.gameTime += dt;
 

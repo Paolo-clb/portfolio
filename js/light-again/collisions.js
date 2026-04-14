@@ -37,7 +37,9 @@
       var e = this.enemies[i];
       var dx = p.x - e.x, dy = p.y - e.y;
       var distSq = dx * dx + dy * dy;
-      var cThresh = pR + e.size * 0.5;
+      // Slightly larger hitbox for tier-3 shield vs dash-attack only
+      var shieldBonus = (isDAtk && e.tier === 3 && e.hasShield) ? 10 : 0;
+      var cThresh = pR + e.size * 0.5 + shieldBonus;
       if (distSq < cThresh * cThresh) {
         var dist = Math.sqrt(distSq);
         if (isAtk) {
@@ -89,6 +91,11 @@
             p.state = 'MOVING';
             p.spinAngle = 0;
             this._triggerLandingBurst();
+            // Star Power: instant reset after shield break
+            if (this.isStarPowered) {
+              p.atkAvailable = true; p.atkCooldown = 0;
+              p.dashCooldown = 0; p.dashAvailable = true;
+            }
             return;
           }
           var datkDmg = (e.tier === 3) ? 2 : 1;

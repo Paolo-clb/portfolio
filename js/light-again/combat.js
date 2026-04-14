@@ -199,7 +199,9 @@
     var detRadiusSq = detRadius * detRadius;
 
     this._beginBatch('NUKE');
+    var detoKills = 0;
     this._killEnemy(markedIdx, { batch: true });
+    detoKills++;
 
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var o = this.enemies[i];
@@ -210,13 +212,21 @@
           this._breakShield(o);
         } else if (o.tier === 3) {
           o.hp -= 2;
-          if (o.hp <= 0) this._killEnemy(i, { batch: true });
+          if (o.hp <= 0) { this._killEnemy(i, { batch: true }); detoKills++; }
         } else {
-          this._killEnemy(i, { batch: true });
+          this._killEnemy(i, { batch: true }); detoKills++;
         }
       }
     }
     this._endBatch();
+
+    // Star spawn: detonation killed ≥ STAR_DETO_THRESH enemies
+    if (detoKills >= C.STAR_DETO_THRESH) {
+      var self = this;
+      this.time.delayedCall(200, function () {
+        self._spawnStar(ex, ey);
+      });
+    }
 
     for (var pi = this.projectiles.length - 1; pi >= 0; pi--) {
       var pr = this.projectiles[pi];

@@ -42,6 +42,14 @@
     if (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING') return;
     if (p.state === 'RECOVERY') return;
     if (p.state === 'DASHING') { this._triggerDashAtk(); return; }
+    // Coyote time: clicked during post-dash iframes → still a Dash-Attack
+    if (p.dashCoyote) { this._triggerDashAtk(); return; }
+
+    // Star Power override — basic attack becomes dash-attack toward cursor
+    if (this.isStarPowered) {
+      this._triggerDashAtk();
+      return;
+    }
 
     var cam = this.cameras.main;
     var wmx = this._mouseX + cam.scrollX;
@@ -89,6 +97,7 @@
     p.atkDx = adx; p.atkDy = ady; p.spinAngle = 0;
     p.hasHitDuringDashAttack = false; p.dashAtkExtended = 0;
     p.dashTimer = 0; p.dashCooldown = C.DASH_CD;
+    p.dashCoyote = false; p.dashInvinc = false;
   };
 
   M._damagePlayer = function (nx, ny) {

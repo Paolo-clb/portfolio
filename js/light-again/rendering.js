@@ -28,6 +28,7 @@
     LA.buildBruiserTex(tm, '_bruiser');
     LA.buildProjTex(tm, '_proj');
     LA.buildPCBTex(tm, '_pcb', c);
+    LA.buildStarTex(tm, '_star');
   };
 
   M._checkTheme = function () {
@@ -37,6 +38,8 @@
     this._genTextures();
     this.cameras.main.setBackgroundColor(LA.getColors().bgColor);
     if (this.pcbTile) this.pcbTile.setTexture('_pcb');
+    if (this.pcbGlow)  this.pcbGlow.setTexture('_pcbGlow');
+    this._drawVignette();
     for (var i = 0; i < this.enemies.length; i++) {
       var e = this.enemies[i];
       var texK = e.tier === 3 ? '_bruiser' : e.tier === 2 ? '_shooter' : '_enemy';
@@ -85,6 +88,7 @@
       baseScale = 1.0;
     }
     if (p.state === 'DASH_ATTACKING') baseScale *= 1.08;
+    if (this.isStarPowered) baseScale *= 1.25;
     this.playerSpr.setScale(baseScale);
 
     // Dash i-frames: keep dash look
@@ -98,6 +102,29 @@
       this.playerSpr.setBlendMode(
         (p.state === 'RECOVERY' && p.recoveryWhiff) ? Phaser.BlendModes.NORMAL : Phaser.BlendModes.ADD
       );
+    }
+
+    // Star Power aura — world-space pulsing ring in dash-attack magenta
+    if (this._starAuraGfx) {
+      this._starAuraGfx.clear();
+      if (this.isStarPowered) {
+        this._starAuraGfx.setVisible(true);
+        var auraPulseFreq = this._starPowerWarning ? 9 : 3.5;
+        var auraPulseBase = this._starPowerWarning ? 0.2 : 0.40;
+        var auraPulse = auraPulseBase + 0.55 * Math.abs(Math.sin(this.gameTime * Math.PI * auraPulseFreq));
+        var auraR = C.SIZE * baseScale * 1.4;
+        // Outer soft glow
+        this._starAuraGfx.lineStyle(18, C.STAR_TINT, auraPulse * 0.22);
+        this._starAuraGfx.strokeCircle(p.x, p.y, auraR * 1.38);
+        // Main ring
+        this._starAuraGfx.lineStyle(4, C.STAR_TINT, auraPulse * 0.82);
+        this._starAuraGfx.strokeCircle(p.x, p.y, auraR);
+        // Inner hot ring
+        this._starAuraGfx.lineStyle(2, 0xff88ff, auraPulse * 0.95);
+        this._starAuraGfx.strokeCircle(p.x, p.y, auraR * 0.62);
+      } else {
+        this._starAuraGfx.setVisible(false);
+      }
     }
 
     for (var i = 0; i < this.TRAIL_CAP; i++) this._trail[i].spr.setVisible(false);
@@ -224,6 +251,65 @@
     }
   };
 
+  /* ---------------------------------------------------------------
+     Vignette: baked radial gradient (canvas texture) — dark edges, transparent center
+     --------------------------------------------------------------- */
+  M._drawVignette = function () {
+    var w = this.scale.width, h = this.scale.height;
+    // Overshoot by 4px to eliminate any sub-pixel gap at edges
+    var cw = Math.ceil(w) + 4, ch = Math.ceil(h) + 4;
+    var cx = cw / 2, cy = ch / 2;
+    var r = Math.sqrt(cx * cx + cy * cy);
+
+    // Edge colour = PCB trace colour darkened very heavily
+    var colors = LA.getColors();
+    var tr = (colors.pcbTrace >> 16) & 0xff;
+    var tg = (colors.pcbTrace >> 8) & 0xff;
+    var tb = colors.pcbTrace & 0xff;
+    // Per-theme calibration: darken factor and edge alpha tuned so the vignette
+    // edge is always DARKER than the background (avoids a glowing band effect)
+    var theme = document.documentElement.getAttribute('data-theme') || 'light';
+    var darkenFactor, edgeAlpha;
+    if (theme === 'dark') {
+      darkenFactor = 0.12; edgeAlpha = 0.88; // deep purple, slightly less harsh
+    } else if (theme === 'nature') {
+      darkenFactor = 0.07; edgeAlpha = 0.86; // minimal green tint, close to bg
+    } else {
+      darkenFactor = 0.06; edgeAlpha = 0.95; // near-black with faint warm tint
+    }
+    var dr = Math.round(tr * darkenFactor);
+    var dg = Math.round(tg * darkenFactor);
+    var db = Math.round(tb * darkenFactor);
+    var edge = 'rgba(' + dr + ',' + dg + ',' + db + ',' + edgeAlpha + ')';
+
+    // Bake gradient into a canvas texture (done once / on theme change)
+    var tm = this.textures;
+    var key = '_vignette';
+    if (tm.exists(key)) tm.remove(key);
+    var vc = document.createElement('canvas');
+    vc.width = cw; vc.height = ch;
+    var vctx = vc.getContext('2d');
+    var grad = vctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0,    'rgba(0,0,0,0)');
+    grad.addColorStop(0.35, 'rgba(0,0,0,0)');
+    grad.addColorStop(1,    edge);
+    vctx.fillStyle = grad;
+    vctx.fillRect(0, 0, cw, ch);
+    tm.addCanvas(key, vc);
+
+    if (this._vignetteSprite && this._vignetteSprite.scene) {
+      this._vignetteSprite.setTexture(key);
+      this._vignetteSprite.setPosition(-2, -2);
+      this._vignetteSprite.setDisplaySize(cw, ch);
+    } else {
+      this._vignetteSprite = this.add.image(-2, -2, key);
+      this._vignetteSprite.setOrigin(0, 0);
+      this._vignetteSprite.setScrollFactor(0);
+      this._vignetteSprite.setDepth(-8);
+      this._vignetteSprite.setDisplaySize(cw, ch);
+    }
+  };
+
   M._renderProjectiles = function () {
     var gt = this.gameTime;
 
@@ -275,6 +361,19 @@
       this.hudGfx.fillRect(bX, bY, bW, bH);
       this.hudGfx.fillStyle(c.cyan, 0.8);
       this.hudGfx.fillRect(bX, bY, bW * f, bH);
+    }
+
+    // Star Power timer bar (above dash bar)
+    if (this.isStarPowered) {
+      var spW = 100, spH = 5, spX = cx - 50, spY = h - 40;
+      var spF = this._starPowerTimer / C.STAR_DUR;
+      this.hudGfx.fillStyle(0xffffff, 0.10);
+      this.hudGfx.fillRect(spX, spY, spW, spH);
+      var spAlpha = this._starPowerWarning
+        ? (0.5 + 0.5 * Math.abs(Math.sin(this.gameTime * Math.PI * 6)))
+        : 0.9;
+      this.hudGfx.fillStyle(C.STAR_TINT, spAlpha);
+      this.hudGfx.fillRect(spX, spY, spW * spF, spH);
     }
 
     // Score display — recentered each frame to handle resize

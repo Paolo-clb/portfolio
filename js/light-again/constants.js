@@ -88,6 +88,12 @@
     T3_SPEED:          1.2,
     T3_SPAWN_CD:       3500,
     T3_SHIELD_RADIUS:  42,
+
+    STAR_DUR:          5000,
+    STAR_WARN:         4000,
+    STAR_DETO_THRESH:  50,
+    STAR_TINT:         0xff14c8,
+    STAR_TINT_ARR:     [255, 20, 200],
   };
 
   /* Pre-computed squared radii (avoid sqrt in hot loops) */
