@@ -1,0 +1,208 @@
+/* ==========================================================================
+   Light Again — Projectile Lifecycle (scene methods)
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  var LA = window.LightAgain;
+  var C  = LA.C;
+  var M  = LA.sceneMethods;
+
+  M._spawnProjectile = function (ex, ey, angle, spd, shooter) {
+    if (this.projectiles.length >= C.MAX_PROJECTILES) return;
+    var spr = this.add.image(ex, ey, '_proj');
+    spr.setBlendMode(Phaser.BlendModes.ADD);
+    spr.setDepth(22);
+    this.projectiles.push({
+      spr: spr, x: ex, y: ey,
+      vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
+      life: C.PROJ_LIFE, isReflected: false, smashed: false,
+      shooterRef: shooter || null,
+      rotSpeed: 8,
+      trailSlots: [],
+    });
+  };
+
+  M._destroyProjectile = function (pr) {
+    for (var si = 0; si < pr.trailSlots.length; si++) {
+      pr.trailSlots[si].active = false;
+      pr.trailSlots[si].spr.setVisible(false);
+    }
+    pr.trailSlots.length = 0;
+    pr.spr.destroy();
+  };
+
+  M._updateProjectiles = function (dt) {
+    var ms = dt * 1000;
+    var p = this.p;
+    var pR = C.SIZE * 0.6;
+    var isAtk = p.state === 'ATTACKING';
+    var isDAtk = p.state === 'DASH_ATTACKING';
+    var vuln = !isAtk && !isDAtk && p.state !== 'DASHING';
+
+    for (var i = this.projectiles.length - 1; i >= 0; i--) {
+      var pr = this.projectiles[i];
+      pr.life -= ms;
+      pr.x += pr.vx * dt; pr.y += pr.vy * dt;
+      pr.spr.setPosition(pr.x, pr.y);
+      pr.spr.rotation += pr.rotSpeed * dt;
+
+      // Trail: inject a new slot into the global pool
+      var spd = pr.vx * pr.vx + pr.vy * pr.vy;
+      if (spd > 0.01) {
+        var slot = this._projTrailPool[this._projTrailPoolW % this._projTrailPool.length];
+        this._projTrailPoolW++;
+        slot.x = pr.x;
+        slot.y = pr.y;
+        slot.alpha = pr.isReflected ? 0.85 : 0.55;
+        slot.tint = pr.isReflected ? 0xaa44ff : 0xffaa22;
+        slot.rot = pr.spr.rotation;
+        slot.active = true;
+        slot.spr.setVisible(true);
+        pr.trailSlots.push(slot);
+        var maxTrail = pr.isReflected ? this._PROJ_TRAIL_PER : Math.ceil(this._PROJ_TRAIL_PER * 0.45);
+        if (pr.trailSlots.length > maxTrail) {
+          pr.trailSlots.shift();
+        }
+      }
+
+      // Visual boost on smashed reflected
+      if (pr.isReflected && pr.smashed && Math.random() < 0.3) {
+        this._emitter2.setPosition(pr.x, pr.y);
+        this._emitter2.setParticleTint(0xaa44ff);
+        this._emitter2.explode(1);
+      }
+
+      // OOB / expired
+      if (pr.life <= 0 || Math.abs(pr.x) > C.WORLD_HALF || Math.abs(pr.y) > C.WORLD_HALF) {
+        this._destroyProjectile(pr);
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      if (pr.isReflected) {
+        // Reflected projectile hits enemies
+        for (var ei = this.enemies.length - 1; ei >= 0; ei--) {
+          var e = this.enemies[ei];
+          var edx = pr.x - e.x, edy = pr.y - e.y;
+          var eThresh = C.PROJ_RADIUS + e.size * 0.5;
+          if (edx * edx + edy * edy < eThresh * eThresh) {
+            // Shield intercept
+            if (e.tier === 3 && e.hasShield) {
+              this._breakShield(e);
+              this._destroyProjectile(pr);
+              this.projectiles.splice(i, 1);
+              break;
+            }
+            if (pr.smashed) {
+              this._beginBatch('PARADE');
+              var smashAoe = C.SHOCKWAVE_RADIUS * 0.75;
+              var smashAoeSq = smashAoe * smashAoe;
+              var directDmg = (e.tier === 3) ? 2 : 2;
+              e.hp -= directDmg;
+              if (e.hp <= 0) {
+                this._killEnemy(ei, { batch: true, reflected: true });
+              } else {
+                e.stunTimer = 300;
+              }
+              for (var si = this.enemies.length - 1; si >= 0; si--) {
+                var se = this.enemies[si];
+                var sdx2 = se.x - pr.x, sdy2 = se.y - pr.y;
+                var sd2Sq = sdx2 * sdx2 + sdy2 * sdy2;
+                if (sd2Sq < smashAoeSq && sd2Sq > 0.01) {
+                  var sd2 = Math.sqrt(sd2Sq);
+                  if (se.tier === 3 && se.hasShield) {
+                    this._breakShield(se);
+                  } else {
+                    var aoeDmg = (se.tier === 3) ? 1 : 1;
+                    se.hp -= aoeDmg;
+                    if (se.hp <= 0) { this._killEnemy(si, { batch: true, reflected: true }); }
+                  }
+                  var sf = 1.0 - sd2 / smashAoe;
+                  se.vx += (sdx2 / sd2) * C.SHOCKWAVE_FORCE * 1.5 * sf;
+                  se.vy += (sdy2 / sd2) * C.SHOCKWAVE_FORCE * 1.5 * sf;
+                  se.stunTimer = Math.max(se.stunTimer, 250 * sf);
+                }
+              }
+              this._endBatch();
+              this._explode(pr.x, pr.y, [170, 68, 255], 30);
+              this._explode(pr.x, pr.y, [255, 255, 255], 15);
+              this._explode(pr.x, pr.y, [200, 120, 255], 10);
+              this._triggerHitstop(C.DEFLECT_HEAVY_HS);
+              this.cameras.main.shake(80, 0.008);
+              this._spawnWaveRing(pr.x, pr.y);
+            } else {
+              e.hp -= 1;
+              if (e.hp <= 0) {
+                this._killEnemy(ei, { reflected: true });
+              } else {
+                e.stunTimer = 200;
+                this._explode(e.x, e.y, [0, 255, 255], 6);
+              }
+            }
+            this._destroyProjectile(pr);
+            this.projectiles.splice(i, 1);
+            break;
+          }
+        }
+      } else {
+        // Enemy projectile hits player
+        if (vuln && !p.invincible) {
+          var pdx = p.x - pr.x, pdy = p.y - pr.y;
+          var pdSq = pdx * pdx + pdy * pdy;
+          var prThresh = pR + C.PROJ_RADIUS;
+          if (pdSq < prThresh * prThresh) {
+            var pd = Math.sqrt(pdSq);
+            var pnx = pd > 0.1 ? pdx / pd : 0;
+            var pny = pd > 0.1 ? pdy / pd : 0;
+            this._damagePlayer(pnx, pny);
+            this._destroyProjectile(pr);
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+        }
+
+        // Deflect: only dash attack can reflect projectiles
+        if (isDAtk) {
+          var ddx = p.x - pr.x, ddy = p.y - pr.y;
+          var ddThresh = pR + C.PROJ_RADIUS + 8;
+          if (ddx * ddx + ddy * ddy < ddThresh * ddThresh) {
+            var refSpd = C.PROJ_SPEED * C.PROJ_REFLECT_MULT;
+
+            var refAng;
+            if (pr.shooterRef && pr.shooterRef.hp > 0) {
+              refAng = Phaser.Math.Angle.Between(pr.x, pr.y, pr.shooterRef.x, pr.shooterRef.y);
+            } else {
+              var bestD = Infinity, bestE = null;
+              for (var hi = 0; hi < this.enemies.length; hi++) {
+                var he = this.enemies[hi];
+                if (he.tier < 2) continue;
+                var hdx = he.x - pr.x, hdy = he.y - pr.y;
+                var hd = Math.sqrt(hdx * hdx + hdy * hdy);
+                if (hd < bestD) { bestD = hd; bestE = he; }
+              }
+              if (bestE) {
+                refAng = Phaser.Math.Angle.Between(pr.x, pr.y, bestE.x, bestE.y);
+              } else {
+                refAng = Phaser.Math.Angle.Between(p.x, p.y, pr.x, pr.y);
+              }
+            }
+            pr.vx = Math.cos(refAng) * refSpd;
+            pr.vy = Math.sin(refAng) * refSpd;
+            pr.isReflected = true;
+            pr.smashed = true;
+            pr.life = C.PROJ_LIFE;
+            pr.rotSpeed = 28;
+            pr.spr.setTint(0xaa44ff);
+
+            p.hasHitDuringDashAttack = true;
+            this._triggerHitstop(C.DEFLECT_HEAVY_HS);
+            this.cameras.main.shake(80, 0.008);
+            this._explode(pr.x, pr.y, [170, 68, 255], 15);
+          }
+        }
+      }
+    }
+  };
+
+})();
