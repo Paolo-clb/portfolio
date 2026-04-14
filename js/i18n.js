@@ -108,7 +108,7 @@ window.SITE_I18N = {
     lightAgainHelpDash:   'Dash',
     lightAgainHelpAttack: 'Attaque Torpille',
     lightAgainHelpDashAtk: 'Dash-Attaque',
-    lightAgainHelpParry:   'Parade',
+    lightAgainHelpParry:   'Parade (X2 points !)',
     lightAgainHelpNuke:    'Détonation',
     // Game Over screen
     laGoScore:      'Score',
@@ -233,7 +233,7 @@ window.SITE_I18N = {
     lightAgainHelpDash:   'Dash',
     lightAgainHelpAttack: 'Torpedo Attack',
     lightAgainHelpDashAtk: 'Dash-Attack',
-    lightAgainHelpParry:   'Parry',
+    lightAgainHelpParry:   'Parry (X2 points !)',
     lightAgainHelpNuke:    'Detonation',
     // Game Over screen
     laGoScore:      'Score',
