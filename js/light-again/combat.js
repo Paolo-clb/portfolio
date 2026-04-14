@@ -29,16 +29,15 @@
   };
 
   M._floatLabel = function (wx, wy, label, col, stackIdx) {
-    var cam = this.cameras.main;
     var stagger = (stackIdx || 0) * 45;
-    var txt = this.add.text(wx - cam.scrollX, wy - cam.scrollY, label, {
+    var txt = this.add.text(wx, wy, label, {
       fontFamily: 'monospace', fontSize: '22px', fontStyle: 'bold', color: col,
       stroke: '#000000', strokeThickness: 2,
       shadow: { offsetX: 0, offsetY: 2, color: col, blur: 8, fill: true },
     });
-    txt.setOrigin(0.5, 1); txt.setDepth(70 + (stackIdx || 0)); txt.setScrollFactor(0);
+    txt.setOrigin(0.5, 1); txt.setDepth(70 + (stackIdx || 0));
     this.tweens.add({
-      targets: txt, y: txt.y - 30, duration: 600, ease: 'Linear', delay: stagger,
+      targets: txt, y: wy - 30, duration: 600, ease: 'Linear', delay: stagger,
     });
     this.tweens.add({
       targets: txt, alpha: 0, duration: 400, ease: 'Cubic.easeIn', delay: 400 + stagger,
