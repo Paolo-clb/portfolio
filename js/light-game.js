@@ -138,6 +138,11 @@
   var T3_SPAWN_CD       = 3500;
   var T3_SHIELD_RADIUS  = 42;
 
+  /* ---- Pre-computed squared radii (avoid sqrt in hot loops) ---- */
+  var SEPARATION_RADIUS_SQ   = SEPARATION_RADIUS * SEPARATION_RADIUS;
+  var SHOCKWAVE_RADIUS_SQ    = SHOCKWAVE_RADIUS * SHOCKWAVE_RADIUS;
+  var LANDING_BURST_RADIUS_SQ = LANDING_BURST_RADIUS * LANDING_BURST_RADIUS;
+
   /* ================================================================
      TEXTURE GENERATORS
      ================================================================ */
@@ -1030,13 +1035,13 @@
 
       // Auto-aim: prioritise closest marked enemy in attack range, then follow mouse
       var atkRange = SIZE * 0.6 + RUSHER_SIZE + ATK_DUR * 0.02 * ATK_IMP;
-      var bestMarkD = atkRange, bestMark = null;
+      var bestMarkDSq = atkRange * atkRange, bestMark = null;
       for (var ne = 0; ne < this.enemies.length; ne++) {
         var en = this.enemies[ne];
         if (!en.isMarked) continue;
         var ndx = en.x - p.x, ndy = en.y - p.y;
-        var nd = Math.sqrt(ndx * ndx + ndy * ndy);
-        if (nd < bestMarkD) { bestMarkD = nd; bestMark = en; }
+        var ndSq = ndx * ndx + ndy * ndy;
+        if (ndSq < bestMarkDSq) { bestMarkDSq = ndSq; bestMark = en; }
       }
       if (bestMark) {
         var mAdx = bestMark.x - p.x, mAdy = bestMark.y - p.y;
@@ -1380,8 +1385,9 @@
         var o = this.enemies[k];
         if (o.tier === 3) continue;
         var sdx = o.x - ex, sdy = o.y - ey;
-        var sd = Math.sqrt(sdx * sdx + sdy * sdy);
-        if (sd < SHOCKWAVE_RADIUS) {
+        var sdSq = sdx * sdx + sdy * sdy;
+        if (sdSq < SHOCKWAVE_RADIUS_SQ) {
+          var sd = Math.sqrt(sdSq);
           var f = 1.0 - sd / SHOCKWAVE_RADIUS;
           var nx = sd > 0.1 ? sdx / sd : Math.random() - 0.5;
           var ny = sd > 0.1 ? sdy / sd : Math.random() - 0.5;
@@ -1406,6 +1412,7 @@
       var e = this.enemies[markedIdx];
       var ex = e.x, ey = e.y;
       var detRadius = SHOCKWAVE_RADIUS * 2.5;
+      var detRadiusSq = detRadius * detRadius;
 
       this._beginBatch('NUKE');
       this._killEnemy(markedIdx, { batch: true });
@@ -1413,8 +1420,7 @@
       for (var i = this.enemies.length - 1; i >= 0; i--) {
         var o = this.enemies[i];
         var odx = o.x - ex, ody = o.y - ey;
-        var od = Math.sqrt(odx * odx + ody * ody);
-        if (od < detRadius) {
+        if (odx * odx + ody * ody < detRadiusSq) {
           this._explode(o.x, o.y, [0, 255, 255], 10);
           if (o.tier === 3 && o.hasShield) {
             this._breakShield(o);
@@ -1431,7 +1437,7 @@
       for (var pi = this.projectiles.length - 1; pi >= 0; pi--) {
         var pr = this.projectiles[pi];
         var pdx = pr.x - ex, pdy = pr.y - ey;
-        if (Math.sqrt(pdx * pdx + pdy * pdy) < detRadius) {
+        if (pdx * pdx + pdy * pdy < detRadiusSq) {
           this._explode(pr.x, pr.y, [0, 255, 255], 5);
           this._destroyProjectile(pr);
           this.projectiles.splice(pi, 1);
@@ -1454,8 +1460,9 @@
         var e = this.enemies[i];
         if (e.tier !== 1) continue;
         var dx = e.x - p.x, dy = e.y - p.y;
-        var d = Math.sqrt(dx * dx + dy * dy);
-        if (d < LANDING_BURST_RADIUS && d > 0.1) {
+        var dSq = dx * dx + dy * dy;
+        if (dSq < LANDING_BURST_RADIUS_SQ && dSq > 0.01) {
+          var d = Math.sqrt(dSq);
           var f = 1.0 - d / LANDING_BURST_RADIUS;
           // Reduced force so nearby enemies stay attackable
           e.vx += (dx / d) * LANDING_BURST_FORCE * 0.25 * (0.5 + f * 0.5);
@@ -1941,6 +1948,7 @@
       // Flash the combo text red briefly before resetting
       var self = this;
       this._comboTxt.setColor('#ff2222');
+      this._lastComboCol = '#ff2222';
       this._comboTxt.setAlpha(1.0);
       this.tweens.add({
         targets: this._comboTxt, alpha: 0, duration: 350, ease: 'Cubic.easeIn',
@@ -2058,8 +2066,8 @@
           var me = this.enemies[mi];
           if (me.isMarked) continue;
           var mdx = p.x - me.x, mdy = p.y - me.y;
-          var md = Math.sqrt(mdx * mdx + mdy * mdy);
-          if (md < DASH_MARK_RADIUS + me.size * 0.5) {
+          var mThresh = DASH_MARK_RADIUS + me.size * 0.5;
+          if (mdx * mdx + mdy * mdy < mThresh * mThresh) {
             me.isMarked = true;
             me.markTimer = 3000;
             me.stunTimer = 200;
@@ -2072,8 +2080,10 @@
       for (var i = this.enemies.length - 1; i >= 0; i--) {
         var e = this.enemies[i];
         var dx = p.x - e.x, dy = p.y - e.y;
-        var dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < pR + e.size * 0.5) {
+        var distSq = dx * dx + dy * dy;
+        var cThresh = pR + e.size * 0.5;
+        if (distSq < cThresh * cThresh) {
+          var dist = Math.sqrt(distSq);
           if (isAtk) {
             // Detonation on marked enemy — ignores shield entirely
             if (e.isMarked) {
@@ -2183,9 +2193,16 @@
       var s60  = sDt * 60;
       var ms   = sDt * 1000;
 
-      var fps = Math.round(this.game.loop.actualFps);
-      this.fpsTxt.setText(fps + ' FPS');
-      this.fpsTxt.setColor(fps >= 55 ? '#00ff88' : fps >= 30 ? '#ffcc00' : '#ff4444');
+      this._fpsCounter = (this._fpsCounter || 0) + 1;
+      if (this._fpsCounter >= 15) {
+        this._fpsCounter = 0;
+        var fps = Math.round(this.game.loop.actualFps);
+        if (fps !== this._lastFps) {
+          this._lastFps = fps;
+          this.fpsTxt.setText(fps + ' FPS');
+          this.fpsTxt.setColor(fps >= 55 ? '#00ff88' : fps >= 30 ? '#ffcc00' : '#ff4444');
+        }
+      }
 
       if (ms < 0.001) {
         this._decayGhosts(dt);
@@ -2226,7 +2243,7 @@
 
       if (p.state === 'DASHING') {
         p.dashTimer -= ms;
-        if (Math.sqrt(p.vx * p.vx + p.vy * p.vy) > 2) {
+        if (p.vx * p.vx + p.vy * p.vy > 4) {
           this._addGhost(p.x, p.y, 0.55, p.angle, false);
         }
         if (p.dashTimer <= 0) {
@@ -2371,18 +2388,21 @@
       var stK   = 1 - Math.pow(1 - 0.08, sc60);
       var p = this.p, en = this.enemies;
 
+      // Sort by x for early-exit separation: O(n log n + n·k) vs O(n²)
+      en.sort(function (a, b) { return a.x - b.x; });
+
       for (var i = 0; i < en.length; i++) {
         var a = en[i];
         for (var j = i + 1; j < en.length; j++) {
           var b = en[j];
+          if (b.x - a.x > SEPARATION_RADIUS) break;
           var sdx = a.x - b.x, sdy = a.y - b.y;
-          var sd = Math.sqrt(sdx * sdx + sdy * sdy);
-          if (sd < SEPARATION_RADIUS && sd > 0.01) {
+          var sdSq = sdx * sdx + sdy * sdy;
+          if (sdSq < SEPARATION_RADIUS_SQ && sdSq > 0.0001) {
+            var sd = Math.sqrt(sdSq);
             var ov = (SEPARATION_RADIUS - sd) / SEPARATION_RADIUS;
             var fx = (sdx / sd) * SEPARATION_FORCE * ov * sc60;
             var fy = (sdy / sd) * SEPARATION_FORCE * ov * sc60;
-            // Mass ratio: heavier tier receives less push, lighter tier receives more.
-            // mass: T1=1, T2=2.5, T3=6
             var massA = a.tier === 3 ? 6.0 : a.tier === 2 ? 2.5 : 1.0;
             var massB = b.tier === 3 ? 6.0 : b.tier === 2 ? 2.5 : 1.0;
             var total = massA + massB;
@@ -2588,8 +2608,8 @@
         pr.spr.rotation += pr.rotSpeed * dt;
 
         // Traîne sprite : injection d'un nouveau slot dans le pool global
-        var spd = Math.sqrt(pr.vx * pr.vx + pr.vy * pr.vy);
-        if (spd > 0.1) {
+        var spd = pr.vx * pr.vx + pr.vy * pr.vy;
+        if (spd > 0.01) {
           var slot = this._projTrailPool[this._projTrailPoolW % this._projTrailPool.length];
           this._projTrailPoolW++;
           slot.x = pr.x;
@@ -2625,8 +2645,8 @@
           for (var ei = this.enemies.length - 1; ei >= 0; ei--) {
             var e = this.enemies[ei];
             var edx = pr.x - e.x, edy = pr.y - e.y;
-            var ed = Math.sqrt(edx * edx + edy * edy);
-            if (ed < PROJ_RADIUS + e.size * 0.5) {
+            var eThresh = PROJ_RADIUS + e.size * 0.5;
+            if (edx * edx + edy * edy < eThresh * eThresh) {
               // Shield intercept: reflected proj breaks shield
               if (e.tier === 3 && e.hasShield) {
                 this._breakShield(e);
@@ -2637,6 +2657,7 @@
               if (pr.smashed) {
                 this._beginBatch('PARADE');
                 var smashAoe = SHOCKWAVE_RADIUS * 0.75;
+                var smashAoeSq = smashAoe * smashAoe;
                 var directDmg = (e.tier === 3) ? 2 : 2;
                 e.hp -= directDmg;
                 if (e.hp <= 0) {
@@ -2647,8 +2668,9 @@
                 for (var si = this.enemies.length - 1; si >= 0; si--) {
                   var se = this.enemies[si];
                   var sdx2 = se.x - pr.x, sdy2 = se.y - pr.y;
-                  var sd2 = Math.sqrt(sdx2 * sdx2 + sdy2 * sdy2);
-                  if (sd2 < smashAoe && sd2 > 0.1) {
+                  var sd2Sq = sdx2 * sdx2 + sdy2 * sdy2;
+                  if (sd2Sq < smashAoeSq && sd2Sq > 0.01) {
+                    var sd2 = Math.sqrt(sd2Sq);
                     if (se.tier === 3 && se.hasShield) {
                       this._breakShield(se);
                     } else {
@@ -2687,8 +2709,10 @@
           // Enemy projectile hits player
           if (vuln && !p.invincible) {
             var pdx = p.x - pr.x, pdy = p.y - pr.y;
-            var pd = Math.sqrt(pdx * pdx + pdy * pdy);
-            if (pd < pR + PROJ_RADIUS) {
+            var pdSq = pdx * pdx + pdy * pdy;
+            var prThresh = pR + PROJ_RADIUS;
+            if (pdSq < prThresh * prThresh) {
+              var pd = Math.sqrt(pdSq);
               var pnx = pd > 0.1 ? pdx / pd : 0;
               var pny = pd > 0.1 ? pdy / pd : 0;
               this._damagePlayer(pnx, pny);
@@ -2701,8 +2725,8 @@
           // Deflect: only dash attack can reflect projectiles
           if (isDAtk) {
             var ddx = p.x - pr.x, ddy = p.y - pr.y;
-            var dd = Math.sqrt(ddx * ddx + ddy * ddy);
-            if (dd < pR + PROJ_RADIUS + 8) {
+            var ddThresh = pR + PROJ_RADIUS + 8;
+            if (ddx * ddx + ddy * ddy < ddThresh * ddThresh) {
               var refSpd = PROJ_SPEED * PROJ_REFLECT_MULT;
 
               var refAng;
@@ -3034,12 +3058,18 @@
       // Score display — recentered each frame to handle resize
       var cx2 = cam.width / 2;
       this._scoreTxt.setPosition(cx2, 16);
-      this._scoreTxt.setText(this.score);
+      if (this.score !== this._lastScore) {
+        this._lastScore = this.score;
+        this._scoreTxt.setText(this.score);
+      }
 
       // Combo multiplier
       if (this.comboMultiplier > 1) {
         this._comboTxt.setPosition(cx2, 48);
-        this._comboTxt.setText('x' + this.comboMultiplier);
+        if (this.comboMultiplier !== this._lastCombo) {
+          this._lastCombo = this.comboMultiplier;
+          this._comboTxt.setText('x' + this.comboMultiplier);
+        }
         // Pulse animation on increment
         if (this._comboPulse > 0) {
           var ps = 1.0 + this._comboPulse * 0.45;
@@ -3052,11 +3082,12 @@
         var comboRatio = this.comboTimer / 2000;
         var comboAlpha = comboRatio > 0.3 ? 0.95 : 0.35 + 0.6 * Math.abs(Math.sin(this.gameTime * Math.PI * 10));
         this._comboTxt.setAlpha(comboAlpha);
-        // Color escalation
-        if (this.comboMultiplier >= 50) this._comboTxt.setColor('#00ffff');
-        else if (this.comboMultiplier >= 25) this._comboTxt.setColor('#ff6600');
-        else if (this.comboMultiplier >= 10) this._comboTxt.setColor('#ffcc00');
-        else this._comboTxt.setColor('#ffffff');
+        // Color escalation (only on change)
+        var comboCol = this.comboMultiplier >= 50 ? '#00ffff' : this.comboMultiplier >= 25 ? '#ff6600' : this.comboMultiplier >= 10 ? '#ffcc00' : '#ffffff';
+        if (comboCol !== this._lastComboCol) {
+          this._lastComboCol = comboCol;
+          this._comboTxt.setColor(comboCol);
+        }
         // Combo timer bar centered under the multiplier text
         var timerW = 100;
         var timerCol = this.comboMultiplier >= 50 ? 0x00ffff : this.comboMultiplier >= 25 ? 0xff6600 : 0xffcc00;
