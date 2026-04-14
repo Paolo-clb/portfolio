@@ -487,10 +487,21 @@
         // During dash: point in dash direction
         p.angle = Math.atan2(p.dashDy, p.dashDx);
       } else {
-        // Normal movement: follow input direction; keep last angle if no input
+        // Normal movement: follow input direction; point at mouse when idle
         var inp = this._inputVec();
         if (Math.abs(inp.dx) > 0.01 || Math.abs(inp.dy) > 0.01) {
           p.angle = Math.atan2(inp.dy, inp.dx);
+        } else {
+          // No directional input — smoothly face the mouse cursor
+          var cam = this.cameras.main;
+          var mwx = cam.scrollX + this._mouseX;
+          var mwy = cam.scrollY + this._mouseY;
+          var mdx = mwx - p.x, mdy = mwy - p.y;
+          if (mdx * mdx + mdy * mdy > 4) {
+            var targetAngle = Math.atan2(mdy, mdx);
+            var diff = Phaser.Math.Angle.Wrap(targetAngle - p.angle);
+            p.angle += diff * Math.min(1, 12 * dt);
+          }
         }
       }
 
