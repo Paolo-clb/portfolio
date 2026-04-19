@@ -78,6 +78,17 @@
         this._shieldOrbs.push(og);
       }
 
+      // Energy link wires (orb → player): drawn each frame, depth 28 (under player)
+      this._shieldLinkGfx = this.add.graphics();
+      this._shieldLinkGfx.setDepth(28);
+      this._shieldLinkGfx.setBlendMode(Phaser.BlendModes.ADD);
+
+      // Hex sacrifice flash (appears on shield absorb): depth 36 (above orbs)
+      this._shieldHitGfx = this.add.graphics();
+      this._shieldHitGfx.setDepth(36);
+      this._shieldHitGfx.setBlendMode(Phaser.BlendModes.ADD);
+      this._shieldHitGfx.setVisible(false);
+
       this.playerSpr = this.add.image(0, 0, '_ar_cyan');
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
       this.playerSpr.setDepth(30);

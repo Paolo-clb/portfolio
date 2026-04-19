@@ -107,6 +107,7 @@
     if (this.playerShields > 0) {
       this.playerShields--;
       this._breakCombo();
+      this._shieldSacrificeFlash();
       this._explode(p.x, p.y, [0, 255, 255], 18);
       this._explode(p.x, p.y, [255, 255, 255], 12);
       this.cameras.main.shake(200, 0.022);

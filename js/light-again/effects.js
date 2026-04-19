@@ -174,9 +174,13 @@
   };
 
   M._renderShieldOrbs = function () {
-    var p = this.p;
+    var p  = this.p;
     var ORB_RADIUS = 38;
     var ORB_SIZE   = 5;
+    var c  = LA.getColors();
+    var ga = this._shieldLinkGfx;
+    ga.clear();
+
     for (var oi = 0; oi < this._shieldOrbs.length; oi++) {
       var og = this._shieldOrbs[oi];
       if (oi >= this.playerShields) {
@@ -187,13 +191,99 @@
       var baseAng = (Math.PI * 2 / this.MAX_SHIELDS) * oi + this._shieldAngle;
       var ox = p.x + Math.cos(baseAng) * ORB_RADIUS;
       var oy = p.y + Math.sin(baseAng) * ORB_RADIUS;
+
+      // ---- Energy link wire ----
+      // Slow individual pulse per orb so wires breathe independently
+      var pulse = 0.52 + 0.48 * Math.sin(this.gameTime * Math.PI * 2.2 + oi * 2.09);
+
+      // Outer soft glow
+      ga.lineStyle(3, c.cyan, 0.06 * pulse);
+      ga.beginPath(); ga.moveTo(ox, oy); ga.lineTo(p.x, p.y); ga.strokePath();
+
+      // Bright inner wire
+      ga.lineStyle(1, 0xcce8ff, 0.24 * pulse);
+      ga.beginPath(); ga.moveTo(ox, oy); ga.lineTo(p.x, p.y); ga.strokePath();
+
+      // Flowing energy packets: 3 dots sliding orb → player
+      var flowT = (this.gameTime * 0.62 + oi * 0.34) % 1.0;
+      for (var fi = 0; fi < 3; fi++) {
+        var ft = (flowT + fi / 3) % 1.0;
+        var fx = ox + (p.x - ox) * ft;
+        var fy = oy + (p.y - oy) * ft;
+        // Fade at both endpoints so dots appear to emerge from orb and dissolve at player
+        var da = Math.min(ft * 6, (1 - ft) * 6, 1.0);
+        ga.fillStyle(0xddf4ff, da * 0.52 * pulse);
+        ga.fillCircle(fx, fy, 1.3);
+      }
+
+      // ---- Orb ----
       og.clear();
-      og.lineStyle(4, 0x00ffff, 0.30);
+      og.lineStyle(4, c.cyan, 0.30);
       og.strokeCircle(0, 0, ORB_SIZE + 4);
-      og.fillStyle(0x00ffff, 0.95);
+      og.fillStyle(c.cyan, 0.95);
       og.fillCircle(0, 0, ORB_SIZE);
       og.setPosition(ox, oy);
     }
+  };
+
+  /* ---------------------------------------------------------------
+     Shield sacrifice: brief hexagonal burst at player position
+     --------------------------------------------------------------- */
+  M._shieldSacrificeFlash = function () {
+    var self = this;
+    var p    = this.p;
+    var gfx  = this._shieldHitGfx;
+    var R    = C.SIZE * 2.15;
+    var c    = LA.getColors();
+
+    this.tweens.killTweensOf(gfx);
+    gfx.setPosition(p.x, p.y);
+    gfx.setScale(0.58);
+    gfx.setAlpha(1.0);
+    gfx.setVisible(true);
+    gfx.clear();
+
+    // Layer 1: wide soft corona
+    gfx.lineStyle(10, c.cyan, 0.18);
+    self._drawHexPath(gfx, 0, 0, R + 10); gfx.strokePath();
+
+    // Layer 2: main glowing edge
+    gfx.lineStyle(2.5, c.cyan, 1.0);
+    self._drawHexPath(gfx, 0, 0, R); gfx.strokePath();
+
+    // Layer 3: white-hot inner rim
+    gfx.lineStyle(1.2, 0xffffff, 0.88);
+    self._drawHexPath(gfx, 0, 0, R - 3); gfx.strokePath();
+
+    // Layer 4: faint fill
+    gfx.fillStyle(c.cyan, 0.05);
+    self._drawHexPath(gfx, 0, 0, R); gfx.fillPath();
+
+    // Animate: snap-in then expand + dissolve
+    this.tweens.add({
+      targets:  gfx,
+      scaleX:   2.3,
+      scaleY:   2.3,
+      alpha:    0,
+      duration: 320,
+      ease:     'Quad.easeOut',
+      onComplete: function () {
+        gfx.setVisible(false);
+        gfx.clear();
+      },
+    });
+  };
+
+  /* Flat-top regular hexagon path helper (draws path only, caller strokes/fills) */
+  M._drawHexPath = function (gfx, cx, cy, R) {
+    gfx.beginPath();
+    for (var i = 0; i < 6; i++) {
+      var a = Math.PI / 6 + (Math.PI / 3) * i;
+      var x = cx + Math.cos(a) * R;
+      var y = cy + Math.sin(a) * R;
+      if (i === 0) gfx.moveTo(x, y); else gfx.lineTo(x, y);
+    }
+    gfx.closePath();
   };
 
 })();
