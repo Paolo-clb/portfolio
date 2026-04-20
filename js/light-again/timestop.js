@@ -290,7 +290,7 @@
 
   /* ================================================================
      DEFER DETONATION — with synchronized charging circle animation
-     Circle color: cyan (detonation Lv1) or violet (Lv2)
+     Circle color: golden (TW freeze), scaling with detonation level.
      Animation synced to finish exactly at TW resolution.
      ================================================================ */
   M._twDeferDetonation = function (enemyRef) {
@@ -298,8 +298,8 @@
     var detoLvl  = (this._upgradeLevels && this._upgradeLevels.detonation) || 0;
     var radMult  = detoLvl >= 2 ? 1.8 : 1.0;
     var startR   = C.SHOCKWAVE_RADIUS * 2.5 * radMult * 0.6;
-    var MAIN_COL = detoLvl >= 2 ? 0xb44dff : 0x00ffff;
-    var SEC_COL  = detoLvl >= 2 ? 0x8800cc : 0x00aacc;
+    var MAIN_COL = 0xffc832;  // golden — TW freeze theme
+    var SEC_COL  = 0xd4900a;
     var duration = Math.max(this._twTimer, 100);
 
     enemyRef._twDetonationPending = true;
@@ -357,7 +357,7 @@
       tweenRef: tweenRef,
     });
 
-    this._explode(enemyRef.x, enemyRef.y, detoLvl >= 2 ? [180, 77, 255] : [0, 255, 255], 12);
+    this._explode(enemyRef.x, enemyRef.y, [255, 200, 50], 12);  // golden spark on defer
   };
 
   /* ================================================================

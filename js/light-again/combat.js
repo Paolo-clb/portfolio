@@ -265,6 +265,8 @@
     var e = this.enemies[markedIdx];
     var ex = e.x, ey = e.y;
     var detoLvl  = (this._upgradeLevels && this._upgradeLevels.detonation) || 0;
+    // Golden palette when fired at TW resolution
+    var twDeto = !!this._twBatchWindow;
     var radMult  = detoLvl >= 2 ? 1.8 : 1.0;
     var detRadius   = C.SHOCKWAVE_RADIUS * 2.5 * radMult;
     var detRadiusSq = detRadius * detRadius;
@@ -280,7 +282,7 @@
       var o = this.enemies[i];
       var odx = o.x - ex, ody = o.y - ey;
       if (odx * odx + ody * ody < detRadiusSq) {
-        this._explode(o.x, o.y, [0, 255, 255], 10);
+        this._explode(o.x, o.y, twDeto ? [255, 200, 50] : [0, 255, 255], 10);
         if (o.tier === 3 && o.hasShield) {
           this._breakShield(o);
         } else if (o.tier === 3) {
@@ -306,13 +308,14 @@
       if (pr.isReflected) continue;  // already on our side — nuke spares reflected projectiles
       var pdx = pr.x - ex, pdy = pr.y - ey;
       if (pdx * pdx + pdy * pdy < detRadiusSq) {
-        this._explode(pr.x, pr.y, [0, 255, 255], 5);
+        this._explode(pr.x, pr.y, twDeto ? [255, 200, 50] : [0, 255, 255], 5);
         this._destroyProjectile(pr);
         this.projectiles.splice(pi, 1);
       }
     }
 
-    this.cameras.main.flash(200, 0, 255, 255, false);
+    if (twDeto) { this.cameras.main.flash(200, 255, 200, 50, false); }
+    else          { this.cameras.main.flash(200, 0, 255, 255, false); }
     this.cameras.main.shake(detoLvl >= 2 ? 280 : 200, detoLvl >= 2 ? 0.030 : 0.018);
     this._triggerHitstop(detoLvl >= 2 ? C.DETONATION_HITSTOP * 1.4 : C.DETONATION_HITSTOP);
     this._spawnWaveRing(ex, ey);
@@ -323,10 +326,14 @@
       this.time.delayedCall(160, function () { if (self2._spawnWaveRing) self2._spawnWaveRing(ex, ey); });
     }
 
-    this._explode(ex, ey, [0, 255, 255],    detoLvl >= 2 ? 90  : 50);
-    this._explode(ex, ey, [255, 255, 255],  detoLvl >= 2 ? 55  : 30);
-    if (detoLvl >= 2) {
-      this._explode(ex, ey, [180, 80, 255], 40);  // violet — bigger nuke feels heavier
+    if (twDeto) {
+      this._explode(ex, ey, [255, 200, 50],  detoLvl >= 2 ? 90  : 50);
+      this._explode(ex, ey, [255, 255, 200], detoLvl >= 2 ? 55  : 30);
+      if (detoLvl >= 2) { this._explode(ex, ey, [255, 160, 0], 40); }  // deep gold accent
+    } else {
+      this._explode(ex, ey, [0, 255, 255],    detoLvl >= 2 ? 90  : 50);
+      this._explode(ex, ey, [255, 255, 255],  detoLvl >= 2 ? 55  : 30);
+      if (detoLvl >= 2) { this._explode(ex, ey, [180, 80, 255], 40); }  // violet — bigger nuke
     }
   };
 
