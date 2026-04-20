@@ -85,6 +85,13 @@
   function toggleGamePause() {
     if (!activeGame || helpPopupEl) return;
     if (isLightAgainGameOverOpen()) return;
+    if (document.getElementById('_la-upgrade-overlay')) return;
+    // Block pause during upgrade slow-mo transition
+    if (activeGame && activeGame.scene && activeGame.scene.scenes) {
+      var sc = activeGame.scene.scenes[0];
+      if (sc && sc._upSlowMoPhase) return;
+    }
+    if (document.getElementById('_la-loading') || document.getElementById('_la-restart-loading')) return;
     userPaused = !userPaused;
     if (userPaused) {
       if (typeof activeGame.pause === 'function') activeGame.pause();

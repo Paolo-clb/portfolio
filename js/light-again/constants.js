@@ -29,6 +29,11 @@
     DASHATK_WHIFF_FRIC: 0.70,
     DASHATK_CHAIN_EXT:  40,
     DASHATK_MAX_EXT:    180,
+    DASHATK_VACUUM_RADIUS: 240,   // Lv2 upgrade: projectile pull radius
+    DASHATK_VACUUM_PULL:   520,   // Lv2 upgrade: pull force (px/s)
+    DASH_TORNADO_RADIUS: 180,   // dash Lv2: tornado attraction radius
+    DASH_TORNADO_PULL:   130,   // dash Lv2: enemy pull force (px/s)
+    DASH_TORNADO_DUR:   3000,   // dash Lv2: tornado lifetime (ms)
     HITSTOP_DUR:        40,
     HITSTOP_MAX:        80,
     DETONATION_HITSTOP: 120,
@@ -94,6 +99,60 @@
     STAR_DETO_THRESH:  50,
     STAR_TINT:         0xff14c8,
     STAR_TINT_ARR:     [255, 20, 200],
+
+    /* ---- Upgrade system (roguelite draft) ---- */
+    UPGRADE_KILL_INTERVAL: 200,
+    UPGRADE_DRAFT_SIZE:    2,
+
+    /* ---- The World (secret upgrade) ---- */
+    TW_DURATION:           4000,
+    TW_COOLDOWN:           30000,
+    TW_SECRET_KILL_DELAY:  500,
+  };
+
+  /* ---- Upgrade branch definitions ---- */
+  LA.UPGRADES = {
+    dashAtk: {
+      id: 'dashAtk',
+      maxLvl: 2,
+      i18nName:  'laUpDashAtkName',
+      i18nDesc1: 'laUpDashAtkDesc1',
+      i18nDesc2: 'laUpDashAtkDesc2',
+    },
+    detonation: {
+      id: 'detonation',
+      maxLvl: 2,
+      i18nName:  'laUpDetonationName',
+      i18nDesc1: 'laUpDetonationDesc1',
+      i18nDesc2: 'laUpDetonationDesc2',
+    },
+    dash: {
+      id: 'dash',
+      maxLvl: 2,
+      i18nName:  'laUpDashName',
+      i18nDesc1: 'laUpDashDesc1',
+      i18nDesc2: 'laUpDashDesc2',
+    },
+    baseAtk: {
+      id: 'baseAtk',
+      maxLvl: 2,
+      i18nName:  'laUpBaseAtkName',
+      i18nDesc1: 'laUpBaseAtkDesc1',
+      i18nDesc2: 'laUpBaseAtkDesc2',
+    },
+    shield: {
+      id: 'shield',
+      maxLvl: 2,
+      i18nName:  'laUpShieldName',
+      i18nDesc1: 'laUpShieldDesc1',
+      i18nDesc2: 'laUpShieldDesc2',
+    },
+  };
+
+  /* ---- Secret upgrade (The World) ---- */
+  LA.SECRET_UPGRADE = {
+    id: 'theWorld', maxLvl: 1,
+    i18nName: 'laUpTheWorldName', i18nDesc1: 'laUpTheWorldDesc1',
   };
 
   /* Pre-computed squared radii (avoid sqrt in hot loops) */

@@ -26,6 +26,7 @@
     if (this._batchScore > 0) {
       this._floatScoreBig(this._batchLabel, this._batchScore);
     }
+    this._checkUpgradeTrigger();
   };
 
   M._floatLabel = function (wx, wy, label, col, stackIdx) {
@@ -74,17 +75,62 @@
     });
   };
 
-  M._floatScoreBig = function (label, pts) {
+  M._floatScoreBig = function (label, pts, _extra) {
+    // PARADE: buffer 80ms to merge rapid consecutive hits into one message
+    if (label === 'PARADE' && !_extra) {
+      if (!this._paradeBuf) this._paradeBuf = { n: 0, pts: 0 };
+      this._paradeBuf.n++;
+      this._paradeBuf.pts += pts;
+      if (this._paradeFlushEvt) this._paradeFlushEvt.remove(false);
+      var selfP = this;
+      this._paradeFlushEvt = this.time.delayedCall(250, function () {
+        var b = selfP._paradeBuf;
+        selfP._paradeBuf = null;
+        selfP._paradeFlushEvt = null;
+        selfP._floatScoreBig('PARADE', b.pts, { count: b.n });
+      });
+      return;
+    }
+
     var cam = this.cameras.main;
-    var sx = cam.width / 2, sy = cam.height * 0.3;
-    var col = label === 'PARADE' ? '#aa44ff' : label === 'NUKE' ? '#00ffff' : '#ffcc00';
-    var txt = this.add.text(sx, sy, '+' + pts + ' ' + label + '!', {
+    var sx = cam.width / 2;
+
+    // Anchor just above the player in screen space — clamp so it stays in a safe area
+    var psy = (this.p.y - cam.scrollY) * cam.zoom;
+    var syBase = psy - 80;
+    syBase = Math.max(syBase, cam.height * 0.12);   // never above 12% from top
+    syBase = Math.min(syBase, cam.height * 0.72);   // never below 72% of screen
+
+    var count = (_extra && _extra.count > 1) ? _extra.count : 0;
+    var col = label === 'PARADE' ? '#aa44ff'
+            : label === 'NUKE' ? '#00ffff'
+            : label === 'DELAY_EXP' ? '#ff4422'
+            : label === 'THE WORLD' ? '#ffc832'
+            : '#ffcc00';
+    var displayLbl = label === 'DELAY_EXP' ? 'Delayed Explosion'
+                   : (label === 'PARADE' && count > 1) ? 'PARADE \u00d7' + count
+                   : label;
+
+    // Stack upward from anchor — each slot is 48px above the previous
+    if (!this._bigScoreSlots) this._bigScoreSlots = [];
+    var slot = 0;
+    while (this._bigScoreSlots[slot] && slot < 7) slot++;
+    var sy = syBase - slot * 48;
+    var self = this;
+
+    var txt = this.add.text(sx, sy, '+' + pts + ' ' + displayLbl + '!', {
       fontFamily: 'monospace', fontSize: '32px', fontStyle: 'bold', color: col,
     });
     txt.setOrigin(0.5); txt.setDepth(105);
     txt.setScrollFactor(0);
     txt.setBlendMode(Phaser.BlendModes.ADD);
     txt.setScale(0.5);
+    this._bigScoreSlots[slot] = txt;
+
+    // Duration proportional to score — log scale capped at 100 000 pts, min 1400ms, max 3800ms
+    var fadeDur   = Math.min(Math.max(1400 + Math.log10(Math.max(pts, 1)) * 480, 1400), 3800);
+    var fadeDelay = 400;
+
     this.tweens.add({
       targets: txt, scaleX: 1.1, scaleY: 1.1,
       duration: 150, ease: 'Back.easeOut',
@@ -92,8 +138,11 @@
     });
     this.tweens.add({
       targets: txt, y: sy - 50, alpha: 0,
-      duration: 1200, ease: 'Cubic.easeOut', delay: 300,
-      onComplete: function () { txt.destroy(); },
+      duration: fadeDur, ease: 'Cubic.easeOut', delay: fadeDelay,
+      onComplete: function () {
+        self._bigScoreSlots[slot] = null;
+        txt.destroy();
+      },
     });
   };
 
@@ -115,11 +164,25 @@
   // ctx: { batch: bool, reflected: bool }
   M._killEnemy = function (idx, ctx) {
     var e = this.enemies[idx];
-    var ex = e.x, ey = e.y;
-    var killTier = e.tier;
     ctx = ctx || {};
 
+    // Time Stop: defer kill — enemy is condemned but stays in place
+    // NO score, combo, or floating text during TW — tallied at resolution
+    if (this._twActive && !ctx._twResolving) {
+      this._twDeferKill(idx);
+      return;
+    }
+
+    // During the post-TW batch window, kills count as batch (no individual float)
+    if (this._twBatchWindow) {
+      ctx.batch = true;
+    }
+
+    var ex = e.x, ey = e.y;
+    var killTier = e.tier;
+
     this.totalKills++;
+    if (!this._batchActive) this._checkUpgradeTrigger();
     var basePts = e.tier === 3 ? 100 : e.tier === 2 ? 30 : 10;
     var pts = basePts * this.comboMultiplier;
     if (ctx.reflected) pts *= 2;
@@ -131,8 +194,8 @@
     if (newCm > this.bestCombo) this.bestCombo = newCm;
     this._comboPulse = 1.0;
 
-    // Shield acquisition aux paliers 10 et 50
-    var shieldMilestones = [10, 50];
+    // Shield acquisition via combo milestones
+    var shieldMilestones = [10];
     for (var sm = 0; sm < shieldMilestones.length; sm++) {
       var ms = shieldMilestones[sm];
       if (prevCm < ms && newCm >= ms && this.playerShields < this.MAX_SHIELDS) {
@@ -150,33 +213,40 @@
       this._floatScore(ex, ey, pts, killTier);
     }
 
-    var cnt = Math.round(30 + (e.size / C.RUSHER_SIZE) * 20);
-    cnt = Math.min(cnt, 50);
-    this._explode(ex, ey, [255, 30, 60], cnt);
-    this._explode(ex, ey, [255, 160, 80], Math.round(cnt * 0.5));
-    this._explode(ex, ey, [255, 255, 220], Math.round(cnt * 0.25));
+    if (ctx.condemned) {
+      // Condemned-mark death: stylish crimson ring burst, no explosion / shake / shockwave
+      this._spawnCondemnedDeath(ex, ey, e.size);
+    } else {
+      var cnt = Math.round(30 + (e.size / C.RUSHER_SIZE) * 20);
+      cnt = Math.min(cnt, 50);
+      this._explode(ex, ey, [255, 30, 60], cnt);
+      this._explode(ex, ey, [255, 160, 80], Math.round(cnt * 0.5));
+      this._explode(ex, ey, [255, 255, 220], Math.round(cnt * 0.25));
+    }
 
     e.spr.destroy();
     for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
     if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
     this.enemies.splice(idx, 1);
 
-    this._triggerHitstop(C.HITSTOP_DUR);
-    this.cameras.main.shake(60, 0.005);
+    if (!ctx.condemned) {
+      this._triggerHitstop(C.HITSTOP_DUR);
+      this.cameras.main.shake(60, 0.005);
 
-    for (var k = 0; k < this.enemies.length; k++) {
-      var o = this.enemies[k];
-      if (o.tier === 3) continue;
-      var sdx = o.x - ex, sdy = o.y - ey;
-      var sdSq = sdx * sdx + sdy * sdy;
-      if (sdSq < C.SHOCKWAVE_RADIUS_SQ) {
-        var sd = Math.sqrt(sdSq);
-        var f = 1.0 - sd / C.SHOCKWAVE_RADIUS;
-        var nx = sd > 0.1 ? sdx / sd : Math.random() - 0.5;
-        var ny = sd > 0.1 ? sdy / sd : Math.random() - 0.5;
-        o.vx += nx * C.SHOCKWAVE_FORCE * f;
-        o.vy += ny * C.SHOCKWAVE_FORCE * f;
-        o.stunTimer = C.SHOCKWAVE_STUN * f;
+      for (var k = 0; k < this.enemies.length; k++) {
+        var o = this.enemies[k];
+        if (o.tier === 3) continue;
+        var sdx = o.x - ex, sdy = o.y - ey;
+        var sdSq = sdx * sdx + sdy * sdy;
+        if (sdSq < C.SHOCKWAVE_RADIUS_SQ) {
+          var sd = Math.sqrt(sdSq);
+          var f = 1.0 - sd / C.SHOCKWAVE_RADIUS;
+          var nx = sd > 0.1 ? sdx / sd : Math.random() - 0.5;
+          var ny = sd > 0.1 ? sdy / sd : Math.random() - 0.5;
+          o.vx += nx * C.SHOCKWAVE_FORCE * f;
+          o.vy += ny * C.SHOCKWAVE_FORCE * f;
+          o.stunTimer = C.SHOCKWAVE_STUN * f;
+        }
       }
     }
   };
@@ -194,10 +264,14 @@
     var p = this.p;
     var e = this.enemies[markedIdx];
     var ex = e.x, ey = e.y;
-    var detRadius = C.SHOCKWAVE_RADIUS * 2.5;
+    var detoLvl  = (this._upgradeLevels && this._upgradeLevels.detonation) || 0;
+    var radMult  = detoLvl >= 2 ? 1.8 : 1.0;
+    var detRadius   = C.SHOCKWAVE_RADIUS * 2.5 * radMult;
     var detRadiusSq = detRadius * detRadius;
 
-    this._beginBatch('NUKE');
+    // During TW batch window, don't create a nested batch — just use the parent
+    var ownBatch = !this._twBatchWindow;
+    if (ownBatch) this._beginBatch('NUKE');
     var detoKills = 0;
     this._killEnemy(markedIdx, { batch: true });
     detoKills++;
@@ -217,7 +291,7 @@
         }
       }
     }
-    this._endBatch();
+    if (ownBatch) this._endBatch();
 
     // Star spawn: detonation killed ≥ STAR_DETO_THRESH enemies
     if (detoKills >= C.STAR_DETO_THRESH) {
@@ -229,6 +303,7 @@
 
     for (var pi = this.projectiles.length - 1; pi >= 0; pi--) {
       var pr = this.projectiles[pi];
+      if (pr.isReflected) continue;  // already on our side — nuke spares reflected projectiles
       var pdx = pr.x - ex, pdy = pr.y - ey;
       if (pdx * pdx + pdy * pdy < detRadiusSq) {
         this._explode(pr.x, pr.y, [0, 255, 255], 5);
@@ -238,12 +313,21 @@
     }
 
     this.cameras.main.flash(200, 0, 255, 255, false);
-    this.cameras.main.shake(200, 0.018);
-    this._triggerHitstop(C.DETONATION_HITSTOP);
+    this.cameras.main.shake(detoLvl >= 2 ? 280 : 200, detoLvl >= 2 ? 0.030 : 0.018);
+    this._triggerHitstop(detoLvl >= 2 ? C.DETONATION_HITSTOP * 1.4 : C.DETONATION_HITSTOP);
     this._spawnWaveRing(ex, ey);
+    if (detoLvl >= 2) {
+      // Extra rings at scaled radius to emphasize bigger nuke
+      var self2 = this;
+      this.time.delayedCall(80,  function () { if (self2._spawnWaveRing) self2._spawnWaveRing(ex, ey); });
+      this.time.delayedCall(160, function () { if (self2._spawnWaveRing) self2._spawnWaveRing(ex, ey); });
+    }
 
-    this._explode(ex, ey, [0, 255, 255], 50);
-    this._explode(ex, ey, [255, 255, 255], 30);
+    this._explode(ex, ey, [0, 255, 255],    detoLvl >= 2 ? 90  : 50);
+    this._explode(ex, ey, [255, 255, 255],  detoLvl >= 2 ? 55  : 30);
+    if (detoLvl >= 2) {
+      this._explode(ex, ey, [180, 80, 255], 40);  // violet — bigger nuke feels heavier
+    }
   };
 
   M._triggerLandingBurst = function () {
@@ -270,6 +354,114 @@
     ring.gfx.setVisible(true);
 
     p.invincible = true; p.invincTimer = 250; p.dashInvinc = true;
+  };
+
+  /* ================================================================
+     DELAYED EXPLOSION — baseAtk upgrade Lv1/Lv2
+     ================================================================ */
+
+  M._trySpawnDelayedExplosion = function (x, y) {
+    var lvl = (this._upgradeLevels && this._upgradeLevels.baseAtk) || 0;
+    if (lvl === 0) return;
+    var chance = lvl >= 2 ? 0.10 : 0.05;
+    if (Math.random() >= chance) return;
+
+    var self    = this;
+    var DELAY   = 2000;     // ms until explosion
+    var startR  = C.SHOCKWAVE_RADIUS * (lvl >= 2 ? 0.99 : 0.61);  // smaller warning ring, proportional to level
+    var gfx     = this.add.graphics();
+    gfx.setDepth(55);
+
+    // Tween a plain object so onUpdate redraws the warning circle each frame
+    var state = { r: startR };
+    this.tweens.add({
+      targets:  state,
+      r:        0,
+      duration: DELAY,
+      ease:     'Cubic.easeIn',
+      onUpdate: function () {
+        if (!self._upgradeLevels) { gfx.clear(); return; }
+        var curR = state.r;
+        if (curR <= 0) { gfx.clear(); return; }
+        var prog    = 1.0 - curR / startR;           // 0→1 as ring closes
+        var late    = prog * prog;                    // quadratic; accelerates at end
+        var flicker = prog > 0.70 ? (0.78 + Math.random() * 0.22) : 1.0;
+        var RED     = 0xff2222;
+        var ORANGE  = 0xff6633;
+
+        gfx.clear();
+
+        // Outer ring
+        gfx.lineStyle(2.5, RED, (0.30 + late * 0.60) * flicker);
+        gfx.strokeCircle(x, y, curR);
+
+        // Very faint interior fill
+        gfx.fillStyle(RED, (0.015 + late * 0.035) * flicker);
+        gfx.fillCircle(x, y, curR);
+
+        // Inner secondary ring at 55% radius
+        if (curR > 8) {
+          gfx.lineStyle(1.5, RED, (0.15 + late * 0.50) * flicker);
+          gfx.strokeCircle(x, y, curR * 0.55);
+        }
+
+        // Growing center dot (appears in last 40% of delay)
+        if (prog > 0.60) {
+          var dotProg = (prog - 0.60) / 0.40;
+          var dotR    = dotProg * 7 * flicker;
+          gfx.fillStyle(0xffffff, late * 0.90 * flicker);
+          gfx.fillCircle(x, y, dotR);
+          gfx.fillStyle(ORANGE, late * 0.55 * flicker);
+          gfx.fillCircle(x, y, dotR * 1.5);
+        }
+      },
+      onComplete: function () {
+        gfx.destroy();
+        if (!self._upgradeLevels) return; // scene was restarted
+        self._triggerDelayedExplosion(x, y, lvl);
+      },
+    });
+  };
+
+  M._triggerDelayedExplosion = function (x, y, lvl) {
+    // Lv1 = same AoE as reflected-projectile smash (×1.1)
+    // Lv2 = halfway between reflected (×1.1) and nuke (×2.5) = ×1.8
+    var radius   = C.SHOCKWAVE_RADIUS * (lvl >= 2 ? 1.8 : 1.1);
+    var radiusSq = radius * radius;
+
+    var dOwnBatch = !this._twBatchWindow;
+    if (dOwnBatch) this._beginBatch('DELAY_EXP');
+
+    for (var i = this.enemies.length - 1; i >= 0; i--) {
+      var e   = this.enemies[i];
+      var dx  = e.x - x, dy = e.y - y;
+      var dSq = dx * dx + dy * dy;
+      if (dSq >= radiusSq) continue;
+
+      var d  = Math.sqrt(dSq);
+      var f  = 1.0 - d / radius;
+
+      if (e.tier === 3 && e.hasShield) {
+        this._breakShield(e);
+      } else {
+        e.hp -= 1;
+        if (e.hp <= 0) {
+          this._killEnemy(i, { batch: true });
+        } else {
+          this._explode(e.x, e.y, [0, 255, 255], 6);
+        }
+      }
+    }
+
+    if (dOwnBatch) this._endBatch();
+
+    // Visuals
+    this._explode(x, y, [0, 255, 255], 45);
+    this._explode(x, y, [255, 255, 255], 20);
+    this._spawnWaveRing(x, y);
+    this.cameras.main.flash(160, 0, 255, 255, false);
+    this.cameras.main.shake(140, 0.010);
+    this._triggerHitstop(Math.round(C.DETONATION_HITSTOP * 0.7));
   };
 
 })();

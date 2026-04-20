@@ -88,6 +88,41 @@
     }
   };
 
+  /* Stylish death for condemned (TW mark) enemies — crimson double ring, no explosion */
+  M._spawnCondemnedDeath = function (x, y, size) {
+    var slot = this._twDeathRings[this._twDeathRingW % this._twDeathRings.length];
+    this._twDeathRingW++;
+    slot.x = x; slot.y = y;
+    slot.r = Math.max(size * 0.4, 6);
+    slot.alpha = 1.0;
+    slot.active = true;
+    slot.gfx.setVisible(true);
+    // Minimal crimson sparks (won't overwhelm shared emitter)
+    this._explode(x, y, [200, 20, 50], 5);
+  };
+
+  M._updateCondemnedDeathRings = function (dt) {
+    for (var i = 0; i < this._twDeathRings.length; i++) {
+      var ring = this._twDeathRings[i];
+      if (!ring.active) continue;
+      ring.r    += dt * 90;
+      ring.alpha -= dt * 2.6;
+      if (ring.alpha <= 0) {
+        ring.active = false;
+        ring.gfx.clear();
+        ring.gfx.setVisible(false);
+        continue;
+      }
+      ring.gfx.clear();
+      // Outer soft glow ring
+      ring.gfx.lineStyle(4, 0xcc1122, ring.alpha * 0.55);
+      ring.gfx.strokeCircle(ring.x, ring.y, ring.r);
+      // Inner bright crisp ring
+      ring.gfx.lineStyle(1.5, 0xff2244, ring.alpha);
+      ring.gfx.strokeCircle(ring.x, ring.y, ring.r * 0.6);
+    }
+  };
+
   M._updateWaveRings = function (dt) {
     var c = LA.getColors();
     for (var i = 0; i < this._waveRings.length; i++) {
@@ -155,21 +190,26 @@
       this._comboAuraRot += dt * 18;
       this._comboAuraGfx.clear();
       var aR = C.SIZE * 1.5;
-      var aPulse = 0.6 + 0.35 * Math.sin(this.gameTime * Math.PI * 8);
+      // Dimmed during TW — arcs golden to match player/orbs
+      var twDim = this._twActive ? 0.22 : 1.0;
+      var arcCol = this._twActive ? 0xffc832 : 0x00ffff;
+      var aPulse = (0.6 + 0.35 * Math.sin(this.gameTime * Math.PI * 8)) * twDim;
       for (var ai2 = 0; ai2 < 3; ai2++) {
         var baseA = this._comboAuraRot + (Math.PI * 2 / 3) * ai2;
-        this._comboAuraGfx.lineStyle(2.5, 0x00ffff, aPulse);
+        this._comboAuraGfx.lineStyle(2.5, arcCol, aPulse);
         this._comboAuraGfx.beginPath();
         this._comboAuraGfx.arc(p.x, p.y, aR, baseA, baseA + 0.55);
         this._comboAuraGfx.strokePath();
       }
 
-      // Sparks: 2 per frame at random offsets around player
-      this._comboSparkEmitter.setPosition(
-        p.x + (Math.random() - 0.5) * C.SIZE * 2,
-        p.y + (Math.random() - 0.5) * C.SIZE * 2
-      );
-      this._comboSparkEmitter.explode(2);
+      // Sparks: suppressed during TW, otherwise 2 per frame
+      if (!this._twActive) {
+        this._comboSparkEmitter.setPosition(
+          p.x + (Math.random() - 0.5) * C.SIZE * 2,
+          p.y + (Math.random() - 0.5) * C.SIZE * 2
+        );
+        this._comboSparkEmitter.explode(2);
+      }
     }
   };
 
@@ -218,10 +258,23 @@
 
       // ---- Orb ----
       og.clear();
-      og.lineStyle(4, c.cyan, 0.30);
-      og.strokeCircle(0, 0, ORB_SIZE + 4);
-      og.fillStyle(c.cyan, 0.95);
-      og.fillCircle(0, 0, ORB_SIZE);
+      if (this._twActive) {
+        // Golden phantom look during TW — matches player arrow
+        var twPulse = 0.42 + 0.20 * Math.sin(this.gameTime * Math.PI * 3 + oi * 1.4);
+        og.lineStyle(4, 0xffc832, twPulse * 0.5);
+        og.strokeCircle(0, 0, ORB_SIZE + 4);
+        og.fillStyle(0xffc832, twPulse);
+        og.fillCircle(0, 0, ORB_SIZE);
+        og.setBlendMode(Phaser.BlendModes.ADD);
+        og.setAlpha(twPulse + 0.10);
+      } else {
+        og.lineStyle(4, c.cyan, 0.30);
+        og.strokeCircle(0, 0, ORB_SIZE + 4);
+        og.fillStyle(c.cyan, 0.95);
+        og.fillCircle(0, 0, ORB_SIZE);
+        og.setBlendMode(Phaser.BlendModes.NORMAL);
+        og.setAlpha(1.0);
+      }
       og.setPosition(ox, oy);
     }
   };
@@ -284,6 +337,253 @@
       if (i === 0) gfx.moveTo(x, y); else gfx.lineTo(x, y);
     }
     gfx.closePath();
+  };
+
+  /* ---------------------------------------------------------------
+     Dash-Attack Lv2: vacuum field visual (called each frame)
+     --------------------------------------------------------------- */
+  M._updateDashVacuumFX = function (dt) {
+    var p   = this.p;
+    var gfx = this._dashVacuumGfx;
+    var dashLvl = (this._upgradeLevels && this._upgradeLevels.dashAtk) || 0;
+
+    gfx.clear();
+
+    /* ------------------------------------------------------------------
+       TW RESOLUTION TETHER: show all frozen-reflected projectiles at once
+       when time resumes, fading out with a golden beam (≈1.5s).
+       Runs regardless of current dash state.
+    ------------------------------------------------------------------ */
+    if (this._twTetherAlpha > 0 && dashLvl >= 2) {
+      this._twTetherAlpha = Math.max(0, this._twTetherAlpha - dt * 0.65);
+      var ta  = this._twTetherAlpha;
+      var gt2 = this.gameTime;
+      for (var ti = 0; ti < this.projectiles.length; ti++) {
+        var tpr = this.projectiles[ti];
+        if (!tpr._twTetherActive) continue;
+        var tdx = tpr.x - p.x, tdy = tpr.y - p.y;
+        var tdSq = tdx * tdx + tdy * tdy;
+        if (tdSq < 400) continue;
+        var tpd = Math.sqrt(tdSq);
+        var tnx = tdx / tpd, tny = tdy / tpd;
+
+        // Outer golden glow beam
+        gfx.lineStyle(6, 0xffc832, 0.18 * ta);
+        gfx.beginPath(); gfx.moveTo(p.x, p.y); gfx.lineTo(tpr.x, tpr.y); gfx.strokePath();
+        // Main gold beam
+        gfx.lineStyle(2, 0xffe06e, 0.72 * ta);
+        gfx.beginPath(); gfx.moveTo(p.x, p.y); gfx.lineTo(tpr.x, tpr.y); gfx.strokePath();
+        // Bright white core
+        gfx.lineStyle(0.8, 0xffffff, 0.36 * ta);
+        gfx.beginPath(); gfx.moveTo(p.x, p.y); gfx.lineTo(tpr.x, tpr.y); gfx.strokePath();
+        // Animated gold dots
+        for (var tdi = 0; tdi < 5; tdi++) {
+          var tt  = ((gt2 * 2.2 + tdi / 5) % 1.0);
+          var dtX = p.x + tnx * tpd * tt;
+          var dtY = p.y + tny * tpd * tt;
+          gfx.fillStyle(0xffe06e, ta * (0.58 + 0.28 * (1.0 - tt)));
+          gfx.fillCircle(dtX, dtY, 2.5 - tt * 0.8);
+        }
+        // Impact marker (gold ring + crosshair)
+        gfx.fillStyle(0xffc832, 0.52 * ta);
+        gfx.fillCircle(tpr.x, tpr.y, 8);
+        gfx.fillStyle(0xffffff, 0.32 * ta);
+        gfx.fillCircle(tpr.x, tpr.y, 3.5);
+        gfx.lineStyle(1, 0xffffff, 0.32 * ta);
+        gfx.beginPath();
+        gfx.moveTo(tpr.x - 8, tpr.y); gfx.lineTo(tpr.x + 8, tpr.y);
+        gfx.moveTo(tpr.x, tpr.y - 8); gfx.lineTo(tpr.x, tpr.y + 8);
+        gfx.strokePath();
+      }
+    }
+
+    /* ------------------------------------------------------------------
+       Clear per-attack tether flag when not in a dash-attack so the
+       next dash-attack starts fresh.
+    ------------------------------------------------------------------ */
+    if (p.state !== 'DASH_ATTACKING') {
+      for (var ci = 0; ci < this.projectiles.length; ci++) {
+        if (this.projectiles[ci]._reflectedThisAtk) this.projectiles[ci]._reflectedThisAtk = false;
+      }
+    }
+
+    if (p.state !== 'DASH_ATTACKING' || dashLvl < 2) return;
+
+    var c  = LA.getColors();
+    var R  = C.DASHATK_VACUUM_RADIUS;
+    var gt = this.gameTime;
+
+    var DASH_COL = 0xff14c8;  // dash-attack magenta
+
+    // Faint magenta fill under inner arcs
+    var innerR = R * 0.40;
+    gfx.fillStyle(DASH_COL, 0.045);
+    gfx.fillCircle(p.x, p.y, innerR);
+
+    // Inner counter-rotating arcs (3, counter-clockwise)
+    var rot2 = -gt * 3.8;
+    for (var bi = 0; bi < 3; bi++) {
+      var b0 = rot2 + (Math.PI * 2 / 3) * bi;
+      gfx.lineStyle(2.5, DASH_COL, 0.55);
+      gfx.beginPath();
+      gfx.arc(p.x, p.y, innerR, b0, b0 + 0.40);
+      gfx.strokePath();
+    }
+
+    // Core glow ring close to player (singularity pulse)
+    gfx.lineStyle(2.5, DASH_COL, 0.50 + 0.25 * Math.sin(gt * Math.PI * 7));
+    gfx.strokeCircle(p.x, p.y, C.SIZE * 1.8);
+
+    /* ------------------------------------------------------------------
+       Deflection tether: beam from player to projectiles reflected during
+       THIS dash-attack only. No distance cap during TW (just reflected
+       and frozen in place). Frozen projectiles are included here since
+       they were just reflected — _reflectedThisAtk is set at reflect time.
+    ------------------------------------------------------------------ */
+    var beamR   = 480;
+    var beamRSq = beamR * beamR;
+    for (var pi = 0; pi < this.projectiles.length; pi++) {
+      var pr = this.projectiles[pi];
+      if (!pr._reflectedThisAtk) continue;
+      var pdx = pr.x - p.x, pdy = pr.y - p.y;
+      var pdSq = pdx * pdx + pdy * pdy;
+      if (pdSq < 400) continue;
+      // No distance cap during TW (freshly frozen after reflect)
+      if (!this._twActive && pdSq > beamRSq) continue;
+      var pd = Math.sqrt(pdSq);
+      var distFade = this._twActive ? 1.0 : (1.0 - pd / beamR);
+      if (distFade <= 0) continue;
+      var nx = pdx / pd, ny = pdy / pd;
+
+      // Thick outer glow beam (purple)
+      gfx.lineStyle(5, 0xaa44ff, 0.14 * distFade);
+      gfx.beginPath();
+      gfx.moveTo(p.x, p.y);
+      gfx.lineTo(pr.x, pr.y);
+      gfx.strokePath();
+
+      // Main beam
+      gfx.lineStyle(1.8, 0xcc88ff, 0.60 * distFade);
+      gfx.beginPath();
+      gfx.moveTo(p.x, p.y);
+      gfx.lineTo(pr.x, pr.y);
+      gfx.strokePath();
+
+      // Bright white core
+      gfx.lineStyle(0.8, 0xffffff, 0.32 * distFade);
+      gfx.beginPath();
+      gfx.moveTo(p.x, p.y);
+      gfx.lineTo(pr.x, pr.y);
+      gfx.strokePath();
+
+      // Animated energy dots flowing player → reflected projectile
+      var numDots = 5;
+      for (var di = 0; di < numDots; di++) {
+        var t = ((gt * 2.2 + di / numDots) % 1.0);
+        var dotX = p.x + nx * pd * t;
+        var dotY = p.y + ny * pd * t;
+        var dotA = distFade * (0.55 + 0.30 * (1.0 - t));
+        gfx.fillStyle(0xcc88ff, dotA);
+        gfx.fillCircle(dotX, dotY, 2.5 - t * 0.8);
+      }
+
+      // Impact marker at reflected projectile: glow ring + crosshair
+      gfx.fillStyle(0xaa44ff, 0.40 * distFade);
+      gfx.fillCircle(pr.x, pr.y, 7);
+      gfx.fillStyle(0xffffff, 0.28 * distFade);
+      gfx.fillCircle(pr.x, pr.y, 3);
+      var cl = 7;
+      gfx.lineStyle(1, 0xffffff, 0.28 * distFade);
+      gfx.beginPath();
+      gfx.moveTo(pr.x - cl, pr.y); gfx.lineTo(pr.x + cl, pr.y);
+      gfx.moveTo(pr.x, pr.y - cl); gfx.lineTo(pr.x, pr.y + cl);
+      gfx.strokePath();
+    }
+  };
+
+  /* ---------------------------------------------------------------
+     Dash Lv2: tornado — spawn + per-frame update
+     --------------------------------------------------------------- */
+  M._spawnDashTornado = function (x, y) {
+    var gfx = this.add.graphics();
+    gfx.setDepth(22);
+    gfx.setBlendMode(Phaser.BlendModes.ADD);
+    this._dashTornados.push({
+      x: x, y: y,
+      life: C.DASH_TORNADO_DUR, maxLife: C.DASH_TORNADO_DUR,
+      gfx: gfx, rot: 0, active: true,
+    });
+  };
+
+  M._updateDashTornados = function (dt) {
+    if (!this._dashTornados || !this._dashTornados.length) return;
+    var ms       = dt * 1000;
+    var DEEP_BLUE  = 0x3344cc;
+    var MID_VIOLET = 0x6633ff;
+    var CORE_VIO   = 0x9966ff;
+    var R = C.DASH_TORNADO_RADIUS;
+
+    for (var ti = this._dashTornados.length - 1; ti >= 0; ti--) {
+      var tor = this._dashTornados[ti];
+      tor.life -= ms;
+      if (tor.life <= 0) {
+        tor.gfx.destroy();
+        this._dashTornados.splice(ti, 1);
+        continue;
+      }
+      tor.rot += dt * 4.5;
+      var elapsed = tor.maxLife - tor.life;
+      var appear  = elapsed < 300  ? elapsed / 300  : 1.0;  // 300ms fade-in
+      var fade    = tor.life  < 600 ? tor.life  / 600 : 1.0; // 600ms fade-out
+      var alpha   = appear * fade;
+
+      var gfx = tor.gfx;
+      gfx.clear();
+
+      // Faint fill
+      gfx.fillStyle(DEEP_BLUE, 0.06 * alpha);
+      gfx.fillCircle(tor.x, tor.y, R);
+
+      // Outer boundary ring
+      gfx.lineStyle(1.5, DEEP_BLUE, 0.22 * alpha);
+      gfx.strokeCircle(tor.x, tor.y, R);
+
+      // 3 outer clockwise arcs at R
+      for (var ai = 0; ai < 3; ai++) {
+        var a0 = tor.rot + (Math.PI * 2 / 3) * ai;
+        gfx.lineStyle(2.0, DEEP_BLUE, 0.45 * alpha);
+        gfx.beginPath();
+        gfx.arc(tor.x, tor.y, R, a0, a0 + 0.65);
+        gfx.strokePath();
+      }
+
+      // 3 mid counter-clockwise arcs at R*0.65
+      var rot2 = -tor.rot * 1.5;
+      for (var bi = 0; bi < 3; bi++) {
+        var b0 = rot2 + (Math.PI * 2 / 3) * bi;
+        gfx.lineStyle(2.0, MID_VIOLET, 0.55 * alpha);
+        gfx.beginPath();
+        gfx.arc(tor.x, tor.y, R * 0.65, b0, b0 + 0.55);
+        gfx.strokePath();
+      }
+
+      // 3 inner fast clockwise arcs at R*0.35
+      var rot3 = tor.rot * 2.5;
+      for (var ci = 0; ci < 3; ci++) {
+        var c0 = rot3 + (Math.PI * 2 / 3) * ci;
+        gfx.lineStyle(2.5, CORE_VIO, 0.65 * alpha);
+        gfx.beginPath();
+        gfx.arc(tor.x, tor.y, R * 0.35, c0, c0 + 0.50);
+        gfx.strokePath();
+      }
+
+      // Core glow (pulsing)
+      var corePulse = 0.55 + 0.30 * Math.sin(this.gameTime * Math.PI * 6);
+      gfx.fillStyle(CORE_VIO, corePulse * alpha * 0.55);
+      gfx.fillCircle(tor.x, tor.y, R * 0.12);
+      gfx.lineStyle(2, 0xffffff, corePulse * alpha * 0.25);
+      gfx.strokeCircle(tor.x, tor.y, R * 0.12);
+    }
   };
 
 })();

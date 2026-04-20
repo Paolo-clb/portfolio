@@ -32,20 +32,33 @@
     pr.spr.destroy();
   };
 
-  M._updateProjectiles = function (dt) {
+  M._updateProjectiles = function (dt, playerDt) {
     var ms = dt * 1000;
     var p = this.p;
     var pR = C.SIZE * 0.6;
     var isAtk = p.state === 'ATTACKING';
     var isDAtk = p.state === 'DASH_ATTACKING';
     var vuln = !isAtk && !isDAtk && p.state !== 'DASHING';
+    var dashLvl = (this._upgradeLevels && this._upgradeLevels.dashAtk) || 0;
+    var twActive = this._twActive;
 
     for (var i = this.projectiles.length - 1; i >= 0; i--) {
       var pr = this.projectiles[i];
-      pr.life -= ms;
-      pr.x += pr.vx * dt; pr.y += pr.vy * dt;
+      // Reflected projectiles use player timing during time stop
+      var prDt = (twActive && pr.isReflected) ? (playerDt || dt) : dt;
+      var prMs = prDt * 1000;
+
+      // Frozen during TW: skip all movement/life drain
+      if (pr._twFrozen) {
+        pr.spr.setPosition(pr.x, pr.y);
+        pr.spr.rotation += 0.5 * dt; // gentle spin to show it's alive
+        continue;
+      }
+
+      pr.life -= prMs;
+      pr.x += pr.vx * prDt; pr.y += pr.vy * prDt;
       pr.spr.setPosition(pr.x, pr.y);
-      pr.spr.rotation += pr.rotSpeed * dt;
+      pr.spr.rotation += pr.rotSpeed * prDt;
 
       // Trail: inject a new slot into the global pool
       var spd = pr.vx * pr.vx + pr.vy * pr.vy;
@@ -75,6 +88,7 @@
 
       // OOB / expired
       if (pr.life <= 0 || Math.abs(pr.x) > C.WORLD_HALF || Math.abs(pr.y) > C.WORLD_HALF) {
+        if (pr._twPending) this._twResolvePending();
         this._destroyProjectile(pr);
         this.projectiles.splice(i, 1);
         continue;
@@ -90,12 +104,14 @@
             // Shield intercept
             if (e.tier === 3 && e.hasShield) {
               this._breakShield(e);
+              if (pr._twPending) this._twResolvePending();
               this._destroyProjectile(pr);
               this.projectiles.splice(i, 1);
               break;
             }
             if (pr.smashed) {
-              this._beginBatch('PARADE');
+              var pOwnBatch = !this._twBatchWindow;
+              if (pOwnBatch) this._beginBatch('PARADE');
               var smashAoe = C.SHOCKWAVE_RADIUS * 1.1; // buffed vs 0.75 before, stays under nuke (×2.5)
               var smashAoeSq = smashAoe * smashAoe;
               var directDmg = (e.tier === 3) ? 2 : 2;
@@ -124,7 +140,7 @@
                   se.stunTimer = Math.max(se.stunTimer, 250 * sf);
                 }
               }
-              this._endBatch();
+              if (pOwnBatch) this._endBatch();
               this._explode(pr.x, pr.y, [170, 68, 255], 30);
               this._explode(pr.x, pr.y, [255, 255, 255], 15);
               this._explode(pr.x, pr.y, [200, 120, 255], 10);
@@ -140,6 +156,7 @@
                 this._explode(e.x, e.y, [0, 255, 255], 6);
               }
             }
+            if (pr._twPending) this._twResolvePending();
             this._destroyProjectile(pr);
             this.projectiles.splice(i, 1);
             break;
@@ -163,6 +180,7 @@
         }
 
         // Deflect: only dash attack can reflect projectiles
+        // Lv2 extended vacuum is disabled during TW to avoid re-catching frozen reflected projectiles
         if (isDAtk) {
           var ddx = p.x - pr.x, ddy = p.y - pr.y;
           // Parrybox: generous base, diminishes as arrow grows (combo + star buff arrow size)
@@ -176,6 +194,7 @@
           arrowScale *= 1.08; // always DASH_ATTACKING here
           if (this.isStarPowered) arrowScale *= 1.25;
           var parryBonus = (pR * 1.5) / arrowScale; // ~16px at base, shrinks with bigger arrow
+          if (dashLvl >= 2) parryBonus += 55;  // Lv2: magnetic vacuum catch zone
           var ddThresh = pR + C.PROJ_RADIUS + parryBonus;
           if (ddx * ddx + ddy * ddy < ddThresh * ddThresh) {
             var refSpd = C.PROJ_SPEED * C.PROJ_REFLECT_MULT;
@@ -201,10 +220,16 @@
             pr.vx = Math.cos(refAng) * refSpd;
             pr.vy = Math.sin(refAng) * refSpd;
             pr.isReflected = true;
+            pr._reflectedThisAtk = true;  // show tether only for this dash-attack
             pr.smashed = true;
             pr.life = C.PROJ_LIFE;
             pr.rotSpeed = 28;
             pr.spr.setTint(0xaa44ff);
+
+            // During TW: freeze reflected projectile in place
+            if (twActive) {
+              this._twFreezeProjectile(pr);
+            }
 
             p.hasHitDuringDashAttack = true;
             this._triggerHitstop(C.DEFLECT_HEAVY_HS);

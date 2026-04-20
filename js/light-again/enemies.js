@@ -38,6 +38,24 @@
       }
     }
 
+    // Dash Lv2 tornados: pull all enemies in range toward each tornado center
+    if (this._dashTornados && this._dashTornados.length) {
+      for (var ti = 0; ti < this._dashTornados.length; ti++) {
+        var tor = this._dashTornados[ti];
+        if (!tor.active || tor.life <= 0) continue;
+        var torRSq = C.DASH_TORNADO_RADIUS * C.DASH_TORNADO_RADIUS;
+        for (var ei = 0; ei < en.length; ei++) {
+          var te = en[ei];
+          var tdx = tor.x - te.x, tdy = tor.y - te.y;
+          var tdSq = tdx * tdx + tdy * tdy;
+          if (tdSq > torRSq || tdSq < 0.01) continue;
+          var td = Math.sqrt(tdSq);
+          te.vx += (tdx / td) * C.DASH_TORNADO_PULL * dt;
+          te.vy += (tdy / td) * C.DASH_TORNADO_PULL * dt;
+        }
+      }
+    }
+
     for (var i = 0; i < en.length; i++) {
       var e = en[i];
       var tSl = e.trail[e._tw % this.ENEMY_TRAIL_N];
@@ -70,7 +88,7 @@
         if (e.fireFlashTimer > 0) e.fireFlashTimer -= ms;
         var dx2 = p.x - e.x, dy2 = p.y - e.y;
         var d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-        if (d2 > 0.1) e.angle = Math.atan2(dy2, dx2);
+        if (d2 > 0.1 && !this._twActive) e.angle = Math.atan2(dy2, dx2);
 
         if (d2 < C.T2_KEEP_DIST * 0.7) {
           var fx2 = d2 > 0.1 ? (-dx2 / d2) * e.speed * 1.5 : 0;
@@ -104,7 +122,7 @@
       } else if (e.tier === 3) {
         var dx3 = p.x - e.x, dy3 = p.y - e.y;
         var d3 = Math.sqrt(dx3 * dx3 + dy3 * dy3);
-        if (d3 > 0.1) e.angle = Math.atan2(dy3, dx3);
+        if (d3 > 0.1 && !this._twActive) e.angle = Math.atan2(dy3, dx3);
 
         e.waypointTimer -= ms;
         var wpDx = e.targetWaypoint.x - e.x;
@@ -184,7 +202,7 @@
         var dx = p.x - e.x, dy = p.y - e.y;
         var d = Math.sqrt(dx * dx + dy * dy);
         if (d > 0.1) {
-          e.angle = Math.atan2(dy, dx);
+          if (!this._twActive) e.angle = Math.atan2(dy, dx);
           var ax = (dx / d) * e.speed, ay = (dy / d) * e.speed;
           e.vx += (ax - e.vx) * stK; e.vy += (ay - e.vy) * stK;
         }

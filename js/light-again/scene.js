@@ -63,13 +63,13 @@
         hp: 1, invincible: false, invincTimer: 0, dashInvinc: false, dashCoyote: false,
       };
 
-      // Shield orbs — start with 1
+      // Shield orbs — start with 1 slot max (upgrades raise this to 2 or 3)
       this.playerShields = 1;
-      this.MAX_SHIELDS   = 3;
+      this.MAX_SHIELDS   = 1;
       this._shieldFloatStack = 0;
       this._shieldAngle  = 0;
       this._shieldOrbs   = [];
-      var SHIELD_ORBS_N  = 3;
+      var SHIELD_ORBS_N  = 3;  // pool always 3; only MAX_SHIELDS used at runtime
       for (var oi = 0; oi < SHIELD_ORBS_N; oi++) {
         var og = this.add.graphics();
         og.setDepth(35);
@@ -169,6 +169,16 @@
       }
       this._waveRingW = 0;
 
+      // Pool for condemned-death ring bursts (up to 16 simultaneous)
+      this._twDeathRings = [];
+      for (var tdi = 0; tdi < 16; tdi++) {
+        var tdg = this.add.graphics();
+        tdg.setDepth(34);
+        tdg.setVisible(false);
+        this._twDeathRings.push({ gfx: tdg, x: 0, y: 0, r: 0, alpha: 0, active: false });
+      }
+      this._twDeathRingW = 0;
+
       this._hiveBeams = [];
       for (var hbi = 0; hbi < 12; hbi++) {
         var hbg = this.add.graphics();
@@ -260,6 +270,13 @@
       this._comboAuraRot = 0;
       this._comboAuraActive = false;
 
+      // Dash-attack Lv2 vacuum field visual
+      this._dashVacuumGfx = this.add.graphics();
+      this._dashVacuumGfx.setDepth(28);
+      this._dashVacuumGfx.setBlendMode(Phaser.BlendModes.ADD);
+      this._dashTornados = [];  // dash Lv2 tornado pool
+      this._dashTornadoCounter = 0;  // every 3rd dash triggers tornado
+
       // Combo FX: x50+ sparks
       this._comboSparkEmitter = this.add.particles(0, 0, '_pxl', {
         speed: { min: 100, max: 320 },
@@ -288,6 +305,10 @@
       this._starAuraGfx.setDepth(27);
       this._starAuraGfx.setBlendMode(Phaser.BlendModes.ADD);
       this._starAuraGfx.setVisible(false);
+
+      // Upgrade system (roguelite draft)
+      this._initUpgrades();
+      this._initTimeStop();
 
       cam.setBackgroundColor(LA.getColors().bgColor);
 
@@ -320,6 +341,11 @@
           var oy = self.p.y + (Math.random() - 0.5) * 200;
           self._spawnStar(ox, oy);
         }
+        if (ev.code === 'KeyK' && !ev.repeat) {
+          ev.preventDefault();
+          self._beginUpgradeSlowMo();
+        }
+
       });
       this.input.keyboard.on('keyup', function (ev) {
         self._keys[ev.code] = false;
@@ -331,8 +357,9 @@
         self._mouseX = ptr.x; self._mouseY = ptr.y;
       });
       this.input.on('pointerdown', function (ptr) {
-        if (ptr.leftButtonDown())  self._tryAttack();
-        if (ptr.rightButtonDown()) self._tryDash();
+        if (ptr.leftButtonDown())   self._tryAttack();
+        if (ptr.rightButtonDown())  self._tryDash();
+        if (ptr.middleButtonDown()) self._tryTimeStop();
       });
 
       this.game.canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
@@ -346,11 +373,55 @@
         if (p.state === 'RECOVERY') return false;
         return true;
       };
+      // Clear stuck keys on scene resume (upgrade draft / manual pause)
+      this.events.on('resume', function () {
+        self._keys = {};
+      });
+
+      // Clear stuck keys when window regains focus
+      window.addEventListener('focus', this._onWindowFocus = function () {
+        self._keys = {};
+      });
+
+      // Debug keys (work even while scene is paused via window listener)
+      window.addEventListener('keydown', this._onDebugKey = function (ev) {
+        // M: max out all 5 normal upgrades to level 2 (NOT The World)
+        if (ev.code === 'KeyM' && !ev.repeat) {
+          var defs = LA.UPGRADES;
+          for (var k in defs) {
+            if (defs.hasOwnProperty(k)) {
+              self._upgradeLevels[k] = defs[k].maxLvl;
+            }
+          }
+          self._upgradePool = [];
+          // Shield upgrade side-effect: raise MAX_SHIELDS
+          var shLvl = self._upgradeLevels.shield || 0;
+          if (shLvl > 0) self.MAX_SHIELDS = 1 + shLvl;
+        }
+        // N: unlock The World only + reset cooldown
+        if (ev.code === 'KeyN' && !ev.repeat) {
+          self._twUnlocked = true;
+          self._twCooldown = 0;
+          self._twSecretOffered = true;
+        }
+      });
+
       this.events.once('shutdown', function () {
         window.__lightGameAtkReady = null;
         self._vignetteSprite = null;
         self._chromaFX = null;
         self._bloomFX = null;
+        self._shieldLabelTxt = null;
+        self._twDesatPipeline = null;
+        if (self._twIconTxt) { self._twIconTxt.destroy(); self._twIconTxt = null; }
+        if (self._onWindowFocus) {
+          window.removeEventListener('focus', self._onWindowFocus);
+          self._onWindowFocus = null;
+        }
+        if (self._onDebugKey) {
+          window.removeEventListener('keydown', self._onDebugKey);
+          self._onDebugKey = null;
+        }
       });
     },
 
@@ -379,15 +450,29 @@
 
       this._checkTheme();
 
+      // Upgrade slow-mo transition (runs on real dt, not scaled)
+      this._updateUpgradeSlowMo(dt);
+
       if (this.hitstopTimer > 0) {
         this.hitstopTimer -= delta;
         if (this.hitstopTimer <= 0) { this.hitstopTimer = 0; this.timeScale = 1.0; }
         else this.timeScale = 0;
       }
 
-      var sDt  = dt * this.timeScale;
+      // Apply upgrade slow-mo on top of hitstop timeScale
+      var upgradeTS = this._getUpgradeTimeScale();
+
+      // The World: separate player vs world time scales
+      var twScale = this._updateTimeStop(dt);
+      var sDt  = dt * this.timeScale * upgradeTS * twScale;
       var s60  = sDt * 60;
       var ms   = sDt * 1000;
+
+      // Player timing: full speed during time stop
+      var pScale = this._twActive ? 1.0 : (this.timeScale * upgradeTS);
+      var pDt  = dt * pScale;
+      var pS60 = pDt * 60;
+      var pMs  = pDt * 1000;
 
       this._fpsCounter = (this._fpsCounter || 0) + 1;
       if (this._fpsCounter >= 15) {
@@ -400,7 +485,7 @@
         }
       }
 
-      if (ms < 0.001) {
+      if (ms < 0.001 && pMs < 0.001) {
         this._decayGhosts(dt);
         this._renderPlayer();
         return;
@@ -413,22 +498,22 @@
       }
 
       if (p.invincible) {
-        p.invincTimer -= ms;
+        p.invincTimer -= pMs;
         if (p.invincTimer <= 0) { p.invincible = false; p.invincTimer = 0; p.dashInvinc = false; p.dashCoyote = false; }
       }
 
-      var frDt = Math.pow(C.FRICTION, s60);
+      var frDt = Math.pow(C.FRICTION, pS60);
       if (p.state === 'MOVING') {
         var inp = this._inputVec();
-        p.vx = (p.vx + inp.dx * C.ACCEL * s60) * frDt;
-        p.vy = (p.vy + inp.dy * C.ACCEL * s60) * frDt;
+        p.vx = (p.vx + inp.dx * C.ACCEL * pS60) * frDt;
+        p.vy = (p.vy + inp.dy * C.ACCEL * pS60) * frDt;
       } else if (p.state === 'RECOVERY') {
         var rf = p.recoveryWhiff ? C.DASHATK_WHIFF_FRIC : C.RECOVERY_FRIC;
-        p.vx *= Math.pow(rf, s60); p.vy *= Math.pow(rf, s60);
+        p.vx *= Math.pow(rf, pS60); p.vy *= Math.pow(rf, pS60);
       } else {
         p.vx *= frDt; p.vy *= frDt;
       }
-      p.x += p.vx * s60; p.y += p.vy * s60;
+      p.x += p.vx * pS60; p.y += p.vy * pS60;
 
       var wM = C.WORLD_HALF - C.SIZE * 1.5;
       if (p.x < -wM) { p.x = -wM; p.vx *= -0.4; }
@@ -437,23 +522,28 @@
       if (p.y >  wM) { p.y =  wM; p.vy *= -0.4; }
 
       if (p.state === 'DASHING') {
-        p.dashTimer -= ms;
+        p.dashTimer -= pMs;
         if (p.vx * p.vx + p.vy * p.vy > 4) {
           this._addGhost(p.x, p.y, 0.55, p.angle, false);
         }
         if (p.dashTimer <= 0) {
-          p.state = 'MOVING'; p.dashCooldown = C.DASH_CD;
+          var dashUpLvl = (this._upgradeLevels && this._upgradeLevels.dash) || 0;
+          p.state = 'MOVING'; p.dashCooldown = C.DASH_CD * (dashUpLvl >= 1 ? 0.70 : 1.0);
           p.invincible = true; p.invincTimer = 220; p.dashInvinc = true;
           p.dashCoyote = true; // coyote window: attack within post-dash iframes → Dash-Attack
+          if (dashUpLvl >= 2) {
+            this._dashTornadoCounter = (this._dashTornadoCounter || 0) + 1;
+            if (this._dashTornadoCounter % 3 === 0) { this._spawnDashTornado(p.x, p.y); }
+          }
         }
       }
       if (p.state !== 'DASHING' && p.dashCooldown > 0) {
-        p.dashCooldown = Math.max(0, p.dashCooldown - ms);
+        p.dashCooldown = Math.max(0, p.dashCooldown - pMs);
         if (p.dashCooldown <= 0) p.dashAvailable = true;
       }
 
       if (p.state === 'ATTACKING') {
-        p.atkTimer -= ms; p.spinAngle += sDt * C.ATK_SPIN;
+        p.atkTimer -= pMs; p.spinAngle += pDt * C.ATK_SPIN;
         if (p.atkTimer <= 0) {
           p.state = 'RECOVERY'; p.recoveryTimer = C.ATK_WHIFF_DUR;
           p.recoveryWhiff = true; p.spinAngle = 0;
@@ -462,7 +552,7 @@
       }
 
       if (p.state === 'DASH_ATTACKING') {
-        p.atkTimer -= ms; p.spinAngle += sDt * C.DASH_ATK_SPIN;
+        p.atkTimer -= pMs; p.spinAngle += pDt * C.DASH_ATK_SPIN;
         this._addGhost(p.x, p.y, 0.70, p.angle, true);
         if (p.atkTimer <= 0) {
           if (p.hasHitDuringDashAttack) {
@@ -482,7 +572,7 @@
       }
 
       if (p.state === 'RECOVERY') {
-        p.recoveryTimer -= ms;
+        p.recoveryTimer -= pMs;
         if (p.recoveryTimer <= 0) { p.state = 'MOVING'; p.recoveryTimer = 0; }
       }
       if (p.state !== 'ATTACKING' && p.state !== 'DASH_ATTACKING') {
@@ -526,13 +616,13 @@
       }
 
       this._updateEnemies(sDt);
-      this._updateProjectiles(sDt);
+      this._updateProjectiles(sDt, pDt);
       this._checkCollisions();
       this._checkStarPickup();
 
-      // Star power timer countdown (for HUD bar)
+      // Star power timer countdown — uses real time so TW doesn't pause the bar
       if (this.isStarPowered) {
-        this._starPowerTimer -= ms;
+        this._starPowerTimer -= pMs;
         if (this._starPowerTimer < 0) this._starPowerTimer = 0;
       }
 
@@ -549,7 +639,8 @@
       this._renderShieldOrbs();
 
       var cam = this.cameras.main;
-      var cA = 1 - Math.pow(1 - C.CAM_LERP, s60);
+      var camS60 = this._twActive ? pS60 : s60;
+      var cA = 1 - Math.pow(1 - C.CAM_LERP, camS60);
       cam.scrollX += (p.x - cam.width  / 2 - cam.scrollX) * cA;
       cam.scrollY += (p.y - cam.height / 2 - cam.scrollY) * cA;
 
@@ -598,9 +689,12 @@
       }
 
       this._updateWaveRings(dt);
+      this._updateCondemnedDeathRings(dt);
       this._updateHiveBeams(dt);
 
       this._updateComboFX(sDt);
+      this._updateDashVacuumFX(pDt);
+      this._updateDashTornados(sDt);
       this._renderPlayer();
       this._renderEnemies();
       this._renderProjectiles();
@@ -633,7 +727,7 @@
         var lo = document.createElement('div');
         lo.id = '_la-loading';
         lo.style.cssText = [
-          'position:absolute', 'inset:0', 'z-index:80',
+          'position:absolute', 'inset:0', 'z-index:1',
           'display:flex', 'align-items:center', 'justify-content:center',
           'background:' + bgCss,
           'pointer-events:none',

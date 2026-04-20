@@ -27,11 +27,14 @@
     if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) {
       dx = Math.cos(p.angle); dy = Math.sin(p.angle);
     }
-    p.vx += dx * C.DASH_IMP;
-    p.vy += dy * C.DASH_IMP;
+    var dashLvl = (this._upgradeLevels && this._upgradeLevels.dash) || 0;
+    var impMult = dashLvl >= 1 ? 1.35 : 1.0;
+    var durMult = dashLvl >= 1 ? 1.20 : 1.0;
+    p.vx += dx * C.DASH_IMP * impMult;
+    p.vy += dy * C.DASH_IMP * impMult;
     p.state = 'DASHING';
     p.dashAvailable = false;
-    p.dashTimer = C.DASH_DUR;
+    p.dashTimer = C.DASH_DUR * durMult;
     p.dashCooldown = 0;
     p.dashDx = dx; p.dashDy = dy;
     p.dashHitCount = 0;
@@ -91,9 +94,12 @@
     if (al < 1) { adx = Math.cos(p.angle); ady = Math.sin(p.angle); }
     else { adx /= al; ady /= al; }
 
-    p.vx = adx * C.DASH_ATK_IMP; p.vy = ady * C.DASH_ATK_IMP;
+    var dAtkLvl = (this._upgradeLevels && this._upgradeLevels.dashAtk) || 0;
+    var impMult  = dAtkLvl >= 1 ? 1.45 : 1.0;
+    var durMult  = dAtkLvl >= 1 ? 1.40 : 1.0;
+    p.vx = adx * C.DASH_ATK_IMP * impMult; p.vy = ady * C.DASH_ATK_IMP * impMult;
     p.state = 'DASH_ATTACKING'; p.atkAvailable = false;
-    p.atkTimer = C.DASH_ATK_DUR; p.atkCooldown = 0;
+    p.atkTimer = C.DASH_ATK_DUR * durMult; p.atkCooldown = 0;
     p.atkDx = adx; p.atkDy = ady; p.spinAngle = 0;
     p.hasHitDuringDashAttack = false; p.dashAtkExtended = 0;
     p.dashTimer = 0; p.dashCooldown = C.DASH_CD;
@@ -103,6 +109,7 @@
   M._damagePlayer = function (nx, ny) {
     var p = this.p;
     if (p.invincible) return;
+    if (this._twActive) return;  // invulnerable during time stop
 
     if (this.playerShields > 0) {
       this.playerShields--;

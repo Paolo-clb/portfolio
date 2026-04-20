@@ -25,7 +25,9 @@
         var mThresh = C.DASH_MARK_RADIUS + me.size * 0.5;
         if (mdx * mdx + mdy * mdy < mThresh * mThresh) {
           me.isMarked = true;
-          me.markTimer = 3000;
+          var detoLvl = (this._upgradeLevels && this._upgradeLevels.detonation) || 0;
+          me.markMaxTimer = detoLvl >= 1 ? 6000 : 3000;
+          me.markTimer = me.markMaxTimer;
           me.stunTimer = 200;
           p.dashHitCount++;
           this._explode(me.x, me.y, [0, 255, 255], 8);
@@ -35,6 +37,10 @@
 
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var e = this.enemies[i];
+
+      // During TW, arrow passes through condemned enemies (already going to die)
+      if (e._twCondemned && (isAtk || isDAtk)) continue;
+
       var dx = p.x - e.x, dy = p.y - e.y;
       var distSq = dx * dx + dy * dy;
       // Slightly larger hitbox for tier-3 shield vs dash-attack only
@@ -45,7 +51,13 @@
         if (isAtk) {
           // Detonation on marked enemy — ignores shield entirely
           if (e.isMarked) {
-            this._triggerDetonation(i);
+            // During TW: defer detonation to resolution
+            if (this._twActive) {
+              this._twDeferDetonation(e);
+              this._twDeferKill(i);
+            } else {
+              this._triggerDetonation(i);
+            }
             p.state = 'MOVING';
             p.spinAngle = 0; p.atkTimer = 0;
             p.atkAvailable = true; p.atkCooldown = 0;
@@ -65,7 +77,9 @@
           var atkDmg = (e.tier === 3) ? 1 : 1;
           e.hp -= atkDmg;
           if (e.hp <= 0) {
+            var dex = e.x, dey = e.y;
             this._killEnemy(i);
+            this._trySpawnDelayedExplosion(dex, dey);
           } else {
             if (dist > 0.1) { e.vx -= (dx / dist) * 10; e.vy -= (dy / dist) * 10; }
             e.stunTimer = 300;

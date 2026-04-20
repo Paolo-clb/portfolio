@@ -62,7 +62,7 @@
     var key = this._pTexKey();
 
     // Normal hit i-frames: flicker
-    if (p.invincible && !p.dashInvinc && Math.floor(this.gameTime * 12.5) % 2 === 0) {
+    if (p.invincible && !p.dashInvinc && !this._twActive && Math.floor(this.gameTime * 12.5) % 2 === 0) {
       this.playerSpr.setVisible(false);
       for (var i = 0; i < this.TRAIL_CAP; i++) this._trail[i].spr.setVisible(false);
       return;
@@ -92,7 +92,13 @@
     this.playerSpr.setScale(baseScale);
 
     // Dash i-frames: keep dash look
-    if (p.invincible && p.dashInvinc) {
+    if (this._twActive) {
+      // Golden phantom look during time stop — more visible than before
+      var twGhost = 0.60 + 0.20 * Math.sin(this.gameTime * Math.PI * 3);
+      this.playerSpr.setTint(0xffc832);
+      this.playerSpr.setAlpha(twGhost);
+      this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
+    } else if (p.invincible && p.dashInvinc) {
       this.playerSpr.setTint(0x00ffff);
       this.playerSpr.setAlpha(0.85);
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
@@ -154,9 +160,22 @@
       e.spr.setPosition(e.x, e.y);
       e.spr.setRotation(e.angle);
 
+      // Time Stop: condemned enemies — red/crimson glow (distinct from cyan detonation mark)
+      // Detonation-pending enemies also show this + a separate charging circle overlay
+      if (e._twCondemned) {
+        var twPulse = 0.5 + 0.5 * Math.sin(gt * Math.PI * 8 + i);
+        var twTint = twPulse > 0.5 ? 0xff2222 : 0xcc0000;
+        e.spr.setTint(twTint);
+        e.spr.setAlpha(0.5 + twPulse * 0.45);
+        e.spr.setScale(1.0 + twPulse * 0.12);
+
+        for (var t = 0; t < this.ENEMY_TRAIL_N; t++) e.trSpr[t].setVisible(false);
+        continue;
+      }
+
       if (e.tier === 3) {
         if (e.isMarked) {
-          var urgency = Math.max(0, 1 - e.markTimer / 3000);
+          var urgency = Math.max(0, 1 - e.markTimer / (e.markMaxTimer || 3000));
           var flickFreq = 22 + urgency * 20;
           var flick = Math.sin(gt * Math.PI * flickFreq + i);
           var tintColor = flick > 0 ? 0x00ffff : 0xffffff;
@@ -202,7 +221,7 @@
           }
         }
       } else if (e.isMarked) {
-        var urgency = Math.max(0, 1 - e.markTimer / 3000);
+        var urgency = Math.max(0, 1 - e.markTimer / (e.markMaxTimer || 3000));
         var flickFreq = 22 + urgency * 20;
         var flick = Math.sin(gt * Math.PI * flickFreq + i);
         var tintColor = flick > 0 ? 0x00ffff : 0xffffff;
@@ -332,7 +351,13 @@
 
     for (var i = 0; i < this.projectiles.length; i++) {
       var pr = this.projectiles[i];
-      if (pr.isReflected) {
+      if (pr._twFrozen) {
+        // Frozen during TW: pulsing purple, slightly larger
+        var fpA = 0.5 + 0.4 * Math.sin(gt * Math.PI * 6 + i);
+        pr.spr.setAlpha(fpA);
+        pr.spr.setScale(1.8);
+        pr.spr.setTint(0xcc66ff);
+      } else if (pr.isReflected) {
         var pa = 0.75 + 0.25 * Math.sin(gt * Math.PI * 28 + i);
         pr.spr.setAlpha(pa);
         pr.spr.setScale(pr.smashed ? 1.7 : 1.3);
@@ -353,10 +378,11 @@
 
     this.hudGfx.clear();
 
-    // Dash cooldown bar
+    // Dash cooldown bar — divisor matches the actual cooldown set at dash end
     if (!p.dashAvailable) {
-      var bW = 80, bH = 4, bX = cx - 40, bY = h - 28;
-      var f = p.state === 'DASHING' ? 0 : 1 - p.dashCooldown / C.DASH_CD;
+      var bW = 100, bH = 4, bX = cx - 50, bY = h - 28;
+      var dashCdMax = C.DASH_CD * ((this._upgradeLevels && this._upgradeLevels.dash >= 1) ? 0.70 : 1.0);
+      var f = p.state === 'DASHING' ? 0 : Math.max(0, Math.min(1, 1 - p.dashCooldown / dashCdMax));
       this.hudGfx.fillStyle(0xffffff, 0.10);
       this.hudGfx.fillRect(bX, bY, bW, bH);
       this.hudGfx.fillStyle(c.cyan, 0.8);
@@ -376,12 +402,44 @@
       this.hudGfx.fillRect(spX, spY, spW * spF, spH);
     }
 
+    // The World — cooldown / duration bar (below dash bar)
+    if (this._twUnlocked) {
+      var twW = 100, twH = 4, twX = cx - 50, twY = h - 18;
+      this.hudGfx.fillStyle(0xffffff, 0.10);
+      this.hudGfx.fillRect(twX, twY, twW, twH);
+      if (this._twActive) {
+        // Duration bar: drains red
+        var twF = this._twTimer / C.TW_DURATION;
+        var twAlpha = 0.7 + 0.3 * Math.abs(Math.sin(this.gameTime * Math.PI * 4));
+        this.hudGfx.fillStyle(0xcc1111, twAlpha);
+        this.hudGfx.fillRect(twX, twY, twW * twF, twH);
+      } else if (this._twCooldown > 0) {
+        // Cooldown bar: fills up slowly
+        var twCF = 1 - this._twCooldown / C.TW_COOLDOWN;
+        this.hudGfx.fillStyle(0x888888, 0.5);
+        this.hudGfx.fillRect(twX, twY, twW * twCF, twH);
+      } else {
+        // Ready: full red bar pulsing
+        var twReadyA = 0.6 + 0.3 * Math.abs(Math.sin(this.gameTime * Math.PI * 1.5));
+        this.hudGfx.fillStyle(0xcc1111, twReadyA);
+        this.hudGfx.fillRect(twX, twY, twW, twH);
+      }
+    }
+
     // Score display — recentered each frame to handle resize
     var cx2 = cam.width / 2;
     this._scoreTxt.setPosition(cx2, 16);
     if (this.score !== this._lastScore) {
       this._lastScore = this.score;
       this._scoreTxt.setText(this.score);
+    }
+    // Score: red tint during TW, cyan otherwise
+    if (this._twActive) {
+      this._scoreTxt.setColor('#ff3333');
+      this._scoreTxt.setAlpha(0.75);
+    } else {
+      this._scoreTxt.setColor('#00ffff');
+      this._scoreTxt.setAlpha(0.95);
     }
 
     // Combo multiplier
@@ -399,21 +457,241 @@
         this._comboTxt.setScale(1.0);
       }
       var comboRatio = this.comboTimer / 2000;
-      var comboAlpha = comboRatio > 0.3 ? 0.95 : 0.35 + 0.6 * Math.abs(Math.sin(this.gameTime * Math.PI * 10));
+      // During TW: always solid (no end-blink), red colour override
+      var comboAlpha;
+      if (this._twActive) {
+        comboAlpha = 0.75;
+      } else {
+        comboAlpha = comboRatio > 0.3 ? 0.95 : 0.35 + 0.6 * Math.abs(Math.sin(this.gameTime * Math.PI * 10));
+      }
       this._comboTxt.setAlpha(comboAlpha);
-      var comboCol = this.comboMultiplier >= 50 ? '#00ffff' : this.comboMultiplier >= 25 ? '#ff6600' : this.comboMultiplier >= 10 ? '#ffcc00' : '#ffffff';
+      var comboCol;
+      if (this._twActive) {
+        comboCol = '#ff3333';
+      } else {
+        comboCol = this.comboMultiplier >= 50 ? '#00ffff' : this.comboMultiplier >= 25 ? '#ff6600' : this.comboMultiplier >= 10 ? '#ffcc00' : '#ffffff';
+      }
       if (comboCol !== this._lastComboCol) {
         this._lastComboCol = comboCol;
         this._comboTxt.setColor(comboCol);
       }
       var timerW = 100;
-      var timerCol = this.comboMultiplier >= 50 ? 0x00ffff : this.comboMultiplier >= 25 ? 0xff6600 : 0xffcc00;
+      var timerCol = this._twActive ? 0xcc1111
+        : this.comboMultiplier >= 50 ? 0x00ffff
+        : this.comboMultiplier >= 25 ? 0xff6600 : 0xffcc00;
       this.hudGfx.fillStyle(0xffffff, 0.08);
       this.hudGfx.fillRect(cx2 - timerW / 2, 76, timerW, 3);
-      this.hudGfx.fillStyle(timerCol, 0.75);
+      this.hudGfx.fillStyle(timerCol, this._twActive ? 0.55 : 0.75);
       this.hudGfx.fillRect(cx2 - timerW / 2, 76, timerW * comboRatio, 3);
     } else {
       this._comboTxt.setAlpha(0);
+    }
+
+    // ---- Upgrade icons (bottom HUD) ----
+    this._renderUpgradeHUD(cx, h);
+
+    // ---- The World icon (bottom HUD, after upgrade icons) ----
+    if (this._twUnlocked) {
+      this._renderTheWorldIcon(h);
+    } else if (this._twIconTxt) {
+      this._twIconTxt.setAlpha(0); // hide when not yet unlocked
+    }
+
+    // ---- Shield status (bottom-left HUD) ----
+    this._renderShieldHUD(h);
+  };
+
+  /* ---- Upgrade HUD icons — bottom-right, horizontal ---- */
+  var _upOrder    = ['dashAtk', 'detonation', 'dash', 'baseAtk', 'shield'];
+  var _upIconSize = 46;
+  var _upGap      = 10;
+  var _upDotR     = 2.5;
+  var _upMarginR  = 16;
+  var _upMarginB  = 16;
+
+  M._renderUpgradeHUD = function (cx, h) {
+    if (!this._upgradeLevels) return;
+    var lvls = this._upgradeLevels;
+    var w    = this.cameras.main.width;
+
+    // Collect acquired upgrades (preserve display order)
+    var acquired = [];
+    for (var i = 0; i < _upOrder.length; i++) {
+      if (lvls[_upOrder[i]] > 0) acquired.push(_upOrder[i]);
+    }
+    if (acquired.length === 0) return;
+
+    // Stack icons horizontally leftward from bottom-right corner
+    for (var j = 0; j < acquired.length; j++) {
+      var id  = acquired[j];
+      var lvl = lvls[id];
+
+      var ix = w - _upMarginR - (acquired.length - j) * (_upIconSize + _upGap) + _upGap;
+      var iy = h - _upMarginB - _upIconSize - _upDotR * 2 - 6;
+
+      // Border color: cyan=Lv1, gold=Lv2
+      var borderCol = lvl >= 2 ? 0xffc832 : 0x00ffff;
+      var borderA   = lvl >= 2 ? 0.75 : 0.60;
+
+      // Icon background
+      this.hudGfx.fillStyle(0x080a1c, 0.88);
+      this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
+
+      // Border (2px)
+      this.hudGfx.lineStyle(2, borderCol, borderA);
+      this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
+
+      // Inner circle hint
+      this.hudGfx.fillStyle(borderCol, 0.22);
+      var dotCx = ix + _upIconSize / 2;
+      var dotCy = iy + _upIconSize / 2;
+      this.hudGfx.fillCircle(dotCx, dotCy, 9);
+
+      // Progression dots below icon
+      var dotsY  = iy + _upIconSize + 5;
+      var maxLvl = LA.UPGRADES[id].maxLvl;
+      var dotsW  = maxLvl * (_upDotR * 2 + 3) - 3;
+      var dotsX  = dotCx - dotsW / 2;
+      for (var d = 0; d < maxLvl; d++) {
+        var dx = dotsX + d * (_upDotR * 2 + 3) + _upDotR;
+        this.hudGfx.fillStyle(d < lvl ? borderCol : 0xffffff, d < lvl ? 0.92 : 0.18);
+        this.hudGfx.fillCircle(dx, dotsY, _upDotR);
+      }
+    }
+  };
+
+  /* ---- The World icon — golden, after normal upgrade icons ---- */
+  M._renderTheWorldIcon = function (h) {
+    var w    = this.cameras.main.width;
+    var lvls = this._upgradeLevels || {};
+
+    // Count how many normal upgrades are acquired (for positioning)
+    var normalCount = 0;
+    for (var i = 0; i < _upOrder.length; i++) {
+      if (lvls[_upOrder[i]] > 0) normalCount++;
+    }
+
+    // Place TW icon after normal icons
+    var ix = w - _upMarginR - (normalCount + 1) * (_upIconSize + _upGap) + _upGap;
+    var iy = h - _upMarginB - _upIconSize - _upDotR * 2 - 6;
+
+    var gt = this.gameTime || 0;
+    var redPulse = 0.65 + 0.25 * Math.sin(gt * Math.PI * 1.2);
+    var ready = this._twCooldown <= 0 && !this._twActive;
+    var borderCol = 0xcc1111;
+    var borderA = ready ? redPulse : 0.40;
+
+    // Icon background
+    this.hudGfx.fillStyle(0x120e04, 0.90);
+    this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
+
+    // Border (2px) — pulses when ready
+    this.hudGfx.lineStyle(2, borderCol, borderA);
+    this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
+
+    // Inner circle: golden hourglass hint
+    var dotCx = ix + _upIconSize / 2;
+    var dotCy = iy + _upIconSize / 2;
+    this.hudGfx.fillStyle(borderCol, ready ? 0.30 : 0.12);
+    this.hudGfx.fillCircle(dotCx, dotCy, 10);
+
+    // Single golden dot below
+    var dotsY = iy + _upIconSize + 5;
+    this.hudGfx.fillStyle(borderCol, 0.92);
+    this.hudGfx.fillCircle(dotCx, dotsY, _upDotR);
+
+    // "TW" text label inside icon
+    if (this._twIconTxt) {
+      this._twIconTxt.setPosition(dotCx, dotCy);
+      this._twIconTxt.setAlpha(ready ? redPulse : 0.55);
+    }
+  };
+
+  /* ---- Shield HUD — bottom-left with orbs ---- */
+  var _shMarginL = 16;
+  var _shMarginB = 16;
+  var _shOrbR    = 7;    // core radius — same 1.8x ratio as real orbs (5→9)
+  var _shOrbGap  = 34;   // gap between orb centres
+
+  M._renderShieldHUD = function (h) {
+    if (this.playerShields === undefined) return;
+
+    var c    = LA.getColors();
+    var t    = LA.laGoT;
+    var maxS = this.MAX_SHIELDS;
+    var curS = this.playerShields;
+
+    // "Shield:" label
+    var lx = _shMarginL;
+    var ly = h - _shMarginB - 20;
+
+    // We use hudGfx text-style label via Phaser text — but since this is canvas drawing
+    // we'll draw it once as a positioned text object. Lazy-init.
+    if (!this._shieldLabelTxt) {
+      this._shieldLabelTxt = this.add.text(0, 0, t('laUpShield') + ':', {
+        fontFamily: 'monospace', fontSize: '16px', fontStyle: 'bold',
+        color: '#aaccdd', stroke: '#000000', strokeThickness: 2,
+      });
+      this._shieldLabelTxt.setOrigin(0, 0.5);
+      this._shieldLabelTxt.setDepth(102);
+      this._shieldLabelTxt.setScrollFactor(0);
+    }
+    this._shieldLabelTxt.setPosition(lx, ly);
+
+    // Orbs start after the label text
+    var orbStartX = lx + 82;
+    var orbCy     = ly;
+    var gt        = this.gameTime || 0;
+
+    for (var si = 0; si < maxS; si++) {
+      var active = si < curS;
+      var ox = orbStartX + si * _shOrbGap;
+
+      if (active) {
+        // Thin outer glow ring — matches real orb style (lineStyle 4, alpha 0.30)
+        this.hudGfx.lineStyle(4, c.cyan, 0.30);
+        this.hudGfx.strokeCircle(ox, orbCy, _shOrbR + 5);
+
+        // Solid filled core — matches real orb style (fillStyle cyan, 0.95)
+        this.hudGfx.fillStyle(c.cyan, 0.95);
+        this.hudGfx.fillCircle(ox, orbCy, _shOrbR);
+
+        // Lightning arcs between adjacent active orbs
+        if (si > 0 && (si - 1) < curS) {
+          var prevOx = orbStartX + (si - 1) * _shOrbGap;
+          var arcA   = 0.25 + 0.25 * Math.sin(gt * Math.PI * 5 + si * 1.7);
+
+          // Jagged lightning: 3-segment arc
+          var mx1 = prevOx + _shOrbGap * 0.33;
+          var my1 = orbCy + (Math.sin(gt * 19 + si) * 4);
+          var mx2 = prevOx + _shOrbGap * 0.66;
+          var my2 = orbCy + (Math.sin(gt * 23 + si * 1.3) * 4);
+
+          // Glow line
+          this.hudGfx.lineStyle(2.5, c.cyan, arcA * 0.4);
+          this.hudGfx.beginPath();
+          this.hudGfx.moveTo(prevOx + _shOrbR, orbCy);
+          this.hudGfx.lineTo(mx1, my1);
+          this.hudGfx.lineTo(mx2, my2);
+          this.hudGfx.lineTo(ox - _shOrbR, orbCy);
+          this.hudGfx.strokePath();
+
+          // Bright core line
+          this.hudGfx.lineStyle(1, 0xffffff, arcA * 0.7);
+          this.hudGfx.beginPath();
+          this.hudGfx.moveTo(prevOx + _shOrbR, orbCy);
+          this.hudGfx.lineTo(mx1, my1);
+          this.hudGfx.lineTo(mx2, my2);
+          this.hudGfx.lineTo(ox - _shOrbR, orbCy);
+          this.hudGfx.strokePath();
+        }
+      } else {
+        // Empty slot — faint outer ring + dim core, same proportions as active
+        this.hudGfx.lineStyle(4, 0xffffff, 0.10);
+        this.hudGfx.strokeCircle(ox, orbCy, _shOrbR + 5);
+        this.hudGfx.fillStyle(0xffffff, 0.06);
+        this.hudGfx.fillCircle(ox, orbCy, _shOrbR);
+      }
     }
   };
 

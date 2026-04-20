@@ -21,6 +21,12 @@
       laGoWorldRecord: 'Top 10 mondial', laGoLoading: 'Chargement…', laGoRestarting: 'Relance…', laGoError: 'Hors-ligne',
       laGoSubmit: 'Soumettre', laGoSubmitted: 'Envoyé !', laGoNewRecord: 'Nouveau record !',
       laGoNamePlc: 'Ton pseudo',
+      laUpTitle: 'Choisis une am\u00e9lioration',
+      laUpDashAtkName: 'Dash-Attaque', laUpDashAtkDesc1: 'Attaque plus grosse et plus rapide.', laUpDashAtkDesc2: 'L\'attaque aspire les explosions environnantes.',
+      laUpDetonationName: 'D\u00e9tonation', laUpDetonationDesc1: 'Les marques durent 2 fois plus longtemps.', laUpDetonationDesc2: 'Le rayon de la d\u00e9tonation est 1.5\u00d7 plus grand.',
+      laUpDashName: 'Dash', laUpDashDesc1: 'Dash plus rapide, r\u00e9cup\u00e9ration plus courte.', laUpDashDesc2: 'Le Dash laisse une tornade qui aspire les ennemis proches pendant 3s.',
+      laUpBaseAtkName: 'Attaque Torpille', laUpBaseAtkDesc1: 'L\'attaque laisse une explosion \u00e0 l\'impact.', laUpBaseAtkDesc2: 'Chance de d\u00e9clencher une explosion g\u00e9ante.',
+      laUpAvailable: 'Amélioration disponible…', laUpShield: 'Shield', laUpShieldName: 'Shield', laUpShieldDesc1: '+1 emplacement de shield.', laUpShieldDesc2: '+1 emplacement de shield supplémentaire.', laUpTheWorldName: 'The World', laUpTheWorldDesc1: 'Le clic molette arrête le temps pendant 3 secondes. (Cooldown : 30s)', laDelayExp: 'Explosion Retardée',
     };
     var FB_EN = {
       laGoScore: 'Score', laGoBestCombo: 'Best combo', laGoKills: 'Enemies eliminated',
@@ -28,6 +34,12 @@
       laGoWorldRecord: 'World Top 10', laGoLoading: 'Loading…', laGoRestarting: 'Restarting…', laGoError: 'Offline',
       laGoSubmit: 'Submit', laGoSubmitted: 'Submitted!', laGoNewRecord: 'New record!',
       laGoNamePlc: 'Your name',
+      laUpTitle: 'Choose an upgrade',
+      laUpDashAtkName: 'Dash-Attack', laUpDashAtkDesc1: 'Attack is bigger and faster.', laUpDashAtkDesc2: 'Attack pulls in nearby explosions.',
+      laUpDetonationName: 'Detonation', laUpDetonationDesc1: 'Enemy marks last twice as long.', laUpDetonationDesc2: 'Detonation radius is 1.5x larger.',
+      laUpDashName: 'Dash', laUpDashDesc1: 'Faster dash, shorter cooldown.', laUpDashDesc2: 'Dash leaves a tornado that pulls nearby enemies for 3s.',
+      laUpBaseAtkName: 'Torpedo Attack', laUpBaseAtkDesc1: 'Attack leaves a small explosion on impact.', laUpBaseAtkDesc2: 'Chance to trigger a giant explosion.',
+      laUpAvailable: 'Upgrade available…', laUpShield: 'Shield', laUpShieldName: 'Shield', laUpShieldDesc1: '+1 shield slot.', laUpShieldDesc2: '+1 additional shield slot.', laUpTheWorldName: 'The World', laUpTheWorldDesc1: 'Middle-click stops time for 3 seconds. (Cooldown: 30s)', laDelayExp: 'Delayed Explosion',
     };
     var lang = 'fr';
     try {
@@ -59,7 +71,7 @@
     lo.setAttribute('role', 'status');
     lo.setAttribute('aria-live', 'polite');
     lo.style.cssText = [
-      'position:absolute', 'inset:0', 'z-index:82',
+      'position:absolute', 'inset:0', 'z-index:1',
       'display:flex', 'align-items:center', 'justify-content:center',
       'background:' + bgCss,
       'pointer-events:none',
