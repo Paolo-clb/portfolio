@@ -63,11 +63,13 @@
     else { adx /= al; ady /= al; }
 
     // Auto-aim: prioritise closest marked enemy in attack range, then follow mouse
+    // During The World, skip condemned enemies (already hit, will die at resolution).
     var atkRange = C.SIZE * 0.6 + C.RUSHER_SIZE + C.ATK_DUR * 0.02 * C.ATK_IMP;
     var bestMarkDSq = atkRange * atkRange, bestMark = null;
     for (var ne = 0; ne < this.enemies.length; ne++) {
       var en = this.enemies[ne];
       if (!en.isMarked) continue;
+      if (this._twActive && en._twCondemned) continue;
       var ndx = en.x - p.x, ndy = en.y - p.y;
       var ndSq = ndx * ndx + ndy * ndy;
       if (ndSq < bestMarkDSq) { bestMarkDSq = ndSq; bestMark = en; }

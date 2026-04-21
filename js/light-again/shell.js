@@ -303,6 +303,10 @@
 
   function closeHelpPopup(skipResume) {
     if (!helpPopupEl) return;
+    // Mark tutorial as seen the first time the player closes the help popup
+    if (!localStorage.getItem('la_tutorial_seen')) {
+      localStorage.setItem('la_tutorial_seen', '1');
+    }
     helpPopupEl.classList.remove('light-again-help-overlay--visible');
     var toRemove = helpPopupEl;
     helpPopupEl = null;
@@ -406,6 +410,23 @@
     if (typeof window.createLightGame === 'function') {
       activeGame = window.createLightGame(container);
       activeGame.start();
+    }
+
+    /* --- First-play tutorial: show help popup once loading is complete --- */
+    if (!localStorage.getItem('la_tutorial_seen')) {
+      // Wait for the loader overlay to be removed before pausing/showing popup.
+      // Calling pause() during Phaser preload freezes asset loading entirely.
+      var _tutOverlay = overlayEl;
+      var _tutWatcher = new MutationObserver(function () {
+        if (!document.getElementById('_la-loading')) {
+          _tutWatcher.disconnect();
+          // Guard: game modal may have been closed before load finished
+          if (overlayEl && overlayEl === _tutOverlay) {
+            showHelpPopup(); // showHelpPopup() calls activeGame.pause() internally
+          }
+        }
+      });
+      _tutWatcher.observe(document.body, { childList: true, subtree: true });
     }
   }
 

@@ -413,6 +413,9 @@
         self._bloomFX = null;
         self._shieldLabelTxt = null;
         self._twDesatPipeline = null;
+        self._twBgCM   = null;
+        self._twGlowCM = null;
+        self._twWaveGfx = null;
         if (self._twIconTxt) { self._twIconTxt.destroy(); self._twIconTxt = null; }
         if (self._onWindowFocus) {
           window.removeEventListener('focus', self._onWindowFocus);

@@ -227,6 +227,11 @@
     e.spr.destroy();
     for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
     if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
+    // Remove from CM spawn queue if it died before its CM was allocated
+    if (this._twCMSpawnQueue) {
+      var qi = this._twCMSpawnQueue.indexOf(e);
+      if (qi !== -1) this._twCMSpawnQueue.splice(qi, 1);
+    }
     this.enemies.splice(idx, 1);
 
     if (!ctx.condemned) {
@@ -357,7 +362,8 @@
     var ring = this._waveRings[this._waveRingW % this._waveRings.length];
     this._waveRingW++;
     ring.x = p.x; ring.y = p.y;
-    ring.r = 10; ring.alpha = 0.45; ring.active = true;
+    ring.r = 8; ring.alpha = 1.0; ring.active = true;
+    ring.speedMult = 0.35; ring.fadeMult = 1.5;
     ring.gfx.setVisible(true);
 
     p.invincible = true; p.invincTimer = 250; p.dashInvinc = true;

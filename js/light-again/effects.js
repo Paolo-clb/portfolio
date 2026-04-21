@@ -44,6 +44,7 @@
     this._waveRingW++;
     ring.x = x; ring.y = y;
     ring.r = 10; ring.alpha = 0.9; ring.active = true;
+    ring.speedMult = 1.0; ring.fadeMult = 1.0;
     ring.gfx.setVisible(true);
   };
 
@@ -128,8 +129,8 @@
     for (var i = 0; i < this._waveRings.length; i++) {
       var ring = this._waveRings[i];
       if (!ring.active) continue;
-      ring.r     += dt * C.LANDING_BURST_RADIUS * 3.5;
-      ring.alpha -= dt * 3.2;
+      ring.r     += dt * C.LANDING_BURST_RADIUS * 3.5 * (ring.speedMult !== undefined ? ring.speedMult : 1.0);
+      ring.alpha -= dt * 3.2 * (ring.fadeMult !== undefined ? ring.fadeMult : 1.0);
       if (ring.alpha <= 0) {
         ring.active = false;
         ring.gfx.clear();
@@ -137,11 +138,19 @@
         continue;
       }
       ring.gfx.clear();
-      ring.gfx.lineStyle(2.5, c.cyan, ring.alpha);
+      // Outer glow
+      ring.gfx.lineStyle(5, c.cyan, ring.alpha * 0.30);
+      ring.gfx.strokeCircle(ring.x, ring.y, ring.r * 1.06);
+      // Main ring
+      ring.gfx.lineStyle(3, c.cyan, ring.alpha);
       ring.gfx.strokeCircle(ring.x, ring.y, ring.r);
+      // White hot core
+      ring.gfx.lineStyle(1.5, 0xffffff, ring.alpha * 0.70);
+      ring.gfx.strokeCircle(ring.x, ring.y, ring.r);
+      // Inner echo
       if (ring.r > 20) {
-        ring.gfx.lineStyle(1, c.cyan, ring.alpha * 0.4);
-        ring.gfx.strokeCircle(ring.x, ring.y, ring.r * 0.6);
+        ring.gfx.lineStyle(1.5, c.cyan, ring.alpha * 0.45);
+        ring.gfx.strokeCircle(ring.x, ring.y, ring.r * 0.62);
       }
     }
   };
