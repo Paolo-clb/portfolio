@@ -269,12 +269,10 @@
       var e = this.enemies[i];
       if (e._twCondemned) {
         if (Math.random() < 0.3) {
-          this._emitter2.setPosition(
-            e.x + (Math.random() - 0.5) * 16,
-            e.y + (Math.random() - 0.5) * 16
-          );
+          var cx = e.x + (Math.random() - 0.5) * 16;
+          var cy = e.y + (Math.random() - 0.5) * 16;
           this._emitter2.setParticleTint(0xff2222);
-          this._emitter2.explode(1);
+          this._emitter2.explode(1, cx, cy);
         }
       }
     }
@@ -411,6 +409,17 @@
       var ddIdx = this.enemies.indexOf(ddEnemy);
       if (ddIdx >= 0) {
         this._triggerDetonation(ddIdx);
+      } else {
+        // Enemy was already killed by a previous detonation's AoE —
+        // still show the wave ring + minimal flash at its stored position.
+        var fbDetoLvl = (this._upgradeLevels && this._upgradeLevels.detonation) || 0;
+        var fbRadMult = fbDetoLvl >= 2 ? 1.8 : 1.0;
+        var fbRadius  = C.SHOCKWAVE_RADIUS * 2.5 * fbRadMult;
+        var fbColor   = fbDetoLvl >= 2 ? 0xb450ff : 0xffc832;
+        var fbExpT    = fbDetoLvl >= 2 ? 0.35 : 0.30;
+        this._spawnWaveRing(dd.x, dd.y, { maxRadius: fbRadius, color: fbColor, expandTime: fbExpT });
+        this._explode(dd.x, dd.y, [255, 200, 50], fbDetoLvl >= 2 ? 60 : 35);
+        this._explode(dd.x, dd.y, [255, 255, 200], fbDetoLvl >= 2 ? 30 : 15);
       }
     }
     this._twDeferredDetonations = [];
@@ -664,6 +673,8 @@
 
     this._twDeferredDetonations.push({
       enemyRef: enemyRef,
+      x: enemyRef.x,   // snapshot position at mark time (enemies are frozen)
+      y: enemyRef.y,
       gfx: gfx,
       tweenRef: tweenRef,
     });

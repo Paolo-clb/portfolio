@@ -277,6 +277,10 @@
     var radMult  = detoLvl >= 2 ? 1.8 : 1.0;
     var detRadius   = C.SHOCKWAVE_RADIUS * 2.5 * radMult;
     var detRadiusSq = detRadius * detRadius;
+    // Ring params moved here so waveSpeed is available for hit-delay timing
+    var ringColor = (detoLvl >= 2) ? 0xb450ff : (twDeto ? 0xffc832 : 0x00ffff);
+    var ringExpT  = (detoLvl >= 2) ? 0.20 : 0.24;   // lv2 faster: ring covers 495px in 0.20s
+    var waveSpeed = detRadius / ringExpT;              // px/s
 
     // During TW batch window, don't create a nested batch — just use the parent
     var ownBatch = !this._twBatchWindow;
@@ -288,8 +292,15 @@
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var o = this.enemies[i];
       var odx = o.x - ex, ody = o.y - ey;
-      if (odx * odx + ody * ody < detRadiusSq) {
-        this._explode(o.x, o.y, twDeto ? [255, 200, 50] : [0, 255, 255], 10);
+      var odSq = odx * odx + ody * ody;
+      if (odSq < detRadiusSq) {
+        // Delay hit particles so ring visually reaches each enemy before they burst
+        var expDelay = Math.round(Math.sqrt(odSq) / waveSpeed * 1000);
+        var expCol   = twDeto ? [255, 200, 50] : [0, 255, 255];
+        (function (sc, ox, oy, col, ms) {
+          if (ms < 30) { sc._explode(ox, oy, col, 10); }
+          else { sc.time.delayedCall(ms, function () { sc._explode(ox, oy, col, 10); }); }
+        })(this, o.x, o.y, expCol, expDelay);
         if (o.tier === 3 && o.hasShield) {
           this._breakShield(o);
         } else if (o.tier === 3) {
@@ -325,12 +336,12 @@
     else          { this.cameras.main.flash(200, 0, 255, 255, false); }
     this.cameras.main.shake(detoLvl >= 2 ? 280 : 200, detoLvl >= 2 ? 0.030 : 0.018);
     this._triggerHitstop(detoLvl >= 2 ? C.DETONATION_HITSTOP * 1.4 : C.DETONATION_HITSTOP);
-    this._spawnWaveRing(ex, ey);
+    this._spawnWaveRing(ex, ey, { maxRadius: detRadius, color: ringColor, expandTime: ringExpT });
     if (detoLvl >= 2) {
-      // Extra rings at scaled radius to emphasize bigger nuke
+      // Extra echo rings emphasise the bigger nuke — staggered 80 ms apart
       var self2 = this;
-      this.time.delayedCall(80,  function () { if (self2._spawnWaveRing) self2._spawnWaveRing(ex, ey); });
-      this.time.delayedCall(160, function () { if (self2._spawnWaveRing) self2._spawnWaveRing(ex, ey); });
+      this.time.delayedCall(80,  function () { if (self2._spawnWaveRing) self2._spawnWaveRing(ex, ey, { maxRadius: detRadius, color: ringColor, expandTime: ringExpT }); });
+      this.time.delayedCall(160, function () { if (self2._spawnWaveRing) self2._spawnWaveRing(ex, ey, { maxRadius: detRadius, color: ringColor, expandTime: ringExpT }); });
     }
 
     if (twDeto) {
@@ -361,12 +372,7 @@
       }
     }
 
-    var ring = this._waveRings[this._waveRingW % this._waveRings.length];
-    this._waveRingW++;
-    ring.x = p.x; ring.y = p.y;
-    ring.r = 8; ring.alpha = 1.0; ring.active = true;
-    ring.speedMult = 0.35; ring.fadeMult = 1.5;
-    ring.gfx.setVisible(true);
+    this._spawnWaveRing(p.x, p.y, { maxRadius: 55, color: 0x00ffff, expandTime: 0.14 });
 
     p.invincible = true; p.invincTimer = 250; p.dashInvinc = true;
   };
@@ -473,7 +479,7 @@
     // Visuals
     this._explode(x, y, [0, 255, 255], 45);
     this._explode(x, y, [255, 255, 255], 20);
-    this._spawnWaveRing(x, y);
+    this._spawnWaveRing(x, y, { maxRadius: radius, color: 0x00ffff, expandTime: 0.28 });
     this.cameras.main.flash(160, 0, 255, 255, false);
     this.cameras.main.shake(140, 0.010);
     this._triggerHitstop(Math.round(C.DETONATION_HITSTOP * 0.7));

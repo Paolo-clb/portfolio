@@ -10,12 +10,14 @@
 
   M._explode = function (x, y, color, n) {
     var tint = Phaser.Display.Color.GetColor(color[0], color[1], color[2]);
-    this._emitter.setPosition(x, y);
+    // Pass x,y directly to explode() — never call setPosition on the shared emitters.
+    // Moving a shared emitter shifts ALL its alive particles (they are relative to the
+    // emitter's world transform). By keeping emitters fixed at origin and passing
+    // world coords to explode(), each burst is fully independent.
     this._emitter.setParticleTint(tint);
-    this._emitter.explode(n || 25);
-    this._emitter2.setPosition(x, y);
+    this._emitter.explode(n || 25, x, y);
     this._emitter2.setParticleTint(tint);
-    this._emitter2.explode(Math.round((n || 25) * 0.5));
+    this._emitter2.explode(Math.round((n || 25) * 0.5), x, y);
   };
 
   M._addGhost = function (x, y, alpha, angle, isDashAtk) {
@@ -39,12 +41,16 @@
     }
   };
 
-  M._spawnWaveRing = function (x, y) {
+  M._spawnWaveRing = function (x, y, opts) {
     var ring = this._waveRings[this._waveRingW % this._waveRings.length];
     this._waveRingW++;
+    opts = opts || {};
     ring.x = x; ring.y = y;
-    ring.r = 10; ring.alpha = 0.9; ring.active = true;
-    ring.speedMult = 1.0; ring.fadeMult = 1.0;
+    ring.r = 0; ring.alpha = 1.0; ring.active = true;
+    ring.elapsed    = 0;
+    ring.maxRadius  = opts.maxRadius  || 121;
+    ring.color      = opts.color      || 0x00ffff;
+    ring.expandTime = opts.expandTime || 0.28;
     ring.gfx.setVisible(true);
   };
 
@@ -125,32 +131,52 @@
   };
 
   M._updateWaveRings = function (dt) {
-    var c = LA.getColors();
     for (var i = 0; i < this._waveRings.length; i++) {
       var ring = this._waveRings[i];
       if (!ring.active) continue;
-      ring.r     += dt * C.LANDING_BURST_RADIUS * 3.5 * (ring.speedMult !== undefined ? ring.speedMult : 1.0);
-      ring.alpha -= dt * 3.2 * (ring.fadeMult !== undefined ? ring.fadeMult : 1.0);
-      if (ring.alpha <= 0) {
+      ring.elapsed += dt;
+
+      var expT  = ring.expandTime || 0.28;
+      var fadeT = 0.22;
+      var t     = ring.elapsed;
+
+      if (t >= expT + fadeT) {
         ring.active = false;
         ring.gfx.clear();
         ring.gfx.setVisible(false);
         continue;
       }
+
+      var a;
+      if (t < expT) {
+        ring.r = ring.maxRadius * (t / expT);
+        a = 1.0;
+      } else {
+        ring.r = ring.maxRadius;
+        a = 1.0 - (t - expT) / fadeT;
+      }
+      if (a <= 0 || ring.r <= 0) continue;
+
+      // Line thickness scales with ring size (1.5px small → ~5px nuke L1 → ~8px nuke L2)
+      var normR = ring.maxRadius / 275;
+      var lw    = 1.5 + normR * 3.5;
+      var col   = ring.color || 0x00ffff;
+
       ring.gfx.clear();
-      // Outer glow
-      ring.gfx.lineStyle(5, c.cyan, ring.alpha * 0.30);
-      ring.gfx.strokeCircle(ring.x, ring.y, ring.r * 1.06);
+      // Wide outer glow
+      ring.gfx.lineStyle(lw * 2.8, col, a * 0.18);
+      ring.gfx.strokeCircle(ring.x, ring.y, ring.r * 1.08);
       // Main ring
-      ring.gfx.lineStyle(3, c.cyan, ring.alpha);
+      ring.gfx.lineStyle(lw, col, a);
       ring.gfx.strokeCircle(ring.x, ring.y, ring.r);
       // White hot core
-      ring.gfx.lineStyle(1.5, 0xffffff, ring.alpha * 0.70);
+      ring.gfx.lineStyle(lw * 0.5, 0xffffff, a * 0.65);
       ring.gfx.strokeCircle(ring.x, ring.y, ring.r);
-      // Inner echo
-      if (ring.r > 20) {
-        ring.gfx.lineStyle(1.5, c.cyan, ring.alpha * 0.45);
-        ring.gfx.strokeCircle(ring.x, ring.y, ring.r * 0.62);
+      // Inner echo — only while expanding, only for larger rings
+      if (ring.maxRadius > 70 && t < expT) {
+        var echoA = a * 0.38 * (1.0 - t / expT);
+        ring.gfx.lineStyle(lw * 0.7, col, echoA);
+        ring.gfx.strokeCircle(ring.x, ring.y, ring.r * 0.68);
       }
     }
   };
@@ -163,8 +189,7 @@
     if (cm >= 10) {
       this._comboTrailActive = true;
       var trailQty = cm >= 50 ? 3 : cm >= 25 ? 2 : 1;
-      this._comboTrailEmitter.setPosition(p.x, p.y);
-      this._comboTrailEmitter.explode(trailQty);
+      this._comboTrailEmitter.explode(trailQty, p.x, p.y);
     } else if (this._comboTrailActive) {
       this._comboTrailActive = false;
     }
@@ -213,11 +238,9 @@
 
       // Sparks: suppressed during TW, otherwise 2 per frame
       if (!this._twActive) {
-        this._comboSparkEmitter.setPosition(
-          p.x + (Math.random() - 0.5) * C.SIZE * 2,
-          p.y + (Math.random() - 0.5) * C.SIZE * 2
-        );
-        this._comboSparkEmitter.explode(2);
+        var spx = p.x + (Math.random() - 0.5) * C.SIZE * 2;
+        var spy = p.y + (Math.random() - 0.5) * C.SIZE * 2;
+        this._comboSparkEmitter.explode(2, spx, spy);
       }
     }
   };

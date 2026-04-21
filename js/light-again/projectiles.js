@@ -81,9 +81,8 @@
 
       // Visual boost on smashed reflected
       if (pr.isReflected && pr.smashed && Math.random() < 0.3) {
-        this._emitter2.setPosition(pr.x, pr.y);
         this._emitter2.setParticleTint(0xaa44ff);
-        this._emitter2.explode(1);
+        this._emitter2.explode(1, pr.x, pr.y);
       }
 
       // OOB / expired
@@ -146,7 +145,7 @@
               this._explode(pr.x, pr.y, [200, 120, 255], 10);
               this._triggerHitstop(C.DEFLECT_HEAVY_HS);
               this.cameras.main.shake(80, 0.008);
-              this._spawnWaveRing(pr.x, pr.y);
+              this._spawnWaveRing(pr.x, pr.y, { maxRadius: smashAoe, color: 0xaa44ff, expandTime: 0.26 });
             } else {
               e.hp -= 1;
               if (e.hp <= 0) {

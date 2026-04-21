@@ -161,11 +161,15 @@
       this.projectiles = [];
 
       this._waveRings = [];
-      for (var wi = 0; wi < 4; wi++) {
+      for (var wi = 0; wi < 32; wi++) {
         var wg = this.add.graphics();
         wg.setDepth(35);
+        wg.setBlendMode(Phaser.BlendModes.ADD);
         wg.setVisible(false);
-        this._waveRings.push({ gfx: wg, x: 0, y: 0, r: 0, alpha: 0, active: false });
+        this._waveRings.push({
+          gfx: wg, x: 0, y: 0, r: 0, alpha: 0, active: false,
+          elapsed: 0, maxRadius: 121, color: 0x00ffff, expandTime: 0.28,
+        });
       }
       this._waveRingW = 0;
 

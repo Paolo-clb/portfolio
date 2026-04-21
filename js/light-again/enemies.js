@@ -72,12 +72,10 @@
 
       // Micro-particles on marked enemies (instability visual)
       if (e.isMarked && Math.random() < 0.18) {
-        this._emitter2.setPosition(
-          e.x + (Math.random() - 0.5) * 12,
-          e.y + (Math.random() - 0.5) * 8
-        );
+        var mpx = e.x + (Math.random() - 0.5) * 12;
+        var mpy = e.y + (Math.random() - 0.5) * 8;
         this._emitter2.setParticleTint(0x00ffff);
-        this._emitter2.explode(1);
+        this._emitter2.explode(1, mpx, mpy);
       }
 
       if (e.stunTimer > 0) {
