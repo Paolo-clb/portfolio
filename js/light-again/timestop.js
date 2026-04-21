@@ -139,6 +139,10 @@
     var diag = Math.sqrt(cam.width * cam.width + cam.height * cam.height);
     this._twWaveMaxR   = diag * 1.6;
 
+    // Total perceived TW duration: wave expansion + freeze (used by HUD bar and deferral tweens)
+    this._twTotalElapsed   = 0;
+    this._twWaveDurationMs = 100 + (this._twWaveMaxR / 1200) * 1000;
+
     // Reset resolve ring from any previous TW
     this._twResolveWaveActive = false;
     this._twResolveWaveRadius = 0;
@@ -153,6 +157,11 @@
      ================================================================ */
   M._updateTimeStop = function (dt) {
     var dtMs = dt * 1000;
+
+    // Accumulate elapsed from the moment TW was activated (covers both wave and freeze phases)
+    if (this._twActive) {
+      this._twTotalElapsed = (this._twTotalElapsed || 0) + dtMs;
+    }
 
     // Drain spawn queue: 1 addColorMatrix per frame, completely imperceptible.
     if (this._twCMSpawnQueue && this._twCMSpawnQueue.length > 0) {
@@ -415,8 +424,8 @@
         var fbDetoLvl = (this._upgradeLevels && this._upgradeLevels.detonation) || 0;
         var fbRadMult = fbDetoLvl >= 2 ? 1.8 : 1.0;
         var fbRadius  = C.SHOCKWAVE_RADIUS * 2.5 * fbRadMult;
-        var fbColor   = fbDetoLvl >= 2 ? 0xb450ff : 0xffc832;
-        var fbExpT    = fbDetoLvl >= 2 ? 0.35 : 0.30;
+        var fbColor   = 0xffc832;  // always gold — this path is TW-only
+        var fbExpT    = fbDetoLvl >= 2 ? 0.20 : 0.24;
         this._spawnWaveRing(dd.x, dd.y, { maxRadius: fbRadius, color: fbColor, expandTime: fbExpT });
         this._explode(dd.x, dd.y, [255, 200, 50], fbDetoLvl >= 2 ? 60 : 35);
         this._explode(dd.x, dd.y, [255, 255, 200], fbDetoLvl >= 2 ? 30 : 15);
@@ -620,7 +629,9 @@
     var startR   = C.SHOCKWAVE_RADIUS * 2.5 * radMult * 0.6;
     var MAIN_COL = 0xffc832;  // golden — TW freeze theme
     var SEC_COL  = 0xd4900a;
-    var duration = Math.max(this._twTimer, 100);
+    // Duration = time remaining until actual TW resolution (accounts for still-running wave)
+    var twTotalMs = (this._twWaveDurationMs || 0) + C.TW_DURATION;
+    var duration  = Math.max(twTotalMs - (this._twTotalElapsed || 0), 100);
 
     enemyRef._twDetonationPending = true;
 

@@ -145,7 +145,9 @@
               this._explode(pr.x, pr.y, [200, 120, 255], 10);
               this._triggerHitstop(C.DEFLECT_HEAVY_HS);
               this.cameras.main.shake(80, 0.008);
-              this._spawnWaveRing(pr.x, pr.y, { maxRadius: smashAoe, color: 0xaa44ff, expandTime: 0.26 });
+              // Gold if released during TW resolution, orange-violet otherwise (distinct from nuke lv2 violet)
+              var smashRingCol = pr._twPending ? 0xffc832 : 0xFF338B;
+              this._spawnWaveRing(pr.x, pr.y, { maxRadius: smashAoe, color: smashRingCol, expandTime: 0.26 });
             } else {
               e.hp -= 1;
               if (e.hp <= 0) {

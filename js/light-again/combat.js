@@ -278,7 +278,8 @@
     var detRadius   = C.SHOCKWAVE_RADIUS * 2.5 * radMult;
     var detRadiusSq = detRadius * detRadius;
     // Ring params moved here so waveSpeed is available for hit-delay timing
-    var ringColor = (detoLvl >= 2) ? 0xb450ff : (twDeto ? 0xffc832 : 0x00ffff);
+    // TW (gold) always takes priority over detoLvl color
+    var ringColor = twDeto ? 0xffc832 : (detoLvl >= 2 ? 0xb450ff : 0x00ffff);
     var ringExpT  = (detoLvl >= 2) ? 0.20 : 0.24;   // lv2 faster: ring covers 495px in 0.20s
     var waveSpeed = detRadius / ringExpT;              // px/s
 
@@ -476,11 +477,11 @@
 
     if (dOwnBatch) this._endBatch();
 
-    // Visuals
-    this._explode(x, y, [0, 255, 255], 45);
+    // Visuals — ring matches the warning circle's red color
+    this._explode(x, y, [255, 34, 34], 45);
     this._explode(x, y, [255, 255, 255], 20);
-    this._spawnWaveRing(x, y, { maxRadius: radius, color: 0x00ffff, expandTime: 0.28 });
-    this.cameras.main.flash(160, 0, 255, 255, false);
+    this._spawnWaveRing(x, y, { maxRadius: radius, color: 0xff2222, expandTime: 0.28 });
+    this.cameras.main.flash(160, 255, 34, 34, false);
     this.cameras.main.shake(140, 0.010);
     this._triggerHitstop(Math.round(C.DETONATION_HITSTOP * 0.7));
   };

@@ -409,7 +409,9 @@
       this.hudGfx.fillRect(twX, twY, twW, twH);
       if (this._twActive) {
         // Duration bar: drains red
-        var twF = this._twTimer / C.TW_DURATION;
+        // Bar drains from activation (includes wave phase) for immediate visual feedback
+        var twTotalMs = (this._twWaveDurationMs || 0) + C.TW_DURATION;
+        var twF = Math.max(0, 1.0 - (this._twTotalElapsed || 0) / twTotalMs);
         var twAlpha = 0.7 + 0.3 * Math.abs(Math.sin(this.gameTime * Math.PI * 4));
         this.hudGfx.fillStyle(0xcc1111, twAlpha);
         this.hudGfx.fillRect(twX, twY, twW * twF, twH);
