@@ -1364,8 +1364,20 @@ function initCursorHalo() {
     if (e.target.closest('.light-again-modal')) {
       halo.classList.add('cursor-halo--game');
       if (e.target.closest('button')) {
+        // In upgrade overlay: only card buttons trigger hover; buttons outside the overlay (close, pause, ?) are always hoverable
+        var upgradeOverlay = document.getElementById('_la-upgrade-overlay');
+        var insideUpgradeOverlay = upgradeOverlay && e.target.closest('#_la-upgrade-overlay');
+        if (insideUpgradeOverlay && !e.target.closest('._la-up-card')) {
+          stopLightGameHoverPoll();
+          halo.classList.remove('cursor-halo--hover');
+        } else {
+          stopLightGameHoverPoll();
+          halo.classList.add('cursor-halo--hover');
+        }
+      } else if (e.target.closest('#_la-upgrade-overlay')) {
+        // Non-button area inside upgrade overlay — no hover effect
         stopLightGameHoverPoll();
-        halo.classList.add('cursor-halo--hover');
+        halo.classList.remove('cursor-halo--hover');
       } else if (e.target.closest('.light-again-canvas')) {
         startLightGameHoverPoll();
       } else if (e.target.closest('.light-again-help-overlay') && !e.target.closest('.light-again-help-popup')) {

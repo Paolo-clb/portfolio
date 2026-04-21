@@ -163,8 +163,8 @@
           }
         }
       } else {
-        // Enemy projectile hits player
-        if (vuln && !p.invincible) {
+        // Enemy projectile hits player — suppressed during time stop
+        if (vuln && !p.invincible && !twActive) {
           var pdx = p.x - pr.x, pdy = p.y - pr.y;
           var pdSq = pdx * pdx + pdy * pdy;
           var prThresh = pR + C.PROJ_RADIUS;

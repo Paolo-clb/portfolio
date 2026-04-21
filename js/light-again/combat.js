@@ -32,7 +32,7 @@
   M._floatLabel = function (wx, wy, label, col, stackIdx) {
     var stagger = (stackIdx || 0) * 45;
     var txt = this.add.text(wx, wy, label, {
-      fontFamily: 'monospace', fontSize: '22px', fontStyle: 'bold', color: col,
+      fontFamily: 'monospace', fontSize: '28px', fontStyle: 'bold', color: col,
       stroke: '#000000', strokeThickness: 2,
       shadow: { offsetX: 0, offsetY: 2, color: col, blur: 8, fill: true },
     });
@@ -95,11 +95,11 @@
     var cam = this.cameras.main;
     var sx = cam.width / 2;
 
-    // Anchor just above the player in screen space — clamp so it stays in a safe area
+    // Anchor above the player — offset large enough to avoid blocking immediately above them
     var psy = (this.p.y - cam.scrollY) * cam.zoom;
-    var syBase = psy - 80;
-    syBase = Math.max(syBase, cam.height * 0.12);   // never above 12% from top
-    syBase = Math.min(syBase, cam.height * 0.72);   // never below 72% of screen
+    var syBase = psy - 200;
+    syBase = Math.max(syBase, cam.height * 0.22);   // never above 22% — stays below score/combo HUD
+    syBase = Math.min(syBase, cam.height * 0.70);   // never below 70% of screen
 
     var count = (_extra && _extra.count > 1) ? _extra.count : 0;
     var col = label === 'PARADE' ? '#aa44ff'
@@ -119,26 +119,28 @@
     var self = this;
 
     var txt = this.add.text(sx, sy, '+' + pts + ' ' + displayLbl + '!', {
-      fontFamily: 'monospace', fontSize: '32px', fontStyle: 'bold', color: col,
+      fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold', color: col,
     });
     txt.setOrigin(0.5); txt.setDepth(105);
     txt.setScrollFactor(0);
     txt.setBlendMode(Phaser.BlendModes.ADD);
-    txt.setScale(0.5);
+    txt.setAlpha(0.82);
+    txt.setScale(0.35);
     this._bigScoreSlots[slot] = txt;
 
-    // Duration proportional to score — log scale capped at 100 000 pts, min 1400ms, max 3800ms
-    var fadeDur   = Math.min(Math.max(1400 + Math.log10(Math.max(pts, 1)) * 480, 1400), 3800);
-    var fadeDelay = 400;
+    // Hold duration scales with score (log10): 400ms at low score, up to 1200ms near 100 000 pts
+    var holdDur = 400 + Math.min(Math.log10(Math.max(pts, 1)) * 160, 800);
+    var popDur  = 180;  // pop-in
 
+    // 1. Pop in — stay big (no yoyo)
     this.tweens.add({
-      targets: txt, scaleX: 1.1, scaleY: 1.1,
-      duration: 150, ease: 'Back.easeOut',
-      yoyo: true, hold: 100,
+      targets: txt, scaleX: 1.15, scaleY: 1.15,
+      duration: popDur, ease: 'Back.easeOut',
     });
+    // 2. Shrink + float + fade — starts after pop + hold
     this.tweens.add({
-      targets: txt, y: sy - 50, alpha: 0,
-      duration: fadeDur, ease: 'Cubic.easeOut', delay: fadeDelay,
+      targets: txt, y: sy - 40, alpha: 0, scaleX: 0.65, scaleY: 0.65,
+      duration: 650, ease: 'Cubic.easeIn', delay: popDur + holdDur,
       onComplete: function () {
         self._bigScoreSlots[slot] = null;
         txt.destroy();

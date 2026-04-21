@@ -319,8 +319,9 @@
         if (toRemove.parentNode) toRemove.parentNode.removeChild(toRemove);
       };
       toRemove.addEventListener('transitionend', onEnd);
-      // Resume sauf si pause manuelle ou game-over (scène doit rester figée)
-      if (!isLightAgainGameOverOpen() && !userPaused && activeGame && typeof activeGame.resume === 'function') {
+      // Resume sauf si pause manuelle, game-over, ou upgrade draft ouvert (scène doit rester figée)
+      var upgradeDraftOpen = !!document.getElementById('_la-upgrade-overlay');
+      if (!isLightAgainGameOverOpen() && !userPaused && !upgradeDraftOpen && activeGame && typeof activeGame.resume === 'function') {
         activeGame.resume();
       }
       var hb = overlayEl && overlayEl.querySelector('.light-again-help-btn:not(.light-again-pause-btn)');

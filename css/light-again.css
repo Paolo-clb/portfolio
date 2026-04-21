@@ -381,7 +381,7 @@
   position: absolute;
   top: 0.85rem;
   right: 0.85rem;
-  z-index: 2;
+  z-index: 80; /* above upgrade overlay (55) and help overlay (70) */
 }
 
 /* ============================================================
@@ -453,7 +453,7 @@
 .light-again-help-btn {
   position: absolute;
   top: 0.85rem;
-  z-index: 2;
+  z-index: 80; /* above upgrade overlay (55) and help overlay (70) */
   background: rgba(191, 153, 160, 0.12);
   border: 1px solid rgba(191, 153, 160, 0.2);
   color: var(--clr-text);
