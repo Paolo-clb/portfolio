@@ -175,11 +175,13 @@
 
       // Pool for condemned-death ring bursts (up to 16 simultaneous)
       this._twDeathRings = [];
-      for (var tdi = 0; tdi < 16; tdi++) {
+      for (var tdi = 0; tdi < 48; tdi++) {
         var tdg = this.add.graphics();
         tdg.setDepth(34);
+        tdg.setBlendMode(Phaser.BlendModes.ADD);
         tdg.setVisible(false);
-        this._twDeathRings.push({ gfx: tdg, x: 0, y: 0, r: 0, alpha: 0, active: false });
+        this._twDeathRings.push({ gfx: tdg, x: 0, y: 0, r: 0, alpha: 0, active: false,
+          elapsed: 0, maxRadius: 50, expandTime: 0.22 });
       }
       this._twDeathRingW = 0;
 

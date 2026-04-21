@@ -401,11 +401,45 @@
     }
 
     // Kill condemned enemies individually — each shows its own crimson ring death VFX
+    // Collect positions first (enemies still alive here), then kill
+    var condemnedPositions = [];
     for (var k = condemned.length - 1; k >= 0; k--) {
       var ke = condemned[k];
       var ki = this.enemies.indexOf(ke);
       if (ki < 0) continue;
+      condemnedPositions.push({ x: ke.x, y: ke.y, size: ke.size });
       this._killEnemy(ki, { batch: true, condemned: true });
+    }
+
+    // --- Cluster condemned positions and spawn one ring per cluster ---
+    // Enemies closer than CLUSTER_R to each other share a single larger ring.
+    var CLUSTER_R    = 80;  // px — neighbours within this distance merge
+    var CLUSTER_R_SQ = CLUSTER_R * CLUSTER_R;
+    var visited      = [];
+    for (var ci = 0; ci < condemnedPositions.length; ci++) { visited.push(false); }
+    for (var ca = 0; ca < condemnedPositions.length; ca++) {
+      if (visited[ca]) continue;
+      visited[ca] = true;
+      var cp      = condemnedPositions[ca];
+      var cx      = cp.x, cy = cp.y;
+      var count   = 1;
+      var maxSize = cp.size;
+      for (var cb = ca + 1; cb < condemnedPositions.length; cb++) {
+        if (visited[cb]) continue;
+        var cpb = condemnedPositions[cb];
+        var ddx = cpb.x - cx, ddy = cpb.y - cy;
+        if (ddx * ddx + ddy * ddy < CLUSTER_R_SQ) {
+          visited[cb] = true;
+          // Weighted centroid
+          cx      = (cx * count + cpb.x) / (count + 1);
+          cy      = (cy * count + cpb.y) / (count + 1);
+          count++;
+          if (cpb.size > maxSize) maxSize = cpb.size;
+        }
+      }
+      // Ring radius grows with cluster size (sqrt so large groups don't explode off screen)
+      var clusterR = maxSize * 2.8 * Math.sqrt(count);
+      this._spawnCondemnedDeath(cx, cy, 0, clusterR);
     }
 
     // --- Destroy charging circles then trigger deferred detonations ---

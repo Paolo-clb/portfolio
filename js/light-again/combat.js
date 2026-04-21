@@ -216,8 +216,7 @@
     }
 
     if (ctx.condemned) {
-      // Condemned-mark death: stylish crimson ring burst, no explosion / shake / shockwave
-      this._spawnCondemnedDeath(ex, ey, e.size);
+      // Condemned-mark death: VFX handled by TW resolve clustering pass — skip individual ring here
     } else {
       var cnt = Math.round(30 + (e.size / C.RUSHER_SIZE) * 20);
       cnt = Math.min(cnt, 50);

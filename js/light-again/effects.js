@@ -95,38 +95,70 @@
     }
   };
 
-  /* Stylish death for condemned (TW mark) enemies — crimson double ring, no explosion */
-  M._spawnCondemnedDeath = function (x, y, size) {
+  /* Stylish death for condemned (TW mark) enemies — crimson expanding ring burst.
+     overrideRadius: pre-computed cluster radius from TW resolve (already accounts for group size). */
+  M._spawnCondemnedDeath = function (x, y, size, overrideRadius) {
     var slot = this._twDeathRings[this._twDeathRingW % this._twDeathRings.length];
     this._twDeathRingW++;
     slot.x = x; slot.y = y;
-    slot.r = Math.max(size * 0.4, 6);
-    slot.alpha = 1.0;
     slot.active = true;
+    slot.elapsed   = 0;
+    var r = overrideRadius || Math.max(size * 2.8, 48);
+    slot.maxRadius  = Math.max(r, 48);
+    // Faster expand for small rings, slightly slower for large cluster rings
+    slot.expandTime = 0.18 + Math.min(slot.maxRadius / 600, 0.10);
     slot.gfx.setVisible(true);
-    // Minimal crimson sparks (won't overwhelm shared emitter)
-    this._explode(x, y, [200, 20, 50], 5);
+    // Particle count scales with ring size so big clusters look proportionally impactful
+    var sparks = Math.round(12 + Math.min(slot.maxRadius / 10, 24));
+    this._explode(x, y, [220, 20,  50], sparks);
+    this._explode(x, y, [255, 80,  80], Math.round(sparks * 0.45));
   };
 
   M._updateCondemnedDeathRings = function (dt) {
     for (var i = 0; i < this._twDeathRings.length; i++) {
       var ring = this._twDeathRings[i];
       if (!ring.active) continue;
-      ring.r    += dt * 90;
-      ring.alpha -= dt * 2.6;
-      if (ring.alpha <= 0) {
+      ring.elapsed += dt;
+
+      var expT  = ring.expandTime || 0.22;
+      var fadeT = 0.30;
+      var t     = ring.elapsed;
+
+      if (t >= expT + fadeT) {
         ring.active = false;
         ring.gfx.clear();
         ring.gfx.setVisible(false);
         continue;
       }
+
+      var r, a;
+      if (t < expT) {
+        r = ring.maxRadius * (t / expT);
+        a = 1.0;
+      } else {
+        r = ring.maxRadius;
+        a = 1.0 - (t - expT) / fadeT;
+      }
+      if (r <= 0 || a <= 0) continue;
+
       ring.gfx.clear();
-      // Outer soft glow ring
-      ring.gfx.lineStyle(4, 0xcc1122, ring.alpha * 0.55);
-      ring.gfx.strokeCircle(ring.x, ring.y, ring.r);
-      // Inner bright crisp ring
-      ring.gfx.lineStyle(1.5, 0xff2244, ring.alpha);
-      ring.gfx.strokeCircle(ring.x, ring.y, ring.r * 0.6);
+      // Wide outer glow
+      ring.gfx.lineStyle(7, 0xcc0022, a * 0.30);
+      ring.gfx.strokeCircle(ring.x, ring.y, r * 1.10);
+      // Main crimson ring
+      ring.gfx.lineStyle(2.5, 0xff1133, a);
+      ring.gfx.strokeCircle(ring.x, ring.y, r);
+      // White-hot core flash (only while expanding)
+      if (t < expT) {
+        ring.gfx.lineStyle(1.2, 0xffffff, a * 0.65);
+        ring.gfx.strokeCircle(ring.x, ring.y, r);
+      }
+      // Inner echo ring
+      if (r > 15) {
+        var echoA = a * 0.45 * (t < expT ? 1.0 - t / expT : 0.4);
+        ring.gfx.lineStyle(1.5, 0xff2244, echoA);
+        ring.gfx.strokeCircle(ring.x, ring.y, r * 0.55);
+      }
     }
   };
 
