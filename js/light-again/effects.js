@@ -133,13 +133,14 @@
 
       var r, a;
       if (t < expT) {
-        r = ring.maxRadius * (t / expT);
+        r = ring.maxRadius * (1.0 - t / expT);  // shrinks from maxRadius → 0
         a = 1.0;
       } else {
-        r = ring.maxRadius;
+        r = 0;
         a = 1.0 - (t - expT) / fadeT;
       }
-      if (r <= 0 || a <= 0) continue;
+      if (r < 0) r = 0;
+      if (a <= 0) continue;
 
       ring.gfx.clear();
       // Wide outer glow
@@ -148,16 +149,16 @@
       // Main crimson ring
       ring.gfx.lineStyle(2.5, 0xff1133, a);
       ring.gfx.strokeCircle(ring.x, ring.y, r);
-      // White-hot core flash (only while expanding)
+      // White-hot core flash (only while shrinking)
       if (t < expT) {
         ring.gfx.lineStyle(1.2, 0xffffff, a * 0.65);
         ring.gfx.strokeCircle(ring.x, ring.y, r);
       }
-      // Inner echo ring
+      // Outer echo ring
       if (r > 15) {
-        var echoA = a * 0.45 * (t < expT ? 1.0 - t / expT : 0.4);
+        var echoA = a * 0.45 * (t < expT ? t / expT : 0.4);
         ring.gfx.lineStyle(1.5, 0xff2244, echoA);
-        ring.gfx.strokeCircle(ring.x, ring.y, r * 0.55);
+        ring.gfx.strokeCircle(ring.x, ring.y, r * 1.45);
       }
     }
   };
