@@ -228,11 +228,6 @@
     e.spr.destroy();
     for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
     if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
-    // Remove from CM spawn queue if it died before its CM was allocated
-    if (this._twCMSpawnQueue) {
-      var qi = this._twCMSpawnQueue.indexOf(e);
-      if (qi !== -1) this._twCMSpawnQueue.splice(qi, 1);
-    }
     this.enemies.splice(idx, 1);
 
     if (!ctx.condemned) {

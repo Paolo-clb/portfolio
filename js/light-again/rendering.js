@@ -26,6 +26,10 @@
     LA.buildEnemyTex(tm, '_enemy');
     LA.buildShooterTex(tm, '_shooter');
     LA.buildBruiserTex(tm, '_bruiser');
+    // Pre-bake grayscale variants for The World texture-swap — zero runtime GPU cost
+    LA.buildGrayscaleVariant(tm, '_enemy',   '_enemy_gray');
+    LA.buildGrayscaleVariant(tm, '_shooter', '_shooter_gray');
+    LA.buildGrayscaleVariant(tm, '_bruiser', '_bruiser_gray');
     LA.buildProjTex(tm, '_proj');
     LA.buildPCBTex(tm, '_pcb', c);
     LA.buildStarTex(tm, '_star');

@@ -29,10 +29,10 @@
     // Stasis wave intro animation
     this._twWaveActive   = false;
     this._twWaveRadius   = 0;
-    this._twWaveDelay    = 0;    // ms before wave starts (flash settles)
-    this._twWaveMaxR     = 0;    // radius at which wave is considered off-screen
-    this._twCMQueue      = [];   // enemies waiting for their CM to be created
-    this._twCMSpawnQueue = [];   // enemies pending initial CM allocation (1/frame)
+    this._twWaveDelay    = 0;
+    this._twWaveMaxR     = 0;
+    this._twCMQueue      = [];   // kept for legacy reference safety
+    this._twCMSpawnQueue = [];   // kept for legacy reference safety
     this._twBgCM         = null;
     this._twGlowCM       = null;
     this._twWaveGfx      = this.add.graphics();
@@ -108,21 +108,17 @@
     this._twFrozenProjectiles = [];
     this._twPendingCount = 0;
 
-    // Activate CMs + cache distances. CMs were created at spawn (active=false).
-    // Flipping active=true is a pure JS boolean — zero GPU cost.
+    // Cache distances — needed for wave expansion and timing
     for (var pi = 0; pi < this.enemies.length; pi++) {
       var pe = this.enemies[pi];
-      if (!pe._twCondemned && pe.spr) {
+      if (pe.spr) {
         pe._twDist = Phaser.Math.Distance.Between(
           this.p.x, this.p.y, pe.x, pe.y
         );
-        if (pe._twCM) {
-          pe._twCM.reset();
-          pe._twCM.active = true;
-        }
+        pe._twGrayed = false;   // reset texture-swap flag
       }
     }
-    // Background CMs: only 2 objects, negligible cost, create immediately
+    // Background CMs: only 2 objects, negligible cost, keep for bg desaturation
     if (this.pcbTile && this.pcbTile.postFX && !this._twBgCM) {
       this._twBgCM = this.pcbTile.postFX.addColorMatrix();
     }
@@ -161,16 +157,6 @@
     // Accumulate elapsed from the moment TW was activated (covers both wave and freeze phases)
     if (this._twActive) {
       this._twTotalElapsed = (this._twTotalElapsed || 0) + dtMs;
-    }
-
-    // Drain spawn queue: 1 addColorMatrix per frame, completely imperceptible.
-    if (this._twCMSpawnQueue && this._twCMSpawnQueue.length > 0) {
-      var sq = this._twCMSpawnQueue.shift();
-      // Guard: sprite may have been destroyed before we got to it
-      if (sq && sq.spr && sq.spr.active && sq.spr.postFX && !sq._twCM) {
-        sq._twCM = sq.spr.postFX.addColorMatrix();
-        sq._twCM.active = false;
-      }
     }
 
     // Dynamic post-resolution batch window
@@ -216,23 +202,21 @@
       this._twWaveRadius += WAVE_SPEED * dt;
       var waveR = this._twWaveRadius;
 
-      // Per-enemy: create CM + set gray only once the wave has reached that enemy.
-      // This spreads addColorMatrix() calls naturally across frames as wave sweeps.
+      // Per-enemy: swap to gray texture the moment the wave front reaches them.
+      // setTexture() is a single draw-call state change — zero shader/GPU overhead.
       for (var wi = 0; wi < this.enemies.length; wi++) {
         var we = this.enemies[wi];
-        if (we._twCondemned) continue;
+        if (we._twCondemned || we._twGrayed) continue;
         var eDist = we._twDist !== undefined ? we._twDist
                   : Phaser.Math.Distance.Between(this.p.x, this.p.y, we.x, we.y);
-        if (waveR < eDist - GRAY_TRAIL) continue;
-        if (!we._twCM && we.spr && we.spr.postFX) {
-          // Enemy spawned after TW activation — create CM now
-          we._twCM = we.spr.postFX.addColorMatrix();
-          we._twCM.active = true;
+        if (waveR < eDist) continue;
+        // Wave has reached this enemy — swap to gray texture
+        var gk = we.texKey ? (we.texKey + '_gray') : null;
+        if (gk && we.spr) {
+          we.spr.setTexture(gk);
+          for (var ti = 0; ti < we.trSpr.length; ti++) { we.trSpr[ti].setTexture(gk); }
         }
-        if (we._twCM) {
-          var eg = Math.min(1, Math.max(0, (waveR - eDist + GRAY_TRAIL) / GRAY_TRAIL));
-          we._twCM.grayscale(eg);
-        }
+        we._twGrayed = true;
       }
 
       // BG tracks global waveProg
@@ -245,18 +229,22 @@
       if (waveProg >= 1) {
         this._twWaveActive = false;
         this._twWaveGfx.clear();
-        // Finalize any laggards
+        // Ensure any laggards (spawned during wave) are also grayed
         for (var fi = 0; fi < this.enemies.length; fi++) {
           var fe = this.enemies[fi];
-          if (fe._twCondemned) continue;
-          if (fe._twCM) fe._twCM.grayscale(1.0);
+          if (fe._twCondemned || fe._twGrayed) continue;
+          var fk = fe.texKey ? (fe.texKey + '_gray') : null;
+          if (fk && fe.spr) {
+            fe.spr.setTexture(fk);
+            for (var fti = 0; fti < fe.trSpr.length; fti++) { fe.trSpr[fti].setTexture(fk); }
+          }
+          fe._twGrayed = true;
         }
         if (this._twBgCM)   this._twBgCM.grayscale(1.0);
         if (this._twGlowCM) this._twGlowCM.grayscale(1.0);
       }
 
       // Timescale ramps faster: full freeze reached at 50% of maxR
-      // (by the time wave exits visible screen, world is nearly frozen)
       var tsProgress = Math.min(1, waveR / (this._twWaveMaxR * 0.5));
       return 1.0 - 0.98 * tsProgress;
     } else if (this._twActive) {
@@ -320,14 +308,14 @@
     this._twWaveActive = false;
     if (this._twWaveGfx) this._twWaveGfx.clear();
 
-    // --- Reset per-enemy grayscale (keep CM alive, disable for next use) ---
-    this._twCMQueue = [];
+    // --- Restore all enemies to their normal color texture ---
     for (var ci = 0; ci < this.enemies.length; ci++) {
       var ce = this.enemies[ci];
-      if (ce._twCM) {
-        ce._twCM.reset();
-        ce._twCM.active = false;
+      if (ce._twGrayed && ce.texKey && ce.spr) {
+        ce.spr.setTexture(ce.texKey);
+        for (var cti = 0; cti < ce.trSpr.length; cti++) { ce.trSpr[cti].setTexture(ce.texKey); }
       }
+      ce._twGrayed = false;
     }
 
     // --- Remove background ColorMatrices ---
@@ -638,9 +626,12 @@
     var e = this.enemies[idx];
     if (e._twCondemned) return true;
     e._twCondemned = true;
-
-    // Disable CM so condemned crimson tint is vivid
-    if (e._twCM) { e._twCM.reset(); e._twCM.active = false; }
+    // Restore normal texture so condemned enemies are vivid (not gray)
+    if (e._twGrayed && e.texKey && e.spr) {
+      e.spr.setTexture(e.texKey);
+      for (var ti = 0; ti < e.trSpr.length; ti++) { e.trSpr[ti].setTexture(e.texKey); }
+      e._twGrayed = false;
+    }
 
     // Visual feedback: red flash + particles
     this._explode(e.x, e.y, [255, 30, 30], 8);

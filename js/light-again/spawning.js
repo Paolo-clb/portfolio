@@ -142,9 +142,8 @@
       stunTimer: 0, isMarked: false, markTimer: 0,
       trail: trData, trSpr: trSpr, _tw: 0, _tn: 0,
       tier: 1, fireCD: 0, chargeTimer: 0, isCharging: false,
+      texKey: '_enemy',
     });
-    // Queue enemy for deferred CM allocation (1 per frame in update loop)
-    this._twCMSpawnQueue.push(this.enemies[this.enemies.length - 1]);
   };
 
   M._spawnShooterAt = function (ex, ey) {
@@ -169,8 +168,8 @@
       trail: trData, trSpr: trSpr, _tw: 0, _tn: 0,
       tier: 2, fireCD: C.T2_FIRE_CD * (0.8 + Math.random() * 0.4),
       chargeTimer: 0, isCharging: false, fireFlashTimer: 0,
+      texKey: '_shooter',
     });
-    this._twCMSpawnQueue.push(this.enemies[this.enemies.length - 1]);
   };
 
   M._spawnBruiserAt = function (ex, ey) {
@@ -204,8 +203,8 @@
       spawnCycle: 0,
       targetWaypoint: { x: ex, y: ey },
       waypointTimer: 0,
+      texKey: '_bruiser',
     });
-    this._twCMSpawnQueue.push(this.enemies[this.enemies.length - 1]);
   };
 
 })();

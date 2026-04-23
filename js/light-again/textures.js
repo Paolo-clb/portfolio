@@ -360,6 +360,47 @@
     tm.addCanvas(key, oc);
   };
 
+
+
+
+
+  /* ---- Grayscale variant (Partial Desaturation & T2 exception) ---- */
+  LA.buildGrayscaleVariant = function (tm, srcKey, dstKey) {
+    if (tm.exists(dstKey)) tm.remove(dstKey);
+    var srcCanvas = tm.get(srcKey).getSourceImage();
+    var W = srcCanvas.width, H = srcCanvas.height;
+    var oc = document.createElement('canvas');
+    oc.width = W; oc.height = H;
+    var ctx = oc.getContext('2d');
+    ctx.drawImage(srcCanvas, 0, 0);
+    var imgData = ctx.getImageData(0, 0, W, H);
+    var d = imgData.data;
+
+    // Valeurs par défaut (pour les T1, T3, etc.)
+    var desat = 0.85; 
+    var brightness = 1.0; // Luminosité normale
+
+    // Exception pour le T2 (les losanges jaunes)
+    // Remplacer 'enemy_t2' par la vraie clé de ton sprite jaune
+    if (srcKey.includes('_shooter')) { 
+      desat = 0.98;       // Presque 100% gris pour tuer le jaune
+      brightness = 0.65;  // On baisse drastiquement la luminosité (-35%)
+    }
+
+    for (var i = 0; i < d.length; i += 4) {
+      // On calcule la luminance et on y applique le multiplicateur de luminosité
+      var lum = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) * brightness;
+      
+      d[i]     = Math.round(lum * desat + (d[i] * brightness)     * (1 - desat)); // R
+      d[i + 1] = Math.round(lum * desat + (d[i + 1] * brightness) * (1 - desat)); // G
+      d[i + 2] = Math.round(lum * desat + (d[i + 2] * brightness) * (1 - desat)); // B
+    }
+    
+    ctx.putImageData(imgData, 0, 0);
+    tm.addCanvas(dstKey, oc);
+  };
+
+
   LA.buildPixelTex = function (tm, key) {
     if (tm.exists(key)) return;
     var oc = document.createElement('canvas');
