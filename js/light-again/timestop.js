@@ -311,11 +311,14 @@
     // --- Restore all enemies to their normal color texture ---
     for (var ci = 0; ci < this.enemies.length; ci++) {
       var ce = this.enemies[ci];
-      if (ce._twGrayed && ce.texKey && ce.spr) {
+      ce._twGrayed = false;
+      if (ce.isMarked) {
+        // Enemy is still dash-marked: keep gray and hand off to mark system
+        ce._markGrayed = true;
+      } else if (ce.texKey && ce.spr) {
         ce.spr.setTexture(ce.texKey);
         for (var cti = 0; cti < ce.trSpr.length; cti++) { ce.trSpr[cti].setTexture(ce.texKey); }
       }
-      ce._twGrayed = false;
     }
 
     // --- Remove background ColorMatrices ---

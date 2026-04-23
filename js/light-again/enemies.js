@@ -67,6 +67,12 @@
         e.markTimer -= ms;
         if (e.markTimer <= 0) {
           e.isMarked = false; e.markTimer = 0;
+          // Restore texture — but only if TW hasn't claimed it
+          if (e._markGrayed && !e._twGrayed && e.texKey && e.spr) {
+            e.spr.setTexture(e.texKey);
+            for (var mri = 0; mri < e.trSpr.length; mri++) e.trSpr[mri].setTexture(e.texKey);
+          }
+          e._markGrayed = false;
         }
       }
 

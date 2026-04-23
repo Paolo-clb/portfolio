@@ -31,6 +31,13 @@
           me.stunTimer = 200;
           p.dashHitCount++;
           this._explode(me.x, me.y, [0, 255, 255], 8);
+          // Gray texture so the cyan sparks pop against a desaturated enemy
+          if (!me._twGrayed && !me._markGrayed && me.texKey && me.spr) {
+            var mgk = me.texKey + '_gray';
+            me.spr.setTexture(mgk);
+            for (var mti = 0; mti < me.trSpr.length; mti++) me.trSpr[mti].setTexture(mgk);
+            me._markGrayed = true;
+          }
         }
       }
     }
