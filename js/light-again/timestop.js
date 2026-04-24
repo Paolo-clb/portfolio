@@ -54,8 +54,9 @@
     this._twBatchWindow    = false;
     this._twBatchGrace     = 0;      // grace ms after last pending resolves
     this._twBatchMaxTimeout = 0;     // absolute safety cap
-    this._twPendingCount   = 0;      // frozen projectiles still in flight    this._twBatchElapsed   = 0;      // ms elapsed since batch opened
-    this._twLastBatchDuration = 0;   // duration of last completed batch window
+    this._twPendingCount        = 0;   // frozen projectiles still in flight
+    this._twBatchElapsed        = 0;   // ms elapsed since batch opened
+    this._twLastBatchDuration   = 0;   // duration of last completed batch window
     // HUD icon label text
     this._twIconTxt = this.add.text(0, 0, 'TW', {
       fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#cc1111',
@@ -197,8 +198,6 @@
       }
 
       var WAVE_SPEED = 1200;  // px/s
-      // Gray trail: how many px behind the wave front an enemy transitions 0→1
-      var GRAY_TRAIL = 120;
       this._twWaveRadius += WAVE_SPEED * dt;
       var waveR = this._twWaveRadius;
 

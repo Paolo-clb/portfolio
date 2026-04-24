@@ -706,7 +706,7 @@
       this._updateDashTornados(sDt);
       this._renderPlayer();
       this._renderEnemies();
-      this._renderProjectiles();
+      this._renderProjectiles(dt);  // pass raw dt for frame-rate independent decay
       this._renderHUD();
     },
   };

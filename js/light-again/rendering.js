@@ -46,9 +46,13 @@
     this._drawVignette();
     for (var i = 0; i < this.enemies.length; i++) {
       var e = this.enemies[i];
-      var texK = e.tier === 3 ? '_bruiser' : e.tier === 2 ? '_shooter' : '_enemy';
+      // Use texKey (always set at spawn) — fallback to tier lookup for safety
+      var texK = e.texKey || (e.tier === 3 ? '_bruiser' : e.tier === 2 ? '_shooter' : '_enemy');
       e.spr.setTexture(texK);
       for (var j = 0; j < e.trSpr.length; j++) e.trSpr[j].setTexture(texK);
+      // Texture was just restored to the normal key — clear gray-state flags
+      e._twGrayed   = false;
+      e._markGrayed = false;
     }
   };
 
@@ -106,6 +110,15 @@
       this.playerSpr.setTint(0x00ffff);
       this.playerSpr.setAlpha(0.85);
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
+    } else if (p.state === 'DASH_ATTACKING') {
+      // Shimmer: rapid oscillation nudges the perceived balance between the cyan tip
+      // and the crimson tail of the gradient texture, making it feel energised.
+      var datkOsc = Math.sin(this.gameTime * Math.PI * 14);
+      var datkR = Math.round(255 - Math.max(0, -datkOsc) * 52);
+      var datkB = Math.round(255 - Math.max(0,  datkOsc) * 52);
+      this.playerSpr.setTint(Phaser.Display.Color.GetColor(datkR, 255, datkB));
+      this.playerSpr.setAlpha(0.90 + Math.abs(datkOsc) * 0.10);
+      this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
     } else {
       this.playerSpr.clearTint();
       this.playerSpr.setAlpha(1.0);
@@ -151,8 +164,18 @@
       var trAlpha = (hi + 1) / (this._trN + 1) * (p.invincible && p.dashInvinc ? 0.55 : 0.35);
       sl.spr.setAlpha(trAlpha);
       sl.spr.setScale(baseScale * ((hi + 1) / (this._trN + 1) * 0.5 + 0.5));
-      if (p.invincible && p.dashInvinc) sl.spr.setTint(0x00ffff);
-      else sl.spr.clearTint();
+      if (p.invincible && p.dashInvinc) {
+        sl.spr.setTint(0x00ffff);
+      } else if (p.state === 'DASH_ATTACKING') {
+        // Gradient: oldest ghost = dark cyan-blue → newest = crimson (matches texture direction)
+        var tFrac = (hi + 1) / (this._trN + 1);
+        var trR = Math.round(0   + 255 * tFrac);
+        var trG = Math.round(80  - 60  * tFrac);
+        var trB = Math.round(220 - 160 * tFrac);
+        sl.spr.setTint((trR << 16) | (trG << 8) | trB);
+      } else {
+        sl.spr.clearTint();
+      }
       sl.spr.setVisible(true);
     }
   };
@@ -333,14 +356,15 @@
     }
   };
 
-  M._renderProjectiles = function () {
+  M._renderProjectiles = function (dt) {
     var gt = this.gameTime;
+    // dt is raw real-time seconds; used for frame-rate independent trail decay
 
     // Decay all active trail slots
     for (var si = 0; si < this._projTrailPool.length; si++) {
       var sl = this._projTrailPool[si];
       if (!sl.active) continue;
-      sl.alpha -= 0.07;
+      sl.alpha -= (dt || 0.0167) * 4.2;  // 4.2/s ≈ 0.07/frame at 60fps
       if (sl.alpha <= 0) {
         sl.active = false;
         sl.spr.setVisible(false);

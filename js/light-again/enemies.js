@@ -62,9 +62,9 @@
       tSl.x = e.x; tSl.y = e.y; tSl.angle = e.angle;
       e._tw++; if (e._tn < this.ENEMY_TRAIL_N) e._tn++;
 
-      // Mark expiry timer
+      // Mark expiry timer — frozen during The World (timer resumes at TW end)
       if (e.isMarked) {
-        e.markTimer -= ms;
+        if (!this._twActive) e.markTimer -= ms;
         if (e.markTimer <= 0) {
           e.isMarked = false; e.markTimer = 0;
           // Restore texture — but only if TW hasn't claimed it

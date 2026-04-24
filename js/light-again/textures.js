@@ -31,29 +31,56 @@
     var ox = W / 2, oy = H / 2;
 
     if (isDashAtk) {
+      // Bicolor outer halo: separate cyan (tip) and crimson (tail) glow passes
       g2.save();
       g2.globalCompositeOperation = 'lighter';
-      g2.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',0.7)';
-      g2.shadowBlur = 52;
+      g2.shadowColor = 'rgba(0,220,255,0.55)';
+      g2.shadowBlur = 62;
       _drawArrowPath(g2, ox, oy, s);
-      g2.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.04)';
+      g2.fillStyle = 'rgba(0,220,255,0.02)';
+      g2.fill();
+      g2.shadowColor = 'rgba(255,20,60,0.50)';
+      g2.shadowBlur = 44;
+      _drawArrowPath(g2, ox, oy, s);
+      g2.fillStyle = 'rgba(255,20,60,0.02)';
       g2.fill();
       g2.shadowBlur = 0;
       g2.restore();
     }
 
+    // Middle glow pass
     g2.save();
     g2.globalCompositeOperation = 'lighter';
-    g2.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',0.9)';
-    g2.shadowBlur = blur;
-    _drawArrowPath(g2, ox, oy, s);
-    g2.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.35)';
+    if (isDashAtk) {
+      var mg = g2.createLinearGradient(ox - s * 0.6, oy, ox + s, oy);
+      mg.addColorStop(0,   'rgba(255,20,60,0.45)');
+      mg.addColorStop(0.5, 'rgba(210,0,200,0.35)');
+      mg.addColorStop(1,   'rgba(0,210,255,0.45)');
+      g2.shadowColor = 'rgba(160,40,200,0.70)';
+      g2.shadowBlur = blur;
+      _drawArrowPath(g2, ox, oy, s);
+      g2.fillStyle = mg;
+    } else {
+      g2.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',0.9)';
+      g2.shadowBlur = blur;
+      _drawArrowPath(g2, ox, oy, s);
+      g2.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.35)';
+    }
     g2.fill();
     g2.shadowBlur = 0;
     g2.restore();
 
+    // Solid body fill
     _drawArrowPath(g2, ox, oy, s);
-    g2.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+    if (isDashAtk) {
+      var bg = g2.createLinearGradient(ox - s * 0.6, oy, ox + s, oy);
+      bg.addColorStop(0,    'rgb(255,20,60)');    // tail = crimson
+      bg.addColorStop(0.45, 'rgb(220,10,190)');   // mid  = magenta
+      bg.addColorStop(1,    'rgb(0,200,255)');    // tip  = cyan
+      g2.fillStyle = bg;
+    } else {
+      g2.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+    }
     g2.fill();
 
     tm.addCanvas(key, oc);
