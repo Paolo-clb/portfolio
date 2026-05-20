@@ -96,9 +96,15 @@
       var sy = this.p.y + Math.sin(ang) * dist;
 
       var tier = spawnQueue[j];
+      this._naturalSpawn = true;
       if (tier === 3) this._spawnBruiserAt(sx, sy);
       else if (tier === 2) this._spawnShooterAt(sx, sy);
       else this._spawnRusherAt(sx, sy);
+      this._naturalSpawn = false;
+      // Spawn ring VFX per enemy
+      var ringColor = tier === 3 ? 0xaa00ff : tier === 2 ? 0xff7722 : 0xff0044;
+      var ringR = tier === 3 ? 90 : tier === 2 ? 72 : 55;
+      this._spawnWaveRing(sx, sy, { maxRadius: ringR, color: ringColor, expandTime: 0.16 + tier * 0.04 });
     }
   };
 
@@ -143,6 +149,7 @@
       trail: trData, trSpr: trSpr, _tw: 0, _tn: 0,
       tier: 1, fireCD: 0, chargeTimer: 0, isCharging: false,
       texKey: '_enemy',
+      _spawnAnimT: this._naturalSpawn ? 0.0 : 1.0,
     });
   };
 
@@ -169,6 +176,7 @@
       tier: 2, fireCD: C.T2_FIRE_CD * (0.8 + Math.random() * 0.4),
       chargeTimer: 0, isCharging: false, fireFlashTimer: 0,
       texKey: '_shooter',
+      _spawnAnimT: this._naturalSpawn ? 0.0 : 1.0,
     });
   };
 
@@ -204,6 +212,7 @@
       targetWaypoint: { x: ex, y: ey },
       waypointTimer: 0,
       texKey: '_bruiser',
+      _spawnAnimT: this._naturalSpawn ? 0.0 : 1.0,
     });
   };
 

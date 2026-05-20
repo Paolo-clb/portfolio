@@ -423,6 +423,7 @@
         self._twGlowCM = null;
         self._twWaveGfx = null;
         if (self._twIconTxt) { self._twIconTxt.destroy(); self._twIconTxt = null; }
+        if (self._killCounterTxt) { self._killCounterTxt.destroy(); self._killCounterTxt = null; }
         if (self._onWindowFocus) {
           window.removeEventListener('focus', self._onWindowFocus);
           self._onWindowFocus = null;
@@ -688,7 +689,7 @@
 
       this.gameTime += dt;
 
-      if (this.comboTimer > 0) {
+      if (this.comboTimer > 0 && !this._twActive) {
         this.comboTimer -= ms;
         if (this.comboTimer <= 0) {
           this.comboTimer = 0;
@@ -707,7 +708,7 @@
       this._renderPlayer();
       this._renderEnemies();
       this._renderProjectiles(dt);  // pass raw dt for frame-rate independent decay
-      this._renderHUD();
+      this._renderHUD(dt);
     },
   };
 

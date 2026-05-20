@@ -58,6 +58,8 @@
 
     for (var i = 0; i < en.length; i++) {
       var e = en[i];
+      // Spawn animation decay
+      if (e._spawnAnimT < 1.0) e._spawnAnimT = Math.min(1.0, e._spawnAnimT + dt * 2.5);
       var tSl = e.trail[e._tw % this.ENEMY_TRAIL_N];
       tSl.x = e.x; tSl.y = e.y; tSl.angle = e.angle;
       e._tw++; if (e._tn < this.ENEMY_TRAIL_N) e._tn++;

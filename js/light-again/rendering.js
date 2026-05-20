@@ -111,13 +111,8 @@
       this.playerSpr.setAlpha(0.85);
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
     } else if (p.state === 'DASH_ATTACKING') {
-      // Shimmer: rapid oscillation nudges the perceived balance between the cyan tip
-      // and the crimson tail of the gradient texture, making it feel energised.
-      var datkOsc = Math.sin(this.gameTime * Math.PI * 14);
-      var datkR = Math.round(255 - Math.max(0, -datkOsc) * 52);
-      var datkB = Math.round(255 - Math.max(0,  datkOsc) * 52);
-      this.playerSpr.setTint(Phaser.Display.Color.GetColor(datkR, 255, datkB));
-      this.playerSpr.setAlpha(0.90 + Math.abs(datkOsc) * 0.10);
+      this.playerSpr.setTint(0xff44ff);
+      this.playerSpr.setAlpha(0.92);
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
     } else {
       this.playerSpr.clearTint();
@@ -283,6 +278,16 @@
         e.spr.setScale(1.0);
       }
 
+      // Spawn animation: scale up + fade in (natural waves only)
+      if (e._spawnAnimT < 1.0) {
+        var sap = e._spawnAnimT;
+        var animSc = sap < 0.68 ? (sap / 0.68) * 1.22 : 1.22 - ((sap - 0.68) / 0.32) * 0.22;
+        var animAl = Math.min(1.0, sap * 3.0);
+        e.spr.setScale(animSc);
+        e.spr.setAlpha(animAl);
+        if (sap < 0.25) e.spr.setTint(0xffffff);
+      }
+
       for (var t = 0; t < this.ENEMY_TRAIL_N; t++) e.trSpr[t].setVisible(false);
       for (var ti = 0; ti < e._tn; ti++) {
         var tr = e.trail[(e._tw - e._tn + ti) % this.ENEMY_TRAIL_N];
@@ -399,60 +404,98 @@
     }
   };
 
-  M._renderHUD = function () {
+  M._renderHUD = function (dt) {
     var p = this.p, cam = this.cameras.main;
     var cx = cam.width / 2, h = cam.height;
     var c = LA.getColors();
+    var gt = this.gameTime;
 
     this.hudGfx.clear();
 
-    // Dash cooldown bar — divisor matches the actual cooldown set at dash end
+    // ---- Directional motion-blur vignette during dash ----
+    this._dashBlurAlpha = this._dashBlurAlpha || 0;
+    var isDashing = p.state === 'DASHING';
+    var blurDt = dt || 0.016;
+    this._dashBlurAlpha = isDashing
+      ? Math.min(1, this._dashBlurAlpha + blurDt * 8)
+      : Math.max(0, this._dashBlurAlpha - blurDt * 6);
+    if (this._dashBlurAlpha > 0.01) {
+      var blurDx = Math.cos(p.angle);
+      var blurDy = Math.sin(p.angle);
+      var maxA = 0.36 * this._dashBlurAlpha;
+      var aTL = Math.max(0, Math.min(1,  blurDx + blurDy)) * maxA;
+      var aTR = Math.max(0, Math.min(1, -blurDx + blurDy)) * maxA;
+      var aBL = Math.max(0, Math.min(1,  blurDx - blurDy)) * maxA;
+      var aBR = Math.max(0, Math.min(1, -blurDx - blurDy)) * maxA;
+      this.hudGfx.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, aTL, aTR, aBL, aBR);
+      this.hudGfx.fillRect(0, 0, cam.width, cam.height);
+    }
+
+    // ---- Shared bar constants ----
+    var BAR_W = 160, BAR_H = 7;
+    var barX  = cx - BAR_W / 2;
+
+    // ---- Dash cooldown bar ----
     if (!p.dashAvailable) {
-      var bW = 100, bH = 4, bX = cx - 50, bY = h - 28;
       var dashCdMax = C.DASH_CD * ((this._upgradeLevels && this._upgradeLevels.dash >= 1) ? 0.70 : 1.0);
-      var f = p.state === 'DASHING' ? 0 : Math.max(0, Math.min(1, 1 - p.dashCooldown / dashCdMax));
-      this.hudGfx.fillStyle(0xffffff, 0.10);
-      this.hudGfx.fillRect(bX, bY, bW, bH);
-      this.hudGfx.fillStyle(c.cyan, 0.8);
-      this.hudGfx.fillRect(bX, bY, bW * f, bH);
+      var dashF = p.state === 'DASHING' ? 0 : Math.max(0, Math.min(1, 1 - p.dashCooldown / dashCdMax));
+      var dashY = h - 34;
+      this.hudGfx.fillStyle(c.cyan, 0.10);
+      this.hudGfx.fillRect(barX, dashY, BAR_W, BAR_H);
+      this.hudGfx.lineStyle(1, c.cyan, 0.22);
+      this.hudGfx.strokeRect(barX, dashY, BAR_W, BAR_H);
+      if (dashF > 0) {
+        this.hudGfx.fillStyle(c.cyan, 0.88);
+        this.hudGfx.fillRect(barX, dashY, BAR_W * dashF, BAR_H);
+        this.hudGfx.fillStyle(0xffffff, 0.60);
+        this.hudGfx.fillRect(barX + BAR_W * dashF - 2, dashY, 2, BAR_H);
+      }
     }
 
-    // Star Power timer bar (above dash bar)
+    // ---- Star Power timer bar ----
     if (this.isStarPowered) {
-      var spW = 100, spH = 5, spX = cx - 50, spY = h - 40;
-      var spF = this._starPowerTimer / C.STAR_DUR;
-      this.hudGfx.fillStyle(0xffffff, 0.10);
-      this.hudGfx.fillRect(spX, spY, spW, spH);
-      var spAlpha = this._starPowerWarning
-        ? (0.5 + 0.5 * Math.abs(Math.sin(this.gameTime * Math.PI * 6)))
-        : 0.9;
-      this.hudGfx.fillStyle(C.STAR_TINT, spAlpha);
-      this.hudGfx.fillRect(spX, spY, spW * spF, spH);
+      var starF  = this._starPowerTimer / C.STAR_DUR;
+      var starY  = h - 48;
+      var starA  = this._starPowerWarning
+        ? (0.45 + 0.55 * Math.abs(Math.sin(gt * Math.PI * 6)))
+        : 0.92;
+      this.hudGfx.fillStyle(C.STAR_TINT, 0.10);
+      this.hudGfx.fillRect(barX, starY, BAR_W, BAR_H);
+      this.hudGfx.lineStyle(1, C.STAR_TINT, 0.22);
+      this.hudGfx.strokeRect(barX, starY, BAR_W, BAR_H);
+      this.hudGfx.fillStyle(C.STAR_TINT, starA);
+      this.hudGfx.fillRect(barX, starY, BAR_W * starF, BAR_H);
+      if (starF > 0.01) {
+        this.hudGfx.fillStyle(0xffffff, 0.55);
+        this.hudGfx.fillRect(barX + BAR_W * starF - 2, starY, 2, BAR_H);
+      }
     }
 
-    // The World — cooldown / duration bar (below dash bar)
+    // ---- The World bar ----
     if (this._twUnlocked) {
-      var twW = 100, twH = 4, twX = cx - 50, twY = h - 18;
-      this.hudGfx.fillStyle(0xffffff, 0.10);
-      this.hudGfx.fillRect(twX, twY, twW, twH);
+      var twY = h - 20;
       if (this._twActive) {
-        // Duration bar: drains red
-        // Bar drains from activation (includes wave phase) for immediate visual feedback
         var twTotalMs = (this._twWaveDurationMs || 0) + C.TW_DURATION;
-        var twF = Math.max(0, 1.0 - (this._twTotalElapsed || 0) / twTotalMs);
-        var twAlpha = 0.7 + 0.3 * Math.abs(Math.sin(this.gameTime * Math.PI * 4));
-        this.hudGfx.fillStyle(0xcc1111, twAlpha);
-        this.hudGfx.fillRect(twX, twY, twW * twF, twH);
-      } else if (this._twCooldown > 0) {
-        // Cooldown bar: fills up slowly
-        var twCF = 1 - this._twCooldown / C.TW_COOLDOWN;
-        this.hudGfx.fillStyle(0x888888, 0.5);
-        this.hudGfx.fillRect(twX, twY, twW * twCF, twH);
-      } else {
-        // Ready: full red bar pulsing
-        var twReadyA = 0.6 + 0.3 * Math.abs(Math.sin(this.gameTime * Math.PI * 1.5));
-        this.hudGfx.fillStyle(0xcc1111, twReadyA);
-        this.hudGfx.fillRect(twX, twY, twW, twH);
+        var twF       = Math.max(0, 1.0 - (this._twTotalElapsed || 0) / twTotalMs);
+        var twPulseA  = 0.72 + 0.28 * Math.abs(Math.sin(gt * Math.PI * 4));
+        this.hudGfx.fillStyle(0xcc1111, 0.14);
+        this.hudGfx.fillRect(barX, twY, BAR_W, BAR_H);
+        this.hudGfx.lineStyle(1, 0xcc1111, 0.35);
+        this.hudGfx.strokeRect(barX, twY, BAR_W, BAR_H);
+        this.hudGfx.fillStyle(0xdd1111, twPulseA);
+        this.hudGfx.fillRect(barX, twY, BAR_W * twF, BAR_H);
+        if (twF > 0.01) {
+          this.hudGfx.fillStyle(0xff6666, 0.90);
+          this.hudGfx.fillRect(barX + BAR_W * twF - 2, twY, 2, BAR_H);
+        }
+      } else if (this._twCooldown <= 0) {
+        var twReadyA = 0.55 + 0.35 * Math.abs(Math.sin(gt * Math.PI * 1.8));
+        this.hudGfx.fillStyle(0xcc1111, twReadyA * 0.22);
+        this.hudGfx.fillRect(barX - 2, twY - 1, BAR_W + 4, BAR_H + 2);
+        this.hudGfx.fillStyle(0xdd1111, twReadyA);
+        this.hudGfx.fillRect(barX, twY, BAR_W, BAR_H);
+        this.hudGfx.lineStyle(1, 0xff4444, twReadyA * 0.80);
+        this.hudGfx.strokeRect(barX, twY, BAR_W, BAR_H);
       }
     }
 
@@ -518,7 +561,7 @@
     }
 
     // ---- Upgrade icons (bottom HUD) ----
-    this._renderUpgradeHUD(cx, h);
+    this._renderUpgradeHUD(cx, h, dt);
 
     // ---- The World icon (bottom HUD, after upgrade icons) ----
     if (this._twUnlocked) {
@@ -539,10 +582,53 @@
   var _upMarginR  = 16;
   var _upMarginB  = 16;
 
-  M._renderUpgradeHUD = function (cx, h) {
+  M._renderUpgradeHUD = function (cx, h, dt) {
     if (!this._upgradeLevels) return;
     var lvls = this._upgradeLevels;
     var w    = this.cameras.main.width;
+    var iy   = h - _upMarginB - _upIconSize - _upDotR * 2 - 6;
+
+    // ---- Kill counter to next upgrade (above icons, right-aligned) ----
+    if (this._upgradePool && this._upgradePool.length > 0 && !this._upgradeDraftOpen) {
+      var killsLeft = Math.max(0, this._upgradeKillThreshold - this.totalKills);
+      if (this._lastKillsLeft !== killsLeft) {
+        this._lastKillsLeft    = killsLeft;
+        this._killCounterPulse = 1.0;
+      }
+      var kDt = dt || 0.016;
+      this._killCounterPulse = Math.max(0, (this._killCounterPulse || 0) - kDt * 3.5);
+
+      if (!this._killCounterTxt) {
+        this._killCounterTxt = this.add.text(0, 0, '', {
+          fontFamily: 'monospace', fontSize: '25px',
+          color: '#6699bb', stroke: '#000000', strokeThickness: 3.5,
+        });
+        this._killCounterTxt.setOrigin(1, 1);
+        this._killCounterTxt.setDepth(102);
+        this._killCounterTxt.setScrollFactor(0);
+      }
+      var kcColor = killsLeft <= 15 ? '#ff7733' : killsLeft <= 40 ? '#ffcc44' : '#6699bb';
+      this._killCounterTxt.setText('>> ' + killsLeft + ' kills');
+      this._killCounterTxt.setColor(kcColor);
+      var kcPulse = 1.0 + (this._killCounterPulse || 0) * 0.22;
+      this._killCounterTxt.setScale(kcPulse);
+      this._killCounterTxt.setPosition(w - _upMarginR, iy - 34);
+      this._killCounterTxt.setAlpha(0.78 + (this._killCounterPulse || 0) * 0.22);
+      this._killCounterTxt.setVisible(true);
+
+      // Thin progress bar aligned to counter right edge
+      var prog = 1 - Math.min(1, killsLeft / C.UPGRADE_KILL_INTERVAL);
+      var pbW  = 100;
+      var pbX  = w - _upMarginR - pbW;
+      var pbY  = iy - 20;
+      var pbCol = killsLeft <= 15 ? 0xff7733 : killsLeft <= 40 ? 0xffcc44 : 0x3366aa;
+      this.hudGfx.fillStyle(pbCol, 0.10);
+      this.hudGfx.fillRect(pbX, pbY, pbW, 3);
+      this.hudGfx.fillStyle(pbCol, 0.72);
+      this.hudGfx.fillRect(pbX, pbY, pbW * prog, 3);
+    } else if (this._killCounterTxt) {
+      this._killCounterTxt.setVisible(false);
+    }
 
     // Collect acquired upgrades (preserve display order)
     var acquired = [];
@@ -557,7 +643,6 @@
       var lvl = lvls[id];
 
       var ix = w - _upMarginR - (acquired.length - j) * (_upIconSize + _upGap) + _upGap;
-      var iy = h - _upMarginB - _upIconSize - _upDotR * 2 - 6;
 
       // Border color: cyan=Lv1, gold=Lv2
       var borderCol = lvl >= 2 ? 0xffc832 : 0x00ffff;
@@ -590,58 +675,92 @@
     }
   };
 
-  /* ---- The World icon — golden, after normal upgrade icons ---- */
+  /* ---- The World icon — tri-state: ready / active / cooldown (greyed) ---- */
   M._renderTheWorldIcon = function (h) {
     var w    = this.cameras.main.width;
     var lvls = this._upgradeLevels || {};
 
-    // Count how many normal upgrades are acquired (for positioning)
     var normalCount = 0;
     for (var i = 0; i < _upOrder.length; i++) {
       if (lvls[_upOrder[i]] > 0) normalCount++;
     }
 
-    // Place TW icon after normal icons
     var ix = w - _upMarginR - (normalCount + 1) * (_upIconSize + _upGap) + _upGap;
     var iy = h - _upMarginB - _upIconSize - _upDotR * 2 - 6;
 
-    var gt = this.gameTime || 0;
-    var redPulse = 0.65 + 0.25 * Math.sin(gt * Math.PI * 1.2);
-    var ready = this._twCooldown <= 0 && !this._twActive;
-    var borderCol = 0xcc1111;
-    var borderA = ready ? redPulse : 0.40;
-
-    // Icon background
-    this.hudGfx.fillStyle(0x120e04, 0.90);
-    this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
-
-    // Border (2px) — pulses when ready
-    this.hudGfx.lineStyle(2, borderCol, borderA);
-    this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
-
-    // Inner circle: golden hourglass hint
+    var gt    = this.gameTime || 0;
     var dotCx = ix + _upIconSize / 2;
     var dotCy = iy + _upIconSize / 2;
-    this.hudGfx.fillStyle(borderCol, ready ? 0.30 : 0.12);
-    this.hudGfx.fillCircle(dotCx, dotCy, 10);
+    var active = this._twActive;
+    var onCD   = !active && this._twCooldown > 0;
+    var ready  = !active && !onCD;
 
-    // Single golden dot below
-    var dotsY = iy + _upIconSize + 5;
-    this.hudGfx.fillStyle(borderCol, 0.92);
-    this.hudGfx.fillCircle(dotCx, dotsY, _upDotR);
+    if (active) {
+      // --- ACTIVE: red background, vertical drain fill ---
+      this.hudGfx.fillStyle(0x1a0505, 0.95);
+      this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
+      var twTotalMs = (this._twWaveDurationMs || 0) + C.TW_DURATION;
+      var twFrac    = Math.max(0, 1.0 - (this._twTotalElapsed || 0) / twTotalMs);
+      var fillH     = Math.round((_upIconSize - 2) * twFrac);
+      var pA        = 0.50 + 0.22 * Math.abs(Math.sin(gt * Math.PI * 4));
+      this.hudGfx.fillStyle(0xcc1111, pA);
+      this.hudGfx.fillRect(ix + 1, iy + 1, _upIconSize - 2, fillH);
+      if (fillH > 2) {
+        this.hudGfx.fillStyle(0xff6666, 0.90);
+        this.hudGfx.fillRect(ix + 1, iy + fillH - 1, _upIconSize - 2, 2);
+      }
+      this.hudGfx.lineStyle(2, 0xee1111, 0.70 + 0.30 * Math.abs(Math.sin(gt * Math.PI * 4)));
+      this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
+    } else if (onCD) {
+      // --- COOLDOWN: clearly greyed out, fill rising from bottom ---
+      this.hudGfx.fillStyle(0x0e0e0e, 0.95);
+      this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
+      var cdFrac  = 1 - this._twCooldown / C.TW_COOLDOWN;
+      var cdH     = Math.round((_upIconSize - 2) * cdFrac);
+      var cdFillY = iy + 1 + (_upIconSize - 2) - cdH;
+      this.hudGfx.fillStyle(0x2a2a35, 0.88);
+      this.hudGfx.fillRect(ix + 1, cdFillY, _upIconSize - 2, cdH);
+      if (cdH > 2) {
+        this.hudGfx.fillStyle(0x606080, 0.75);
+        this.hudGfx.fillRect(ix + 1, cdFillY, _upIconSize - 2, 2);
+      }
+      this.hudGfx.lineStyle(2, 0x3a3a4a, 0.65);
+      this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
+    } else {
+      // --- READY: pulsing crimson fill + bright border + outer glow ---
+      var rP = 0.25 + 0.18 * Math.abs(Math.sin(gt * Math.PI * 1.8));
+      this.hudGfx.fillStyle(0x0a0807, 0.92);
+      this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.fillStyle(0xcc1111, rP);
+      this.hudGfx.fillRect(ix + 1, iy + 1, _upIconSize - 2, _upIconSize - 2);
+      var rBorderA = 0.70 + 0.30 * Math.abs(Math.sin(gt * Math.PI * 1.8));
+      this.hudGfx.lineStyle(3, 0xee1111, rBorderA);
+      this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
+    }
 
-    // "TW" text label inside icon
+    // "TW" label — dim on CD, pulsing on ready
     if (this._twIconTxt) {
       this._twIconTxt.setPosition(dotCx, dotCy);
-      this._twIconTxt.setAlpha(ready ? redPulse : 0.55);
+      this._twIconTxt.setAlpha(
+        active ? 0.92
+        : onCD  ? 0.22
+        : 0.62 + 0.28 * Math.abs(Math.sin(gt * Math.PI * 1.8))
+      );
     }
+
+    // Dot below icon — grey on CD
+    var dotsY = iy + _upIconSize + 5;
+    this.hudGfx.fillStyle(onCD ? 0x444444 : 0xcc1111, ready ? 0.92 : onCD ? 0.35 : 0.70);
+    this.hudGfx.fillCircle(dotCx, dotsY, _upDotR);
   };
 
   /* ---- Shield HUD — bottom-left with orbs ---- */
   var _shMarginL = 16;
   var _shMarginB = 16;
-  var _shOrbR    = 7;    // core radius — same 1.8x ratio as real orbs (5→9)
-  var _shOrbGap  = 34;   // gap between orb centres
+  // Real orbs: core=5, ring=5+4=9, ratio 1:1.8 — HUD orbs scaled up maintaining same ratio
+  var _shOrbR    = 10;           // core radius
+  var _shOrbRing = 18;           // glow ring radius — thicker stroke for visibility
+  var _shOrbGap  = 58;           // gap between orb centres (≥ 2×18=36 + breathing room)
 
   M._renderShieldHUD = function (h) {
     if (this.playerShields === undefined) return;
@@ -651,25 +770,23 @@
     var maxS = this.MAX_SHIELDS;
     var curS = this.playerShields;
 
-    // "Shield:" label
     var lx = _shMarginL;
-    var ly = h - _shMarginB - 20;
+    var ly = h - _shMarginB - 28;   // moved up to give bigger orbs room
 
-    // We use hudGfx text-style label via Phaser text — but since this is canvas drawing
-    // we'll draw it once as a positioned text object. Lazy-init.
     if (!this._shieldLabelTxt) {
       this._shieldLabelTxt = this.add.text(0, 0, t('laUpShield') + ':', {
-        fontFamily: 'monospace', fontSize: '16px', fontStyle: 'bold',
+        fontFamily: 'monospace', fontSize: '20px', fontStyle: 'bold',
         color: '#aaccdd', stroke: '#000000', strokeThickness: 2,
       });
       this._shieldLabelTxt.setOrigin(0, 0.5);
       this._shieldLabelTxt.setDepth(102);
       this._shieldLabelTxt.setScrollFactor(0);
+    } else if (this._shieldLabelTxt.style.fontSize !== '20px') {
+      this._shieldLabelTxt.setFontSize('20px');
     }
     this._shieldLabelTxt.setPosition(lx, ly);
 
-    // Orbs start after the label text
-    var orbStartX = lx + 82;
+    var orbStartX = lx + 108;   // offset for 20px "Shield:" label width
     var orbCy     = ly;
     var gt        = this.gameTime || 0;
 
@@ -678,27 +795,31 @@
       var ox = orbStartX + si * _shOrbGap;
 
       if (active) {
-        // Thin outer glow ring — matches real orb style (lineStyle 4, alpha 0.30)
-        this.hudGfx.lineStyle(4, c.cyan, 0.30);
-        this.hudGfx.strokeCircle(ox, orbCy, _shOrbR + 5);
+        // Outer glow ring — correct 1:1.8 ratio
+        this.hudGfx.lineStyle(7, c.cyan, 0.30);
+        this.hudGfx.strokeCircle(ox, orbCy, _shOrbRing);
 
-        // Solid filled core — matches real orb style (fillStyle cyan, 0.95)
+        // Solid filled core
         this.hudGfx.fillStyle(c.cyan, 0.95);
         this.hudGfx.fillCircle(ox, orbCy, _shOrbR);
 
-        // Lightning arcs between adjacent active orbs
+        // Connector to previous active orb
         if (si > 0 && (si - 1) < curS) {
           var prevOx = orbStartX + (si - 1) * _shOrbGap;
-          var arcA   = 0.25 + 0.25 * Math.sin(gt * Math.PI * 5 + si * 1.7);
+          var arcA   = 0.45 + 0.30 * Math.abs(Math.sin(gt * Math.PI * 5 + si * 1.7));
 
-          // Jagged lightning: 3-segment arc
+          // Static base wire (always-on for readability)
+          this.hudGfx.lineStyle(2, c.cyan, 0.35);
+          this.hudGfx.lineBetween(prevOx + _shOrbR, orbCy, ox - _shOrbR, orbCy);
+
+          // Animated jagged lightning overlay
           var mx1 = prevOx + _shOrbGap * 0.33;
-          var my1 = orbCy + (Math.sin(gt * 19 + si) * 4);
+          var my1 = orbCy + Math.sin(gt * 19 + si) * 5;
           var mx2 = prevOx + _shOrbGap * 0.66;
-          var my2 = orbCy + (Math.sin(gt * 23 + si * 1.3) * 4);
+          var my2 = orbCy + Math.sin(gt * 23 + si * 1.3) * 5;
 
-          // Glow line
-          this.hudGfx.lineStyle(2.5, c.cyan, arcA * 0.4);
+          // Glow pass
+          this.hudGfx.lineStyle(3.5, c.cyan, arcA * 0.50);
           this.hudGfx.beginPath();
           this.hudGfx.moveTo(prevOx + _shOrbR, orbCy);
           this.hudGfx.lineTo(mx1, my1);
@@ -706,8 +827,8 @@
           this.hudGfx.lineTo(ox - _shOrbR, orbCy);
           this.hudGfx.strokePath();
 
-          // Bright core line
-          this.hudGfx.lineStyle(1, 0xffffff, arcA * 0.7);
+          // Bright white core spark
+          this.hudGfx.lineStyle(1.5, 0xddf4ff, arcA * 0.85);
           this.hudGfx.beginPath();
           this.hudGfx.moveTo(prevOx + _shOrbR, orbCy);
           this.hudGfx.lineTo(mx1, my1);
@@ -716,9 +837,9 @@
           this.hudGfx.strokePath();
         }
       } else {
-        // Empty slot — faint outer ring + dim core, same proportions as active
-        this.hudGfx.lineStyle(4, 0xffffff, 0.10);
-        this.hudGfx.strokeCircle(ox, orbCy, _shOrbR + 5);
+        // Empty slot — same 1:1.8 proportion, very dim
+        this.hudGfx.lineStyle(7, 0xffffff, 0.10);
+        this.hudGfx.strokeCircle(ox, orbCy, _shOrbRing);
         this.hudGfx.fillStyle(0xffffff, 0.06);
         this.hudGfx.fillCircle(ox, orbCy, _shOrbR);
       }

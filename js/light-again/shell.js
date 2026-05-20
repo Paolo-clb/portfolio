@@ -454,6 +454,10 @@
       document.removeEventListener('keydown', overlayEl._onKeyDown);
     }
 
+    // Clear restart flag — prevents stale __laRestartPending=true from making the next
+    // open use '_la-restart-loading' while start() creates '_la-loading' (mismatched IDs → infinite loader)
+    window.__laRestartPending = false;
+
     // Stop game loop before tearing down DOM
     if (activeGame) { activeGame.stop(); activeGame = null; }
 
