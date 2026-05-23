@@ -6,6 +6,30 @@
 
   var LA = window.LightAgain;
 
+  /* ---- Hardcore unlock progress ---- */
+
+  LA.laGetUnlockProgress = function () {
+    try {
+      var p = JSON.parse(localStorage.getItem('la_kill_progress') || '{}');
+      return { t1: p.t1 || 0, t2: p.t2 || 0, t3: p.t3 || 0 };
+    } catch (e) { return { t1: 0, t2: 0, t3: 0 }; }
+  };
+
+  LA.laIsHardcoreUnlocked = function () {
+    var p = LA.laGetUnlockProgress();
+    return p.t1 >= 100 && p.t2 >= 10 && p.t3 >= 3;
+  };
+
+  LA.laAddKillProgress = function (tier) {
+    try {
+      var p = JSON.parse(localStorage.getItem('la_kill_progress') || '{}');
+      if (tier === 1) p.t1 = (p.t1 || 0) + 1;
+      else if (tier === 2) p.t2 = (p.t2 || 0) + 1;
+      else if (tier === 3) p.t3 = (p.t3 || 0) + 1;
+      localStorage.setItem('la_kill_progress', JSON.stringify(p));
+    } catch (e) { /* ignore */ }
+  };
+
   /* ---- HTML escaping ---- */
 
   LA.escHtml = function (s) {
@@ -27,6 +51,9 @@
       laUpDashName: 'Dash', laUpDashDesc1: 'Dash plus rapide, r\u00e9cup\u00e9ration plus courte.', laUpDashDesc2: 'Le Dash laisse une tornade qui aspire les ennemis proches pendant 3s.',
       laUpBaseAtkName: 'Attaque Torpille', laUpBaseAtkDesc1: 'L\'attaque laisse une explosion \u00e0 l\'impact.', laUpBaseAtkDesc2: 'Chance de d\u00e9clencher une explosion g\u00e9ante.',
       laUpAvailable: 'Amélioration disponible…', laUpShield: 'Shield', laUpShieldName: 'Shield', laUpShieldDesc1: '+1 emplacement de shield.', laUpShieldDesc2: '+1 emplacement de shield supplémentaire.', laUpTheWorldName: 'The World', laUpTheWorldDesc1: 'Le clic molette arrête le temps pendant 3 secondes. (Cooldown : 30s)', laDelayExp: 'Explosion Retardée',
+      laGoPlay: 'Jouer', laModeSelectTitle: 'Mode de jeu', laModeSandboxDesc: 'Respawn à la mort · Score libre · Entraînement', laModeHardcoreDesc: 'Mort définitive · Classement mondial',
+      laModeHardcoreLocked: 'Verrouillé', laModeBack: '← Reprendre', laMenuBtn: 'Menu', laGoSandboxBtn: 'Sandbox', laGoHardcoreBtn: 'Hardcore', laMenuReturnTitle: 'Retour au menu',
+      laModeUnlockHint: 'Élimine ces ennemis pour débloquer le mode Hardcore', laEnemyScout: 'Éclaireurs', laEnemyShooter: 'Tireurs', laEnemyBruiser: 'Mastodontes', laGoReplayPrompt: 'Rejouer en', laModeResume: 'Reprendre',
     };
     var FB_EN = {
       laGoScore: 'Score', laGoBestCombo: 'Best combo', laGoKills: 'Enemies eliminated',
@@ -40,6 +67,9 @@
       laUpDashName: 'Dash', laUpDashDesc1: 'Faster dash, shorter cooldown.', laUpDashDesc2: 'Dash leaves a tornado that pulls nearby enemies for 3s.',
       laUpBaseAtkName: 'Torpedo Attack', laUpBaseAtkDesc1: 'Attack leaves a small explosion on impact.', laUpBaseAtkDesc2: 'Chance to trigger a giant explosion.',
       laUpAvailable: 'Upgrade available…', laUpShield: 'Shield', laUpShieldName: 'Shield', laUpShieldDesc1: '+1 shield slot.', laUpShieldDesc2: '+1 additional shield slot.', laUpTheWorldName: 'The World', laUpTheWorldDesc1: 'Middle-click stops time for 3 seconds. (Cooldown: 30s)', laDelayExp: 'Delayed Explosion',
+      laGoPlay: 'Play', laModeSelectTitle: 'Game mode', laModeSandboxDesc: 'Respawn on death · Free score · Practice', laModeHardcoreDesc: 'Permadeath · World leaderboard',
+      laModeHardcoreLocked: 'Locked', laModeBack: '← Resume', laMenuBtn: 'Menu', laGoSandboxBtn: 'Sandbox', laGoHardcoreBtn: 'Hardcore', laMenuReturnTitle: 'Return to menu',
+      laModeUnlockHint: 'Eliminate these enemies to unlock Hardcore mode', laEnemyScout: 'Scouts', laEnemyShooter: 'Shooters', laEnemyBruiser: 'Bruisers', laGoReplayPrompt: 'Play again in', laModeResume: 'Resume',
     };
     var lang = 'fr';
     try {

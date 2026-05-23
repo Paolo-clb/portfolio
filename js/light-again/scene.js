@@ -17,6 +17,7 @@
 
     create: function () {
       var self = this;
+      window.__laSceneRef = this;
       this._texTheme = '';
       this._genTextures();
       var restartPending = typeof window !== 'undefined' && window.__laRestartPending;
@@ -47,8 +48,16 @@
       this._vignetteSprite = null; // reset stale reference from previous scene lifecycle
       this._drawVignette();
 
-      // Redraw vignette when Scale manager finalises dimensions (fixes first-launch offset)
-      this.scale.on('resize', function () { self._drawVignette(); });
+      // Redraw vignette when Scale manager finalises dimensions (fixes first-launch offset).
+      // ScaleManager is game-global (not scene-scoped) so this must be removed on shutdown,
+      // otherwise restarts stack duplicate handlers.
+      this.scale.on('resize', this._onScaleResize = function () {
+        self._drawVignette();
+        // Background tiles cover the viewport — resize them here instead of every frame
+        var rcam = self.cameras.main;
+        if (self.pcbTile) self.pcbTile.setSize(rcam.width, rcam.height);
+        if (self.pcbGlow) self.pcbGlow.setSize(rcam.width, rcam.height);
+      });
 
       this.p = {
         x: 0, y: 0, vx: 0, vy: 0,
@@ -215,11 +224,24 @@
       this.hudGfx.setScrollFactor(0);
       this.hudGfx.setDepth(100);
 
-      this.fpsTxt = this.add.text(10, 10, '', {
+      // Top-left HUD stack: FPS, then live enemy count + survival time below it.
+      this.fpsTxt = this.add.text(8, 6, '', {
         fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#00ff88',
       });
       this.fpsTxt.setScrollFactor(0);
       this.fpsTxt.setDepth(101);
+
+      this._enemyCountTxt = this.add.text(8, 24, '', {
+        fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#3a78a0',
+      });
+      this._enemyCountTxt.setScrollFactor(0);
+      this._enemyCountTxt.setDepth(101);
+
+      this._timeTxt = this.add.text(8, 39, '', {
+        fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#3a78a0',
+      });
+      this._timeTxt.setScrollFactor(0);
+      this._timeTxt.setDepth(101);
 
       this.hitstopTimer = 0;
       this.timeScale = 1.0;
@@ -368,7 +390,8 @@
         if (ptr.middleButtonDown()) self._tryTimeStop();
       });
 
-      this.game.canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      // Canvas persists across scene.restart() — keep a ref so we can detach on shutdown
+      this.game.canvas.addEventListener('contextmenu', this._onCanvasCtxMenu = function (e) { e.preventDefault(); });
 
       window.__lightGameAtkReady = function () {
         var p = self.p;
@@ -424,6 +447,7 @@
         self._twWaveGfx = null;
         if (self._twIconTxt) { self._twIconTxt.destroy(); self._twIconTxt = null; }
         if (self._killCounterTxt) { self._killCounterTxt.destroy(); self._killCounterTxt = null; }
+        window.__laSceneRef = null;
         if (self._onWindowFocus) {
           window.removeEventListener('focus', self._onWindowFocus);
           self._onWindowFocus = null;
@@ -431,6 +455,14 @@
         if (self._onDebugKey) {
           window.removeEventListener('keydown', self._onDebugKey);
           self._onDebugKey = null;
+        }
+        if (self._onScaleResize) {
+          self.scale.off('resize', self._onScaleResize);
+          self._onScaleResize = null;
+        }
+        if (self._onCanvasCtxMenu && self.game && self.game.canvas) {
+          self.game.canvas.removeEventListener('contextmenu', self._onCanvasCtxMenu);
+          self._onCanvasCtxMenu = null;
         }
       });
     },
@@ -493,6 +525,20 @@
           this.fpsTxt.setText(fps + ' FPS');
           this.fpsTxt.setColor(fps >= 55 ? '#00ff88' : fps >= 30 ? '#ffcc00' : '#ff4444');
         }
+        // Live enemy count — turns amber/red when the swarm grows (perf pressure)
+        var ec = this.enemies.length;
+        if (ec !== this._lastEnemyCount) {
+          this._lastEnemyCount = ec;
+          this._enemyCountTxt.setText('▲ ' + ec);
+          this._enemyCountTxt.setColor(ec > 200 ? '#ff4444' : ec > 120 ? '#ffcc00' : '#3a78a0');
+        }
+        // Survival time (real elapsed play time)
+        var ts = Math.floor(this.gameTime);
+        if (ts !== this._lastTimeSec) {
+          this._lastTimeSec = ts;
+          var mm = Math.floor(ts / 60), ss = ts % 60;
+          this._timeTxt.setText((mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss);
+        }
       }
 
       if (ms < 0.001 && pMs < 0.001) {
@@ -512,9 +558,11 @@
         if (p.invincTimer <= 0) { p.invincible = false; p.invincTimer = 0; p.dashInvinc = false; p.dashCoyote = false; }
       }
 
+      // Key state is constant within a frame — compute once and reuse for both
+      // velocity integration and angle facing below.
+      var inp = this._inputVec();
       var frDt = Math.pow(C.FRICTION, pS60);
       if (p.state === 'MOVING') {
-        var inp = this._inputVec();
         p.vx = (p.vx + inp.dx * C.ACCEL * pS60) * frDt;
         p.vy = (p.vy + inp.dy * C.ACCEL * pS60) * frDt;
       } else if (p.state === 'RECOVERY') {
@@ -599,7 +647,6 @@
         p.angle = Math.atan2(p.dashDy, p.dashDx);
       } else {
         // Normal movement: follow input direction; point at mouse when idle
-        var inp = this._inputVec();
         if (Math.abs(inp.dx) > 0.01 || Math.abs(inp.dy) > 0.01) {
           p.angle = Math.atan2(inp.dy, inp.dx);
         } else {
@@ -656,7 +703,6 @@
 
       this.pcbTile.tilePositionX = cam.scrollX;
       this.pcbTile.tilePositionY = cam.scrollY;
-      this.pcbTile.setSize(cam.width, cam.height);
 
       // --- Glow pulse (bioluminescence) ---
       var t = this.gameTime;
@@ -669,7 +715,6 @@
       this.pcbGlow.setAlpha(glowAlpha);
       this.pcbGlow.tilePositionX = cam.scrollX;
       this.pcbGlow.tilePositionY = cam.scrollY;
-      this.pcbGlow.setSize(cam.width, cam.height);
 
       // --- Vignette combo intensity — pulsing urgency ---
       if (this._vignetteSprite) {
@@ -776,6 +821,16 @@
       if (game) { game.destroy(true); game = null; }
     }
 
+    function restart() {
+      // NB: game.scene is the SceneManager, which has NO restart() method —
+      // restart() lives on the per-scene ScenePlugin (scene.scene). Calling the
+      // wrong one threw, leaving the restart loader spinning forever. Grab the
+      // live scene instance and restart through its plugin.
+      if (!game || !game.scene) return;
+      var sc = game.scene.getScene('GameScene');
+      if (sc && sc.scene && typeof sc.scene.restart === 'function') sc.scene.restart();
+    }
+
     function pause() {
       if (game && game.scene) game.scene.pause('GameScene');
     }
@@ -784,7 +839,7 @@
       if (game && game.scene) game.scene.resume('GameScene');
     }
 
-    return { start: start, stop: stop, pause: pause, resume: resume };
+    return { start: start, stop: stop, pause: pause, resume: resume, restart: restart };
   };
 
 })();

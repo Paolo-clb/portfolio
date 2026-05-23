@@ -8,13 +8,30 @@
   var C  = LA.C;
   var M  = LA.sceneMethods;
 
+  // Spawn point at (ang, dist) from the player, kept inside the arena.
+  // Spawns aimed past a nearby wall otherwise land out of bounds: the enemy
+  // snaps back on its first update frame, but the spawn-ring VFX already fired
+  // in the void behind the border. Mirroring the offending axis points the
+  // spawn inward while preserving the spawn distance; a final clamp covers the
+  // corner case where the player hugs a corner.
+  M._spawnPosNear = function (ang, dist, tier) {
+    var eHalf = tier === 3 ? C.T3_SIZE : tier === 2 ? C.T2_SIZE : C.SIZE;
+    var m = C.WORLD_HALF - eHalf * 1.2;
+    var dx = Math.cos(ang) * dist;
+    var dy = Math.sin(ang) * dist;
+    if (this.p.x + dx > m || this.p.x + dx < -m) dx = -dx;
+    if (this.p.y + dy > m || this.p.y + dy < -m) dy = -dy;
+    return {
+      x: Math.max(-m, Math.min(m, this.p.x + dx)),
+      y: Math.max(-m, Math.min(m, this.p.y + dy)),
+    };
+  };
+
   M._spawnRusher = function () {
     if (this.enemies.length >= C.MAX_ENEMIES) return;
     var ang = Math.random() * Math.PI * 2;
-    this._spawnRusherAt(
-      this.p.x + Math.cos(ang) * C.SPAWN_DIST,
-      this.p.y + Math.sin(ang) * C.SPAWN_DIST
-    );
+    var pos = this._spawnPosNear(ang, C.SPAWN_DIST, 1);
+    this._spawnRusherAt(pos.x, pos.y);
   };
 
   M._spawnWave = function () {
@@ -92,10 +109,10 @@
       var t = finalCount > 1 ? j / (finalCount - 1) : 0.5;
       var ang = baseAng + (t - 0.5) * spread + (Math.random() - 0.5) * 0.3;
       var dist = C.SPAWN_DIST + Math.random() * 120;
-      var sx = this.p.x + Math.cos(ang) * dist;
-      var sy = this.p.y + Math.sin(ang) * dist;
-
       var tier = spawnQueue[j];
+      var pos = this._spawnPosNear(ang, dist, tier);
+      var sx = pos.x, sy = pos.y;
+
       this._naturalSpawn = true;
       if (tier === 3) this._spawnBruiserAt(sx, sy);
       else if (tier === 2) this._spawnShooterAt(sx, sy);
@@ -119,8 +136,8 @@
       var t = n > 1 ? j / (n - 1) : 0.5;
       var ang = baseAng + (t - 0.5) * spread + (Math.random() - 0.5) * 0.3;
       var dist = C.SPAWN_DIST + Math.random() * 120;
-      var sx = this.p.x + Math.cos(ang) * dist;
-      var sy = this.p.y + Math.sin(ang) * dist;
+      var pos = this._spawnPosNear(ang, dist, tier);
+      var sx = pos.x, sy = pos.y;
       if (tier === 3) this._spawnBruiserAt(sx, sy);
       else if (tier === 2) this._spawnShooterAt(sx, sy);
       else this._spawnRusherAt(sx, sy);

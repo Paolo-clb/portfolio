@@ -9,9 +9,18 @@
   var M  = LA.sceneMethods;
 
   M._genTextures = function () {
+    var theme = document.documentElement.getAttribute('data-theme') || 'light';
+    this._texTheme = theme;
+
+    // The Phaser.Game (and its TextureManager) persists across scene.restart();
+    // only the scene is rebuilt. Textures are identical between restarts unless
+    // the theme changed, so skip the costly canvas redraw + GPU re-upload.
+    // _lastGenTheme lives on the scene instance, which is reused on restart.
+    if (this.textures.exists('_pcb') && this._lastGenTheme === theme) return;
+    this._lastGenTheme = theme;
+
     var c = LA.getColors();
     var tm = this.textures;
-    this._texTheme = document.documentElement.getAttribute('data-theme') || 'light';
 
     var ca = c.cyanArr;
     LA.buildArrowTex(tm, '_ar_cyan',  ca[0], ca[1], ca[2], C.SIZE, 18, false);

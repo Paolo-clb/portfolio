@@ -23,6 +23,13 @@ window.createTypingGameAI = function (deps) {
   var S = deps.aiState;
   var WORKER_URL = 'https://gemini-proxy.colombatpaolo.workers.dev';
 
+  // Escape user-controlled text before injecting it into innerHTML
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
   // Module-internal state
   var aiInlineEl = null;
   var aiLoading = false;
@@ -59,10 +66,21 @@ window.createTypingGameAI = function (deps) {
   /* ---- Fetch ---- */
 
   function fetchAiTexts(theme, onSuccess, onError) {
+    // Client-side timeout: the worker caps itself at ~45 s, but if the network
+    // hangs (DNS, unreachable worker) the promise would never settle and leave
+    // the inline loader stuck forever. Abort a bit past the worker's budget.
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timedOut = false;
+    var timer = setTimeout(function () {
+      timedOut = true;
+      if (controller) controller.abort();
+    }, 50000);
+
     fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme: theme })
+      body: JSON.stringify({ theme: theme }),
+      signal: controller ? controller.signal : undefined
     })
       .then(function (res) {
         if (!res.ok) {
@@ -74,10 +92,12 @@ window.createTypingGameAI = function (deps) {
       })
       .then(function (parsed) {
         if (parsed.error) throw new Error(parsed.error);
+        clearTimeout(timer);
         onSuccess(parsed);
       })
       .catch(function (err) {
-        onError(err);
+        clearTimeout(timer);
+        onError(timedOut ? new Error('TIMEOUT') : err);
       });
   }
 
@@ -107,7 +127,7 @@ window.createTypingGameAI = function (deps) {
         '<div class="typing-game__ai-inline-info">' +
           '<div class="typing-game__ai-inline-theme">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ' +
-            theme +
+            escapeHtml(theme) +
           '</div>' +
           '<div class="typing-game__ai-inline-tags">' + settingsHtml + '</div>' +
         '</div>' +

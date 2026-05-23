@@ -146,8 +146,54 @@
     this.spawnTimer = -999999;
     var self = this;
     this.time.delayedCall(900, function () {
-      self._showGameOverScreen();
+      if (window.__laGameMode === 'sandbox') {
+        self._sandboxRespawn();
+      } else {
+        self._showGameOverScreen();
+      }
     });
+  };
+
+  M._sandboxRespawn = function () {
+    var p = this.p;
+    // Respawn in place (don't teleport to a fixed world point — that yanked the
+    // follow-camera across the map; cam.width/2 was also a screen coord misused
+    // as a world coord).
+    p.vx = 0; p.vy = 0;
+    p.state = 'MOVING';
+    p.hp = 1;
+    p.invincible = true;
+    p.invincTimer = 2500;   // 2.5s of i-frames — invincTimer is in MILLISECONDS
+    p.dashInvinc = false;
+    p.dashAvailable = true; p.dashCooldown = 0;
+    p.atkAvailable = true; p.atkCooldown = 0;
+    this.timeScale = 1.0;
+    this.spawnTimer = 0;
+    this.playerSpr.setVisible(true);
+    for (var ti = 0; ti < this.TRAIL_CAP; ti++) this._trail[ti].spr.setVisible(true);
+    for (var oi = 0; oi < this._shieldOrbs.length; oi++) this._shieldOrbs[oi].setVisible(false);
+
+    // Clear a safe bubble: shove nearby enemies outward and stun them, so the
+    // player isn't instantly re-killed when the i-frames expire while standing
+    // on a swarm (fixes the sandbox spawn-kill loop).
+    var clearR = 340, clearRSq = clearR * clearR;
+    for (var k = 0; k < this.enemies.length; k++) {
+      var o = this.enemies[k];
+      var dx = o.x - p.x, dy = o.y - p.y;
+      var dSq = dx * dx + dy * dy;
+      if (dSq > clearRSq) continue;
+      var d = Math.sqrt(dSq);
+      var nx = d > 0.1 ? dx / d : Math.random() - 0.5;
+      var ny = d > 0.1 ? dy / d : Math.random() - 0.5;
+      var push = 30 * (o.tier === 3 ? 0.6 : 1.0);
+      o.vx += nx * push;
+      o.vy += ny * push;
+      o.stunTimer = Math.max(o.stunTimer, 1000);
+    }
+
+    this.cameras.main.flash(350, 0, 180, 255);
+    this._explode(p.x, p.y, [0, 220, 255], 25);
+    this._spawnWaveRing(p.x, p.y, { maxRadius: clearR, color: 0x00ccff, expandTime: 0.45 });
   };
 
 })();

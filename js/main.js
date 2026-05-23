@@ -719,8 +719,9 @@ function initNavToggle() {
   if (!toggle || !navList) return;
 
   toggle.addEventListener('click', () => {
-    navList.classList.toggle('nav__list--open');
+    const isOpen = navList.classList.toggle('nav__list--open');
     toggle.classList.toggle('nav__toggle--active');
+    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   });
 
   // Close menu when a link is clicked, and smooth-scroll to target
@@ -728,6 +729,7 @@ function initNavToggle() {
     link.addEventListener('click', (e) => {
       navList.classList.remove('nav__list--open');
       toggle.classList.remove('nav__toggle--active');
+      toggle.setAttribute('aria-expanded', 'false');
       var href = link.getAttribute('href');
       if (href && href.startsWith('#')) {
         var target = document.querySelector(href);
@@ -1602,6 +1604,37 @@ function detectWeakDevice() {
   return false;
 }
 
+// Runtime framerate probe — catches weak GPUs that the static heuristics above
+// miss entirely (e.g. an old integrated chip with 4 cores / 8 GB RAM that chokes
+// on backdrop-filter blur + the rain/particle/visualizer canvases). Counts real
+// frames while animations are running and reports the average FPS.
+var WEAK_FPS_THRESHOLD = 40; // below this sustained framerate → treat as weak
+function benchmarkFPS(callback) {
+  if (typeof requestAnimationFrame !== 'function' || typeof performance === 'undefined' || document.hidden) {
+    callback(60); // can't measure reliably → assume capable
+    return;
+  }
+  var WARMUP_MS = 400;   // skip initial layout/paint jank
+  var SAMPLE_MS = 1500;  // measurement window
+  var startTs = null, sampleStart = null, lastTs = null, frames = 0;
+  function step(ts) {
+    if (startTs === null) { startTs = ts; lastTs = ts; requestAnimationFrame(step); return; }
+    // A large gap means the tab was backgrounded (rAF paused) → abort, assume capable
+    if (ts - lastTs > 500) { callback(60); return; }
+    lastTs = ts;
+    if (ts - startTs < WARMUP_MS) { requestAnimationFrame(step); return; }
+    if (sampleStart === null) { sampleStart = ts; requestAnimationFrame(step); return; }
+    frames++;
+    var elapsed = ts - sampleStart;
+    if (elapsed >= SAMPLE_MS) {
+      callback(frames / (elapsed / 1000));
+    } else {
+      requestAnimationFrame(step);
+    }
+  }
+  requestAnimationFrame(step);
+}
+
 // ---------------------------------------------------------------------------
 // Weak device warning popup
 // ---------------------------------------------------------------------------
@@ -2230,6 +2263,19 @@ function initAnimationControls() {
   }
   updateSliderFill();
 
+  // Triggers the weak-device flow: disable animations + offer to re-enable.
+  var weakFlowTriggered = false;
+  function triggerWeakDeviceFlow() {
+    if (weakFlowTriggered) return;
+    weakFlowTriggered = true;
+    window.__weakDeviceDetected = true;
+    window.__weakDeviceAnimFlowActive = true;
+    checkbox.checked = false;
+    disableAnimations();
+    // Show warning popup after a short delay so DOM is ready
+    setTimeout(function () { showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY); }, 600);
+  }
+
   // Toggle: if user never toggled, auto-detect weak device
   if (savedToggle === 'off') {
     checkbox.checked = false;
@@ -2237,12 +2283,18 @@ function initAnimationControls() {
   } else if (savedToggle === 'on') {
     // User explicitly enabled — keep on
   } else if (detectWeakDevice()) {
-    window.__weakDeviceDetected = true;
-    window.__weakDeviceAnimFlowActive = true;
-    checkbox.checked = false;
-    disableAnimations();
-    // Show warning popup after a short delay so DOM is ready
-    setTimeout(function () { showWeakDevicePopup(checkbox, enableAnimations, TOGGLE_KEY); }, 600);
+    // Static heuristics already flagged it
+    triggerWeakDeviceFlow();
+  } else {
+    // Heuristics passed, but the device may still be too slow (weak GPU the
+    // hardware hints can't see). Measure the real framerate with animations
+    // running and degrade if it's poor.
+    benchmarkFPS(function (fps) {
+      // Only act if the user still hasn't made a choice and animations are still on
+      if (localStorage.getItem(TOGGLE_KEY) ||
+          document.documentElement.getAttribute('data-animations') === 'off') return;
+      if (fps < WEAK_FPS_THRESHOLD) triggerWeakDeviceFlow();
+    });
   }
   updateToggleTooltip();
 }

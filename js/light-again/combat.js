@@ -184,6 +184,9 @@
     var killTier = e.tier;
 
     this.totalKills++;
+    // Track cumulative kill progress for hardcore unlock
+    var LA = window.LightAgain;
+    if (LA && typeof LA.laAddKillProgress === 'function') LA.laAddKillProgress(killTier);
     if (!this._batchActive) this._checkUpgradeTrigger();
     var basePts = e.tier === 3 ? 100 : e.tier === 2 ? 30 : 10;
     var pts = basePts * this.comboMultiplier;

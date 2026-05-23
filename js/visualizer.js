@@ -15,6 +15,14 @@
   let speedFactor = 1;
   let vizEnabled = true;
   let frozen = false;
+
+  // Loop control — the rAF loop is fully stopped when the visualizer is
+  // disabled or the tab is hidden (instead of spinning and discarding frames).
+  let rafId = null;
+  let pageHidden = false;
+
+  // Theme colors, recomputed once per frame instead of per-particle/per-bar.
+  let frameColors = null;
   let prevFrozen = false;      // to detect freeze→unfreeze transition
   let postFreezeDecay = 0;    // warm-up frames after unfreeze-while-paused to drain stale analyser buffer
   let virtualTime = 0; // accumulates scaled by speedFactor — drives particle phase
@@ -83,7 +91,7 @@
   }
 
   function updateAndDrawParticles(w, h, avgEnergy) {
-    var colors = getThemeColors();
+    var colors = frameColors;
     var colorArr = [colors.primary, colors.accent, colors.hover];
     var now = virtualTime;
 
@@ -191,7 +199,7 @@
   /* ---- Gradient for bars ---- */
 
   function createBarGradient(x, w, h, barH) {
-    var colors = getThemeColors();
+    var colors = frameColors;
     const grad = ctx.createLinearGradient(x, h, x, h - barH);
     grad.addColorStop(0, colors.primary);
     grad.addColorStop(0.5, colors.accent);
@@ -229,14 +237,28 @@
 
   /* ---- Draw one frame ---- */
 
+  function loopActive() { return vizEnabled && !pageHidden; }
+
+  function scheduleNext() {
+    rafId = loopActive() ? requestAnimationFrame(draw) : null;
+  }
+
+  function startLoop() {
+    if (rafId === null && loopActive()) rafId = requestAnimationFrame(draw);
+  }
+
+  function stopLoop() {
+    if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+  }
+
   function draw() {
-    if (!vizEnabled) {
-      requestAnimationFrame(draw);
-      return;
-    }
+    rafId = null;
 
     const w = canvas.width;
     const h = canvas.height;
+
+    // Recompute theme palette once per frame (was called ~65×/frame before)
+    frameColors = getThemeColors();
 
     // Whether the music player is actually playing (not analyser-derived — immune to decay)
     const isActuallyPlaying = !!(window.__musicPlayerIsPlaying && window.__musicPlayerIsPlaying());
@@ -267,7 +289,7 @@
       musicActive = false;
       ctx.clearRect(0, 0, w, h);
       updateAndDrawParticles(w, h, 0);
-      requestAnimationFrame(draw);
+      scheduleNext();
       return;
     }
 
@@ -287,7 +309,15 @@
       musicActive = connected && avgEnergy > 0.015;
       virtualTime += (1 / 60) * speedFactor;
       frozenBarsDecay = false;
-      if (dataArray) { frozenDataBuffer = new Uint8Array(dataArray); frozenAvgEnergy = avgEnergy; }
+      if (dataArray) {
+        // Reuse the snapshot buffer instead of allocating a new Uint8Array
+        // every frame (~60×/s) — avoids constant GC pressure / stutter.
+        if (!frozenDataBuffer || frozenDataBuffer.length !== dataArray.length) {
+          frozenDataBuffer = new Uint8Array(dataArray.length);
+        }
+        frozenDataBuffer.set(dataArray);
+        frozenAvgEnergy = avgEnergy;
+      }
     } else {
       // Frozen: musicActive stays pinned to snapshot (never driven by live analyser)
       musicActive = connected && frozenAvgEnergy > 0.015;
@@ -312,7 +342,7 @@
     const needsAnyRedraw     = particlesNeedUpdate || frozenBarsDecay;
 
     if (!needsAnyRedraw) {
-      requestAnimationFrame(draw);
+      scheduleNext();
       return;
     }
 
@@ -355,19 +385,23 @@
       ctx.globalAlpha = 1;
     }
 
-    requestAnimationFrame(draw);
+    scheduleNext();
   }
 
   /* ---- Resize handler ---- */
-  var _lastW = 0;
+  var _lastW = 0, _lastH = 0;
+  // Coarse pointer = phone/tablet (address bar toggles change viewport height);
+  // ignore height-only changes there, honor real vertical resizes on desktop.
+  var _coarsePointer = window.matchMedia('(pointer: coarse)').matches;
 
   function resize() {
     var w = window.innerWidth;
-    // Ignore height-only changes (mobile address bar show/hide)
-    if (_lastW && w === _lastW) return;
+    var h = canvas.clientHeight || window.innerHeight;
+    if (_lastW && w === _lastW && (_coarsePointer || h === _lastH)) return;
     _lastW = w;
+    _lastH = h;
     canvas.width  = w;
-    canvas.height = canvas.clientHeight || window.innerHeight;
+    canvas.height = h;
     initParticles(canvas.width, canvas.height);
   }
 
@@ -405,7 +439,14 @@
       impulseIsClick = false;
     });
 
-    draw();
+    // Pause the loop entirely when the tab is hidden (saves CPU/GPU/battery)
+    document.addEventListener('visibilitychange', function () {
+      pageHidden = document.hidden;
+      if (pageHidden) stopLoop();
+      else startLoop();
+    });
+
+    startLoop();
 
     // Expose control API on window for animation controls
     window.__setVisualizerSpeed = function (f) { speedFactor = f; };
@@ -413,10 +454,12 @@
       vizEnabled = on;
       if (!on) {
         frozen = false;
+        stopLoop();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         canvas.style.opacity = '0';
       } else {
         canvas.style.opacity = '';
+        startLoop();
       }
     };
     window.__setVisualizerFrozen = function (on) {

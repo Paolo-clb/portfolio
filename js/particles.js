@@ -26,6 +26,7 @@
   var canvas, ctx;
   var W = 0, H = 0, dpr = 1;
   var raf = null, running = false;
+  var pageHidden = false;
 
   function boot() {
     if (canvas) return;
@@ -37,15 +38,19 @@
     window.addEventListener('resize', resize, { passive: true });
   }
 
-  var _lastW = 0;
+  var _lastW = 0, _lastH = 0;
+  // Coarse pointer = phone/tablet (address bar toggles change viewport height);
+  // ignore height-only changes there, honor real vertical resizes on desktop.
+  var _coarsePointer = window.matchMedia('(pointer: coarse)').matches;
 
   function resize() {
     var w = window.innerWidth;
-    // Ignore height-only changes (mobile address bar show/hide)
-    if (_lastW && w === _lastW) return;
+    var h = canvas.clientHeight || window.innerHeight;
+    if (_lastW && w === _lastW && (_coarsePointer || h === _lastH)) return;
     _lastW = w;
+    _lastH = h;
     dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = w; H = canvas.clientHeight || window.innerHeight;
+    W = w; H = h;
     canvas.width = W * dpr; canvas.height = H * dpr;
     canvas.style.width = W + 'px'; canvas.style.height = '';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -464,10 +469,21 @@
   }
 
   function ensureRunning() {
-    if (running) return;
+    if (running || pageHidden) return;
     running = true;
     raf = requestAnimationFrame(frame);
   }
+
+  // Pause the animation loop while the tab is hidden, resume on return.
+  document.addEventListener('visibilitychange', function () {
+    pageHidden = document.hidden;
+    if (pageHidden) {
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+      running = false;
+    } else {
+      ensureRunning(); // frame() self-terminates if there's nothing to animate
+    }
+  });
 
   // ══════════════════════════════════════════════════════
   //  INIT & DELEGATION

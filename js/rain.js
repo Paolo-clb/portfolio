@@ -146,8 +146,12 @@
   }
 
   /* ── Resize ────────────────────────────────────────────── */
-  var _lastW = 0;
+  var _lastW = 0, _lastH = 0;
   var _tintEl = null;
+  // Coarse pointer = phone/tablet, where the address bar shows/hides on scroll
+  // and spuriously changes the viewport height. On those we ignore height-only
+  // changes; on desktop (fine pointer) we honor genuine vertical resizes.
+  var _coarsePointer = window.matchMedia('(pointer: coarse)').matches;
 
   function _stableH() {
     if (canvas && canvas.offsetParent !== null) return canvas.clientHeight || window.innerHeight;
@@ -156,11 +160,15 @@
 
   function resize() {
     var w = document.documentElement.clientWidth;
-    // Ignore height-only changes (mobile address bar show/hide)
-    if (_lastW && w === _lastW) return;
+    var h = _stableH();
+    // Skip when nothing relevant changed: width unchanged AND (mobile, or height
+    // also unchanged). This keeps mobile rain stable during address-bar toggles
+    // while still rebuilding on real desktop window resizes.
+    if (_lastW && w === _lastW && (_coarsePointer || h === _lastH)) return;
     _lastW = w;
+    _lastH = h;
     W = w;
-    H = _stableH();
+    H = h;
     dropCount = W < 600 ? MAX_DROPS_MOBILE : MAX_DROPS;
 
     if (useWorker) {
@@ -276,6 +284,7 @@
     // Read stable height from the tint overlay (always visible, height: 100lvh)
     H = (tint && tint.clientHeight) || window.innerHeight;
     _lastW = W;
+    _lastH = H;
 
     // ── Try OffscreenCanvas + Worker ──
     var canUseWorker = typeof canvas.transferControlToOffscreen === 'function';
@@ -353,6 +362,11 @@
 
     // ── DOM layout changes → refresh surfaces immediately ──
     // Catches: popup open/close, skill expand/collapse, modal overlays, etc.
+    // NOTE: we intentionally do NOT watch 'style' — inline-style writes happen
+    // every animation frame (cursor halo, etc.), which would fire this observer
+    // continuously and trigger getBoundingClientRect reflows. Surface toggles
+    // we care about are driven by 'class'/'hidden'; the 3 s recalc + scroll +
+    // start burst cover any residual layout shifts.
     var surfDebounce = null;
     new MutationObserver(function () {
       if (!enabled) return;
@@ -362,7 +376,7 @@
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['class', 'style', 'hidden']
+      attributeFilter: ['class', 'hidden']
     });
 
     // ── Restore saved state (default: ON when animations enabled) ──

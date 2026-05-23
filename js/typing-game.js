@@ -72,7 +72,7 @@
       lang: (lang === 'fr' || lang === 'en') ? lang : null,
       mode: mode && ['10', '25', '50', '100', 'zen'].indexOf(mode) !== -1 ? mode : null,
       showErrors: showErrorsCookie === '1',
-      hardcore: false,
+      hardcore: getCookie('typing_hardcore') === '1',
       uppercase: getCookie('typing_opt_uppercase') === '1',
       numbers: getCookie('typing_opt_numbers') === '1',
       punctuation: getCookie('typing_opt_punctuation') === '1',
@@ -135,7 +135,6 @@
   let lockedIndex = 0;
   let correctWords = 0;
   let comboStreak = 0;
-  let wpmBoost = 0; // DEBUG: artificial WPM boost (Ctrl+ArrowUp/Down)
   let showErrors = false;
   let isFocused = true; // whether the game container has focus
   window.__typingGameFocused = function () { return isFocused; };
@@ -328,9 +327,9 @@
     const minutes = (Date.now() - startTime - totalPaused) / 60000;
     if (minutes < 0.01) return 0;
     if (currentMode === 'zen') {
-      return Math.round(zenWordCount / minutes) + wpmBoost;
+      return Math.round(zenWordCount / minutes);
     }
-    return Math.round(correctWords / minutes) + wpmBoost;
+    return Math.round(correctWords / minutes);
   }
 
   function calcAccuracy() {
@@ -391,7 +390,6 @@
 
   function renderZen() {
     let html = '';
-    let comboStyle = '';
 
     // Trail for zen mode
     var trailLen = 0;
@@ -434,7 +432,7 @@
       else if (comboStreak >= 10) cursorCls += ' typing-game__char--combo-1';
 
       // Use a zero-width space so the cursor span has position
-      html += '<span class="' + cursorCls + '"' + comboStyle + '>\u200B</span>';
+      html += '<span class="' + cursorCls + '">\u200B</span>';
     }
 
     if (!innerEl) {
@@ -739,7 +737,6 @@
     lockedIndex = 0;
     correctWords = 0;
     comboStreak = 0;
-    wpmBoost = 0;
     trailTimestamps = [];
     trailSpeed = 0;
     zenWordCount = 0;
@@ -892,10 +889,6 @@
   /* ---- Input handling ---- */
 
   function handleKey(e) {
-    // DEBUG: Ctrl+ArrowUp/Down to adjust artificial WPM boost
-    if (e.ctrlKey && e.key === 'ArrowUp') { e.preventDefault(); wpmBoost += 10; updateStats(); return; }
-    if (e.ctrlKey && e.key === 'ArrowDown') { e.preventDefault(); wpmBoost = Math.max(0, wpmBoost - 10); updateStats(); return; }
-
     // Ignore modifier combos (Ctrl+C, etc.) except Shift
     if (e.ctrlKey || e.altKey || e.metaKey) return;
 
@@ -1417,6 +1410,7 @@
       e.preventDefault();
       hardcoreMode = !hardcoreMode;
       updateHardcoreUI();
+      setCookie('typing_hardcore', hardcoreMode ? '1' : '0', 365);
       saveSettings(currentLang, currentMode, showErrors);
       // If turning on and mode is incompatible, switch to 10
       if (hardcoreMode && ['25', '50', '100', 'zen'].indexOf(currentMode) !== -1) {

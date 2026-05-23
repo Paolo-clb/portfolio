@@ -1264,6 +1264,14 @@ section.hero {
    Animations-Off overrides (data attribute on <html>)
    ========================================================================== */
 
+/* Kill all backdrop blur — backdrop-filter: blur() is the single most
+   GPU-expensive effect on the page. Zeroing the factor turns every
+   blur(calc(Npx * var(--blur-factor))) into blur(0) so weak GPUs stop
+   repainting blurred regions on scroll, even though animations are off. */
+[data-animations="off"] {
+  --blur-factor: 0;
+}
+
 [data-animations="off"] .bg-video--dark,
 [data-animations="off"] .bg-video--nature {
   display: none !important;

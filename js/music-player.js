@@ -12,6 +12,7 @@
   let playlist = [];      // shuffled copy of MUSIC
   let currentIndex = 0;
   let isPlaying = false;
+  let trackLoadErrors = 0; // consecutive load failures (anti-infinite-skip guard)
   let audioCtx = null;    // created on first user interaction
   let sourceNode = null;  // MediaElementAudioSourceNode (one-time per <audio>)
   let gainNode = null;
@@ -162,6 +163,7 @@
 
   function updatePlayIcon() {
     btnPlay.innerHTML = isPlaying ? SVG_PAUSE : SVG_PLAY;
+    btnPlay.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
   }
 
   function updateVolumeIcon(val) {
@@ -190,6 +192,7 @@
     playlistBtn.className = 'music-player__btn music-player__btn--playlist';
     playlistBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="12" height="2" rx="1"/><rect x="3" y="11" width="12" height="2" rx="1"/><rect x="3" y="17" width="12" height="2" rx="1"/><polygon points="19,8 19,3 21,3 21,12 19,12 19,10 17,10 17,8"/></svg>';
     playlistBtn.setAttribute('aria-label', 'Playlist');
+    playlistBtn.setAttribute('aria-expanded', 'false');
     playlistBtn.setAttribute('tabindex', '-1');
     container.appendChild(playlistBtn);
 
@@ -224,6 +227,7 @@
     btnPlay.className = 'music-player__btn music-player__btn--play';
     btnPlay.innerHTML = SVG_PLAY;
     btnPlay.setAttribute('aria-label', 'Play / Pause');
+    btnPlay.setAttribute('aria-pressed', 'false');
     btnPlay.setAttribute('tabindex', '-1');
 
     btnNext = document.createElement('button');
@@ -346,12 +350,14 @@
     }
     playlistDropdown.classList.toggle('music-player__playlist--open', playlistOpen);
     playlistBtn.classList.toggle('music-player__btn--active', playlistOpen);
+    playlistBtn.setAttribute('aria-expanded', playlistOpen ? 'true' : 'false');
   }
 
   function closePlaylist() {
     playlistOpen = false;
     playlistDropdown.classList.remove('music-player__playlist--open');
     playlistBtn.classList.remove('music-player__btn--active');
+    playlistBtn.setAttribute('aria-expanded', 'false');
   }
 
   /* ---- Events ---- */
@@ -369,7 +375,29 @@
     volumeIcon.addEventListener('click', toggleMute);
 
     // Auto-next when track ends
-    audio.addEventListener('ended', next);
+    audio.addEventListener('ended', function () {
+      trackLoadErrors = 0; // a successful playthrough resets the failure counter
+      next();
+    });
+
+    // A track that actually starts playing clears the failure counter
+    audio.addEventListener('playing', function () { trackLoadErrors = 0; });
+
+    // If a track fails to load (404 / corrupt / unsupported), skip to the next
+    // one instead of leaving the player stuck on "pause" with no feedback.
+    audio.addEventListener('error', function () {
+      if (!audio.src) return; // ignore the empty-src state before first load
+      trackLoadErrors++;
+      // Stop after a full loop of failures so we don't spin forever offline
+      if (trackLoadErrors >= playlist.length) {
+        isPlaying = false;
+        updatePlayIcon();
+        updateTriggerState();
+        syncPopup();
+        return;
+      }
+      if (isPlaying) next();
+    });
 
     // Playlist toggle
     playlistBtn.addEventListener('click', togglePlaylist);

@@ -72,8 +72,6 @@ window.SITE_I18N = {
     animSpeed: 'Vitesse',
     animDisable: 'Désactiver les animations',
     animEnable: 'Activer les animations',
-    animSlowMotion: 'Ralenti',
-    animNormal: 'Normal',
     animSpeedTooltip: 'Za Warudo ! (pluie et musique recommandées)',
     backToTop: 'Retour en haut',
     settingsTitle: 'Réglages',
@@ -125,6 +123,24 @@ window.SITE_I18N = {
     laGoSubmitted:  'Envoyé !',
     laGoNewRecord:  'Nouveau record !',
     laGoNamePlc:    'Ton pseudo',
+    laGoReplayPrompt: 'Rejouer en',
+
+    // Mode select
+    laModeSelectTitle:    'Mode de jeu',
+    laModeSandboxDesc:    'Respawn à la mort · Score libre · Entraînement',
+    laModeHardcoreDesc:   'Mort définitive · Classement mondial',
+    laModeHardcoreLocked: 'Verrouillé',
+    laModeBack:           '← Reprendre',
+    laModeResume:         'Reprendre',
+    laModeUnlockHint:     'Élimine ces ennemis pour débloquer le mode Hardcore',
+    laMenuBtn:            'Menu',
+    laMenuReturnTitle:    'Retour au menu',
+    laGoSandboxBtn:       'Sandbox',
+    laGoHardcoreBtn:      'Hardcore',
+    laGoPlay:             'Jouer',
+    laEnemyScout:         'Éclaireurs',
+    laEnemyShooter:       'Tireurs',
+    laEnemyBruiser:       'Mastodontes',
 
     // Upgrade system (roguelite draft)
     laUpTitle:           'Choisis une amélioration',
@@ -151,7 +167,6 @@ window.SITE_I18N = {
 
     // Misc
     closeLbl: 'Fermer',
-    switchLang: 'English',
   },
   en: {
     // Nav
@@ -220,8 +235,6 @@ window.SITE_I18N = {
     animSpeed: 'Speed',
     animDisable: 'Disable animations',
     animEnable: 'Enable animations',
-    animSlowMotion: 'Slow motion',
-    animNormal: 'Normal',
     animSpeedTooltip: 'Za Warudo ! (rain and music recommended)',
     backToTop: 'Back to top',
     settingsTitle: 'Settings',
@@ -273,6 +286,24 @@ window.SITE_I18N = {
     laGoSubmitted:  'Submitted!',
     laGoNewRecord:  'New record!',
     laGoNamePlc:    'Your name',
+    laGoReplayPrompt: 'Play again in',
+
+    // Mode select
+    laModeSelectTitle:    'Game mode',
+    laModeSandboxDesc:    'Respawn on death · Free score · Practice',
+    laModeHardcoreDesc:   'Permadeath · World leaderboard',
+    laModeHardcoreLocked: 'Locked',
+    laModeBack:           '← Resume',
+    laModeResume:         'Resume',
+    laModeUnlockHint:     'Eliminate these enemies to unlock Hardcore mode',
+    laMenuBtn:            'Menu',
+    laMenuReturnTitle:    'Return to menu',
+    laGoSandboxBtn:       'Sandbox',
+    laGoHardcoreBtn:      'Hardcore',
+    laGoPlay:             'Play',
+    laEnemyScout:         'Scouts',
+    laEnemyShooter:       'Shooters',
+    laEnemyBruiser:       'Bruisers',
 
     // Upgrade system (roguelite draft)
     laUpTitle:           'Choose an upgrade',
@@ -299,6 +330,5 @@ window.SITE_I18N = {
 
     // Misc
     closeLbl: 'Close',
-    switchLang: 'Français',
   }
 };

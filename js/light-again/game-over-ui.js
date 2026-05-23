@@ -74,43 +74,57 @@
         '<span style="' + sVal(recColor) + '">' + localBest + '</span>' + recExtra +
       '</div>';
 
-    // Replay button
+    // Game-over mode context.
+    // Game-over only ever appears in hardcore (sandbox respawns); leaderboard
+    // submission lives below and is gated strictly on this flag.
+    var isHardcore = window.__laGameMode === 'hardcore';
+    var unlocked = typeof LA.laIsHardcoreUnlocked === 'function' ? LA.laIsHardcoreUnlocked() : false;
+
+    // Replay buttons
     var btnHtml =
-      '<button id="_la-go-replay" style="' +
-        'padding:.55rem 1.8rem;border:1.5px solid rgba(0,255,255,0.5);border-radius:8px;' +
-        'background:rgba(0,255,255,0.08);color:#00ffff;font-family:monospace;font-size:.88rem;' +
-        'font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;' +
-        'transition:background .2s,box-shadow .2s;display:block;margin:0 auto .4rem' +
-      '">' + t('laGoReplay') + '</button>' +
+      '<div style="font-size:.55rem;letter-spacing:.12em;color:#5577aa;text-transform:uppercase;margin-bottom:.45rem">' + t('laGoReplayPrompt') + '</div>' +
+      '<div style="display:flex;gap:.6rem;justify-content:center;margin-bottom:.4rem">' +
+        '<button id="_la-go-sandbox" style="padding:.5rem 1.3rem;border:1.5px solid rgba(0,255,255,0.5);border-radius:8px;background:rgba(0,255,255,0.08);color:#00ffff;font-family:monospace;font-size:.85rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s,box-shadow .2s">' + t('laGoSandboxBtn') + '</button>' +
+        '<button id="_la-go-hardcore"' + (unlocked ? '' : ' disabled') + ' style="padding:.5rem 1.3rem;border:1.5px solid rgba(255,60,0,' + (unlocked ? '0.55' : '0.18') + ');border-radius:8px;background:rgba(255,60,0,' + (unlocked ? '0.1' : '0.04') + ');color:' + (unlocked ? '#ff4422' : '#442211') + ';font-family:monospace;font-size:.85rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:' + (unlocked ? 'pointer' : 'not-allowed') + ';transition:background .2s,box-shadow .2s">' + t('laGoHardcoreBtn') + '</button>' +
+      '</div>' +
       '<div style="font-size:.55rem;color:#556688;letter-spacing:.06em;margin-bottom:.6rem">' + t('laGoEnterHint') + '</div>';
 
-    // Leaderboard placeholder
+    // Leaderboard only in hardcore
     var lbSpinRow =
       '<div style="width:18px;height:18px;border:2px solid rgba(0,255,255,0.15);border-top-color:rgba(0,255,255,0.7);border-radius:50%;animation:la-go-spin .7s linear infinite"></div>' +
       '<span style="margin-left:.5rem;font-size:.65rem;color:#6688aa">' + t('laGoLoading') + '</span>';
-    var lbHtml =
-      '<div style="' + sSection + '">' + t('laGoWorldRecord') + '</div>' +
-      '<div id="_la-go-lb" style="position:relative;min-height:60px">' +
-        '<div id="_la-go-lb-body" style="min-height:60px;display:flex;align-items:center;justify-content:center">' +
-          lbSpinRow +
-        '</div>' +
-      '</div>';
+    var lbHtml = isHardcore
+      ? '<div style="' + sSection + '">' + t('laGoWorldRecord') + '</div>' +
+        '<div id="_la-go-lb" style="position:relative;min-height:60px">' +
+          '<div id="_la-go-lb-body" style="min-height:60px;display:flex;align-items:center;justify-content:center">' +
+            lbSpinRow +
+          '</div>' +
+        '</div>'
+      : '';
 
     panel.innerHTML = row1 + row2 + btnHtml + lbHtml;
     overlay.appendChild(panel);
 
-    // ----- Wire replay button -----
-    var btn = panel.querySelector('#_la-go-replay');
-    btn.addEventListener('mouseenter', function () { btn.style.background = 'rgba(0,255,255,0.16)'; btn.style.boxShadow = '0 0 16px rgba(0,255,255,0.22)'; });
-    btn.addEventListener('mouseleave', function () { btn.style.background = 'rgba(0,255,255,0.08)'; btn.style.boxShadow = ''; });
+    // ----- Wire replay buttons -----
+    var sbBtn = panel.querySelector('#_la-go-sandbox');
+    var hcBtn = panel.querySelector('#_la-go-hardcore');
+
+    sbBtn.addEventListener('mouseenter', function () { sbBtn.style.background = 'rgba(0,255,255,0.16)'; sbBtn.style.boxShadow = '0 0 16px rgba(0,255,255,0.22)'; });
+    sbBtn.addEventListener('mouseleave', function () { sbBtn.style.background = 'rgba(0,255,255,0.08)'; sbBtn.style.boxShadow = ''; });
+    if (unlocked) {
+      hcBtn.addEventListener('mouseenter', function () { hcBtn.style.background = 'rgba(255,60,0,0.2)'; hcBtn.style.boxShadow = '0 0 14px rgba(255,60,0,0.18)'; });
+      hcBtn.addEventListener('mouseleave', function () { hcBtn.style.background = 'rgba(255,60,0,0.11)'; hcBtn.style.boxShadow = ''; });
+    }
 
     function clearGameOverHostFlag() {
       try { delete container.dataset.laGameover; } catch (e) { /* ignore */ }
     }
-    function doReplay() {
+    function doReplay(mode) {
       clearGameOverHostFlag();
       overlay.remove();
       document.removeEventListener('keydown', onKey);
+      window.__laGameMode = mode;
+      if (typeof window.__laOnModeChange === 'function') window.__laOnModeChange(mode);
       try { window.__laRestartPending = true; } catch (e) { /* ignore */ }
       LA.injectLaRestartLoader(container);
       try { void container.offsetHeight; } catch (e2) { /* ignore */ }
@@ -126,9 +140,13 @@
       var ae = document.activeElement;
       if (ae && ae.id === '_la-go-name') return;
       e.preventDefault();
-      doReplay();
+      // Default: replay the mode just played (hardcore), unless the sandbox button is focused
+      if (ae && ae.id === '_la-go-sandbox') doReplay('sandbox');
+      else if (unlocked) doReplay('hardcore');
+      else doReplay('sandbox');
     }
-    btn.addEventListener('click', doReplay);
+    sbBtn.addEventListener('click', function () { doReplay('sandbox'); });
+    if (unlocked) hcBtn.addEventListener('click', function () { doReplay('hardcore'); });
     document.addEventListener('keydown', onKey);
     this.events.once('shutdown', function () {
       document.removeEventListener('keydown', onKey);
@@ -141,11 +159,16 @@
     container.dataset.laGameover = '1';
     container.appendChild(overlay);
 
+    // Default keyboard focus on the "replay hardcore" choice (submit form will steal
+    // focus to the name input later if the score qualifies for the leaderboard)
+    if (unlocked && hcBtn) hcBtn.focus();
+
     // Pause scene
     var self2 = this;
     this.time.delayedCall(50, function () { self2.scene.pause(); });
 
-    // ----- Leaderboard fetch -----
+    // ----- Leaderboard (hardcore only) -----
+    if (!isHardcore) return;
     var lbEl = panel.querySelector('#_la-go-lb');
     var lastRenderedLbItems = null;
 

@@ -150,9 +150,9 @@
 }
 
 .btn--outline {
- background : transparent;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background : transparent;
+  backdrop-filter: blur(calc(10px * var(--blur-factor, 1)));
+  -webkit-backdrop-filter: blur(calc(10px * var(--blur-factor, 1)));
   color: var(--clr-primary);
   border: 1px solid var(--clr-primary);
 }
