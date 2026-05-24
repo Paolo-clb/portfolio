@@ -32,6 +32,14 @@
     LA.buildArrowTex(tm, '_ar_dash',  da[0], da[1], da[2], C.SIZE, 18, false);
     LA.buildArrowTex(tm, '_ar_whiff', 80,  80,  90, C.SIZE, 4, false);
 
+    // Minecraft pickaxe skin ("I am Steve") — same state set as the arrow, glow tinted per state
+    LA.buildPickaxeTex(tm, '_pick_cyan',  ca[0], ca[1], ca[2], C.SIZE, 16);
+    LA.buildPickaxeTex(tm, '_pick_yel',   ya[0], ya[1], ya[2], C.SIZE, 16);
+    LA.buildPickaxeTex(tm, '_pick_atk',   255, 40, 60,  C.SIZE, 18);
+    LA.buildPickaxeTex(tm, '_pick_datk',  255, 30, 200, C.SIZE * 1.3, 26);
+    LA.buildPickaxeTex(tm, '_pick_dash',  da[0], da[1], da[2], C.SIZE, 16);
+    LA.buildPickaxeTex(tm, '_pick_whiff', 110, 110, 120, C.SIZE, 6);
+
     LA.buildEnemyTex(tm, '_enemy');
     LA.buildShooterTex(tm, '_shooter');
     LA.buildBruiserTex(tm, '_bruiser');
@@ -67,11 +75,12 @@
 
   M._pTexKey = function () {
     var p = this.p;
-    if (p.state === 'DASH_ATTACKING') return '_ar_datk';
-    if (p.state === 'ATTACKING')      return '_ar_atk';
-    if (p.state === 'DASHING')        return '_ar_dash';
-    if (p.state === 'RECOVERY' && p.recoveryWhiff) return '_ar_whiff';
-    return p.dashAvailable ? '_ar_cyan' : '_ar_yel';
+    var sv = !!window.__laSteveSkin;
+    if (p.state === 'DASH_ATTACKING') return sv ? '_pick_datk' : '_ar_datk';
+    if (p.state === 'ATTACKING')      return sv ? '_pick_atk'  : '_ar_atk';
+    if (p.state === 'DASHING')        return sv ? '_pick_dash' : '_ar_dash';
+    if (p.state === 'RECOVERY' && p.recoveryWhiff) return sv ? '_pick_whiff' : '_ar_whiff';
+    return p.dashAvailable ? (sv ? '_pick_cyan' : '_ar_cyan') : (sv ? '_pick_yel' : '_ar_yel');
   };
 
   M._renderPlayer = function () {
@@ -85,9 +94,15 @@
       return;
     }
 
+    // Steve pickaxe holds the iconic diagonal pose while moving and only spins
+    // during attacks (so the leading point doesn't whirl when just walking).
+    var spinning = (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING');
+    var steveFixed = !!window.__laSteveSkin && !spinning;
+    var pRot = steveFixed ? 0 : p.angle;
+
     this.playerSpr.setTexture(key);
     this.playerSpr.setPosition(p.x, p.y);
-    this.playerSpr.setRotation(p.angle);
+    this.playerSpr.setRotation(pRot);
     this.playerSpr.setVisible(true);
 
     // Arrow scale escalates with combo
@@ -109,7 +124,13 @@
     this.playerSpr.setScale(baseScale);
 
     // Dash i-frames: keep dash look
-    if (this._twActive) {
+    if (window.__laSteveSkin) {
+      // Pickaxe is a solid object, not a neon glyph — render opaque, untinted,
+      // so it keeps its Minecraft colours (state is conveyed by the baked glow).
+      this.playerSpr.clearTint();
+      this.playerSpr.setAlpha(1.0);
+      this.playerSpr.setBlendMode(Phaser.BlendModes.NORMAL);
+    } else if (this._twActive) {
       // Golden phantom look during time stop — more visible than before
       var twGhost = 0.60 + 0.20 * Math.sin(this.gameTime * Math.PI * 3);
       this.playerSpr.setTint(0xffc832);
@@ -164,11 +185,16 @@
       if (dx * dx + dy * dy < 4) continue;
       sl.spr.setTexture(key);
       sl.spr.setPosition(sl.x, sl.y);
-      sl.spr.setRotation(sl.angle);
+      sl.spr.setRotation(steveFixed ? 0 : sl.angle);
       var trAlpha = (hi + 1) / (this._trN + 1) * (p.invincible && p.dashInvinc ? 0.55 : 0.35);
       sl.spr.setAlpha(trAlpha);
       sl.spr.setScale(baseScale * ((hi + 1) / (this._trN + 1) * 0.5 + 0.5));
-      if (p.invincible && p.dashInvinc) {
+      if (window.__laSteveSkin) {
+        // Solid pickaxe after-images (motion blur), no neon tint
+        sl.spr.clearTint();
+        sl.spr.setBlendMode(Phaser.BlendModes.NORMAL);
+      } else if (p.invincible && p.dashInvinc) {
+        sl.spr.setBlendMode(Phaser.BlendModes.ADD);
         sl.spr.setTint(0x00ffff);
       } else if (p.state === 'DASH_ATTACKING') {
         // Gradient: oldest ghost = dark cyan-blue → newest = crimson (matches texture direction)
@@ -176,8 +202,10 @@
         var trR = Math.round(0   + 255 * tFrac);
         var trG = Math.round(80  - 60  * tFrac);
         var trB = Math.round(220 - 160 * tFrac);
+        sl.spr.setBlendMode(Phaser.BlendModes.ADD);
         sl.spr.setTint((trR << 16) | (trG << 8) | trB);
       } else {
+        sl.spr.setBlendMode(Phaser.BlendModes.ADD);
         sl.spr.clearTint();
       }
       sl.spr.setVisible(true);

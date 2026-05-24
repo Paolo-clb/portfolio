@@ -125,6 +125,28 @@
   white-space: nowrap;
 }
 
+/* Experience progression dots on the card, under the skill name */
+.skill-item__dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.skill-item__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(191, 153, 160, 0.15);
+  border: 1px solid rgba(191, 153, 160, 0.2);
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.skill-item__dot--active {
+  background: var(--clr-primary);
+  border-color: var(--clr-primary);
+  box-shadow: 0 0 5px rgba(242, 162, 133, 0.4);
+}
+
 .skills-group--hidden {
   display: none;
 }
@@ -276,7 +298,6 @@
   background: rgba(191, 153, 160, 0.1);
   border-radius: 3px;
   overflow: hidden;
-  margin-bottom: 0.75rem;
 }
 
 .skill-popup__bar-fill {
@@ -285,27 +306,6 @@
   border-radius: 3px;
   transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   box-shadow: 0 0 8px rgba(242, 162, 133, 0.3);
-}
-
-.skill-popup__dots {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.skill-popup__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(191, 153, 160, 0.15);
-  border: 1px solid rgba(191, 153, 160, 0.2);
-  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.skill-popup__dot--active {
-  background: var(--clr-primary);
-  border-color: var(--clr-primary);
-  box-shadow: 0 0 6px rgba(242, 162, 133, 0.4);
 }
 
 /* ==========================================================================
@@ -406,15 +406,15 @@
   box-shadow: 0 0 8px rgba(156, 39, 176, 0.4);
 }
 
-[data-theme="dark"] .skill-popup__dot {
+[data-theme="dark"] .skill-item__dot {
   background: rgba(63, 81, 181, 0.2);
   border-color: rgba(63, 81, 181, 0.25);
 }
 
-[data-theme="dark"] .skill-popup__dot--active {
+[data-theme="dark"] .skill-item__dot--active {
   background: #9c27b0;
   border-color: #9c27b0;
-  box-shadow: 0 0 6px rgba(156, 39, 176, 0.5);
+  box-shadow: 0 0 5px rgba(156, 39, 176, 0.5);
 }
 
 /* ==========================================================================
@@ -465,13 +465,13 @@
   box-shadow: 0 0 8px rgba(94, 184, 58, 0.4);
 }
 
-[data-theme="nature"] .skill-popup__dot {
+[data-theme="nature"] .skill-item__dot {
   background: rgba(42, 69, 34, 0.2);
   border-color: rgba(42, 69, 34, 0.25);
 }
 
-[data-theme="nature"] .skill-popup__dot--active {
+[data-theme="nature"] .skill-item__dot--active {
   background: #5eb83a;
   border-color: #5eb83a;
-  box-shadow: 0 0 6px rgba(94, 184, 58, 0.5);
+  box-shadow: 0 0 5px rgba(94, 184, 58, 0.5);
 }

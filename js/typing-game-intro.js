@@ -39,7 +39,7 @@ window.createTypingGameIntro = function (deps) {
 
     var container = deps.getContainer();
 
-    // --- Loading screen (shown until page fully loads) ---
+    // --- Loading screen (shown until fonts are ready / the cap below) ---
     var loadingEl = document.createElement('div');
     loadingEl.className = 'typing-game__loading';
     loadingEl.innerHTML = '<div class="typing-game__loading-spinner"></div>' +
@@ -55,12 +55,32 @@ window.createTypingGameIntro = function (deps) {
       buildIntroDOM(isSmartphone, gen);
     }
 
-    if (document.readyState === 'complete') {
-      setTimeout(startTypewriter, 300);
+    // Start as soon as the page is actually usable rather than waiting for
+    // window 'load' (every image + script to finish). On slower machines that
+    // full-load wait kept the loader on screen for several seconds. We trigger
+    // on document.fonts.ready — so the typed text renders in the right font
+    // without reflowing — and cap the wait so a slow resource can never keep
+    // the loader up.
+    var started = false;
+    function startOnce() {
+      if (started || gen !== introGen) return;
+      started = true;
+      startTypewriter();
+    }
+
+    var MAX_LOADER_MS = 1200; // hard ceiling, whatever is still loading
+    var capTimer = setTimeout(startOnce, MAX_LOADER_MS);
+    function ready() {
+      clearTimeout(capTimer);
+      setTimeout(startOnce, 200); // brief settle so the spinner isn't a flash
+    }
+
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(ready);
+    } else if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      ready();
     } else {
-      window.addEventListener('load', function () {
-        setTimeout(startTypewriter, 200);
-      }, { once: true });
+      document.addEventListener('DOMContentLoaded', ready, { once: true });
     }
   }
 
@@ -84,7 +104,7 @@ window.createTypingGameIntro = function (deps) {
 
     var chars = t('introText').split('');
     var idx = 0;
-    var speed = 38;
+    var speed = 27;
     var introCombo = 0;
     var introTrailTimestamps = [];
     var introTrailSpeed = 0;

@@ -440,6 +440,17 @@ function renderSkills() {
 
       item.appendChild(createElement('div', 'skill-item__name', skill.name));
 
+      // Experience progression dots (same scale as the detailed popup)
+      if (skill.level) {
+        var itemDots = createElement('div', 'skill-item__dots');
+        for (var d = 1; d <= 5; d++) {
+          var itemDot = createElement('span', 'skill-item__dot');
+          if (d <= skill.level) itemDot.classList.add('skill-item__dot--active');
+          itemDots.appendChild(itemDot);
+        }
+        item.appendChild(itemDots);
+      }
+
       item.addEventListener('click', function () {
         openSkillPopup(skill, group, sIdx);
       });
@@ -656,15 +667,6 @@ function openSkillPopup(skill, group, skillIndex) {
     fill.style.width = '0%';
     track.appendChild(fill);
     levelWrap.appendChild(track);
-
-    // Dots
-    var dots = createElement('div', 'skill-popup__dots');
-    for (var i = 1; i <= 5; i++) {
-      var dot = createElement('span', 'skill-popup__dot');
-      if (i <= skill.level) dot.classList.add('skill-popup__dot--active');
-      dots.appendChild(dot);
-    }
-    levelWrap.appendChild(dots);
 
     popup.appendChild(levelWrap);
 

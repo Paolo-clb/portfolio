@@ -27,7 +27,7 @@ js/visualizer.js        ← Self-contained IIFE (~500 lines) — background freq
 js/rain-engine.js       ← Shared rain physics + rendering engine (~400 lines) — used by both worker and fallback, speed-aware
 js/rain.js              ← Self-contained IIFE (~400 lines) — rain effect controller (OffscreenCanvas + Worker) + speed/enable API
 js/rain-worker.js       ← Web Worker (~70 lines) — thin wrapper delegating to rain-engine.js
-js/particles.js         ← Self-contained IIFE (~240 lines) — hover micro-particles (lift + aura variants), theme-aware
+js/particles.js         ← Self-contained IIFE (~280 lines) — snowflake aura on typing-game text, theme-aware
 js/main.js              ← DOM rendering, i18n, interactions, animation controls (~1600 lines) — depends on i18n.js + data.js globals
 assets/images/          ← Static images (backgrounds, project covers, music covers, favicons per theme) + video backgrounds (.mp4) + poster images
 assets/music/           ← Audio files for the music player (.mp3)
@@ -355,24 +355,20 @@ Global speed/animation control system in the footer:
 
 ### Hover Particles (`js/particles.js`)
 
-Self-contained IIFE creating micro-particles on interactive elements. Full-screen fixed `<canvas>` overlay (`pointer-events: none`, z-index 50).
+Self-contained IIFE creating a snowflake aura on the typing-game text. Full-screen fixed `<canvas>` overlay (`pointer-events: none`, z-index 50).
 
-**Two systems:**
-- **Butterfly** — used on `.project-card` and `.skill-item`. Per-type config via `BFLY_CFG`: projects get more frequent (0.12/s), more (max 5), and bigger (8–14px) butterflies; skills are rarer (0.04/s), fewer (max 2), and smaller (4–7px). Butterflies rest on the element's surface with gentle wing flapping. On `pointerenter`, all resting butterflies flutter away delicately with wobbling upward flight. Butterflies never spawn on invisible elements (`getBoundingClientRect().height === 0` — handles `display:none` parents like `.skills-group--hidden`, overflow-hidden collapse, and off-screen elements). Drawn with bezier-curve wings (upper + lower pairs), thin body line, and curved antennae.
-- **Aura** — used on `.typing-game__text`. Snowflakes spawn along all four edges. **Conditional logic:** when the typing game is unfocused, particles appear on hover (1–2 per frame). When focused and WPM > 60, particles appear **always** (no hover needed) — intensity starts weaker (0.5/frame at 60 WPM) and scales linearly to slightly beyond unfocused hover (2.5/frame at 150+ WPM). **Hover is disabled while focused** — no snowflakes on hover during focus, only the WPM auto-aura. Uses `window.__typingGameFocused()` and `window.__typingGameWPM()`.
+**Aura system** — used on `.typing-game__text`. Snowflakes spawn along all four edges. **Conditional logic:** when the typing game is unfocused, particles appear on hover (1–2 per frame). When focused and WPM > 60, particles appear **always** (no hover needed) — intensity starts weaker (0.5/frame at 60 WPM) and scales linearly to slightly beyond unfocused hover (2.5/frame at 150+ WPM). **Hover is disabled while focused** — no snowflakes on hover during focus, only the WPM auto-aura. Uses `window.__typingGameFocused()` and `window.__typingGameWPM()`. A `setInterval` (500ms) kicks the rAF loop so the WPM auto-aura can start even when nothing else is animating.
 
-**Speed scaling:** All particle velocities, decay, spawn rates, butterfly flapping, and accumulation scale with the global animation speed slider via `window.__setParticlesSpeed(factor)` (called from `applySpeed()` in `main.js`). At speed 0, everything freezes.
+**Speed scaling:** All particle velocities, decay, and spawn rates scale with the global animation speed slider via `window.__setParticlesSpeed(factor)` (called from `applySpeed()` in `main.js`). At speed 0, everything freezes.
 
 **Theme-aware colors:** Reads `data-theme` each frame to select palette:
 - Light: coral `242,162,133` / accent `191,153,160` / glow `242,128,128`
 - Dark: purple `200,140,255` / pink `255,78,203` / glow `156,39,176`
 - Nature: green `94,184,58` / cyan `74,181,214` / glow `123,218,78`
 
-**Rendering:** Butterflies use bezier-curve filled wings with glow shadow, body line, and antennae. Wing spread oscillates via `sin(flapPhase)`. Snowflakes use 6-branch crystalline shapes with barbs. Both have fade-in, spin, and wobble.
+**Rendering:** Snowflakes use 6-branch crystalline shapes with barbs, with glow shadow, fade-in, spin, and wobble.
 
-**Accumulation:** `bflyMap` Map stores `{ resting: [], fracAccum, type }` per tracked element. A `setInterval` (500ms) grows resting butterflies at the type-specific rate × `speedFactor`, skipping invisible elements. `MutationObserver` on `document.body` auto-tracks dynamically created elements (e.g. modal project cards). `totalResting` counter tracks total visible butterflies across all elements.
-
-**Performance:** Canvas boots lazily on first interaction/stacking. `requestAnimationFrame` loop stops when no flying particles, no aura zone, and no resting butterflies remain. Skips on touch devices (`pointer: coarse`). Disabled via `[data-animations="off"]`.
+**Performance:** Canvas boots lazily on first interaction. `requestAnimationFrame` loop stops when no flakes remain and no aura zone is active. Skips on touch devices (`pointer: coarse`). Disabled via `[data-animations="off"]`.
 
 **Delegated events:** Uses `pointerenter`/`pointerleave` with `event.target.closest(selector)` on `document` — works for dynamically created elements.
 

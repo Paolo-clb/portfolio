@@ -123,6 +123,8 @@
     if (menuEl) return;
     var unlocked = laIsHardcoreUnlocked();
     var prog = laGetUnlockProgress();
+    // Pickaxe skin is a reward for unlocking hardcore — force off if still locked.
+    window.__laSteveSkin = unlocked && (localStorage.getItem('la_skin_steve') === '1');
 
     if (!document.getElementById('_la-go-styles')) {
       var st = document.createElement('style');
@@ -161,6 +163,9 @@
         '#_la-mode-select .la-ms-bar{flex:1;height:.5rem;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden;min-width:60px}' +
         '#_la-mode-select .la-ms-bar-fill{display:block;height:100%;border-radius:99px;transition:width .5s cubic-bezier(0.22,1,0.36,1)}' +
         '#_la-mode-select .la-ms-prog-count{font-size:.72rem;font-weight:700;width:4rem;text-align:right;flex:none}' +
+        '#_la-mode-select .la-ms-steve{display:inline-flex;align-items:center;gap:.5rem;margin-top:1.5rem;font-size:.74rem;letter-spacing:.05em;color:#8aa3c0;cursor:pointer;user-select:none;transition:color .2s}' +
+        '#_la-mode-select .la-ms-steve:hover{color:#cfe6f5}' +
+        '#_la-mode-select .la-ms-steve input{width:15px;height:15px;margin:0;accent-color:#5fe0cf;cursor:pointer}' +
         '@media (max-width:560px){#_la-mode-select .la-ms-prog-name{display:none}}';
       document.head.appendChild(ms);
     }
@@ -204,6 +209,8 @@
 
       '</div>' +
       (unlocked ? '' : buildUnlockPanel(prog)) +
+      // Cosmetic pickaxe skin — unlocked alongside hardcore mode as a reward
+      (unlocked ? '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-steve-cb"><span>I am Steve</span></label>' : '') +
       '</div>';
 
     container.style.position = 'relative';
@@ -211,6 +218,14 @@
 
     var sbBtn = menuEl.querySelector('#_la-ms-sandbox');
     var hcBtn = menuEl.querySelector('#_la-ms-hardcore');
+    var steveCb = menuEl.querySelector('#_la-ms-steve-cb');
+    if (steveCb) {
+      steveCb.checked = !!window.__laSteveSkin;
+      steveCb.addEventListener('change', function () {
+        window.__laSteveSkin = steveCb.checked;
+        try { localStorage.setItem('la_skin_steve', steveCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
+      });
+    }
 
     // Resume the current (paused) run without restarting it
     function resumeGame() {
@@ -873,6 +888,9 @@
      ================================================================ */
 
   function boot() {
+    // Pickaxe skin flag (reward — only honoured once hardcore is unlocked)
+    window.__laSteveSkin = laIsHardcoreUnlocked() && (localStorage.getItem('la_skin_steve') === '1');
+
     // Returning visitor: game already activated — inject button immediately.
     // We cannot rely on the 'typinggameready' event here because typing-game.js
     // registers its DOMContentLoaded handler before light-again.js, so the event
