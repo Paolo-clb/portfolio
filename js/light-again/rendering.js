@@ -32,43 +32,55 @@
     LA.buildArrowTex(tm, '_ar_dash',  da[0], da[1], da[2], C.SIZE, 18, false);
     LA.buildArrowTex(tm, '_ar_whiff', 80,  80,  90, C.SIZE, 4, false);
 
-    // Steve skin — bake the player texture from the loaded pickaxe PNG once:
-    // pre-rotate +90° (PNG head points up → +x, like the arrow tip) and pre-scale
-    // to arrow size, so it drops straight into the arrow's rotate/scale logic.
-    if (!tm.exists('_la_pickaxe') && tm.exists('_la_pickaxe_raw')) {
-      var pimg = tm.get('_la_pickaxe_raw').getSourceImage();
-      if (pimg && pimg.width) {
-        // The asset ships on an opaque WHITE background — knock it out to alpha 0
-        // at full resolution (sharp pixel-art edges) before scaling.
-        var ptc = document.createElement('canvas');
-        ptc.width = pimg.width; ptc.height = pimg.height;
-        var ptg = ptc.getContext('2d');
-        ptg.drawImage(pimg, 0, 0);
-        try {
-          // The background is a baked transparency checkerboard (white #fff +
-          // light-grey #eee). Knock out light, near-neutral pixels → alpha 0,
-          // while keeping the coloured cyan/brown of the pickaxe.
-          var pid = ptg.getImageData(0, 0, ptc.width, ptc.height), pd = pid.data;
-          for (var pk = 0; pk < pd.length; pk += 4) {
-            var rr = pd[pk], gg = pd[pk + 1], bb = pd[pk + 2];
-            var mn = Math.min(rr, gg, bb), mx = Math.max(rr, gg, bb);
-            if (mn >= 232 && (mx - mn) <= 8) pd[pk + 3] = 0;
-          }
-          ptg.putImageData(pid, 0, 0);
-        } catch (e) { /* cross-origin taint — leave as-is */ }
+    // Steve skin — bake the player textures from the loaded pickaxe PNGs once.
+    // The assets already ship with a transparent background (no keying needed).
+    // Head points up-LEFT, so pre-rotate +135° to aim it +x (the arrow-tip axis);
+    // pre-scale to arrow size so it drops into the arrow's rotate/scale logic.
+    // Diamond = dash ready · Golden = dash on cooldown (mirrors cyan → yellow).
+    var _bakePick = function (rawKey, outKey) {
+      if (tm.exists(outKey) || !tm.exists(rawKey)) return;
+      var img = tm.get(rawKey).getSourceImage();
+      if (!img || !img.width) return;
+      var rot = Math.PI * 0.25; // +45°: align the head to +x (the arrow-tip axis)
+      var scale = (C.SIZE * 3.0) / Math.max(img.width, img.height);
+      var sw = img.width * scale, sh = img.height * scale;
+      var bw = Math.abs(sw * Math.cos(rot)) + Math.abs(sh * Math.sin(rot));
+      var bh = Math.abs(sw * Math.sin(rot)) + Math.abs(sh * Math.cos(rot));
+      var oc = document.createElement('canvas');
+      oc.width = Math.ceil(bw); oc.height = Math.ceil(bh);
+      var g = oc.getContext('2d');
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.translate(oc.width / 2, oc.height / 2);
+      g.rotate(rot);
+      g.drawImage(img, -sw / 2, -sh / 2, sw, sh);
+      tm.addCanvas(outKey, oc);
+    };
+    _bakePick('_la_pick_diamond_raw', '_la_pickaxe');
+    _bakePick('_la_pick_gold_raw',    '_la_pickaxe_gold');
 
-        // Pre-rotate +90° (PNG head points up → +x like the arrow tip) and pre-scale
-        // to arrow size, so it drops straight into the arrow rotate/scale logic.
-        var pscale = (C.SIZE * 2.8) / pimg.height;
-        var psw = pimg.width * pscale, psh = pimg.height * pscale;
-        var poc = document.createElement('canvas');
-        poc.width = Math.ceil(psh); poc.height = Math.ceil(psw); // w/h swap after 90° turn
-        var pg = poc.getContext('2d');
-        pg.imageSmoothingEnabled = true; pg.imageSmoothingQuality = 'high';
-        pg.translate(poc.width / 2, poc.height / 2);
-        pg.rotate(Math.PI / 2);
-        pg.drawImage(ptc, -psw / 2, -psh / 2, psw, psh);
-        tm.addCanvas('_la_pickaxe', poc);
+    // Enchanted-netherite dash-attack animation: bake each spritesheet frame into
+    // its own rotated/scaled texture (_la_neth_0.._N) — same +45° / size as the
+    // other pickaxes so the animated skin drops into the same rotate/scale logic.
+    if (!tm.exists('_la_neth_0') && tm.exists('_la_pick_neth_raw')) {
+      var nimg = tm.get('_la_pick_neth_raw').getSourceImage();
+      if (nimg && nimg.width) {
+        var FW = 160, nCols = Math.max(1, Math.floor(nimg.width / FW));
+        var nRot = Math.PI * 0.25;
+        var nScale = (C.SIZE * 3.0) / FW;
+        var nsw = FW * nScale, nsh = FW * nScale;
+        var nbw = Math.ceil(Math.abs(nsw * Math.cos(nRot)) + Math.abs(nsh * Math.sin(nRot)));
+        var nbh = Math.ceil(Math.abs(nsw * Math.sin(nRot)) + Math.abs(nsh * Math.cos(nRot)));
+        for (var nf = 0; nf < C.NETH_FRAMES; nf++) {
+          var fcol = nf % nCols, frow = Math.floor(nf / nCols);
+          var foc = document.createElement('canvas');
+          foc.width = nbw; foc.height = nbh;
+          var fg = foc.getContext('2d');
+          fg.imageSmoothingEnabled = true; fg.imageSmoothingQuality = 'high';
+          fg.translate(nbw / 2, nbh / 2);
+          fg.rotate(nRot);
+          fg.drawImage(nimg, fcol * FW, frow * FW, FW, FW, -nsw / 2, -nsh / 2, nsw, nsh);
+          tm.addCanvas('_la_neth_' + nf, foc);
+        }
       }
     }
 
@@ -82,6 +94,7 @@
     LA.buildProjTex(tm, '_proj');
     LA.buildPCBTex(tm, '_pcb', c);
     LA.buildStarTex(tm, '_star');
+    LA.buildAnomalyTex(tm, '_anomaly');
   };
 
   M._checkTheme = function () {
@@ -107,10 +120,18 @@
 
   M._pTexKey = function () {
     var p = this.p;
-    // Steve skin: one baked pickaxe texture for every state (head pre-aligned to
-    // +x, so it rotates exactly like the arrow). Falls back to the arrow if the
-    // PNG never loaded.
-    if (window.__laSteveSkin && this.textures.exists('_la_pickaxe')) return '_la_pickaxe';
+    // Steve skin: baked pickaxe (head pre-aligned to +x, rotates like the arrow).
+    // Golden pickaxe while the dash is on cooldown, diamond when it's ready —
+    // mirrors the arrow's cyan→yellow. Falls back to the arrow if the PNGs failed.
+    if (window.__laSteveSkin && this.textures.exists('_la_pickaxe')) {
+      // Dash-attack → animated enchanted netherite (mirrors the magenta arrow);
+      // dash on cooldown → gold; otherwise diamond. Keeps the 3-skin alternation
+      // consistent with the arrow's cyan / yellow / magenta.
+      if (p.state === 'DASH_ATTACKING' && this.textures.exists('_la_neth_0')) {
+        return '_la_neth_' + (Math.floor(this.gameTime * C.NETH_FPS) % C.NETH_FRAMES);
+      }
+      return (!p.dashAvailable && this.textures.exists('_la_pickaxe_gold')) ? '_la_pickaxe_gold' : '_la_pickaxe';
+    }
     if (p.state === 'DASH_ATTACKING') return '_ar_datk';
     if (p.state === 'ATTACKING')      return '_ar_atk';
     if (p.state === 'DASHING')        return '_ar_dash';
@@ -153,26 +174,29 @@
     this.playerSpr.setScale(baseScale);
 
     // Dash i-frames: keep dash look
-    if (window.__laSteveSkin) {
-      // Pickaxe is a solid object, not a neon glyph — render opaque, untinted,
-      // so it keeps its Minecraft colours (state is conveyed by the baked glow).
-      this.playerSpr.clearTint();
-      this.playerSpr.setAlpha(1.0);
-      this.playerSpr.setBlendMode(Phaser.BlendModes.NORMAL);
-    } else if (this._twActive) {
-      // Golden phantom look during time stop — more visible than before
+    if (this._twActive) {
+      // Golden phantom look during time stop — applies to both the arrow and
+      // the pickaxe skin so the two stay uniform when the world is frozen.
       var twGhost = 0.60 + 0.20 * Math.sin(this.gameTime * Math.PI * 3);
       this.playerSpr.setTint(0xffc832);
       this.playerSpr.setAlpha(twGhost);
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
     } else if (p.invincible && p.dashInvinc) {
+      // Dash i-frames — same cyan phantom look on both arrow and pickaxe.
       this.playerSpr.setTint(0x00ffff);
       this.playerSpr.setAlpha(0.85);
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
     } else if (p.state === 'DASH_ATTACKING') {
+      // Dash-attack — same magenta phantom look on both arrow and pickaxe.
       this.playerSpr.setTint(0xff44ff);
       this.playerSpr.setAlpha(0.92);
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
+    } else if (window.__laSteveSkin) {
+      // Pickaxe is a solid object, not a neon glyph — render opaque, untinted,
+      // so it keeps its Minecraft colours (state is conveyed by the baked glow).
+      this.playerSpr.clearTint();
+      this.playerSpr.setAlpha(1.0);
+      this.playerSpr.setBlendMode(Phaser.BlendModes.NORMAL);
     } else {
       this.playerSpr.clearTint();
       this.playerSpr.setAlpha(1.0);
@@ -218,10 +242,10 @@
       var trAlpha = (hi + 1) / (this._trN + 1) * (p.invincible && p.dashInvinc ? 0.55 : 0.35);
       sl.spr.setAlpha(trAlpha);
       sl.spr.setScale(baseScale * ((hi + 1) / (this._trN + 1) * 0.5 + 0.5));
-      if (window.__laSteveSkin) {
-        // Solid pickaxe after-images (motion blur), no neon tint
-        sl.spr.clearTint();
-        sl.spr.setBlendMode(Phaser.BlendModes.NORMAL);
+      if (this._twActive) {
+        // Golden phantom after-images during time stop — uniform across skins.
+        sl.spr.setBlendMode(Phaser.BlendModes.ADD);
+        sl.spr.setTint(0xffc832);
       } else if (p.invincible && p.dashInvinc) {
         sl.spr.setBlendMode(Phaser.BlendModes.ADD);
         sl.spr.setTint(0x00ffff);
@@ -233,6 +257,10 @@
         var trB = Math.round(220 - 160 * tFrac);
         sl.spr.setBlendMode(Phaser.BlendModes.ADD);
         sl.spr.setTint((trR << 16) | (trG << 8) | trB);
+      } else if (window.__laSteveSkin) {
+        // Solid pickaxe after-images (motion blur), no neon tint
+        sl.spr.clearTint();
+        sl.spr.setBlendMode(Phaser.BlendModes.NORMAL);
       } else {
         sl.spr.setBlendMode(Phaser.BlendModes.ADD);
         sl.spr.clearTint();

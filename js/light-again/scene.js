@@ -16,11 +16,19 @@
     },
 
     preload: function () {
-      // Steve pickaxe skin asset (cosmetic). Loaded under a _raw key; baked into
-      // the '_la_pickaxe' texture in _genTextures. If it 404s the skin silently
+      // Steve pickaxe skin assets (cosmetic). Diamond = dash ready, Golden = dash on
+      // cooldown (mirrors the arrow's cyan→yellow). Loaded under _raw keys; baked
+      // into '_la_pickaxe' / '_la_pickaxe_gold' in _genTextures. A 404 silently
       // falls back to the arrow.
-      if (!this.textures.exists('_la_pickaxe_raw') && !this.textures.exists('_la_pickaxe')) {
-        this.load.image('_la_pickaxe_raw', 'assets/light-again/pickaxe.png');
+      if (!this.textures.exists('_la_pick_diamond_raw') && !this.textures.exists('_la_pickaxe')) {
+        this.load.image('_la_pick_diamond_raw', 'assets/light-again/Diamond_Pickaxe.png');
+      }
+      if (!this.textures.exists('_la_pick_gold_raw') && !this.textures.exists('_la_pickaxe_gold')) {
+        this.load.image('_la_pick_gold_raw', 'assets/light-again/Golden_Pickaxe.png');
+      }
+      // Enchanted-netherite dash-attack animation (spritesheet, 60×160² frames)
+      if (!this.textures.exists('_la_pick_neth_raw') && !this.textures.exists('_la_neth_0')) {
+        this.load.image('_la_pick_neth_raw', 'assets/light-again/Enchanted_Netherite_Pickaxe.png');
       }
     },
 
@@ -136,7 +144,22 @@
       this.enemies = [];
       this.ENEMY_TRAIL_N = 4;
       this.spawnTimer = 0;
-      this.nextSpawnDelay = 3500;
+      this.nextSpawnDelay = Phaser.Math.Between(C.HC_WAVE_GAP_MIN, C.HC_WAVE_GAP_MAX); // hardcore wave gap
+      this._enemyBag = null;               // rarity bag (rebuilt on first draw)
+      this._sandboxRate = C.SANDBOX_RATE_DEFAULT; // mouse-wheel spawn speed (sandbox)
+      this._spdUiTimer = 0;                // countdown for the speed slider visibility
+      this._clearWave = null;              // active Clear Board shockwave
+
+      // Sandbox speed slider (world-space, floats above the ship; hidden by default)
+      this._spdBarGfx = this.add.graphics();
+      this._spdBarGfx.setDepth(103);
+      this._spdBarGfx.setVisible(false);
+      this._spdTxt = this.add.text(0, 0, '', {
+        fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#9fe0ff',
+      });
+      this._spdTxt.setOrigin(0.5, 1);
+      this._spdTxt.setDepth(104);
+      this._spdTxt.setVisible(false);
 
       LA.buildPixelTex(this.textures, '_pxl');
 
@@ -346,6 +369,7 @@
       // Upgrade system (roguelite draft)
       this._initUpgrades();
       this._initTimeStop();
+      this._initAnomaly();
 
       cam.setBackgroundColor(LA.getColors().bgColor);
 
@@ -359,6 +383,11 @@
         if ((ev.code === 'Space' || ev.code === 'ShiftLeft' || ev.code === 'ShiftRight') && !ev.repeat) {
           ev.preventDefault();
           self._tryDash();
+        }
+        // Clear Board (sandbox only): Delete / Backspace → screen-sweeping shockwave
+        if ((ev.code === 'Delete' || ev.code === 'Backspace') && !ev.repeat) {
+          ev.preventDefault();
+          if (window.__laGameMode === 'sandbox' && self.p && self.p.state !== 'DEAD') self._clearBoard();
         }
         if (ev.code === 'KeyI' && !ev.repeat) {
           ev.preventDefault();
@@ -382,6 +411,11 @@
           ev.preventDefault();
           self._beginUpgradeSlowMo();
         }
+        // Cheat: force-spawn The Anomaly mini-boss (works in both modes)
+        if (ev.code === 'KeyG' && !ev.repeat) {
+          ev.preventDefault();
+          self._spawnAnomaly();
+        }
 
       });
       this.input.keyboard.on('keyup', function (ev) {
@@ -401,6 +435,13 @@
 
       // Canvas persists across scene.restart() — keep a ref so we can detach on shutdown
       this.game.canvas.addEventListener('contextmenu', this._onCanvasCtxMenu = function (e) { e.preventDefault(); });
+
+      // Mouse wheel paces the sandbox spawn rate (up = faster, down = calmer).
+      this.game.canvas.addEventListener('wheel', this._onCanvasWheel = function (e) {
+        if (window.__laGameMode !== 'sandbox') return;
+        e.preventDefault();
+        self._adjustSandboxRate(e.deltaY < 0 ? 1 : -1);
+      }, { passive: false });
 
       window.__lightGameAtkReady = function () {
         var p = self.p;
@@ -456,6 +497,7 @@
         self._twWaveGfx = null;
         if (self._twIconTxt) { self._twIconTxt.destroy(); self._twIconTxt = null; }
         if (self._killCounterTxt) { self._killCounterTxt.destroy(); self._killCounterTxt = null; }
+        if (self._clearAnomaly) self._clearAnomaly(true);
         window.__laSceneRef = null;
         if (self._onWindowFocus) {
           window.removeEventListener('focus', self._onWindowFocus);
@@ -472,6 +514,10 @@
         if (self._onCanvasCtxMenu && self.game && self.game.canvas) {
           self.game.canvas.removeEventListener('contextmenu', self._onCanvasCtxMenu);
           self._onCanvasCtxMenu = null;
+        }
+        if (self._onCanvasWheel && self.game && self.game.canvas) {
+          self.game.canvas.removeEventListener('wheel', self._onCanvasWheel);
+          self._onCanvasWheel = null;
         }
       });
     },
@@ -588,6 +634,9 @@
       if (p.y < -wM) { p.y = -wM; p.vy *= -0.4; }
       if (p.y >  wM) { p.y =  wM; p.vy *= -0.4; }
 
+      // Anomaly quarantine: trap the player inside the firewall
+      this._confinePlayerToBarrier();
+
       if (p.state === 'DASHING') {
         p.dashTimer -= pMs;
         if (p.vx * p.vx + p.vy * p.vy > 4) {
@@ -685,6 +734,8 @@
       this._updateProjectiles(sDt, pDt);
       this._checkCollisions();
       this._checkStarPickup();
+      this._updateAnomaly(ms, pMs, dt);
+      this._checkAnomalyCollision();
 
       // Star power timer countdown — uses real time so TW doesn't pause the bar
       if (this.isStarPowered) {
@@ -692,14 +743,27 @@
         if (this._starPowerTimer < 0) this._starPowerTimer = 0;
       }
 
-      if (this.spawnTimer > -999000) {
+      // Natural spawns pause while the anomaly's quarantine barrier is up.
+      if (this.spawnTimer > -999000 && !this._anomalyBarrierActive) {
         this.spawnTimer += ms;
-        if (this.spawnTimer >= this.nextSpawnDelay) {
+        var _sandbox = (window.__laGameMode === 'sandbox');
+        // Sandbox: steady one-by-one stream, paced live by the mouse wheel.
+        // Hardcore: bursty waves with a random gap (size grows with kills).
+        var _spawnDelay = _sandbox ? (C.SANDBOX_BASE_INTERVAL / this._sandboxRate) : this.nextSpawnDelay;
+        if (this.spawnTimer >= _spawnDelay) {
           this.spawnTimer = 0;
-          this.nextSpawnDelay = Phaser.Math.Between(3000, 5000);
-          this._spawnWave();
+          if (_sandbox) {
+            this._spawnSandboxOne();
+          } else {
+            this._spawnHardcoreWave();
+            this.nextSpawnDelay = Phaser.Math.Between(C.HC_WAVE_GAP_MIN, C.HC_WAVE_GAP_MAX);
+          }
         }
       }
+
+      // Clear Board shockwave + sandbox speed slider (both run on real time)
+      this._updateClearWave(dt);
+      this._updateSpeedUi(dt);
 
       this._shieldAngle += sDt * 1.8;
       this._renderShieldOrbs();

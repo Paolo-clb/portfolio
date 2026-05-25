@@ -102,8 +102,25 @@
         '</div>'
       : '';
 
-    panel.innerHTML = row1 + row2 + btnHtml + lbHtml;
+    // "I am Steve" pickaxe-skin toggle (game-over only shows in hardcore = unlocked)
+    var steveHtml =
+      '<label id="_la-go-steve-wrap" style="display:inline-flex;align-items:center;gap:.45rem;margin:0 0 .7rem;font-size:.62rem;letter-spacing:.05em;color:#8aa3c0;cursor:pointer;user-select:none">' +
+        '<input type="checkbox" id="_la-go-steve" style="width:14px;height:14px;margin:0;accent-color:#5fe0cf;cursor:pointer">' +
+        '<span>I am Steve</span>' +
+      '</label>';
+
+    panel.innerHTML = row1 + row2 + btnHtml + steveHtml + lbHtml;
     overlay.appendChild(panel);
+
+    // ----- Wire "I am Steve" skin toggle (applies on the next replay) -----
+    var steveCb = panel.querySelector('#_la-go-steve');
+    if (steveCb) {
+      steveCb.checked = !!window.__laSteveSkin;
+      steveCb.addEventListener('change', function () {
+        window.__laSteveSkin = steveCb.checked;
+        try { localStorage.setItem('la_skin_steve', steveCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
+      });
+    }
 
     // ----- Wire replay buttons -----
     var sbBtn = panel.querySelector('#_la-go-sandbox');

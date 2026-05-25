@@ -86,9 +86,9 @@
     tm.addCanvas(key, oc);
   };
 
-  /* The Steve pickaxe skin uses a real PNG asset (assets/light-again/pickaxe.png),
-     baked into the '_la_pickaxe' texture in rendering.js (_genTextures) — no
-     procedural pickaxe generator here. */
+  /* The Steve pickaxe skin uses real PNG assets (assets/light-again/Diamond_Pickaxe.png
+     + Golden_Pickaxe.png), baked into '_la_pickaxe' / '_la_pickaxe_gold' in
+     rendering.js (_genTextures) — no procedural pickaxe generator here. */
 
   LA.buildEnemyTex = function (tm, key) {
     if (tm.exists(key)) tm.remove(key);
@@ -431,6 +431,48 @@
     tm.addCanvas(dstKey, oc);
   };
 
+
+  /* ---- The Anomaly: an unstable "amas de pixels" (glitch cluster) ----
+     Pure-white blocky blob on transparent ground. Rendered three times at
+     jittered offsets with pure R/G/B tints (ADD blend) to fake chromatic
+     aberration — the overlap reads white, the fringes bleed red/green/blue
+     like a broken CRT. Kept white here so tinting controls the channels. */
+  LA.buildAnomalyTex = function (tm, key) {
+    if (tm.exists(key)) tm.remove(key);
+    var s = C.ANO_SIZE, pad = 8;
+    var W = Math.ceil(s * 2 + pad * 2), H = Math.ceil(s * 2 + pad * 2);
+    var oc = document.createElement('canvas');
+    oc.width = W; oc.height = H;
+    var g2 = oc.getContext('2d');
+    var ox = W / 2, oy = H / 2;
+
+    // Soft halo so it glows even before per-channel ADD passes
+    g2.save();
+    g2.globalCompositeOperation = 'lighter';
+    g2.shadowColor = 'rgba(255,255,255,0.9)';
+    g2.shadowBlur = 12;
+    g2.fillStyle = 'rgba(255,255,255,0.10)';
+    g2.beginPath(); g2.arc(ox, oy, s * 0.7, 0, Math.PI * 2); g2.fill();
+    g2.restore();
+
+    // Jagged pixel cluster — a deterministic-ish scatter of square shards so
+    // the silhouette is "wrong" / data-moshed rather than a clean polygon.
+    g2.fillStyle = '#ffffff';
+    var shards = [
+      [-0.55, -0.20, 0.42, 0.34], [ 0.16, -0.62, 0.30, 0.46],
+      [-0.10, -0.10, 0.55, 0.50], [ 0.30,  0.12, 0.40, 0.38],
+      [-0.62,  0.18, 0.34, 0.40], [-0.18,  0.34, 0.46, 0.34],
+      [ 0.04,  0.02, 0.30, 0.30], [-0.34, -0.50, 0.26, 0.28],
+    ];
+    for (var i = 0; i < shards.length; i++) {
+      var sx = ox + shards[i][0] * s, sy = oy + shards[i][1] * s;
+      g2.fillRect(sx, sy, shards[i][2] * s, shards[i][3] * s);
+    }
+    // Dense white core
+    g2.beginPath(); g2.arc(ox, oy, s * 0.34, 0, Math.PI * 2); g2.fill();
+
+    tm.addCanvas(key, oc);
+  };
 
   LA.buildPixelTex = function (tm, key) {
     if (tm.exists(key)) return;

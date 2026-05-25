@@ -143,6 +143,8 @@
     this.playerSpr.setVisible(false);
     for (var ti = 0; ti < this.TRAIL_CAP; ti++) this._trail[ti].spr.setVisible(false);
     for (var oi = 0; oi < this._shieldOrbs.length; oi++) this._shieldOrbs[oi].setVisible(false);
+    // NB: the anomaly is intentionally NOT cleared here — like the other enemies
+    // it persists through death (and through sandbox respawn).
     this.spawnTimer = -999999;
     var self = this;
     this.time.delayedCall(900, function () {

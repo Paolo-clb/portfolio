@@ -27,102 +27,101 @@
     };
   };
 
-  M._spawnRusher = function () {
-    if (this.enemies.length >= C.MAX_ENEMIES) return;
-    var ang = Math.random() * Math.PI * 2;
-    var pos = this._spawnPosNear(ang, C.SPAWN_DIST, 1);
-    this._spawnRusherAt(pos.x, pos.y);
+  /* ---- Rarity "bag" -------------------------------------------------------
+     The enemy TYPE is drawn from a shuffled bag (BAG_T1 simples, BAG_T2 shooters,
+     BAG_T3 generators). Drawing removes one item; when the bag is empty it is
+     rebuilt. This always respects the ratio and forbids long generator streaks
+     (at most one generator per bag → never 3 in a row). Shared by both modes. */
+  M._buildEnemyBag = function () {
+    var bag = [], i;
+    for (i = 0; i < C.BAG_T1; i++) bag.push(1);
+    for (i = 0; i < C.BAG_T2; i++) bag.push(2);
+    for (i = 0; i < C.BAG_T3; i++) bag.push(3);
+    return bag;
   };
 
-  M._spawnWave = function () {
-    var t1Progress = Math.min(this.totalKills / C.SPAWN_T1_RAMP_KILLS, 1.0);
-    var minT1 = Math.floor(C.SPAWN_T1_MIN_BASE + t1Progress * C.SPAWN_T1_MIN_SPAN);
-    var maxT1 = Math.floor(C.SPAWN_T1_MAX_BASE + t1Progress * C.SPAWN_T1_MAX_SPAN);
-    if (maxT1 < minT1) maxT1 = minT1;
-    var t1Count = Phaser.Math.Between(minT1, maxT1);
+  M._drawFromBag = function () {
+    if (!this._enemyBag || this._enemyBag.length === 0) this._enemyBag = this._buildEnemyBag();
+    var i = (Math.random() * this._enemyBag.length) | 0; // random remaining = shuffled draw
+    return this._enemyBag.splice(i, 1)[0];
+  };
 
-    var t2Progress = Math.min(this.totalKills / C.SPAWN_T2_RAMP_KILLS, 1.0);
-    var chance1T2 = t2Progress * C.SPAWN_T2_CHANCE_1;
-    var chance2T2 = t2Progress * C.SPAWN_T2_CHANCE_2;
+  /* Spawn one enemy of `tier` at (sx, sy) with its spawn-ring VFX. */
+  M._spawnTierAt = function (tier, sx, sy) {
+    this._naturalSpawn = true;
+    if (tier === 3) this._spawnBruiserAt(sx, sy);
+    else if (tier === 2) this._spawnShooterAt(sx, sy);
+    else this._spawnRusherAt(sx, sy);
+    this._naturalSpawn = false;
+    var ringColor = tier === 3 ? 0xaa00ff : tier === 2 ? 0xff7722 : 0xff0044;
+    var ringR     = tier === 3 ? 90 : tier === 2 ? 72 : 55;
+    this._spawnWaveRing(sx, sy, { maxRadius: ringR, color: ringColor, expandTime: 0.16 + tier * 0.04 });
+  };
 
-    var t3Eff = Math.max(0, this.totalKills - C.SPAWN_T3_START_KILLS);
-    var t3Progress = Math.min(t3Eff / C.SPAWN_T3_RAMP_KILLS, 1.0);
-    var chance1T3 = t3Progress * C.SPAWN_T3_CHANCE_1;
+  /* ---- Sandbox: a single enemy, drawn from the bag, around the player ---- */
+  M._spawnSandboxOne = function () {
+    if (this.enemies.length >= C.MAX_ENEMIES) return;
+    var tier = this._drawFromBag();
+    var ang  = Math.random() * Math.PI * 2;
+    var dist = C.SPAWN_DIST + Math.random() * 120;
+    var pos  = this._spawnPosNear(ang, dist, tier);
+    this._spawnTierAt(tier, pos.x, pos.y);
+  };
 
-    var spawnQueue = [];
-    for (var i = 0; i < t1Count; i++) spawnQueue.push(1);
+  /* ---- Hardcore: one burst wave; size grows with total kills ---- */
+  M._hardcoreWaveSize = function () {
+    return Math.min(C.HC_WAVE_BASE + Math.floor(this.totalKills / C.HC_WAVE_PER), C.HC_WAVE_MAX);
+  };
 
-    var rollT2 = Math.random();
-    if (rollT2 < chance2T2) {
-      spawnQueue.push(2, 2);
-    } else if (rollT2 < chance2T2 + chance1T2) {
-      spawnQueue.push(2);
-    }
-
-    if (Math.random() < chance1T3) spawnQueue.push(3);
-
-    var kills = this.totalKills;
-    var lateP = 0;
-    if (kills > C.SPAWN_LATE_START_KILLS) {
-      lateP = Math.min(
-        (kills - C.SPAWN_LATE_START_KILLS) / (C.SPAWN_LATE_END_KILLS - C.SPAWN_LATE_START_KILLS),
-        1
-      );
-    }
-    var lm1 = 1 + lateP * (C.SPAWN_LATE_MULT_T1 - 1);
-    var lm2 = 1 + lateP * (C.SPAWN_LATE_MULT_T2 - 1);
-    var lm3 = 1 + lateP * (C.SPAWN_LATE_MULT_T3 - 1);
-    var cnt1 = 0, cnt2 = 0, cnt3 = 0;
-    for (var si = 0; si < spawnQueue.length; si++) {
-      if (spawnQueue[si] === 1) cnt1++;
-      else if (spawnQueue[si] === 2) cnt2++;
-      else if (spawnQueue[si] === 3) cnt3++;
-    }
-    var n1 = Math.max(1, Math.round(cnt1 * lm1));
-    var n2 = Math.max(0, Math.round(cnt2 * lm2));
-    var n3 = Math.max(0, Math.round(cnt3 * lm3));
-    spawnQueue = [];
-    for (var qi = 0; qi < n1; qi++) spawnQueue.push(1);
-    for (var qj = 0; qj < n2; qj++) spawnQueue.push(2);
-    for (var qk = 0; qk < n3; qk++) spawnQueue.push(3);
-
-    var tk2 = this.totalKills;
-    if (tk2 > C.SPAWN_DOUBLE_KILLS_START && spawnQueue.length > 0) {
-      var dProg = Math.min(
-        (tk2 - C.SPAWN_DOUBLE_KILLS_START) / (C.SPAWN_DOUBLE_KILLS_FULL - C.SPAWN_DOUBLE_KILLS_START),
-        1
-      );
-      var pMax = dProg * C.SPAWN_DOUBLE_PROB_MAX;
-      var emptyF = (C.MAX_ENEMIES - this.enemies.length) / C.MAX_ENEMIES;
-      if (pMax > 0 && emptyF > 0 && Math.random() < pMax * emptyF) {
-        spawnQueue = spawnQueue.concat(spawnQueue.slice());
-      }
-    }
-
+  M._spawnHardcoreWave = function () {
     var slots = C.MAX_ENEMIES - this.enemies.length;
     if (slots <= 0) return;
-    var finalCount = Math.min(spawnQueue.length, slots);
-
+    var size = Math.min(this._hardcoreWaveSize(), slots);
     var baseAng = Math.random() * Math.PI * 2;
-    var spread = (finalCount > 1) ? (Math.PI * 0.9) : 0;
-    for (var j = 0; j < finalCount; j++) {
-      var t = finalCount > 1 ? j / (finalCount - 1) : 0.5;
-      var ang = baseAng + (t - 0.5) * spread + (Math.random() - 0.5) * 0.3;
-      var dist = C.SPAWN_DIST + Math.random() * 120;
-      var tier = spawnQueue[j];
-      var pos = this._spawnPosNear(ang, dist, tier);
-      var sx = pos.x, sy = pos.y;
-
-      this._naturalSpawn = true;
-      if (tier === 3) this._spawnBruiserAt(sx, sy);
-      else if (tier === 2) this._spawnShooterAt(sx, sy);
-      else this._spawnRusherAt(sx, sy);
-      this._naturalSpawn = false;
-      // Spawn ring VFX per enemy
-      var ringColor = tier === 3 ? 0xaa00ff : tier === 2 ? 0xff7722 : 0xff0044;
-      var ringR = tier === 3 ? 90 : tier === 2 ? 72 : 55;
-      this._spawnWaveRing(sx, sy, { maxRadius: ringR, color: ringColor, expandTime: 0.16 + tier * 0.04 });
+    var spread  = size > 1 ? Math.PI * 1.2 : 0; // wider arc than sandbox
+    for (var j = 0; j < size; j++) {
+      var t    = size > 1 ? j / (size - 1) : 0.5;
+      var ang  = baseAng + (t - 0.5) * spread + (Math.random() - 0.5) * 0.35;
+      var dist = C.SPAWN_DIST + Math.random() * 160;
+      var tier = this._drawFromBag();
+      var pos  = this._spawnPosNear(ang, dist, tier);
+      this._spawnTierAt(tier, pos.x, pos.y);
     }
+  };
+
+  /* ---- Sandbox spawn-rate control (mouse wheel) + floating speed slider ---- */
+  M._adjustSandboxRate = function (dir) {
+    var step = C.SANDBOX_RATE_STEP;
+    var r = this._sandboxRate + dir * step;
+    r = Math.round(r / step) * step;
+    this._sandboxRate = Math.max(C.SANDBOX_RATE_MIN, Math.min(C.SANDBOX_RATE_MAX, r));
+    this._spdUiTimer = C.SANDBOX_SPEED_UI_DUR; // (re)show the slider
+  };
+
+  M._updateSpeedUi = function (dt) {
+    var g = this._spdBarGfx, txt = this._spdTxt;
+    if (!g || !txt) return;
+    if (this._spdUiTimer <= 0) {
+      if (g.visible) { g.setVisible(false); txt.setVisible(false); }
+      return;
+    }
+    this._spdUiTimer -= dt;
+    var alpha = Math.max(0, Math.min(1, this._spdUiTimer / 0.45)); // fade over last 0.45s
+    var frac = (this._sandboxRate - C.SANDBOX_RATE_MIN) / (C.SANDBOX_RATE_MAX - C.SANDBOX_RATE_MIN);
+    var W = 84, H = 5;
+    var cx = this.p.x, y0 = this.p.y - 52, x0 = cx - W / 2;
+    g.clear();
+    g.setVisible(true);
+    g.fillStyle(0x081a26, 0.5 * alpha);  g.fillRoundedRect(x0 - 3, y0 - 3, W + 6, H + 6, 5);
+    g.fillStyle(0x1b3a4c, 0.92 * alpha); g.fillRoundedRect(x0, y0, W, H, 3);
+    g.fillStyle(0x39c6ff, alpha);        g.fillRoundedRect(x0, y0, Math.max(3, W * frac), H, 3);
+    g.fillStyle(0xcdf2ff, alpha);        g.fillCircle(x0 + W * frac, y0 + H / 2, 4.5);
+    var rate = this._sandboxRate;
+    var rateStr = (rate % 1 === 0) ? String(rate) : rate.toFixed(1);
+    txt.setText(LA.laGoT('laSpeed') + ' x' + rateStr);
+    txt.setPosition(cx, y0 - 7);
+    txt.setAlpha(alpha);
+    txt.setVisible(true);
   };
 
   M._debugSpawnTestTier = function (tier, want) {

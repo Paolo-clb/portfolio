@@ -164,9 +164,12 @@
         }
         e.x += e.vx * sc60; e.y += e.vy * sc60;
 
-        // Spawner logic
+        // Spawner logic — suppressed while quarantined (the firewall blocks
+        // the generator's spawning, keeping the trapped fight finite).
         e.spawnCD -= ms;
-        if (e.spawnCD <= 0) {
+        if (e.spawnCD <= 0 && this._anomalyBarrierActive) {
+          e.spawnCD = 400;
+        } else if (e.spawnCD <= 0) {
           var hiveSlots = C.MAX_ENEMIES - this.enemies.length;
           if (hiveSlots <= 0) {
             e.spawnCD = 120;
@@ -223,6 +226,22 @@
       if (e.x >  eMargin) { e.x =  eMargin; if (e.vx > 0) e.vx = -Math.abs(e.vx) * BOUNCE; }
       if (e.y < -eMargin) { e.y = -eMargin; if (e.vy < 0) e.vy = Math.abs(e.vy) * BOUNCE; }
       if (e.y >  eMargin) { e.y =  eMargin; if (e.vy > 0) e.vy = -Math.abs(e.vy) * BOUNCE; }
+
+      // Anomaly quarantine: trapped enemies can't leave the firewall
+      var ab = this._anomaly;
+      if (this._anomalyBarrierActive && ab) {
+        var bdx = e.x - ab.bx, bdy = e.y - ab.by;
+        var blim = ab.R - eHalf * 1.4;
+        var bd2 = bdx * bdx + bdy * bdy;
+        if (bd2 > blim * blim) {
+          var bd = Math.sqrt(bd2) || 1;
+          e.x = ab.bx + (bdx / bd) * blim;
+          e.y = ab.by + (bdy / bd) * blim;
+          var bnx = bdx / bd, bny = bdy / bd;
+          var bvd = e.vx * bnx + e.vy * bny;
+          if (bvd > 0) { e.vx -= bnx * bvd * (1 + BOUNCE); e.vy -= bny * bvd * (1 + BOUNCE); }
+        }
+      }
     }
   };
 

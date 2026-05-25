@@ -40,25 +40,32 @@
     IFRAMES_DUR:   800,
     SPAWN_DIST:      650,
     MAX_ENEMIES:     1000,
-    SPAWN_T1_RAMP_KILLS: 950,
-    SPAWN_T1_MIN_BASE:   4,
-    SPAWN_T1_MIN_SPAN:   12,
-    SPAWN_T1_MAX_BASE:   5,
-    SPAWN_T1_MAX_SPAN:   12,
-    SPAWN_T2_RAMP_KILLS: 450,
-    SPAWN_T2_CHANCE_1:   0.56,
-    SPAWN_T2_CHANCE_2:   0.28,
-    SPAWN_T3_START_KILLS: 75,
-    SPAWN_T3_RAMP_KILLS:  520,
-    SPAWN_T3_CHANCE_1:    0.36,
-    SPAWN_LATE_START_KILLS: 500,
-    SPAWN_LATE_END_KILLS:   1000,
-    SPAWN_LATE_MULT_T1:     1.7,
-    SPAWN_LATE_MULT_T2:     2.0,
-    SPAWN_LATE_MULT_T3:     1.9,
-    SPAWN_DOUBLE_KILLS_START: 1000,
-    SPAWN_DOUBLE_KILLS_FULL:  2000,
-    SPAWN_DOUBLE_PROB_MAX:    0.5,
+
+    /* ---- Steve skin: enchanted-netherite dash-attack animation ---- */
+    NETH_FRAMES: 60,   // frames in the spritesheet (5 cols × 12 rows)
+    NETH_FPS:    20,   // 60 frames / 3 s loop
+
+    /* ---- Enemy rarity "bag" (shuffled lot, refilled when empty) ---- */
+    // One bag = this many of each tier; drawing empties it, then it refills.
+    // Guarantees the ratio over every cycle and forbids 3 generators in a row.
+    BAG_T1: 7,   // simple (red triangle)
+    BAG_T2: 2,   // shooter (orange diamond)
+    BAG_T3: 1,   // generator (purple hexagon)
+
+    /* ---- Sandbox: continuous one-by-one stream, mouse-wheel paced ---- */
+    SANDBOX_BASE_INTERVAL: 800,   // ms between spawns at rate x1
+    SANDBOX_RATE_MIN:      0.5,
+    SANDBOX_RATE_MAX:      16,
+    SANDBOX_RATE_STEP:     0.5,
+    SANDBOX_RATE_DEFAULT:  1,
+    SANDBOX_SPEED_UI_DUR:  2.0,   // s the speed slider stays visible after a scroll
+
+    /* ---- Hardcore: bursty waves that grow with the player's total kills ---- */
+    HC_WAVE_BASE:    4,      // enemies in the very first wave
+    HC_WAVE_PER:     55,     // +1 wave enemy per this many total kills
+    HC_WAVE_MAX:     40,     // wave-size cap
+    HC_WAVE_GAP_MIN: 3500,   // ms between waves
+    HC_WAVE_GAP_MAX: 5500,
     LOADER_WARMUP_FRAMES:        45,
     LOADER_RESTART_WARMUP_FRAMES: 14,
     SEPARATION_RADIUS: 30,
@@ -108,6 +115,29 @@
     TW_DURATION:           4000,
     TW_COOLDOWN:           30000,
     TW_SECRET_KILL_DELAY:  500,
+
+    /* ---- The Anomaly (rare "glitch" mini-boss / quarantine event) ----
+       An unstable RGB-split entity that wanders the arena, then slams a
+       circular "firewall" around the player, vacuums nearby enemies inside,
+       halts natural spawns, and fires telegraphed lasers. Invulnerable
+       (static shield) until every trapped enemy is dead; then it panics and
+       can be killed, dropping a free upgrade. Shared by both game modes. */
+    ANO_SIZE:            24,     // body half-extent (px)
+    ANO_TRIGGER_RANGE:   360,    // player distance that slams the barrier
+    ANO_BARRIER_RADIUS:  540,    // base quarantine zone radius (px), at ANO_MIN_TRAPPED
+    ANO_BARRIER_PER_ENEMY: 16,   // +radius per trapped enemy beyond the minimum
+    ANO_BARRIER_MAX:     1200,   // hard cap on the quarantine radius (px)
+    ANO_VACUUM_RADIUS:   1100,   // enemies within this get sucked inside on slam
+    ANO_MIN_TRAPPED:     9,      // floor of trapped sub-fifres (boss spawns extras)
+    ANO_LASER_CD:        1500,   // ms between laser volleys (while shielded)
+    ANO_LASER_WARN:      520,    // telegraph duration — harmless thin line (ms)
+    ANO_LASER_FIRE:      420,    // deadly beam duration (ms)
+    ANO_LASER_WIDTH:     17,     // deadly beam half-width for the hit test (px)
+    ANO_HP:              4,      // melee hits to kill once vulnerable
+    ANO_PANIC_BLINK:     14,     // blink frequency while panicked/vulnerable
+    ANO_SPAWN_MIN_DELAY: 40000,  // ms of play before a natural anomaly can appear
+    ANO_SPAWN_CHANCE:    0.085,  // per-eligible-second spawn roll
+    ANO_COOLDOWN:        30000,  // ms after one dies before another can spawn
   };
 
   /* ---- Upgrade branch definitions ---- */
@@ -159,6 +189,8 @@
   C.SEPARATION_RADIUS_SQ    = C.SEPARATION_RADIUS * C.SEPARATION_RADIUS;
   C.SHOCKWAVE_RADIUS_SQ     = C.SHOCKWAVE_RADIUS * C.SHOCKWAVE_RADIUS;
   C.LANDING_BURST_RADIUS_SQ = C.LANDING_BURST_RADIUS * C.LANDING_BURST_RADIUS;
+  C.ANO_TRIGGER_RANGE_SQ    = C.ANO_TRIGGER_RANGE * C.ANO_TRIGGER_RANGE;
+  C.ANO_VACUUM_RADIUS_SQ    = C.ANO_VACUUM_RADIUS * C.ANO_VACUUM_RADIUS;
 
   /* ---- Palette — theme-aware, cached ---- */
   var _colorCache = null;

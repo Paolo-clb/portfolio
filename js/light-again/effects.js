@@ -27,7 +27,7 @@
     g.spr.setRotation(angle);
     g.spr.setAlpha(alpha * 0.6);
     if (window.__laSteveSkin && this.textures.exists('_la_pickaxe')) {
-      g.spr.setTexture('_la_pickaxe');
+      g.spr.setTexture(this._pTexKey()); // diamond / gold to match the live skin
     } else {
       g.spr.setTexture(isDashAtk ? '_ar_datk' : '_ar_dash');
     }

@@ -132,6 +132,7 @@ window.SITE_I18N = {
     laModeHardcoreLocked: 'Verrouillé',
     laModeBack:           '← Reprendre',
     laModeResume:         'Reprendre',
+    laSpeed:              'Vitesse',
     laModeUnlockHint:     'Élimine ces ennemis pour débloquer le mode Hardcore',
     laMenuBtn:            'Menu',
     laMenuReturnTitle:    'Retour au menu',
@@ -164,6 +165,10 @@ window.SITE_I18N = {
     laUpTheWorldName:    'The World',
     laUpTheWorldDesc1:   'Le clic molette arrête le temps et rend invincible pendant 4 secondes. (Cooldown : 30s)',
     laDelayExp:          'Explosion Retardée',
+
+    // The Anomaly (mini-boss)
+    laAnomalyShielded:   'INTUABLE — ennemis restants :',
+    laAnomalyVuln:       'VULNÉRABLE !',
 
     // Misc
     closeLbl: 'Fermer',
@@ -295,6 +300,7 @@ window.SITE_I18N = {
     laModeHardcoreLocked: 'Locked',
     laModeBack:           '← Resume',
     laModeResume:         'Resume',
+    laSpeed:              'Speed',
     laModeUnlockHint:     'Eliminate these enemies to unlock Hardcore mode',
     laMenuBtn:            'Menu',
     laMenuReturnTitle:    'Return to menu',
@@ -327,6 +333,10 @@ window.SITE_I18N = {
     laUpTheWorldName:    'The World',
     laUpTheWorldDesc1:   'Middle-click stops time and makes you invincible for 4 seconds. (Cooldown: 30s)',
     laDelayExp:          'Delayed Explosion',
+
+    // The Anomaly (mini-boss)
+    laAnomalyShielded:   'UNKILLABLE — enemies left:',
+    laAnomalyVuln:       'VULNERABLE!',
 
     // Misc
     closeLbl: 'Close',

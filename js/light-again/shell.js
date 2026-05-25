@@ -90,6 +90,7 @@
         _tutWatcher.observe(document.body, { childList: true, subtree: true });
       }
     }
+    clearPauseState(); // entering play → button shows ⏸, never a stale ▶
     updateMenuBtn();
   }
 
@@ -227,10 +228,13 @@
       });
     }
 
-    // Resume the current (paused) run without restarting it
+    // Resume the current (paused) run without restarting it. "Reprendre" always
+    // resumes — even if the player had manually paused before opening the menu —
+    // and clears the pause state so the button can't stay stuck on ▶.
     function resumeGame() {
       dismissModeMenu();
-      if (!userPaused && activeGame && typeof activeGame.resume === 'function') activeGame.resume();
+      clearPauseState();
+      if (activeGame && typeof activeGame.resume === 'function') activeGame.resume();
     }
     // Sandbox card: mid-game it acts as "Resume" (no restart); from the launch
     // menu it starts a fresh sandbox run.
@@ -312,6 +316,14 @@
     btn.innerHTML = userPaused ? playIconSvg() : pauseIconSvg();
     btn.setAttribute('aria-label', userPaused ? t('lightAgainResume') : t('lightAgainPause'));
     btn.setAttribute('aria-pressed', userPaused ? 'true' : 'false');
+  }
+
+  // Game is (re)entering a running state from the mode menu — drop any pause
+  // (manual or menu-induced) and resync the pause button to the "playing" icon,
+  // so it never shows ▶ while the player can actually move.
+  function clearPauseState() {
+    userPaused = false;
+    if (overlayEl) updatePauseBtnUi(overlayEl.querySelector('.light-again-pause-btn'));
   }
 
   function toggleGamePause() {
@@ -465,6 +477,20 @@
         descHtml: isFr
           ? 'En <span class="la-help-dash">dash</span>, touche un ennemi pour le <span style="color:#005a8c">marquer</span> \u2014 il clignote avec des \u00e9tincelles \u2014 puis une <span style="color:#ff1e3c">attaque torpille</span> d\u00e9clenche la nuke. La <span style="color:#ff14c8">dash-attaque</span> ne d\u00e9clenche <strong>pas</strong> la nuke.'
           : 'While <span class="la-help-dash">dashing</span>, hit an enemy to <span style="color:#005a8c">mark</span> it \u2014 it blinks with sparks \u2014 then a <span style="color:#ff1e3c">torpedo attack</span> triggers the nuke. <span style="color:#ff14c8">Dash-attack</span> does <strong>not</strong> trigger the nuke.',
+      },
+      {
+        label:    isFr ? 'Vitesse \u00b7 Bac \u00e0 sable' : 'Speed \u00b7 Sandbox',
+        color:    '#39c6ff',
+        descHtml: isFr
+          ? 'Molette de la souris \u2014 <span style="color:#39c6ff">acc\u00e9l\u00e8re</span> (vers le haut) ou <span style="color:#39c6ff">ralentit</span> (vers le bas) l\u2019apparition des ennemis. La vitesse actuelle s\u2019affiche au-dessus du vaisseau.'
+          : 'Mouse wheel \u2014 spawns <span style="color:#39c6ff">speed up</span> (scroll up) or <span style="color:#39c6ff">calm down</span> (scroll down). The current speed shows above your ship.',
+      },
+      {
+        label:    isFr ? 'Vider l\u2019\u00e9cran \u00b7 Bac \u00e0 sable' : 'Clear board \u00b7 Sandbox',
+        color:    '#66ddff',
+        descHtml: isFr
+          ? '<span class="la-help-dash">Suppr</span> ou <span class="la-help-dash">Retour arri\u00e8re</span> \u2014 une onde de choc part du vaisseau et balaie l\u2019\u00e9cran pour d\u00e9truire tous les ennemis (sans points).'
+          : '<span class="la-help-dash">Delete</span> or <span class="la-help-dash">Backspace</span> \u2014 a shockwave bursts from your ship and sweeps the screen, destroying every enemy (no points).',
       },
     ];
 

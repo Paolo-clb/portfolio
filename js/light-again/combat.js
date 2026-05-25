@@ -255,6 +255,53 @@
     }
   };
 
+  /* ==========================================================================
+     Clear Board (sandbox) — a shockwave from the player sweeps outward and
+     destroys every enemy it passes. No score, no combo, no kill count.
+     ========================================================================== */
+  M._clearBoard = function () {
+    if (this._clearWave && this._clearWave.active) return;
+    var cam = this.cameras.main;
+    var zoom = cam.zoom || 1;
+    // world-space half-diagonal of the viewport + margin → reaches every on-screen enemy
+    var reach = Math.sqrt(cam.width * cam.width + cam.height * cam.height) * 0.5 / zoom + 480;
+    this._clearWave = { active: true, t: 0, dur: 0.55, r: 0, maxR: reach };
+    this._spawnWaveRing(this.p.x, this.p.y, { maxRadius: reach,       color: 0x66ddff, expandTime: 0.55 });
+    this._spawnWaveRing(this.p.x, this.p.y, { maxRadius: reach * 0.6, color: 0xffffff, expandTime: 0.40 });
+    cam.flash(200, 120, 220, 255);
+    cam.shake(240, 0.010);
+    this._triggerHitstop(60);
+  };
+
+  M._destroyEnemyNoScore = function (idx, silent) {
+    var e = this.enemies[idx];
+    if (!e) return;
+    if (!silent) this._explode(e.x, e.y, [120, 220, 255], 14);
+    e.spr.destroy();
+    for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
+    if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
+    this.enemies.splice(idx, 1);
+  };
+
+  // Advance the clear-board shockwave; called every frame from update().
+  M._updateClearWave = function (dt) {
+    var cw = this._clearWave;
+    if (!cw || !cw.active) return;
+    cw.t += dt;
+    cw.r = cw.maxR * Math.min(1, cw.t / cw.dur);
+    var r2 = cw.r * cw.r, px = this.p.x, py = this.p.y, i;
+    for (i = this.enemies.length - 1; i >= 0; i--) {
+      var e = this.enemies[i];
+      var dx = e.x - px, dy = e.y - py;
+      if (dx * dx + dy * dy <= r2) this._destroyEnemyNoScore(i, false);
+    }
+    if (cw.t >= cw.dur) {
+      // sweep any stragglers past the visual reach (off-screen) silently → board cleared
+      for (i = this.enemies.length - 1; i >= 0; i--) this._destroyEnemyNoScore(i, true);
+      cw.active = false;
+    }
+  };
+
   M._breakShield = function (e) {
     if (!e.hasShield) return;
     e.hasShield = false;

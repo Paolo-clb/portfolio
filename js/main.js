@@ -1390,6 +1390,16 @@ function initCursorHalo() {
         } else {
           halo.classList.remove('cursor-halo--hover');
         }
+      } else if (e.target.closest('#_la-go-overlay')) {
+        // Hardcore game-over panel: replay buttons hit the button branch above; the
+        // "I am Steve" toggle and the name input are non-button clickables → normal halo.
+        stopLightGameHoverPoll();
+        halo.classList.remove('cursor-halo--game');
+        if (e.target.closest('#_la-go-steve-wrap') || e.target.closest('#_la-go-name')) {
+          halo.classList.add('cursor-halo--hover');
+        } else {
+          halo.classList.remove('cursor-halo--hover');
+        }
       } else if (e.target.closest('#_la-upgrade-overlay')) {
         // Non-button area inside upgrade overlay — no hover effect
         stopLightGameHoverPoll();
