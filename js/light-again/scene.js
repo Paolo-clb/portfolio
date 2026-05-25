@@ -15,6 +15,15 @@
       Phaser.Scene.call(this, { key: 'GameScene' });
     },
 
+    preload: function () {
+      // Steve pickaxe skin asset (cosmetic). Loaded under a _raw key; baked into
+      // the '_la_pickaxe' texture in _genTextures. If it 404s the skin silently
+      // falls back to the arrow.
+      if (!this.textures.exists('_la_pickaxe_raw') && !this.textures.exists('_la_pickaxe')) {
+        this.load.image('_la_pickaxe_raw', 'assets/light-again/pickaxe.png');
+      }
+    },
+
     create: function () {
       var self = this;
       window.__laSceneRef = this;

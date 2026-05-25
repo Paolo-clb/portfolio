@@ -86,74 +86,9 @@
     tm.addCanvas(key, oc);
   };
 
-  /* ---- Minecraft diamond pickaxe skin (cosmetic — replaces the arrow) ----
-     Pixel-art: vector shapes on a coarse low-res grid, upscaled nearest-neighbour
-     for chunky blocks. Drawn in the iconic diagonal pose (head upper-left, handle
-     lower-right). The shell keeps this pose fixed while moving and only spins it
-     during attacks. (r,g,b) only tints the per-state glow halo. */
-  LA.buildPickaxeTex = function (tm, key, r, g, b, s, blur) {
-    if (tm.exists(key)) tm.remove(key);
-
-    var G = 18; // coarse grid → bigger, more visible pixels
-    var lr = document.createElement('canvas');
-    lr.width = G; lr.height = G;
-    var c = lr.getContext('2d');
-
-    var D_OUT = '#17564f', D_DK = '#2c9786', D_MD = '#4ecdb9', D_LT = '#9bf4e7';
-    var W_OUT = '#21130a', W_DK = '#4d3318', W_MD = '#79502c', W_LT = '#a87a4c';
-
-    var jx = 8.6, jy = 9; // head/handle join
-
-    // Handle: join (upper-left) → butt (lower-right), thin diagonal stick
-    c.lineCap = 'round'; c.lineJoin = 'round';
-    function stick(w, col) { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(jx, jy); c.lineTo(16.5, 17); c.stroke(); }
-    stick(3.4, W_OUT); stick(2.2, W_DK); stick(1.3, W_MD);
-
-    // Head: two thin, sharp diamond prongs (one up, one left) + a small socket.
-    // Thin spikes = pickaxe (not a hammer); symmetric pair about the handle line.
-    var SOCKET = [[8.5, 5.8], [11.2, 8.6], [8.5, 11.4], [5.8, 8.6]];
-    var UP   = [[6.9, 9.3], [9.9, 8.1], [10.9, 0.8]];   // spike pointing up
-    var LEFT = [[8.1, 10.9], [9.3, 7.5], [0.7, 6.1]];   // spike pointing left
-    function poly(p) { c.beginPath(); c.moveTo(p[0][0], p[0][1]); for (var i = 1; i < p.length; i++) c.lineTo(p[i][0], p[i][1]); c.closePath(); }
-
-    c.lineJoin = 'miter'; c.miterLimit = 6;
-    // dark outline pass (stroke wide), then mid fill
-    c.strokeStyle = D_OUT; c.lineWidth = 1.8;
-    poly(SOCKET); c.stroke(); poly(UP); c.stroke(); poly(LEFT); c.stroke();
-    c.fillStyle = D_MD;
-    poly(SOCKET); c.fill(); poly(UP); c.fill(); poly(LEFT); c.fill();
-    // shading: lighter toward the tips, darker toward the socket/handle
-    c.fillStyle = D_LT;
-    poly([[8.9, 6.6], [10.4, 5.2], [10.9, 0.8], [9.6, 4.4]]); c.fill(); // up-prong glint
-    poly([[7.0, 7.6], [5.0, 7.0], [0.7, 6.1], [3.0, 7.4]]); c.fill();   // left-prong glint
-    c.fillStyle = D_DK;
-    poly([[8.5, 11.4], [11.2, 8.6], [9.4, 9.0], [8.5, 10.0]]); c.fill(); // socket lower-right facet
-    // binding lashing where the handle meets the head
-    c.lineCap = 'butt'; c.strokeStyle = '#2c4044'; c.lineWidth = 1.8;
-    c.beginPath(); c.moveTo(9.8, 11.4); c.lineTo(11.6, 9.4); c.stroke();
-
-    // ---- Upscale (blocky) into the real texture, with state-coloured glow ----
-    var U = s * 0.152;
-    var dw = G * U, dh = G * U;
-    var pad = blur + 6;
-    var W = Math.ceil(dw + pad * 2), H = Math.ceil(dh + pad * 2);
-    var oc = document.createElement('canvas');
-    oc.width = W; oc.height = H;
-    var g2 = oc.getContext('2d');
-    g2.imageSmoothingEnabled = false;
-    var dx = Math.round((W - dw) / 2), dy = Math.round((H - dh) / 2);
-
-    // Glow halo (drawn behind via the image's coloured shadow)
-    g2.save();
-    g2.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',0.85)';
-    g2.shadowBlur = blur;
-    g2.drawImage(lr, 0, 0, G, G, dx, dy, dw, dh);
-    g2.restore();
-    // Crisp pixels on top
-    g2.drawImage(lr, 0, 0, G, G, dx, dy, dw, dh);
-
-    tm.addCanvas(key, oc);
-  };
+  /* The Steve pickaxe skin uses a real PNG asset (assets/light-again/pickaxe.png),
+     baked into the '_la_pickaxe' texture in rendering.js (_genTextures) — no
+     procedural pickaxe generator here. */
 
   LA.buildEnemyTex = function (tm, key) {
     if (tm.exists(key)) tm.remove(key);

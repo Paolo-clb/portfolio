@@ -32,13 +32,45 @@
     LA.buildArrowTex(tm, '_ar_dash',  da[0], da[1], da[2], C.SIZE, 18, false);
     LA.buildArrowTex(tm, '_ar_whiff', 80,  80,  90, C.SIZE, 4, false);
 
-    // Minecraft pickaxe skin ("I am Steve") — same state set as the arrow, glow tinted per state
-    LA.buildPickaxeTex(tm, '_pick_cyan',  ca[0], ca[1], ca[2], C.SIZE, 16);
-    LA.buildPickaxeTex(tm, '_pick_yel',   ya[0], ya[1], ya[2], C.SIZE, 16);
-    LA.buildPickaxeTex(tm, '_pick_atk',   255, 40, 60,  C.SIZE, 18);
-    LA.buildPickaxeTex(tm, '_pick_datk',  255, 30, 200, C.SIZE * 1.3, 26);
-    LA.buildPickaxeTex(tm, '_pick_dash',  da[0], da[1], da[2], C.SIZE, 16);
-    LA.buildPickaxeTex(tm, '_pick_whiff', 110, 110, 120, C.SIZE, 6);
+    // Steve skin — bake the player texture from the loaded pickaxe PNG once:
+    // pre-rotate +90° (PNG head points up → +x, like the arrow tip) and pre-scale
+    // to arrow size, so it drops straight into the arrow's rotate/scale logic.
+    if (!tm.exists('_la_pickaxe') && tm.exists('_la_pickaxe_raw')) {
+      var pimg = tm.get('_la_pickaxe_raw').getSourceImage();
+      if (pimg && pimg.width) {
+        // The asset ships on an opaque WHITE background — knock it out to alpha 0
+        // at full resolution (sharp pixel-art edges) before scaling.
+        var ptc = document.createElement('canvas');
+        ptc.width = pimg.width; ptc.height = pimg.height;
+        var ptg = ptc.getContext('2d');
+        ptg.drawImage(pimg, 0, 0);
+        try {
+          // The background is a baked transparency checkerboard (white #fff +
+          // light-grey #eee). Knock out light, near-neutral pixels → alpha 0,
+          // while keeping the coloured cyan/brown of the pickaxe.
+          var pid = ptg.getImageData(0, 0, ptc.width, ptc.height), pd = pid.data;
+          for (var pk = 0; pk < pd.length; pk += 4) {
+            var rr = pd[pk], gg = pd[pk + 1], bb = pd[pk + 2];
+            var mn = Math.min(rr, gg, bb), mx = Math.max(rr, gg, bb);
+            if (mn >= 232 && (mx - mn) <= 8) pd[pk + 3] = 0;
+          }
+          ptg.putImageData(pid, 0, 0);
+        } catch (e) { /* cross-origin taint — leave as-is */ }
+
+        // Pre-rotate +90° (PNG head points up → +x like the arrow tip) and pre-scale
+        // to arrow size, so it drops straight into the arrow rotate/scale logic.
+        var pscale = (C.SIZE * 2.8) / pimg.height;
+        var psw = pimg.width * pscale, psh = pimg.height * pscale;
+        var poc = document.createElement('canvas');
+        poc.width = Math.ceil(psh); poc.height = Math.ceil(psw); // w/h swap after 90° turn
+        var pg = poc.getContext('2d');
+        pg.imageSmoothingEnabled = true; pg.imageSmoothingQuality = 'high';
+        pg.translate(poc.width / 2, poc.height / 2);
+        pg.rotate(Math.PI / 2);
+        pg.drawImage(ptc, -psw / 2, -psh / 2, psw, psh);
+        tm.addCanvas('_la_pickaxe', poc);
+      }
+    }
 
     LA.buildEnemyTex(tm, '_enemy');
     LA.buildShooterTex(tm, '_shooter');
@@ -75,12 +107,15 @@
 
   M._pTexKey = function () {
     var p = this.p;
-    var sv = !!window.__laSteveSkin;
-    if (p.state === 'DASH_ATTACKING') return sv ? '_pick_datk' : '_ar_datk';
-    if (p.state === 'ATTACKING')      return sv ? '_pick_atk'  : '_ar_atk';
-    if (p.state === 'DASHING')        return sv ? '_pick_dash' : '_ar_dash';
-    if (p.state === 'RECOVERY' && p.recoveryWhiff) return sv ? '_pick_whiff' : '_ar_whiff';
-    return p.dashAvailable ? (sv ? '_pick_cyan' : '_ar_cyan') : (sv ? '_pick_yel' : '_ar_yel');
+    // Steve skin: one baked pickaxe texture for every state (head pre-aligned to
+    // +x, so it rotates exactly like the arrow). Falls back to the arrow if the
+    // PNG never loaded.
+    if (window.__laSteveSkin && this.textures.exists('_la_pickaxe')) return '_la_pickaxe';
+    if (p.state === 'DASH_ATTACKING') return '_ar_datk';
+    if (p.state === 'ATTACKING')      return '_ar_atk';
+    if (p.state === 'DASHING')        return '_ar_dash';
+    if (p.state === 'RECOVERY' && p.recoveryWhiff) return '_ar_whiff';
+    return p.dashAvailable ? '_ar_cyan' : '_ar_yel';
   };
 
   M._renderPlayer = function () {
@@ -94,15 +129,9 @@
       return;
     }
 
-    // Steve pickaxe holds the iconic diagonal pose while moving and only spins
-    // during attacks (so the leading point doesn't whirl when just walking).
-    var spinning = (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING');
-    var steveFixed = !!window.__laSteveSkin && !spinning;
-    var pRot = steveFixed ? 0 : p.angle;
-
     this.playerSpr.setTexture(key);
     this.playerSpr.setPosition(p.x, p.y);
-    this.playerSpr.setRotation(pRot);
+    this.playerSpr.setRotation(p.angle);
     this.playerSpr.setVisible(true);
 
     // Arrow scale escalates with combo
@@ -185,7 +214,7 @@
       if (dx * dx + dy * dy < 4) continue;
       sl.spr.setTexture(key);
       sl.spr.setPosition(sl.x, sl.y);
-      sl.spr.setRotation(steveFixed ? 0 : sl.angle);
+      sl.spr.setRotation(sl.angle);
       var trAlpha = (hi + 1) / (this._trN + 1) * (p.invincible && p.dashInvinc ? 0.55 : 0.35);
       sl.spr.setAlpha(trAlpha);
       sl.spr.setScale(baseScale * ((hi + 1) / (this._trN + 1) * 0.5 + 0.5));

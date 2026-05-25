@@ -1378,6 +1378,18 @@ function initCursorHalo() {
           stopLightGameHoverPoll();
           halo.classList.add('cursor-halo--hover');
         }
+      } else if (e.target.closest('#_la-mode-select')) {
+        // Mode select menu (overlays the canvas): regular UI, not gameplay — use the
+        // normal site halo, not the larger game ring. Enabled mode cards (role="button")
+        // and the "I am Steve" toggle are clickable → show the hover halo. The locked
+        // card and empty menu areas are not.
+        stopLightGameHoverPoll();
+        halo.classList.remove('cursor-halo--game');
+        if (e.target.closest('.la-ms-card--enabled') || e.target.closest('.la-ms-steve')) {
+          halo.classList.add('cursor-halo--hover');
+        } else {
+          halo.classList.remove('cursor-halo--hover');
+        }
       } else if (e.target.closest('#_la-upgrade-overlay')) {
         // Non-button area inside upgrade overlay — no hover effect
         stopLightGameHoverPoll();

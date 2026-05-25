@@ -24,12 +24,10 @@
     var g = this._ghosts[this._ghostW];
     g.active = true; g.alpha = alpha;
     g.spr.setPosition(x, y);
-    // Steve holds the fixed icon pose during a plain dash; only the spinning
-    // dash-attack ghosts use the live angle.
-    g.spr.setRotation((window.__laSteveSkin && !isDashAtk) ? 0 : angle);
+    g.spr.setRotation(angle);
     g.spr.setAlpha(alpha * 0.6);
-    if (window.__laSteveSkin) {
-      g.spr.setTexture(isDashAtk ? '_pick_datk' : '_pick_dash');
+    if (window.__laSteveSkin && this.textures.exists('_la_pickaxe')) {
+      g.spr.setTexture('_la_pickaxe');
     } else {
       g.spr.setTexture(isDashAtk ? '_ar_datk' : '_ar_dash');
     }
