@@ -69,7 +69,9 @@
      NATURAL SPAWN — rare, gated, works in BOTH modes (driven from update)
      ================================================================ */
   M._maybeSpawnAnomaly = function (ms) {
-    if (this._anomaly) return;
+    // Shared boss gate: only one mini-boss alive at a time (anomaly OR giga
+    // bruiser), and they share the same cooldown / spawn-min-delay budget.
+    if (this._anomaly || this._gigaBruiser) return;
     if (!this.p || this.p.state === 'DEAD') return;
     if (this._anomalyCooldownT > 0) { this._anomalyCooldownT -= ms; return; }
     if (this.gameTime < C.ANO_SPAWN_MIN_DELAY / 1000) return;
@@ -78,7 +80,11 @@
     this._anomalySpawnRollT += ms;
     if (this._anomalySpawnRollT < 1000) return;
     this._anomalySpawnRollT = 0;
-    if (Math.random() < C.ANO_SPAWN_CHANCE) this._spawnAnomaly();
+    if (Math.random() < C.ANO_SPAWN_CHANCE) {
+      // 50/50 between the two bosses
+      if (Math.random() < 0.5) this._spawnAnomaly();
+      else                     this._spawnGigaBruiser();
+    }
   };
 
   /* ================================================================
@@ -739,28 +745,34 @@
   /* Pick a random enemy that's on-screen but toward the edges (far from us) —
      the target a reflected glitch projectile will chase. If `exclude` is given
      (array of enemy refs), those are skipped so a swarm of reflected projectiles
-     spreads across different enemies. Falls back to the farthest visible enemy
-     (allowing duplicates when no fresh target is left), or null. */
+     spreads across different enemies. Fallback tiers (most→least preferred):
+       1. visible + far enough + not excluded            → random pick
+       2. visible + not excluded (any distance)          → farthest non-excluded
+       3. visible (every fresh target taken)             → farthest visible
+     Returns null if nothing is visible. */
   M._pickDistantVisibleEnemy = function (exclude) {
     var cam = this.cameras.main, p = this.p;
     var wv = cam.worldView;
     var zoom = cam.zoom || 1;
     var minD = Math.min(cam.width, cam.height) / zoom * 0.50;  // "vers les extrémités"
     var minDSq = minD * minD;
-    var cands = [], far = null, farD = -1;
     var hasExcl = exclude && exclude.length > 0;
+    var cands = [];
+    var farFresh = null, farFreshD = -1;     // farthest non-excluded
+    var farAny   = null, farAnyD   = -1;     // farthest visible (last resort)
     for (var i = 0; i < this.enemies.length; i++) {
       var e = this.enemies[i];
       if (e.x < wv.x || e.x > wv.right || e.y < wv.y || e.y > wv.bottom) continue;
       var dx = e.x - p.x, dy = e.y - p.y, dSq = dx * dx + dy * dy;
-      if (dSq > farD) { farD = dSq; far = e; }
-      if (dSq >= minDSq) {
-        if (hasExcl && exclude.indexOf(e) !== -1) continue;
-        cands.push(e);
-      }
+      if (dSq > farAnyD) { farAnyD = dSq; farAny = e; }
+      var excluded = hasExcl && exclude.indexOf(e) !== -1;
+      if (excluded) continue;
+      if (dSq > farFreshD) { farFreshD = dSq; farFresh = e; }
+      if (dSq >= minDSq) cands.push(e);
     }
-    if (cands.length) return cands[(Math.random() * cands.length) | 0];
-    return far;
+    if (cands.length)   return cands[(Math.random() * cands.length) | 0];
+    if (farFresh)       return farFresh;     // no "far" candidate but still spread
+    return farAny;                            // every visible enemy taken → reuse
   };
 
 

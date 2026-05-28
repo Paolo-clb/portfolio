@@ -68,6 +68,8 @@
       window.__laRestartPending = true;
       var LA = window.LightAgain;
       if (LA && typeof LA.injectLaRestartLoader === 'function') LA.injectLaRestartLoader(container);
+      // Force layout so the loader is committed before the heavy scene restart.
+      try { void container.offsetHeight; } catch (e) { /* ignore */ }
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
           if (activeGame && typeof activeGame.resume === 'function') activeGame.resume();

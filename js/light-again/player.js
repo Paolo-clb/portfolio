@@ -180,6 +180,9 @@
     this.playerSpr.setVisible(true);
     for (var ti = 0; ti < this.TRAIL_CAP; ti++) this._trail[ti].spr.setVisible(true);
     for (var oi = 0; oi < this._shieldOrbs.length; oi++) this._shieldOrbs[oi].setVisible(false);
+    // Sandbox kindness: if the player died with 0 shields, gift one back on
+    // respawn (capped by MAX_SHIELDS upgrades). Anything > 0 is left alone.
+    if (this.playerShields < 1) this.playerShields = Math.min(1, this.MAX_SHIELDS);
 
     // Clear a safe bubble: shove nearby enemies outward and stun them, so the
     // player isn't instantly re-killed when the i-frames expire while standing

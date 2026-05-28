@@ -61,11 +61,11 @@
     SANDBOX_SPEED_UI_DUR:  2.0,   // s the speed slider stays visible after a scroll
 
     /* ---- Hardcore: bursty waves that grow with the player's total kills ---- */
-    HC_WAVE_BASE:    4,      // enemies in the very first wave
-    HC_WAVE_PER:     55,     // +1 wave enemy per this many total kills
-    HC_WAVE_MAX:     40,     // wave-size cap
-    HC_WAVE_GAP_MIN: 3500,   // ms between waves
-    HC_WAVE_GAP_MAX: 5500,
+    HC_WAVE_BASE:    6,      // enemies in the very first wave (was 4 — punchier start)
+    HC_WAVE_PER:     38,     // +1 wave enemy per this many total kills (was 55 — scales faster)
+    HC_WAVE_MAX:     60,     // wave-size cap (was 40 — late-game crowds get bigger)
+    HC_WAVE_GAP_MIN: 2500,   // ms between waves (was 3500 — waves come more often)
+    HC_WAVE_GAP_MAX: 4000,
     LOADER_WARMUP_FRAMES:        45,
     LOADER_RESTART_WARMUP_FRAMES: 14,
     SEPARATION_RADIUS: 30,
@@ -160,6 +160,35 @@
     ANO_SPAWN_MIN_DELAY: 40000,  // ms of play before a natural anomaly can appear
     ANO_SPAWN_CHANCE:    0.085,  // per-eligible-second spawn roll
     ANO_COOLDOWN:        30000,  // ms after one dies before another can spawn
+
+    /* ---- The Giga Bruiser (alternative mini-boss, 1 chance / 2 vs Anomaly) ---
+       A massive hexagon with a regenerating shield. Dash-attack breaks the
+       shield (knocking the player back); base attack can be spammed once the
+       shield is down, dash-attack bounces off (more damage but spaced out). It
+       keeps spawning swarms of 4 bruisers at the regular bruiser cadence. Body
+       tints red and accumulates fracture lines as it takes hits. Death drops a
+       free upgrade like the anomaly. */
+    GBR_SIZE:            72,      // hexagon outer radius (px)
+    GBR_HP:              28,      // total HP (≈ 10 dash-atk hits at 3 dmg, 28 base)
+    GBR_DASH_DMG:        3,       // damage from a dash-attack on the unshielded body
+    GBR_ATK_DMG:         1,       // damage from a base attack on the unshielded body
+    GBR_SHIELD_RESPAWN:  3500,    // ms before the shield comes back after a break
+    GBR_SPAWN_CD:        3500,    // ms between bruiser-swarm spawns (same as T3)
+    GBR_SWARM_SIZE:      4,       // bruisers per swarm
+    GBR_TRIGGER_RANGE:   380,     // player distance below which the boss stops approaching
+    GBR_APPROACH_SPD:    1.6,     // px/frame approach speed while wandering toward the player
+    GBR_REBOUND_IMP:     22,      // knockback impulse on the player when dash-atk breaks shield
+    GBR_BOUNCE_IMP:      16,      // bounce impulse when dash-atk hits the unshielded body
+    /* Shockwave attack — fires when the boss eats GBR_SHOCKWAVE_THRESHOLD HP
+       worth of damage since the last one. A short charge (white pulse) then a
+       huge ring that pushes player + every enemy outward. */
+    GBR_SHOCKWAVE_THRESHOLD:  4,     // HP lost since last shockwave that triggers a new one
+    GBR_SHOCKWAVE_CHARGE_DUR: 380,   // ms of windup (charging anim) before the blast fires
+    GBR_SHOCKWAVE_BLAST_DUR:  520,   // ms the ring takes to expand to GBR_SHOCKWAVE_MAX_RADIUS
+    GBR_SHOCKWAVE_COOLDOWN:   4500,  // ms after a blast before another can be queued
+    GBR_SHOCKWAVE_MAX_RADIUS: 880,   // outer radius of the push field (px)
+    GBR_SHOCKWAVE_FORCE:      72,    // player impulse — heavy launch, real "yeet" feel
+    GBR_SHOCKWAVE_ENEMY_FORCE:40,    // enemy impulse at point-blank
   };
 
   /* ---- Upgrade branch definitions ---- */

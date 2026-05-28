@@ -375,6 +375,7 @@
       this._initUpgrades();
       this._initTimeStop();
       this._initAnomaly();
+      this._initGigaBruiser();
 
       cam.setBackgroundColor(LA.getColors().bgColor);
 
@@ -408,6 +409,11 @@
         if (ev.code === 'KeyG' && !ev.repeat) {
           ev.preventDefault();
           self._spawnAnomaly();
+        }
+        // Cheat: force-spawn The Giga Bruiser mini-boss (the 50/50 alt to G)
+        if (ev.code === 'KeyT' && !ev.repeat) {
+          ev.preventDefault();
+          self._spawnGigaBruiser();
         }
 
       });
@@ -490,7 +496,8 @@
         self._twWaveGfx = null;
         if (self._twIconTxt) { self._twIconTxt.destroy(); self._twIconTxt = null; }
         if (self._killCounterTxt) { self._killCounterTxt.destroy(); self._killCounterTxt = null; }
-        if (self._clearAnomaly) self._clearAnomaly(true);
+        if (self._clearAnomaly)     self._clearAnomaly(true);
+        if (self._clearGigaBruiser) self._clearGigaBruiser(true);
         window.__laSceneRef = null;
         if (self._onWindowFocus) {
           window.removeEventListener('focus', self._onWindowFocus);
@@ -763,6 +770,8 @@
       this._checkStarPickup();
       this._updateAnomaly(ms, pMs, dt);
       this._checkAnomalyCollision();
+      this._updateGigaBruiser(ms, pMs, dt);
+      this._checkGigaBruiserCollision();
 
       // Star power timer countdown — uses real time so TW doesn't pause the bar
       if (this.isStarPowered) {
@@ -881,8 +890,10 @@
       if (!document.getElementById('_la-loading')) {
         var lo = document.createElement('div');
         lo.id = '_la-loading';
+        // z-index 80 sits above the mode-select menu (z=60) so the loader is
+        // visible the instant it's appended, even while the menu fades out.
         lo.style.cssText = [
-          'position:absolute', 'inset:0', 'z-index:1',
+          'position:absolute', 'inset:0', 'z-index:80',
           'display:flex', 'align-items:center', 'justify-content:center',
           'background:' + bgCss,
           'pointer-events:none',
@@ -896,24 +907,33 @@
         parentEl.style.position = 'relative';
         parentEl.appendChild(lo);
       }
+      // Force a layout commit so the browser CAN paint the loader on the
+      // next frame, then defer the heavy Phaser.Game construction by 2 rAF —
+      // otherwise the synchronous WebGL/canvas init blocks the main thread
+      // before the loader is ever painted and the user sees "nothing happens".
+      void parentEl.offsetHeight;
 
-      game = new Phaser.Game({
-        type: Phaser.WEBGL,
-        parent: parentEl,
-        width: parentEl.clientWidth,
-        height: parentEl.clientHeight,
-        backgroundColor: LA.getColors().bgColor,
-        transparent: false,
-        scale: {
-          mode: Phaser.Scale.RESIZE,
-          autoCenter: Phaser.Scale.CENTER_BOTH,
-        },
-        input: {
-          mouse: { preventDefaultDown: true, preventDefaultUp: true },
-          keyboard: { target: window },
-        },
-        scene: [GameScene],
-        disableContextMenu: true,
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          game = new Phaser.Game({
+            type: Phaser.WEBGL,
+            parent: parentEl,
+            width: parentEl.clientWidth,
+            height: parentEl.clientHeight,
+            backgroundColor: LA.getColors().bgColor,
+            transparent: false,
+            scale: {
+              mode: Phaser.Scale.RESIZE,
+              autoCenter: Phaser.Scale.CENTER_BOTH,
+            },
+            input: {
+              mouse: { preventDefaultDown: true, preventDefaultUp: true },
+              keyboard: { target: window },
+            },
+            scene: [GameScene],
+            disableContextMenu: true,
+          });
+        });
       });
     }
 

@@ -100,8 +100,10 @@
     lo.id = '_la-restart-loading';
     lo.setAttribute('role', 'status');
     lo.setAttribute('aria-live', 'polite');
+    // z-index 80 sits above the mode-select menu (z=60) so the restart loader
+    // is visible the instant it's injected, even while the menu fades out.
     lo.style.cssText = [
-      'position:absolute', 'inset:0', 'z-index:1',
+      'position:absolute', 'inset:0', 'z-index:80',
       'display:flex', 'align-items:center', 'justify-content:center',
       'background:' + bgCss,
       'pointer-events:none',
