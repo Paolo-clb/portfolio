@@ -396,10 +396,32 @@
     var N = a.vacQueue.length;
     var WM = C.WORLD_HALF - 28;
 
-    // Hard cap so rings never grow past the barrier max — for huge crowds
-    // the last ring is allowed to repeat (slight stacking) rather than blow
-    // the zone up to an absurd size.
+    // Hard cap so rings never grow past the barrier max — we keep the zone
+    // tight, but we PRE-CALIBRATE the radial step + per-ring spacing so the
+    // whole crowd fits with visibly distinct rings (rather than stacking
+    // forever on the outer one, which freezes the spawn animation).
     var ringMaxR = Math.max(C.ANO_VAC_RING_BASE, C.ANO_BARRIER_MAX - 80);
+    var STEP_MIN    = 20;   // floor on ring-to-ring gap (still visually readable)
+    var SPACING_MIN = 32;   // floor on per-ring spacing (enemies can touch a bit)
+    var step    = C.ANO_VAC_RING_STEP;
+    var spacing = C.ANO_VAC_RING_SPACING;
+    var capacityFor = function (st, sp) {
+      var cap = 0;
+      for (var r = C.ANO_VAC_RING_BASE; r <= ringMaxR + 0.001; r += st) {
+        cap += Math.max(5, Math.floor(2 * Math.PI * r / sp));
+      }
+      return cap;
+    };
+    // Phase 1 — shrink the RADIAL gap so more rings fit in the available span
+    var ssafe = 24;
+    while (capacityFor(step, spacing) < N && step > STEP_MIN && ssafe-- > 0) {
+      step = Math.max(STEP_MIN, step * 0.78);
+    }
+    // Phase 2 — if rings are already as close as they get, densify each ring
+    ssafe = 24;
+    while (capacityFor(step, spacing) < N && spacing > SPACING_MIN && ssafe-- > 0) {
+      spacing = Math.max(SPACING_MIN, spacing * 0.85);
+    }
 
     var rings = [];
     var ringR = C.ANO_VAC_RING_BASE;
@@ -408,7 +430,7 @@
     var outerUsedR = ringR;
     while (qi < N && safety-- > 0) {
       if (ringR > ringMaxR) ringR = ringMaxR;        // cap so barrier stays tight
-      var slots = Math.max(5, Math.floor(2 * Math.PI * ringR / C.ANO_VAC_RING_SPACING));
+      var slots = Math.max(5, Math.floor(2 * Math.PI * ringR / spacing));
       var baseAng = Math.random() * TAU;
       var validPos = [];
       for (var s = 0; s < slots; s++) {
@@ -428,7 +450,7 @@
         outerUsedR = ringR;
         qi += take;
       }
-      ringR += C.ANO_VAC_RING_STEP;
+      ringR += step;
     }
 
     // Final barrier radius: contain every ring (+ margin), with the hard cap.

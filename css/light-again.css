@@ -622,10 +622,13 @@
    Paginated tutorial (controls · enemies · progression)
    ============================================================ */
 
-/* Keep the popup readable on short screens */
+/* Keep the popup readable on short screens. padding-bottom is zero so the
+   sticky nav can hug the very bottom of the scroll container; the nav itself
+   provides the equivalent bottom padding (see .light-again-help-nav below). */
 .light-again-help-popup {
   max-height: 88vh;
   overflow-y: auto;
+  padding-bottom: 0;
 }
 
 .light-again-help-pages {
@@ -715,11 +718,24 @@
 .la-help-sec strong { color: var(--clr-text); }
 
 /* ---- Footer navigation ---- */
+/* Sticky to the bottom of the scrollable popup so "Next ›" / "Play ▶" stays
+   visible even on long pages (the new Anomaly entry overflows). The nav
+   extends to the popup edges with negative margins, paints the popup's
+   background to hide content scrolling underneath, and gets a soft top
+   divider so it reads as a footer. */
 .light-again-help-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
+  position: sticky;
+  bottom: 0;
+  margin: 1.1rem -2.2rem 0;
+  padding: 0.9rem 2.2rem 1.4rem;
+  background: rgba(12, 10, 24, 0.97);
+  border-top: 1px solid rgba(242, 162, 133, 0.18);
+  backdrop-filter: blur(6px);
+  z-index: 2;
 }
 
 .light-again-help-dots {
@@ -795,6 +811,10 @@
   background: rgba(8, 6, 20, 0.97);
   border-color: rgba(156, 39, 176, 0.32);
 }
+[data-theme="dark"] .light-again-help-nav {
+  background: rgba(8, 6, 20, 0.97);
+  border-top-color: rgba(156, 39, 176, 0.28);
+}
 
 /* ---- Nature theme overrides ---- */
 [data-theme="nature"] .light-again-help-btn {
@@ -805,4 +825,8 @@
 [data-theme="nature"] .light-again-help-popup {
   background: rgba(5, 10, 3, 0.97);
   border-color: rgba(42, 69, 34, 0.32);
+}
+[data-theme="nature"] .light-again-help-nav {
+  background: rgba(5, 10, 3, 0.97);
+  border-top-color: rgba(42, 69, 34, 0.28);
 }

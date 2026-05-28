@@ -512,10 +512,12 @@
 
   /* ---- Shared term colors (mirror the in-game color code) ----
      dash = cyan · dash-attack = pink · torpedo = red · mark/nuke = blue
-     combo/points = yellow · shield = cyan · scout/shooter/bruiser = red/orange/purple */
+     combo/points = yellow · shield = cyan · scout/shooter/bruiser = red/orange/purple
+     anomaly = magenta glitch */
   var COL_DATK = '#ff14c8', COL_TORP = '#ff1e3c', COL_MARK = '#2a9fd6',
       COL_COMBO = '#ffcc00', COL_SHIELD = '#00ffff',
-      COL_SCOUT = '#ff3b56', COL_SHOOTER = '#ffaa22', COL_BRUISER = '#b066ff';
+      COL_SCOUT = '#ff3b56', COL_SHOOTER = '#ffaa22', COL_BRUISER = '#b066ff',
+      COL_ANOMALY = '#ff66cc', COL_VULN = '#ff3344';
   function hSpan(color, txt) { return '<span style="color:' + color + '">' + txt + '</span>'; }
   function hDash(word) { return '<span class="la-help-dash">' + word + '</span>'; }
 
@@ -542,6 +544,17 @@
         desc:  isFr
           ? 'Lent mais coriace : <strong>2 PV</strong> + un ' + hSpan(COL_SHIELD, 'bouclier') + ' que seule la ' + hSpan(COL_DATK, 'dash-attaque') + ' brise. Il ' + hSpan(COL_SCOUT, 'fait apparaître des ennemis') + ' en continu. Le plus simple : ' + hSpan(COL_MARK, 'marque-le') + ' au ' + hDash('dash') + ' puis ' + hSpan(COL_MARK, 'nuke') + ' — élimination instantanée, bouclier ignoré.'
           : 'Slow but tough: <strong>2 HP</strong> + a ' + hSpan(COL_SHIELD, 'shield') + ' that only the ' + hSpan(COL_DATK, 'dash-attack') + ' can break. It ' + hSpan(COL_SCOUT, 'spawns enemies') + ' non-stop. Easiest way: ' + hSpan(COL_MARK, 'mark it') + ' with a ' + hDash('dash') + ' then ' + hSpan(COL_MARK, 'nuke') + ' — instant kill, shield ignored.',
+      },
+      {
+        glyph: '▩', color: COL_ANOMALY,
+        name:  isFr ? 'Anomalie' : 'Anomaly',
+        desc:  isFr
+          ? 'Mini-boss <strong>rare</strong> au look glitché. Il erre dans l’arène et ' + hSpan(COL_ANOMALY, 'charge son énergie') + ' (il grossit) dès qu’on le voit. À ta portée, il arrête le temps et t’enferme dans une <span style="color:' + COL_ANOMALY + '">zone rouge</span> avec ' + hSpan(COL_SCOUT, 'tous les ennemis') + ' téléportés en cercle autour de toi. ' +
+            hSpan(COL_SHIELD, '<strong>Intuable</strong>') + ' tant qu’il reste un ennemi — son ' + hSpan(COL_SHIELD, 'bouclier') + ' absorbe tout. Il tire des ' + hSpan(COL_ANOMALY, 'lasers télégraphés') + ' (simple, triple, croix tournante — ' + hDash('dash') + ' à travers la trace fine !) et des ' + hSpan('#ffffff', 'projectiles blancs') + ' qui te suivent en ' + hSpan(COL_COMBO, 'accélérant') + '. Une ' + hSpan(COL_DATK, 'dash-attaque') + ' les renvoie en ' + hSpan(COL_SHIELD, 'cyan') + ' vers un autre ennemi — ' + hSpan(COL_COMBO, 'parade') + ' classique. ' +
+            'Quand la zone est vide, son bouclier explose : il devient ' + hSpan(COL_VULN, '<strong>VULNÉRABLE</strong>') + ' quelques secondes — fonce dessus. Le tuer offre une ' + hSpan(COL_COMBO, 'amélioration gratuite') + ' (bonus, sans réinitialiser le compteur). Bruisers piégés peuvent encore spawner, mais uniquement dans la zone.'
+          : 'A <strong>rare</strong> glitched mini-boss. It wanders the arena and ' + hSpan(COL_ANOMALY, 'charges energy') + ' (growing larger) the moment you see it. In range, it freezes time and traps you in a <span style="color:' + COL_ANOMALY + '">red zone</span> with ' + hSpan(COL_SCOUT, 'every enemy') + ' teleported in a circle around you. ' +
+            hSpan(COL_SHIELD, '<strong>Unkillable</strong>') + ' while any enemy remains — its ' + hSpan(COL_SHIELD, 'shield') + ' absorbs everything. It fires ' + hSpan(COL_ANOMALY, 'telegraphed lasers') + ' (single, triple-fan, rotating cross — ' + hDash('dash') + ' through the thin tracer!) and ' + hSpan('#ffffff', 'white homing projectiles') + ' that ' + hSpan(COL_COMBO, 'accelerate') + ' as they chase you. A ' + hSpan(COL_DATK, 'dash-attack') + ' reflects them in ' + hSpan(COL_SHIELD, 'cyan') + ' onto another enemy — standard ' + hSpan(COL_COMBO, 'parade') + '. ' +
+            'When the zone is cleared, its shield shatters: it becomes ' + hSpan(COL_VULN, '<strong>VULNERABLE</strong>') + ' for a few seconds — rush it. Killing it grants a ' + hSpan(COL_COMBO, 'free upgrade') + ' (bonus, your kill counter is untouched). Trapped bruisers can still spawn enemies — but only inside the zone.',
       },
     ];
 

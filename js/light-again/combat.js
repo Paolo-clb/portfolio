@@ -8,15 +8,33 @@
   var C  = LA.C;
   var M  = LA.sceneMethods;
 
+  /* Called from _destroyProjectile whenever a reflected projectile leaves the
+     world. When the in-flight count for its dash-attack id reaches zero, flush
+     the accumulated PARADE popup immediately instead of waiting for the safety
+     timeout — so the popup appears as soon as the last hit lands (or as soon as
+     a stray reflection expires without hitting anything). */
+  M._paradeFlushIfDone = function (atkId) {
+    if (!this._paradePending || this._paradePending[atkId] === undefined) return;
+    this._paradePending[atkId]--;
+    if (this._paradePending[atkId] > 0) return;
+    delete this._paradePending[atkId];
+    var buf = this._paradeBufs && this._paradeBufs[atkId];
+    if (!buf) return;
+    if (buf.timeoutEvt) { buf.timeoutEvt.remove(false); buf.timeoutEvt = null; }
+    delete this._paradeBufs[atkId];
+    this._floatScoreBig('PARADE', buf.pts, { count: buf.n });
+  };
+
   M._triggerHitstop = function (durMs) {
     var cap = (durMs >= C.DETONATION_HITSTOP) ? C.DETONATION_HITSTOP : C.HITSTOP_MAX;
     this.hitstopTimer = Math.min(Math.max(this.hitstopTimer, durMs), cap);
     this.timeScale = 0;
   };
 
-  M._beginBatch = function (label) {
-    this._batchScore = 0;
-    this._batchLabel = label;
+  M._beginBatch = function (label, extra) {
+    this._batchScore  = 0;
+    this._batchLabel  = label;
+    this._batchExtra  = extra || null;   // e.g. { dashAtkId } for PARADE bucketing
     this._batchActive = true;
   };
 
@@ -24,8 +42,9 @@
     if (!this._batchActive) return;
     this._batchActive = false;
     if (this._batchScore > 0) {
-      this._floatScoreBig(this._batchLabel, this._batchScore);
+      this._floatScoreBig(this._batchLabel, this._batchScore, this._batchExtra);
     }
+    this._batchExtra = null;
     this._checkUpgradeTrigger();
   };
 
@@ -76,17 +95,28 @@
   };
 
   M._floatScoreBig = function (label, pts, _extra) {
-    // PARADE: buffer 80ms to merge rapid consecutive hits into one message
-    if (label === 'PARADE' && !_extra) {
-      if (!this._paradeBuf) this._paradeBuf = { n: 0, pts: 0 };
-      this._paradeBuf.n++;
-      this._paradeBuf.pts += pts;
-      if (this._paradeFlushEvt) this._paradeFlushEvt.remove(false);
+    // PARADE: one popup per dash attack. All reflected-projectile smash events
+    // tagged with the same dashAtkId accumulate into the same bucket; ×N is
+    // the number of reflected projectiles that connected. The bucket is flushed
+    // the moment the last tagged projectile is destroyed (see _destroyProjectile
+    // → _paradeFlushIfDone), with a generous safety timeout as a backstop.
+    // The recursive render call below carries { count } and bypasses this branch.
+    if (label === 'PARADE' && !(_extra && _extra.count)) {
+      var atkId = (_extra && _extra.dashAtkId) || 0;
+      if (!this._paradeBufs) this._paradeBufs = {};
+      var buf = this._paradeBufs[atkId];
+      if (!buf) {
+        buf = { n: 0, pts: 0, atkId: atkId, timeoutEvt: null };
+        this._paradeBufs[atkId] = buf;
+      }
+      buf.n++;
+      buf.pts += pts;
+      if (buf.timeoutEvt) buf.timeoutEvt.remove(false);
       var selfP = this;
-      this._paradeFlushEvt = this.time.delayedCall(250, function () {
-        var b = selfP._paradeBuf;
-        selfP._paradeBuf = null;
-        selfP._paradeFlushEvt = null;
+      buf.timeoutEvt = this.time.delayedCall(2000, function () {
+        var b = selfP._paradeBufs && selfP._paradeBufs[atkId];
+        if (!b) return;
+        delete selfP._paradeBufs[atkId];
         selfP._floatScoreBig('PARADE', b.pts, { count: b.n });
       });
       return;
@@ -111,20 +141,48 @@
                    : (label === 'PARADE' && count > 1) ? 'PARADE \u00d7' + count
                    : label;
 
-    // Stack upward from anchor, but cap the stack so it never crosses into the
-    // top HUD strip (score / combo). First slot keeps its position above the
-    // player; deeper slots compress their spacing when room is tight and are
-    // hard-clamped at topBound so they can't escape upward into the UI.
+    // Stack upward from anchor, capped so popups can't cross into the top HUD.
+    // - fitSlots = how many popups actually fit at a readable gap (≥ SLOT_GAP_MIN)
+    //   between syBase and topBound. Limited to ABSOLUTE_MAX.
+    // - slotGap is then chosen to spread fitSlots evenly across the available
+    //   room (never tighter than SLOT_GAP_MIN, never larger than SLOT_GAP_MAX),
+    //   so the top slot lands exactly at topBound and the bottom at syBase.
+    // - If more popups arrive than fitSlots, the OLDEST visible one is evicted
+    //   (quick fade) and its slot reused — newer popups stay legible instead of
+    //   all clamping on top of each other at the ceiling.
     var topBound = cam.height * 0.22;
-    var MAX_SLOTS = 7;
+    var ABSOLUTE_MAX = 7;
     var SLOT_GAP_MAX = 48;
-    var SLOT_GAP_MIN = 20;
+    var SLOT_GAP_MIN = 30;          // text height ~26 px + small breathing room
+    var available = Math.max(0, syBase - topBound);
+    var fitSlots = Math.max(1, Math.min(ABSOLUTE_MAX, Math.floor(available / SLOT_GAP_MIN) + 1));
+    var slotGap = fitSlots > 1
+      ? Math.min(SLOT_GAP_MAX, Math.max(SLOT_GAP_MIN, available / (fitSlots - 1)))
+      : 0;
+
     if (!this._bigScoreSlots) this._bigScoreSlots = [];
     var slot = 0;
-    while (this._bigScoreSlots[slot] && slot < MAX_SLOTS) slot++;
-    var available = Math.max(0, syBase - topBound);
-    var slotGap = Math.max(SLOT_GAP_MIN, Math.min(SLOT_GAP_MAX, available / MAX_SLOTS));
-    var sy = Math.max(syBase - slot * slotGap, topBound);
+    while (slot < fitSlots && this._bigScoreSlots[slot]) slot++;
+    if (slot >= fitSlots) {
+      // No free slot fits — evict the oldest popup and reuse its index.
+      var oldestSlot = 0;
+      var oldestT = Infinity;
+      for (var s = 0; s < fitSlots; s++) {
+        var pp = this._bigScoreSlots[s];
+        if (pp && pp.__birthT < oldestT) { oldestT = pp.__birthT; oldestSlot = s; }
+      }
+      var evicted = this._bigScoreSlots[oldestSlot];
+      if (evicted) {
+        this.tweens.killTweensOf(evicted);
+        this.tweens.add({
+          targets: evicted, alpha: 0, duration: 120, ease: 'Cubic.easeIn',
+          onComplete: function () { evicted.destroy(); },
+        });
+      }
+      this._bigScoreSlots[oldestSlot] = null;
+      slot = oldestSlot;
+    }
+    var sy = syBase - slot * slotGap;
     var self = this;
 
     var txt = this.add.text(sx, sy, '+' + pts + ' ' + displayLbl + '!', {
@@ -135,6 +193,7 @@
     txt.setBlendMode(Phaser.BlendModes.ADD);
     txt.setAlpha(0.82);
     txt.setScale(0.35);
+    txt.__birthT = this.gameTime;  // age tracker for the eviction policy above
     this._bigScoreSlots[slot] = txt;
 
     // Hold duration scales with score (log10): 400ms at low score, up to 1200ms near 100 000 pts

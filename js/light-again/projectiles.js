@@ -30,6 +30,11 @@
     }
     pr.trailSlots.length = 0;
     pr.spr.destroy();
+    // Parade bucket bookkeeping: one less reflected projectile in flight for
+    // this dash attack. When the count hits zero, flush its popup immediately.
+    if (pr._dashAtkId && this._paradeFlushIfDone) {
+      this._paradeFlushIfDone(pr._dashAtkId);
+    }
   };
 
   M._updateProjectiles = function (dt, playerDt) {
@@ -174,7 +179,7 @@
             }
             if (pr.smashed) {
               var pOwnBatch = !this._twBatchWindow;
-              if (pOwnBatch) this._beginBatch('PARADE');
+              if (pOwnBatch) this._beginBatch('PARADE', { dashAtkId: pr._dashAtkId });
               var smashAoe = C.SHOCKWAVE_RADIUS * 1.1; // buffed vs 0.75 before, stays under nuke (×2.5)
               var smashAoeSq = smashAoe * smashAoe;
               var directDmg = (e.tier === 3) ? 2 : 2;
@@ -287,6 +292,15 @@
             pr.vy = Math.sin(refAng) * refSpd;
             pr.isReflected = true;
             pr._reflectedThisAtk = true;  // show tether only for this dash-attack
+            // Tag with the current dash-attack id so its eventual smash event is
+            // attributed to the right popup bucket. Bumping pending count here
+            // and decrementing on destroy lets us flush the parade popup the
+            // instant the last reflected projectile resolves (no timeout wait).
+            pr._dashAtkId = this._currentDashAtkId || 0;
+            if (pr._dashAtkId) {
+              this._paradePending = this._paradePending || {};
+              this._paradePending[pr._dashAtkId] = (this._paradePending[pr._dashAtkId] || 0) + 1;
+            }
             pr.smashed = true;
             pr.life = C.PROJ_LIFE;
             pr.rotSpeed = 28;

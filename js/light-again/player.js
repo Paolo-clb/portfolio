@@ -100,6 +100,12 @@
     var impMult  = dAtkLvl >= 1 ? 1.45 : 1.0;
     var durMult  = dAtkLvl >= 1 ? 1.40 : 1.0;
     p.vx = adx * C.DASH_ATK_IMP * impMult; p.vy = ady * C.DASH_ATK_IMP * impMult;
+    // Each dash attack gets a unique id so reflected projectiles spawned during
+    // it can be grouped into a single PARADE big-score popup (count = number
+    // of reflected projectiles that actually connected). Tagged on projectiles
+    // at deflect time, drained in _destroyProjectile via _paradeFlushIfDone.
+    this._dashAtkCounter   = (this._dashAtkCounter || 0) + 1;
+    this._currentDashAtkId = this._dashAtkCounter;
     p.state = 'DASH_ATTACKING'; p.atkAvailable = false;
     p.atkTimer = C.DASH_ATK_DUR * durMult; p.atkCooldown = 0;
     p.atkDx = adx; p.atkDy = ady; p.spinAngle = 0;
