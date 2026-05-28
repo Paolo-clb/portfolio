@@ -38,6 +38,7 @@
   M._initAnomaly = function () {
     this._anomaly             = null;
     this._anomalyBarrierActive = false;   // read by spawn-suppression + confinement
+    this._anomalyIntroActive   = false;   // freezes player + world during the intro
     this._anomalyCooldownT    = 0;        // ms until a natural anomaly may appear
     this._anomalySpawnRollT   = 0;        // accumulates ms for the per-second roll
   };
@@ -46,14 +47,21 @@
     var a = this._anomaly;
     this._anomaly = null;
     this._anomalyBarrierActive = false;
+    this._anomalyIntroActive   = false;
     if (!a) return;
+    if (a.bannerR)    a.bannerR.destroy();
+    if (a.bannerG)    a.bannerG.destroy();
+    if (a.bannerB)    a.bannerB.destroy();
+    if (a.bannerCore) a.bannerCore.destroy();
     if (a.rSpr)    a.rSpr.destroy();
     if (a.gSpr)    a.gSpr.destroy();
     if (a.bSpr)    a.bSpr.destroy();
     if (a.coreSpr) a.coreSpr.destroy();
+    if (a.trail) { for (var ti = 0; ti < a.trail.length; ti++) a.trail[ti].destroy(); }
     if (a.barrierGfx) a.barrierGfx.destroy();
     if (a.shieldGfx)  a.shieldGfx.destroy();
     if (a.laserGfx)   a.laserGfx.destroy();
+    if (a.pointerGfx) a.pointerGfx.destroy();
     if (a.hintTxt)    a.hintTxt.destroy();
   };
 
@@ -94,6 +102,18 @@
       return s;
     };
 
+    // Glitch trail: pooled afterimages dropped along the body's path
+    var TRAIL_N = 8;
+    var trail = [], trailHist = [];
+    for (var ti = 0; ti < TRAIL_N; ti++) {
+      var ts = self.add.image(x, y, '_anomaly');
+      ts.setBlendMode(Phaser.BlendModes.ADD);
+      ts.setDepth(29);
+      ts.setVisible(false);
+      trail.push(ts);
+      trailHist.push({ x: x, y: y });
+    }
+
     var a = {
       x: x, y: y, vx: 0, vy: 0,
       phase: 'WANDER',
@@ -104,8 +124,15 @@
       wob: Math.random() * TAU,          // idle wobble phase
       bx: x, by: y, R: C.ANO_BARRIER_RADIUS, barrierT: 0,
       lasers: [], laserCD: C.ANO_LASER_CD * 0.8,
+      projCD: C.ANO_PROJ_CD * 1.1,
       panicT: 0,
+      chargeT: 0,                         // 0→1 energy charge while visible in WANDER
       _hitFlash: 0, _shieldHitT: 0,
+      trail: trail, trailHist: trailHist, trailW: 0, trailTick: 0,
+      // Intro cinematic state
+      introState: null, introT: 0,
+      vacQueue: null, vacRings: null, vacRingIdx: 0, vacNextT: 0, vacTotal: 0,
+      bannerR: null, bannerG: null, bannerB: null, bannerCore: null,
       // per-channel chroma copies + white core
       rSpr: mk(31), gSpr: mk(31), bSpr: mk(31), coreSpr: mk(32),
       barrierGfx: null, shieldGfx: null, laserGfx: null,
@@ -122,6 +149,8 @@
     a.shieldGfx.setBlendMode(Phaser.BlendModes.ADD);
     a.laserGfx   = this.add.graphics(); a.laserGfx.setDepth(33);
     a.laserGfx.setBlendMode(Phaser.BlendModes.ADD);
+    a.pointerGfx = this.add.graphics(); a.pointerGfx.setDepth(67);
+    a.pointerGfx.setBlendMode(Phaser.BlendModes.ADD);
 
     a.hintTxt = this.add.text(x, y, '', {
       fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold',
@@ -149,6 +178,19 @@
     // On death the anomaly stays put (like the other enemies) — freeze, don't clear.
     if (p.state === 'DEAD') { this._renderAnomaly(dt, pMs); return; }
 
+    // INTRO is a cinematic — drive it on REAL dt, regardless of the world
+    // freeze that the intro itself imposes on player + enemies.
+    if (a.phase === 'INTRO') {
+      // Body still animates so the energy charge / time-stop reads.
+      a.spin += dt * 60 * 0.32;
+      a.wob  += dt * 60 * 0.10;
+      this._anomalyTickIntro(a, p, dt);
+      this._clampAnomalyToWorld(a);
+      this._updateAnomalyTrail(a, dt);
+      this._renderAnomaly(dt, pMs);
+      return;
+    }
+
     // Frozen during The World / hitstop / slow-mo (sMs ≈ 0): render only.
     if (this._twActive || sMs < 0.001) { this._renderAnomaly(dt, pMs); return; }
 
@@ -156,11 +198,18 @@
     a._shieldHitT  = Math.max(0, a._shieldHitT  - dt * 3);
 
     // Body always animates (spin + idle wobble), even when nearly still.
+    // It whirls faster while spinning a rotating cross.
     var sc60 = sMs / 16.7;
-    a.spin += sc60 * 0.06;
+    var spinning = false;
+    for (var si = 0; si < a.lasers.length; si++) { if (a.lasers[si].rotRate) { spinning = true; break; } }
+    a.spin += sc60 * (spinning ? 0.42 : 0.06);
     a.wob  += sc60 * 0.09;
 
     if (a.phase === 'WANDER') {
+      // Energy charge: once visible on screen, ramp scale up like a building threat
+      if (this.cameras.main.worldView.contains(a.x, a.y)) {
+        a.chargeT = Math.min(1, a.chargeT + dt * 1000 / C.ANO_CHARGE_DUR);
+      }
       this._anomalyMove(a, p, sMs, false, 1.0);
       var ddx = p.x - a.x, ddy = p.y - a.y;
       if (ddx * ddx + ddy * ddy < C.ANO_TRIGGER_RANGE_SQ) this._anomalySlamBarrier();
@@ -169,14 +218,16 @@
       a.barrierT = Math.min(1, a.barrierT + dt * 3.2);   // firewall expand-in
 
       if (a.shielded) {
-        // Slow down while a beam is telegraphing/firing so it reads as "from him".
+        // Slow right down while firing (esp. the cross) so beams read as "from him".
         var firing = a.lasers.length > 0;
-        this._anomalyMove(a, p, sMs, true, firing ? 0.35 : 1.0);
+        this._anomalyMove(a, p, sMs, true, firing ? (spinning ? 0.12 : 0.35) : 1.0);
         if (this.enemies.length === 0) {
           this._anomalyBreakShield();
         } else {
           a.laserCD -= sMs;
           if (a.laserCD <= 0) { this._anomalyFireLaser(); a.laserCD = C.ANO_LASER_CD; }
+          a.projCD -= sMs;
+          if (a.projCD <= 0) { this._anomalyFireProjectiles(); a.projCD = C.ANO_PROJ_CD * (0.8 + Math.random() * 0.5); }
         }
       } else {
         // Panicked / vulnerable — keeps stumbling around (never frozen), no lasers
@@ -186,8 +237,27 @@
       this._confineAnomalyToBarrier(a);
     }
 
+    this._clampAnomalyToWorld(a);   // never leave the arena → always reachable
     this._updateAnomalyLasers(sMs);
+    this._updateAnomalyTrail(a, dt);
     this._renderAnomaly(dt, pMs);
+  };
+
+  /* Hard clamp to the world rectangle (both phases) so the boss can never slip
+     through a border and become unkillable. */
+  M._clampAnomalyToWorld = function (a) {
+    var m = C.WORLD_HALF - C.ANO_SIZE * 1.2;
+    if (a.x < -m) a.x = -m; else if (a.x > m) a.x = m;
+    if (a.y < -m) a.y = -m; else if (a.y > m) a.y = m;
+  };
+
+  /* Sample the body's position into the after-image ring buffer (~33 Hz). */
+  M._updateAnomalyTrail = function (a, dt) {
+    a.trailTick += dt;
+    if (a.trailTick < 0.03) return;
+    a.trailTick = 0;
+    a.trailHist[a.trailW % a.trailHist.length] = { x: a.x, y: a.y };
+    a.trailW++;
   };
 
   /* ---- Smooth steering toward a roaming waypoint -------------------------
@@ -230,12 +300,7 @@
 
     a.x += a.vx * sc60;
     a.y += a.vy * sc60;
-
-    if (!inside) {
-      var m = C.WORLD_HALF - C.ANO_SIZE * 2;
-      a.x = Math.max(-m, Math.min(m, a.x));
-      a.y = Math.max(-m, Math.min(m, a.y));
-    }
+    // World clamp is applied centrally in _clampAnomalyToWorld (both phases).
   };
 
   M._confineAnomalyToBarrier = function (a) {
@@ -249,20 +314,27 @@
   };
 
   /* ================================================================
-     SLAM — drop the quarantine barrier around the player
+     SLAM — enter the INTRO cinematic that culminates in the quarantine
+     barrier. The intro: time-stop flash → slow barrier rise → enemies
+     get vacuumed in one by one (staggered, "encircled"), then the big
+     "kill them all" banner slides into the small hint above the boss.
      ================================================================ */
   M._anomalySlamBarrier = function () {
-    var a = this._anomaly, p = this.p;
-    a.phase = 'BARRIER';
+    var a = this._anomaly, p = this.p, self = this;
+    a.phase = 'INTRO';
+    a.introState = 'STOP';
+    a.introT = 0;
     a.shielded = true; a.vulnerable = false;
     a.barrierT = 0;
     a.bx = p.x; a.by = p.y;
-    a.laserCD = C.ANO_LASER_CD * 1.15;   // a touch longer so the slam isn't an instant beam
-    a.retargetT = 0;                      // re-aim its roam inside the new zone
+    a.laserCD = C.ANO_LASER_CD * 1.15;
+    a.retargetT = 0;
     this._anomalyBarrierActive = true;
+    this._anomalyIntroActive   = true;     // tells scene.js to freeze player + world
 
-    // Barrier size scales with the crowd: count the enemies that will be trapped
-    // (those within the vacuum), floored at the minimum, then grow the radius.
+    // Floor for the zone radius — final R is set AFTER the rings are built
+    // so the barrier always contains the outermost ring (even near the map
+    // edge where many slots get skipped and rings have to grow further).
     var trapCount = 0;
     for (var ci = 0; ci < this.enemies.length; ci++) {
       var ce = this.enemies[ci];
@@ -270,77 +342,309 @@
       if (cdx * cdx + cdy * cdy <= C.ANO_VACUUM_RADIUS_SQ) trapCount++;
     }
     var effCount = Math.max(trapCount, C.ANO_MIN_TRAPPED);
-    a.R = Math.min(
-      C.ANO_BARRIER_RADIUS + (effCount - C.ANO_MIN_TRAPPED) * C.ANO_BARRIER_PER_ENEMY,
-      C.ANO_BARRIER_MAX
+    var minBarrierR = Math.min(
+      C.ANO_BARRIER_MAX,
+      C.ANO_BARRIER_RADIUS + (effCount - C.ANO_MIN_TRAPPED) * C.ANO_BARRIER_PER_ENEMY
     );
+    // NB: barrier center stays on the player — the slice past the world
+    // border is just unused playable space (player + enemies are world-clamped).
 
-    // Safe outer ring for trapped enemies — keep them OFF the player (centre).
-    var SAFE_MIN = 0.55, SAFE_SPAN = 0.37;   // → between 0.55·R and 0.92·R from centre
-    var placeRing = function () {
-      var ia = Math.random() * TAU;
-      var ir = a.R * (SAFE_MIN + Math.random() * SAFE_SPAN);
-      return { x: a.bx + Math.cos(ia) * ir, y: a.by + Math.sin(ia) * ir };
+    // Snapshot the live crowd by tier, then WIPE every enemy silently.
+    // The time-stop literally makes them vanish; they reappear in a clean
+    // circle around the player during VACUUM.
+    var cam = this.cameras.main;
+    var tierCounts = { 1: 0, 2: 0, 3: 0 };
+    for (var ci = 0; ci < this.enemies.length; ci++) {
+      var tt = this.enemies[ci].tier;
+      tierCounts[tt] = (tierCounts[tt] || 0) + 1;
+    }
+    var realTotal = tierCounts[1] + tierCounts[2] + tierCounts[3];
+    // Pad up to ANO_MIN_TRAPPED with rushers / shooters
+    var need = Math.max(0, C.ANO_MIN_TRAPPED - realTotal);
+    for (var k = 0; k < need; k++) {
+      var t = (Math.random() < 0.28) ? 2 : 1;
+      tierCounts[t]++;
+    }
+    // Wipe — silent destroy so it costs no score / no combo
+    for (var di = this.enemies.length - 1; di >= 0; di--) {
+      this._destroyEnemyNoScore(di, true);
+    }
+    // Sweep every projectile on the map too — the time-stop scrubs the board.
+    for (var pi = this.projectiles.length - 1; pi >= 0; pi--) {
+      var pr = this.projectiles[pi];
+      this._explode(pr.x, pr.y, [255, 255, 255], 6);
+      this._destroyProjectile(pr);
+      this.projectiles.splice(pi, 1);
+    }
+
+    // Build the queue from the tier mix
+    a.vacQueue = [];
+    for (var tIdx = 1; tIdx <= 3; tIdx++) {
+      for (var nn = 0; nn < tierCounts[tIdx]; nn++) a.vacQueue.push({ tier: tIdx });
+    }
+    // Shuffle so the appearance ORDER is random (the final layout is still a
+    // perfect circle — angles are assigned by index after shuffling).
+    for (var sh = a.vacQueue.length - 1; sh > 0; sh--) {
+      var rj = (Math.random() * (sh + 1)) | 0;
+      var tmp = a.vacQueue[sh]; a.vacQueue[sh] = a.vacQueue[rj]; a.vacQueue[rj] = tmp;
+    }
+
+    // Concentric rings — each ring spawns as one beat (one batch). Rings
+    // keep growing OUTWARD without a cap so enemies never stack on the
+    // same diameter. Slots that fall outside the world border are skipped
+    // (the player can be at a corner: half the ring is just "unused").
+    var N = a.vacQueue.length;
+    var WM = C.WORLD_HALF - 28;
+
+    // Hard cap so rings never grow past the barrier max — for huge crowds
+    // the last ring is allowed to repeat (slight stacking) rather than blow
+    // the zone up to an absurd size.
+    var ringMaxR = Math.max(C.ANO_VAC_RING_BASE, C.ANO_BARRIER_MAX - 80);
+
+    var rings = [];
+    var ringR = C.ANO_VAC_RING_BASE;
+    var qi = 0;
+    var safety = 80;
+    var outerUsedR = ringR;
+    while (qi < N && safety-- > 0) {
+      if (ringR > ringMaxR) ringR = ringMaxR;        // cap so barrier stays tight
+      var slots = Math.max(5, Math.floor(2 * Math.PI * ringR / C.ANO_VAC_RING_SPACING));
+      var baseAng = Math.random() * TAU;
+      var validPos = [];
+      for (var s = 0; s < slots; s++) {
+        var ang = baseAng + (s / slots) * TAU;
+        var x = a.bx + Math.cos(ang) * ringR;
+        var y = a.by + Math.sin(ang) * ringR;
+        if (Math.abs(x) <= WM && Math.abs(y) <= WM) validPos.push({ x: x, y: y });
+      }
+      if (validPos.length > 0) {
+        var take = Math.min(validPos.length, N - qi);
+        var items = a.vacQueue.slice(qi, qi + take);
+        for (var ii = 0; ii < take; ii++) {
+          items[ii].dstX = validPos[ii].x;
+          items[ii].dstY = validPos[ii].y;
+        }
+        rings.push({ R: ringR, items: items });
+        outerUsedR = ringR;
+        qi += take;
+      }
+      ringR += C.ANO_VAC_RING_STEP;
+    }
+
+    // Final barrier radius: contain every ring (+ margin), with the hard cap.
+    a.R = Math.min(C.ANO_BARRIER_MAX, Math.max(minBarrierR, outerUsedR + 90));
+
+    a.vacTotal   = N;
+    a.vacRings   = rings;
+    a.vacRingIdx = 0;
+    a.vacNextT   = 0;     // first ring fires the moment VACUUM begins
+
+    // White-glitch banner: 4 chroma-split texts (R/G/B) + a white core copy.
+    // Updated together by _anomalyTickIntro so it shimmers like the boss body.
+    var mkBan = function (tint, depth) {
+      var t = self.add.text(cam.width / 2, cam.height * 0.40, '', {
+        fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold',
+        color: '#ffffff', stroke: '#000000', strokeThickness: 3, align: 'center',
+      });
+      t.setScrollFactor(0); t.setOrigin(0.5); t.setDepth(depth);
+      t.setBlendMode(Phaser.BlendModes.ADD);
+      t.setTint(tint); t.setAlpha(0); t.setScale(0.6);
+      return t;
     };
+    a.bannerR    = mkBan(0xff0000, 109);
+    a.bannerG    = mkBan(0x00ff00, 109);
+    a.bannerB    = mkBan(0x0000ff, 109);
+    a.bannerCore = mkBan(0xffffff, 110);
 
-    // VACUUM: pull every nearby enemy into the outer ring, well clear of the
-    // player, and stun them so they don't land a free hit on arrival.
-    var trapped = 0;
+    // Time-stop shockwave — boss-style: layered chroma wave sweeps the screen.
+    this._spawnWaveRing(a.x, a.y, { maxRadius: 1800, color: 0xffffff, expandTime: 0.55 });
+    this._spawnWaveRing(a.x, a.y, { maxRadius: 1500, color: 0xff66cc, expandTime: 0.45 });
+    this._spawnWaveRing(a.x, a.y, { maxRadius: 1100, color: 0x66ffff, expandTime: 0.38 });
+    this._spawnWaveRing(a.x, a.y, { maxRadius: 700,  color: 0xffffff, expandTime: 0.30 });
+    this._spawnWaveRing(a.x, a.y, { maxRadius: 350,  color: 0xff44ff, expandTime: 0.22 });
+    this.cameras.main.flash(380, 220, 120, 255);
+    this.cameras.main.shake(320, 0.018);
+    this._explode(a.x, a.y, [255, 255, 255], 50);
+    this._explode(a.x, a.y, [255, 60, 220], 36);
+    this._explode(a.x, a.y, [80, 200, 255], 28);
+  };
+
+  /* Update the 4-text glitch banner together — same base pos/scale/alpha,
+     RGB copies orbit on chroma offsets with jitter (matches the body). */
+  M._setAnomalyBanner = function (a, baseX, baseY, baseScale, baseAlpha, text) {
+    if (!a.bannerCore) return;
+    var gt = this.gameTime;
+    var ca = 3.2 + 2.0 * Math.sin(gt * 22);
+    if (Math.random() < 0.08) ca += 5;
+    var jx = (Math.random() - 0.5) * 2.4, jy = (Math.random() - 0.5) * 2.4;
+    var spin = a.spin || 0;
+    var rA = spin, gA = spin + TAU / 3, bA = spin + 2 * TAU / 3;
+    var apply = function (t, x, y, alphaMul) {
+      t.setText(text);
+      t.setPosition(x, y);
+      t.setScale(baseScale);
+      t.setAlpha(baseAlpha * (alphaMul || 1));
+    };
+    apply(a.bannerR,    baseX + Math.cos(rA) * ca + jx,        baseY + Math.sin(rA) * ca + jy, 0.85);
+    apply(a.bannerG,    baseX + Math.cos(gA) * ca * 0.9 + jx,  baseY + Math.sin(gA) * ca * 0.9 + jy, 0.85);
+    apply(a.bannerB,    baseX + Math.cos(bA) * ca + jx,        baseY + Math.sin(bA) * ca + jy, 0.85);
+    apply(a.bannerCore, baseX + jx, baseY + jy, 1.0);
+  };
+
+  /* The intro state machine — drives on REAL dt while world + player are frozen
+     externally by scene.js (via this._anomalyIntroActive). */
+  M._anomalyTickIntro = function (a, p, dt) {
+    a.introT += dt * 1000;
+    var cam = this.cameras.main;
+    var sx0 = cam.width / 2, sy0 = cam.height * 0.40;
+    var bigText = LA.laGoT('laAnomalyBigHint') + '   ' + a.vacTotal;
+
+    if (a.introState === 'STOP') {
+      // Banner pops in (overshoot) + full glitch chroma
+      var sp = Math.min(1, a.introT / C.ANO_INTRO_STOP);
+      var bScale = 0.6 + 0.5 * Math.min(1, sp * 1.35);
+      this._setAnomalyBanner(a, sx0, sy0, bScale, sp, bigText);
+      if (a.introT >= C.ANO_INTRO_STOP) { a.introState = 'RAISE'; a.introT = 0; }
+      return;
+    }
+
+    if (a.introState === 'RAISE') {
+      a.barrierT = Math.min(1, a.introT / C.ANO_INTRO_RAISE);
+      var rScale = 1.10 + 0.04 * Math.sin(this.gameTime * Math.PI * 4);
+      this._setAnomalyBanner(a, sx0, sy0, rScale, 1, bigText);
+      if (a.introT >= C.ANO_INTRO_RAISE) { a.introState = 'VACUUM'; a.introT = 0; a.vacNextT = 0; }
+      return;
+    }
+
+    if (a.introState === 'VACUUM') {
+      a.vacNextT -= dt * 1000;
+      this._setAnomalyBanner(a, sx0, sy0, 1.10 + 0.04 * Math.sin(this.gameTime * Math.PI * 4), 1, bigText);
+      // One whole ring per beat — many spawns at once at different angles,
+      // each ring is bigger than the previous (concentric circles).
+      while (a.vacNextT <= 0 && a.vacRingIdx < a.vacRings.length) {
+        a.vacNextT += C.ANO_INTRO_RING_GAP;
+        var ring = a.vacRings[a.vacRingIdx++];
+        for (var si = 0; si < ring.items.length; si++) {
+          if (this.enemies.length >= C.MAX_ENEMIES) break;
+          var it = ring.items[si];
+          this._spawnTierAt(it.tier, it.dstX, it.dstY);
+          // Face the player at spawn so the entire ring looks inward (otherwise
+          // they all default to angle 0 until the AI runs on the next frame).
+          var spawned = this.enemies[this.enemies.length - 1];
+          if (spawned) spawned.angle = Math.atan2(p.y - spawned.y, p.x - spawned.x);
+        }
+      }
+      if (a.vacRingIdx >= a.vacRings.length && a.introT > 220) {
+        a.introState = 'SLIDE'; a.introT = 0;
+      }
+      return;
+    }
+
+    if (a.introState === 'SLIDE') {
+      var t = Math.min(1, a.introT / C.ANO_INTRO_SLIDE);
+      var e2 = t * t * (3 - 2 * t);                  // smoothstep
+      var bossSx = (a.x - cam.scrollX) * (cam.zoom || 1);
+      var bossSy = (a.y - C.ANO_SIZE * 2.6 - cam.scrollY) * (cam.zoom || 1);
+      var nx = sx0 + (bossSx - sx0) * e2;
+      var ny = sy0 + (bossSy - sy0) * e2;
+      var ns = 1.10 + (0.40 - 1.10) * e2;
+      var na = 1 - 0.5 * e2;
+      this._setAnomalyBanner(a, nx, ny, ns, na, bigText);
+      if (a.introT >= C.ANO_INTRO_SLIDE) {
+        if (a.bannerR)    { a.bannerR.destroy();    a.bannerR    = null; }
+        if (a.bannerG)    { a.bannerG.destroy();    a.bannerG    = null; }
+        if (a.bannerB)    { a.bannerB.destroy();    a.bannerB    = null; }
+        if (a.bannerCore) { a.bannerCore.destroy(); a.bannerCore = null; }
+        // Reset the player to a neutral state so they don't resume mid-attack /
+        // mid-dash and don't carry over any pre-slam inertia — the fight starts
+        // with the ship completely under control and standing still.
+        p.vx = 0; p.vy = 0;
+        p.state = 'MOVING';
+        p.spinAngle = 0;
+        p.atkTimer = 0;     p.atkAvailable  = true; p.atkCooldown  = 0;
+        p.dashTimer = 0;    p.dashAvailable = true; p.dashCooldown = 0;
+        p.dashCoyote = false; p.dashInvinc = false;
+        p.hasHitDuringDashAttack = false; p.dashAtkExtended = 0;
+        p.recoveryTimer = 0; p.recoveryWhiff = false;
+        // Brief grace i-frames so the encircling crowd can't tag the player
+        // in the very first frame of resumed time.
+        p.invincible = true; p.invincTimer = 600;
+
+        // Pushback when time resumes — same wave the sandbox respawn uses,
+        // so the encircling crowd is shoved outward as the fight begins.
+        this._anomalyResumeShockwave(p);
+        a.phase = 'BARRIER';
+        a.introState = null;
+        this._anomalyIntroActive = false;
+      }
+    }
+  };
+
+  /* Mirror of _sandboxRespawn's safe-bubble push: shoves nearby enemies away
+     from the player and stuns them briefly so the fight starts on a clean beat. */
+  M._anomalyResumeShockwave = function (p) {
+    var clearR = 340, clearRSq = clearR * clearR;
     for (var i = 0; i < this.enemies.length; i++) {
-      var e = this.enemies[i];
-      var ex = e.x - a.bx, ey = e.y - a.by;
-      if (ex * ex + ey * ey > C.ANO_VACUUM_RADIUS_SQ) continue;
-      var sx = e.x, sy = e.y;
-      var dst = placeRing();
-      e.x = dst.x; e.y = dst.y;
-      e.vx = 0; e.vy = 0;
-      e.stunTimer = Math.max(e.stunTimer, 900);   // grace window after the slam
-      e.isCharging = false; e.chargeTimer = 0;     // cancel any mid-charge shot
-      e._spawnAnimT = 0.4;
-      this._hiveSpawnBeam(sx, sy, e.x, e.y);   // glitch tether (reuse beam pool)
-      this._explode(e.x, e.y, [255, 40, 180], 8);
-      trapped++;
+      var o = this.enemies[i];
+      var dx = o.x - p.x, dy = o.y - p.y;
+      var d2 = dx * dx + dy * dy;
+      if (d2 > clearRSq) continue;
+      var d = Math.sqrt(d2);
+      var nx = d > 0.1 ? dx / d : Math.random() - 0.5;
+      var ny = d > 0.1 ? dy / d : Math.random() - 0.5;
+      var push = 30 * (o.tier === 3 ? 0.6 : 1.0);
+      o.vx += nx * push;
+      o.vy += ny * push;
+      o.stunTimer = Math.max(o.stunTimer, 1000);
     }
-
-    // Guarantee a real fight — extras also land in the safe outer ring, stunned.
-    for (var k = trapped; k < C.ANO_MIN_TRAPPED; k++) {
-      if (this.enemies.length >= C.MAX_ENEMIES) break;
-      var dst2 = placeRing();
-      this._naturalSpawn = false;
-      if (Math.random() < 0.28) this._spawnShooterAt(dst2.x, dst2.y);
-      else this._spawnRusherAt(dst2.x, dst2.y);
-      var spawned = this.enemies[this.enemies.length - 1];
-      if (spawned) spawned.stunTimer = Math.max(spawned.stunTimer, 800);
-      this._explode(dst2.x, dst2.y, [255, 40, 180], 8);
-    }
-
-    // Slam feedback
-    this._spawnWaveRing(a.bx, a.by, { maxRadius: a.R,        color: 0xff1144, expandTime: 0.35 });
-    this._spawnWaveRing(a.bx, a.by, { maxRadius: a.R * 0.6,  color: 0xffffff, expandTime: 0.26 });
-    this.cameras.main.flash(220, 255, 40, 90);
-    this.cameras.main.shake(260, 0.014);
-    this._triggerHitstop(90);
-    this._explode(a.x, a.y, [255, 255, 255], 24);
+    this.cameras.main.flash(350, 0, 180, 255);
+    this._explode(p.x, p.y, [0, 220, 255], 25);
+    this._spawnWaveRing(p.x, p.y, { maxRadius: clearR, color: 0x00ccff, expandTime: 0.45 });
   };
 
   /* ================================================================
      LASERS — telegraphed beams (thin warning → deadly beam)
+     Patterns: single / triple-fan (each either AIMED at the player or
+     OFFSET to harass), and a rotating CROSS (2 perpendicular diameters that
+     spin with the body). Beams emanate live from the body and stop at the
+     barrier edge.
      ================================================================ */
   M._anomalyFireLaser = function () {
     var a = this._anomaly, p = this.p;
-    var baseAng = Math.atan2(p.y - a.y, p.x - a.x);
-    var len = a.R * 2.2;
-    var angles = [baseAng];
-    if (Math.random() < 0.28) { angles.push(baseAng + 0.42); angles.push(baseAng - 0.42); }
-    for (var i = 0; i < angles.length; i++) {
-      // Origin is read live from the anomaly each frame (see _updateAnomalyLasers /
-      // _renderAnomaly) so the beam always emanates from its body, not a stale point.
-      a.lasers.push({
-        ang: angles[i], len: len,
-        t: 0, warn: C.ANO_LASER_WARN, fire: C.ANO_LASER_FIRE, hasHit: false,
-      });
+    var aimAng = Math.atan2(p.y - a.y, p.x - a.x);
+    var W = C.ANO_LASER_WARN, F = C.ANO_LASER_FIRE;
+    var roll = Math.random();
+
+    if (roll < 0.24) {
+      // Rotating CROSS — 4 arms (2 perpendicular diameters) sweeping together
+      var base = Math.random() * TAU;
+      var rr   = C.ANO_CROSS_ROT * (Math.random() < 0.5 ? 1 : -1);
+      for (var c = 0; c < 4; c++) {
+        a.lasers.push({ ang: base + c * (Math.PI / 2), rotRate: rr, t: 0, warn: W, fire: C.ANO_CROSS_FIRE });
+      }
+    } else {
+      // Sometimes dead-on, sometimes deliberately off to the side (no direct aim).
+      var aimed  = Math.random() < 0.58;
+      var center = aimed ? aimAng
+                         : aimAng + (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.8);
+      a.lasers.push({ ang: center, rotRate: 0, t: 0, warn: W, fire: F });
+      if (roll > 0.62) {  // triple fan
+        a.lasers.push({ ang: center + 0.42, rotRate: 0, t: 0, warn: W, fire: F });
+        a.lasers.push({ ang: center - 0.42, rotRate: 0, t: 0, warn: W, fire: F });
+      }
     }
     this._explode(a.x, a.y, [255, 60, 200], 8);
+  };
+
+  /* Distance from the body to the barrier edge along `ang` (beam never exits). */
+  M._anomalyBeamLen = function (a, ang) {
+    if (a.phase !== 'BARRIER') return a.R * 2.2;
+    var fx = a.x - a.bx, fy = a.y - a.by;
+    var dx = Math.cos(ang), dy = Math.sin(ang);
+    var fd = fx * dx + fy * dy;
+    var disc = fd * fd - (fx * fx + fy * fy - a.R * a.R);  // body is inside → disc ≥ 0
+    if (disc < 0) return 0;
+    return Math.max(0, -fd + Math.sqrt(disc));
   };
 
   M._updateAnomalyLasers = function (sMs) {
@@ -348,32 +652,95 @@
     for (var i = a.lasers.length - 1; i >= 0; i--) {
       var L = a.lasers[i];
       L.t += sMs;
+      if (L.rotRate) L.ang += L.rotRate * sMs;       // rotating cross
       if (L.t >= L.warn + L.fire) { a.lasers.splice(i, 1); continue; }
+      if (L.t < L.warn) continue;                     // telegraph is harmless
 
-      var firing = L.t >= L.warn;
-      if (!firing) continue;
-
-      // Deadly phase — point-to-ray distance test (respects existing immunities)
+      // Deadly phase — point-to-segment test. No per-beam hit latch: a hit grants
+      // i-frames (which _damagePlayer respects), so a sweeping beam can threaten
+      // again only after the i-frames lapse.
       var laserImmune = p.state === 'DASHING' || p.state === 'DASH_ATTACKING'
                      || p.invincible || this._twActive || p.state === 'DEAD';
-      if (laserImmune || L.hasHit) continue;
+      if (laserImmune) continue;
 
-      var ox = a.x, oy = a.y;                       // live origin (on the body)
+      var ox = a.x, oy = a.y;                          // live origin (on the body)
+      var len = this._anomalyBeamLen(a, L.ang);
       var dx = Math.cos(L.ang), dy = Math.sin(L.ang);
       var rx = p.x - ox, ry = p.y - oy;
-      var proj = rx * dx + ry * dy;                 // distance along the beam
-      if (proj < 0 || proj > L.len) continue;
+      var proj = rx * dx + ry * dy;                    // distance along the beam
+      if (proj < 0 || proj > len) continue;
       var cx = ox + dx * proj, cy = oy + dy * proj;
       var pdx = p.x - cx, pdy = p.y - cy;
       var hitR = C.ANO_LASER_WIDTH + C.SIZE * 0.5;
       if (pdx * pdx + pdy * pdy < hitR * hitR) {
-        L.hasHit = true;
         var nx = (p.x - ox), ny = (p.y - oy);
         var nl = Math.sqrt(nx * nx + ny * ny) || 1;
         this._damagePlayer(nx / nl, ny / nl);
       }
     }
   };
+
+  /* ================================================================
+     HOMING GLITCH PROJECTILES — slower than T2, track the player, and are
+     reflectable by the dash-attack (then chase a random far enemy).
+     ================================================================ */
+  M._anomalyFireProjectiles = function () {
+    var a = this._anomaly, p = this.p;
+    var span = C.ANO_PROJ_SWARM_MAX - C.ANO_PROJ_SWARM_MIN;
+    var n = C.ANO_PROJ_SWARM_MIN + ((Math.random() * (span + 1)) | 0);
+    var baseAng = Math.atan2(p.y - a.y, p.x - a.x);
+    // Spawn the swarm fanned around the player heading; each projectile homes
+    // from there with a high turn rate so the swarm really sticks to the player.
+    for (var i = 0; i < n; i++) {
+      var t = n > 1 ? (i / (n - 1) - 0.5) : 0;
+      var ang = baseAng + t * 1.4 + (Math.random() - 0.5) * 0.25;
+      this._spawnAnomalyProjectile(a.x, a.y, ang);
+    }
+    this._explode(a.x, a.y, [255, 255, 255], 6);
+  };
+
+  M._spawnAnomalyProjectile = function (ex, ey, angle) {
+    if (this.projectiles.length >= C.MAX_PROJECTILES) return;
+    var spr = this.add.image(ex, ey, '_anoproj');     // own skin
+    spr.setBlendMode(Phaser.BlendModes.ADD);
+    spr.setDepth(22);
+    this.projectiles.push({
+      spr: spr, x: ex, y: ey,
+      vx: Math.cos(angle) * C.ANO_PROJ_SPEED, vy: Math.sin(angle) * C.ANO_PROJ_SPEED,
+      life: C.ANO_PROJ_LIFE, isReflected: false, smashed: false,
+      shooterRef: null, rotSpeed: 11, trailSlots: [],
+      // Anomaly markers: homes on the player; turns into an enemy-seeker on parry.
+      homing: true, glitch: true, homeTarget: null,
+    });
+  };
+
+  /* Pick a random enemy that's on-screen but toward the edges (far from us) —
+     the target a reflected glitch projectile will chase. If `exclude` is given
+     (array of enemy refs), those are skipped so a swarm of reflected projectiles
+     spreads across different enemies. Falls back to the farthest visible enemy
+     (allowing duplicates when no fresh target is left), or null. */
+  M._pickDistantVisibleEnemy = function (exclude) {
+    var cam = this.cameras.main, p = this.p;
+    var wv = cam.worldView;
+    var zoom = cam.zoom || 1;
+    var minD = Math.min(cam.width, cam.height) / zoom * 0.50;  // "vers les extrémités"
+    var minDSq = minD * minD;
+    var cands = [], far = null, farD = -1;
+    var hasExcl = exclude && exclude.length > 0;
+    for (var i = 0; i < this.enemies.length; i++) {
+      var e = this.enemies[i];
+      if (e.x < wv.x || e.x > wv.right || e.y < wv.y || e.y > wv.bottom) continue;
+      var dx = e.x - p.x, dy = e.y - p.y, dSq = dx * dx + dy * dy;
+      if (dSq > farD) { farD = dSq; far = e; }
+      if (dSq >= minDSq) {
+        if (hasExcl && exclude.indexOf(e) !== -1) continue;
+        cands.push(e);
+      }
+    }
+    if (cands.length) return cands[(Math.random() * cands.length) | 0];
+    return far;
+  };
+
 
   /* ================================================================
      SHIELD BREAK — last sub-fifre died; the anomaly panics
@@ -383,6 +750,17 @@
     if (!a.shielded) return;
     a.shielded = false; a.vulnerable = true; a.panicT = 0;
     a.lasers.length = 0;
+
+    // Sweep away every glitch projectile (live + reflected): the boss is
+    // weakened, its guided shots collapse with it. Each one poofs in place.
+    for (var pi = this.projectiles.length - 1; pi >= 0; pi--) {
+      var pr = this.projectiles[pi];
+      if (!pr.glitch) continue;
+      this._explode(pr.x, pr.y, [255, 255, 255], 8);
+      this._explode(pr.x, pr.y, [120, 220, 255], 4);
+      this._destroyProjectile(pr);
+      this.projectiles.splice(pi, 1);
+    }
 
     // Glass-shatter burst
     this._explode(a.x, a.y, [255, 255, 255], 40);
@@ -492,6 +870,24 @@
     if (!a) return;
     var gt = this.gameTime, p = this.p;
 
+    /* ---- Glitch trail: faded, jittered afterimages along the path ---- */
+    var tN = a.trailHist.length;
+    for (var ti = 0; ti < tN; ti++) {
+      var ts = a.trail[ti];
+      // age 0 = freshest sample, increasing with distance back in the ring
+      var hi = (a.trailW - 1 - ti);
+      if (hi < 0) { ts.setVisible(false); continue; }
+      var node = a.trailHist[hi % tN];
+      if (!node) { ts.setVisible(false); continue; }
+      var fade = 1 - ti / tN;                       // 1 → 0 along the tail
+      ts.setVisible(true);
+      ts.setPosition(node.x + (Math.random() - 0.5) * 4, node.y + (Math.random() - 0.5) * 4);
+      ts.setRotation(a.spin * (ti % 2 ? -1 : 1));
+      ts.setScale((0.5 + fade * 0.5) * (1 + 0.15 * Math.sin(gt * 20 + ti)));
+      ts.setAlpha(fade * 0.32);
+      ts.setTint(ti % 2 ? 0xff33cc : 0x33ffff);     // alternating magenta / cyan ghosting
+    }
+
     /* ---- Body: constantly-animated, trembling RGB split ----
        Even when nearly still it spins, breathes and wobbles so it never reads
        as a static sprite. The RGB channels each orbit on their own phase. */
@@ -505,6 +901,11 @@
     var ca = 3.4 + 2.2 * Math.sin(gt * 22);     // chromatic split amount
     if (Math.random() < 0.08) ca += 6;
     var sc = 1.0 + 0.13 * Math.sin(gt * 14);    // breathing scale
+    // Energy charge in WANDER swells the body (and crackles harder near full)
+    if (a.chargeT > 0 && a.phase === 'WANDER') {
+      sc *= 1.0 + a.chargeT * 0.75;
+      ca += a.chargeT * 4;
+    }
     var spin = a.spin;                           // continuous rotation
 
     var solidRed = false, baseAlpha = 0.9;
@@ -538,7 +939,7 @@
     /* ---- Firewall barrier ---- */
     var bg = a.barrierGfx;
     bg.clear();
-    if (a.phase === 'BARRIER') {
+    if ((a.phase === 'BARRIER' || a.phase === 'INTRO') && a.barrierT > 0) {
       var grow = a.barrierT;
       var rN   = a.R * grow;
       // Faint interior wash
@@ -579,8 +980,9 @@
     for (var li = 0; li < a.lasers.length; li++) {
       var L = a.lasers[li];
       var ox = a.x, oy = a.y;                       // live origin — anchored to the body
-      var ex = ox + Math.cos(L.ang) * L.len;
-      var ey = oy + Math.sin(L.ang) * L.len;
+      var len = this._anomalyBeamLen(a, L.ang);     // clipped at the barrier edge
+      var ex = ox + Math.cos(L.ang) * len;
+      var ey = oy + Math.sin(L.ang) * len;
       if (L.t < L.warn) {
         // Telegraph — thin harmless tracer, pulsing, with a running scan dot
         var wa = 0.35 + 0.45 * Math.abs(Math.sin(gt * 30));
@@ -590,7 +992,7 @@
         lg.beginPath(); lg.moveTo(ox, oy); lg.lineTo(ex, ey); lg.strokePath();
         var sdt = (gt * 1.6 % 1.0);
         lg.fillStyle(0xffffff, 0.8);
-        lg.fillCircle(ox + Math.cos(L.ang) * L.len * sdt, oy + Math.sin(L.ang) * L.len * sdt, 2.2);
+        lg.fillCircle(ox + Math.cos(L.ang) * len * sdt, oy + Math.sin(L.ang) * len * sdt, 2.2);
       } else {
         // Deadly beam — flickering thick magenta/red bolt
         var flick = 0.80 + 0.20 * Math.random();
@@ -610,7 +1012,7 @@
     /* ---- Shield bubble + hint while invulnerable ---- */
     var sg = a.shieldGfx;
     sg.clear();
-    if (a.phase === 'BARRIER' && a.shielded) {
+    if ((a.phase === 'BARRIER' || a.phase === 'INTRO') && a.shielded) {
       var sr = C.ANO_SIZE * 2.3 + 3 * Math.sin(gt * 4);
       var hit = a._shieldHitT;
       var sa  = 0.45 + 0.20 * Math.sin(gt * 5) + hit * 0.5;
@@ -646,6 +1048,59 @@
         a.hintTxt.setVisible(false);
       }
     }
+
+    /* ---- Boss pointer (chevron next to the player) ----
+       Guides the player toward the anomaly while:
+         - it is still wandering and looking for them
+         - the firewall is still being raised (barrierT < 1)
+         - the shield has just dropped (vulnerable → time to kill it)
+       Hidden once the zone is sealed and the boss is invulnerable. */
+    var pg = a.pointerGfx;
+    pg.clear();
+    var showPtr = (a.phase === 'WANDER')
+               || (a.phase === 'BARRIER' && a.barrierT < 1.0)
+               || (a.phase === 'BARRIER' && !a.shielded);
+    if (showPtr && p && p.state !== 'DEAD') {
+      var pdx = a.x - p.x, pdy = a.y - p.y;
+      var pdd = Math.sqrt(pdx * pdx + pdy * pdy);
+      if (pdd > 1) {
+        var pAng = Math.atan2(pdy, pdx);
+        var D    = 90;                                  // pointer stands ~90px from the player
+        var px = p.x + Math.cos(pAng) * D;
+        var py = p.y + Math.sin(pAng) * D;
+        var pulse = 0.55 + 0.45 * Math.abs(Math.sin(gt * Math.PI * 3.2));
+        var col   = a.vulnerable ? 0xff3344 : 0xff33cc;
+        var size  = 18;
+
+        var nose = { x: Math.cos(pAng) * size,         y: Math.sin(pAng) * size };
+        var lwn  = { x: Math.cos(pAng + 2.5) * size,   y: Math.sin(pAng + 2.5) * size };
+        var rwn  = { x: Math.cos(pAng - 2.5) * size,   y: Math.sin(pAng - 2.5) * size };
+
+        // Soft outer glow
+        pg.fillStyle(col, 0.18 * pulse);
+        pg.fillTriangle(px + nose.x * 1.35, py + nose.y * 1.35,
+                        px + lwn.x  * 1.35, py + lwn.y  * 1.35,
+                        px + rwn.x  * 1.35, py + rwn.y  * 1.35);
+        // Main fill
+        pg.fillStyle(col, 0.85 * pulse);
+        pg.fillTriangle(px + nose.x, py + nose.y,
+                        px + lwn.x,  py + lwn.y,
+                        px + rwn.x,  py + rwn.y);
+        // White-hot inner core
+        pg.fillStyle(0xffffff, 0.9 * pulse);
+        pg.fillTriangle(px + nose.x * 0.55, py + nose.y * 0.55,
+                        px + lwn.x  * 0.45, py + lwn.y  * 0.45,
+                        px + rwn.x  * 0.45, py + rwn.y  * 0.45);
+        // Outline pulse
+        pg.lineStyle(1.5, 0xffffff, 0.9 * pulse);
+        pg.beginPath();
+        pg.moveTo(px + nose.x, py + nose.y);
+        pg.lineTo(px + lwn.x,  py + lwn.y);
+        pg.lineTo(px + rwn.x,  py + rwn.y);
+        pg.closePath();
+        pg.strokePath();
+      }
+    }
   };
 
   /* ================================================================
@@ -658,14 +1113,21 @@
     var dx = p.x - a.bx, dy = p.y - a.by;
     var lim = a.R - C.SIZE * 1.4;
     var d2 = dx * dx + dy * dy;
-    if (d2 <= lim * lim) return;
-    var d = Math.sqrt(d2) || 1;
-    p.x = a.bx + (dx / d) * lim;
-    p.y = a.by + (dy / d) * lim;
-    // Damp the outward velocity component (soft wall bounce)
-    var nx = dx / d, ny = dy / d;
-    var vdot = p.vx * nx + p.vy * ny;
-    if (vdot > 0) { p.vx -= nx * vdot * 1.4; p.vy -= ny * vdot * 1.4; }
+    if (d2 > lim * lim) {
+      var d = Math.sqrt(d2) || 1;
+      p.x = a.bx + (dx / d) * lim;
+      p.y = a.by + (dy / d) * lim;
+      var nx = dx / d, ny = dy / d;
+      var vdot = p.vx * nx + p.vy * ny;
+      if (vdot > 0) { p.vx -= nx * vdot * 1.4; p.vy -= ny * vdot * 1.4; }
+    }
+    // World wins over the barrier — if the firewall extends past the map,
+    // the player can't be pushed through the world wall.
+    var wM = C.WORLD_HALF - C.SIZE * 1.5;
+    if (p.x < -wM) { p.x = -wM; if (p.vx < 0) p.vx *= -0.4; }
+    if (p.x >  wM) { p.x =  wM; if (p.vx > 0) p.vx *= -0.4; }
+    if (p.y < -wM) { p.y = -wM; if (p.vy < 0) p.vy *= -0.4; }
+    if (p.y >  wM) { p.y =  wM; if (p.vy > 0) p.vy *= -0.4; }
   };
 
 })();

@@ -122,17 +122,39 @@
        halts natural spawns, and fires telegraphed lasers. Invulnerable
        (static shield) until every trapped enemy is dead; then it panics and
        can be killed, dropping a free upgrade. Shared by both game modes. */
-    ANO_SIZE:            24,     // body half-extent (px)
+    ANO_SIZE:            34,     // body half-extent (px)
     ANO_TRIGGER_RANGE:   360,    // player distance that slams the barrier
-    ANO_BARRIER_RADIUS:  540,    // base quarantine zone radius (px), at ANO_MIN_TRAPPED
-    ANO_BARRIER_PER_ENEMY: 16,   // +radius per trapped enemy beyond the minimum
-    ANO_BARRIER_MAX:     1200,   // hard cap on the quarantine radius (px)
+    ANO_BARRIER_RADIUS:  520,    // base quarantine zone radius (px), at ANO_MIN_TRAPPED
+    ANO_BARRIER_PER_ENEMY: 6,    // +radius per trapped enemy beyond the minimum (small)
+    ANO_BARRIER_MAX:     1000,    // hard cap on the quarantine radius (px) — kept tight
     ANO_VACUUM_RADIUS:   1100,   // enemies within this get sucked inside on slam
     ANO_MIN_TRAPPED:     9,      // floor of trapped sub-fifres (boss spawns extras)
-    ANO_LASER_CD:        1500,   // ms between laser volleys (while shielded)
+    ANO_LASER_CD:        2400,   // ms between laser volleys (while shielded)
     ANO_LASER_WARN:      520,    // telegraph duration — harmless thin line (ms)
     ANO_LASER_FIRE:      420,    // deadly beam duration (ms)
     ANO_LASER_WIDTH:     17,     // deadly beam half-width for the hit test (px)
+    ANO_CROSS_FIRE:      2200,   // deadly duration of the rotating-cross attack (ms)
+    ANO_CROSS_ROT:       0.00055,// cross rotation speed (rad/ms) — slow & readable
+    ANO_PROJ_CD:         3600,   // ms between homing-projectile swarms
+    ANO_PROJ_SWARM_MIN:  5,      // swarm size (min)
+    ANO_PROJ_SWARM_MAX:  8,      // swarm size (max)
+    ANO_PROJ_SPEED:      200,    // homing projectile speed — small and slow
+    ANO_PROJ_LIFE:       8500,   // homing projectile lifetime (ms) — pursues longer
+    ANO_PROJ_TURN:       3.8,    // homing turn rate (rad/s) toward target
+    ANO_PROJ_TURN_REFL:  5.5,    // even tighter once reflected (always hits its mark)
+    ANO_PROJ_ACCEL:      1.4,    // extra speed factor at end-of-life (live: ×(1+age·this))
+    ANO_PROJ_ACCEL_REFL: 2.8,    // even more once reflected — they pick up the pace
+    ANO_PROJ_RADIUS:     4,      // tiny hitbox (vs PROJ_RADIUS 7)
+    ANO_PROJ_SEP:        22,     // swarm spacing — repel each other so they don't stack
+    /* ---- Intro cinematic timings (real-time ms) ---- */
+    ANO_INTRO_STOP:      650,    // time-stop flash duration (ms)
+    ANO_INTRO_RAISE:     1300,   // barrier expansion duration (ms)
+    ANO_INTRO_RING_GAP:  200,    // ms between successive concentric rings of spawns
+    ANO_VAC_RING_BASE:   180,    // innermost ring radius (px)
+    ANO_VAC_RING_STEP:   80,     // gap between concentric rings (px)
+    ANO_VAC_RING_SPACING: 65,    // min spacing between enemies on the same ring (px)
+    ANO_INTRO_SLIDE:     650,    // banner-slide-to-hint duration (ms)
+    ANO_CHARGE_DUR:      2200,   // ms of "energy charge" growth in WANDER once visible
     ANO_HP:              4,      // melee hits to kill once vulnerable
     ANO_PANIC_BLINK:     14,     // blink frequency while panicked/vulnerable
     ANO_SPAWN_MIN_DELAY: 40000,  // ms of play before a natural anomaly can appear

@@ -26,6 +26,11 @@
       if (!this.textures.exists('_la_pick_gold_raw') && !this.textures.exists('_la_pickaxe_gold')) {
         this.load.image('_la_pick_gold_raw', 'assets/light-again/Golden_Pickaxe.png');
       }
+      // Stone pickaxe = whiff/punish state (mirrors the grey '_ar_whiff' arrow:
+      // missed basic attack or missed dash-attack — i.e. RECOVERY + recoveryWhiff).
+      if (!this.textures.exists('_la_pick_stone_raw') && !this.textures.exists('_la_pickaxe_stone')) {
+        this.load.image('_la_pick_stone_raw', 'assets/light-again/Stone_Pickaxe.png');
+      }
       // Enchanted-netherite dash-attack animation (spritesheet, 60×160² frames)
       if (!this.textures.exists('_la_pick_neth_raw') && !this.textures.exists('_la_neth_0')) {
         this.load.image('_la_pick_neth_raw', 'assets/light-again/Enchanted_Netherite_Pickaxe.png');
@@ -258,19 +263,19 @@
 
       // Top-left HUD stack: FPS, then live enemy count + survival time below it.
       this.fpsTxt = this.add.text(8, 6, '', {
-        fontFamily: 'monospace', fontSize: '13px', fontStyle: 'bold', color: '#00ff88',
+        fontFamily: 'monospace', fontSize: '15px', fontStyle: 'bold', color: '#00ff88',
       });
       this.fpsTxt.setScrollFactor(0);
       this.fpsTxt.setDepth(101);
 
-      this._enemyCountTxt = this.add.text(8, 24, '', {
-        fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#3a78a0',
+      this._enemyCountTxt = this.add.text(8, 27, '', {
+        fontFamily: 'monospace', fontSize: '18px', fontStyle: 'bold', color: '#3a78a0',
       });
       this._enemyCountTxt.setScrollFactor(0);
       this._enemyCountTxt.setDepth(101);
 
-      this._timeTxt = this.add.text(8, 39, '', {
-        fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', color: '#3a78a0',
+      this._timeTxt = this.add.text(8, 53, '', {
+        fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#3a78a0',
       });
       this._timeTxt.setScrollFactor(0);
       this._timeTxt.setDepth(101);
@@ -388,18 +393,6 @@
         if ((ev.code === 'Delete' || ev.code === 'Backspace') && !ev.repeat) {
           ev.preventDefault();
           if (window.__laGameMode === 'sandbox' && self.p && self.p.state !== 'DEAD') self._clearBoard();
-        }
-        if (ev.code === 'KeyI' && !ev.repeat) {
-          ev.preventDefault();
-          self._debugSpawnTestTier(1, 20);
-        }
-        if (ev.code === 'KeyO' && !ev.repeat) {
-          ev.preventDefault();
-          self._debugSpawnTestTier(2, 10);
-        }
-        if (ev.code === 'KeyP' && !ev.repeat) {
-          ev.preventDefault();
-          self._debugSpawnTestTier(3, 5);
         }
         if (ev.code === 'KeyL' && !ev.repeat) {
           ev.preventDefault();
@@ -571,6 +564,13 @@
       var pS60 = pDt * 60;
       var pMs  = pDt * 1000;
 
+      // Anomaly intro cinematic: freeze BOTH the world AND the player (the
+      // boss itself is driven by real-time inside _updateAnomaly).
+      if (this._anomalyIntroActive) {
+        sDt = 0; s60 = 0; ms  = 0;
+        pDt = 0; pS60 = 0; pMs = 0;
+      }
+
       this._fpsCounter = (this._fpsCounter || 0) + 1;
       if (this._fpsCounter >= 15) {
         this._fpsCounter = 0;
@@ -580,12 +580,18 @@
           this.fpsTxt.setText(fps + ' FPS');
           this.fpsTxt.setColor(fps >= 55 ? '#00ff88' : fps >= 30 ? '#ffcc00' : '#ff4444');
         }
-        // Live enemy count — turns amber/red when the swarm grows (perf pressure)
+        // Live enemy count — colour bands scaled to C.MAX_ENEMIES (1000):
+        // ≤ 40 % blue, 40–75 % amber, > 75 % red.
         var ec = this.enemies.length;
         if (ec !== this._lastEnemyCount) {
           this._lastEnemyCount = ec;
           this._enemyCountTxt.setText('▲ ' + ec);
-          this._enemyCountTxt.setColor(ec > 200 ? '#ff4444' : ec > 120 ? '#ffcc00' : '#3a78a0');
+          var ecMax = C.MAX_ENEMIES;
+          this._enemyCountTxt.setColor(
+            ec > ecMax * 0.75 ? '#ff4444'
+            : ec > ecMax * 0.40 ? '#ffcc00'
+            : '#3a78a0'
+          );
         }
         // Survival time (real elapsed play time)
         var ts = Math.floor(this.gameTime);
@@ -596,9 +602,30 @@
         }
       }
 
-      if (ms < 0.001 && pMs < 0.001) {
+      if (ms < 0.001 && pMs < 0.001 && !this._anomalyIntroActive) {
         this._decayGhosts(dt);
         this._renderPlayer();
+        return;
+      }
+      // During the intro the whole world is frozen but we still want the
+      // anomaly to tick its cinematic — call it directly, advance per-frame
+      // visual effects on REAL dt (so spawn pop-ins, wave rings and beams
+      // continue to animate even though gameplay is paused).
+      if (this._anomalyIntroActive) {
+        this._decayGhosts(dt);
+        this._updateAnomaly(0, 0, dt);
+        // Let enemies finish their natural spawn animation in real time
+        for (var _ai = 0; _ai < this.enemies.length; _ai++) {
+          var _ae = this.enemies[_ai];
+          if (_ae._spawnAnimT < 1.0) _ae._spawnAnimT = Math.min(1.0, _ae._spawnAnimT + dt * 2.5);
+        }
+        this._updateWaveRings(dt);
+        this._updateCondemnedDeathRings(dt);
+        this._updateHiveBeams(dt);
+        this._renderPlayer();
+        this._renderEnemies();
+        this._renderProjectiles(dt);
+        this._renderHUD(dt);
         return;
       }
 

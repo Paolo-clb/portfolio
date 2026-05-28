@@ -124,25 +124,6 @@
     txt.setVisible(true);
   };
 
-  M._debugSpawnTestTier = function (tier, want) {
-    if (!this.p || this.p.state === 'DEAD') return;
-    var slots = C.MAX_ENEMIES - this.enemies.length;
-    var n = Math.min(want, slots);
-    if (n <= 0) return;
-    var baseAng = Math.random() * Math.PI * 2;
-    var spread = n > 1 ? Math.PI * 0.9 : 0;
-    for (var j = 0; j < n; j++) {
-      var t = n > 1 ? j / (n - 1) : 0.5;
-      var ang = baseAng + (t - 0.5) * spread + (Math.random() - 0.5) * 0.3;
-      var dist = C.SPAWN_DIST + Math.random() * 120;
-      var pos = this._spawnPosNear(ang, dist, tier);
-      var sx = pos.x, sy = pos.y;
-      if (tier === 3) this._spawnBruiserAt(sx, sy);
-      else if (tier === 2) this._spawnShooterAt(sx, sy);
-      else this._spawnRusherAt(sx, sy);
-    }
-  };
-
   M._spawnRusherAt = function (ex, ey) {
     var spr = this.add.image(ex, ey, '_enemy');
     spr.setBlendMode(Phaser.BlendModes.ADD);

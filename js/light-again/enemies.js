@@ -164,12 +164,11 @@
         }
         e.x += e.vx * sc60; e.y += e.vy * sc60;
 
-        // Spawner logic — suppressed while quarantined (the firewall blocks
-        // the generator's spawning, keeping the trapped fight finite).
+        // Spawner logic. When the anomaly's firewall is up the generator may
+        // STILL spawn — but only INSIDE the zone (positions clamped to the
+        // barrier disc so nothing leaks out).
         e.spawnCD -= ms;
-        if (e.spawnCD <= 0 && this._anomalyBarrierActive) {
-          e.spawnCD = 400;
-        } else if (e.spawnCD <= 0) {
+        if (e.spawnCD <= 0) {
           var hiveSlots = C.MAX_ENEMIES - this.enemies.length;
           if (hiveSlots <= 0) {
             e.spawnCD = 120;
@@ -177,9 +176,25 @@
             e.spawnCD = C.T3_SPAWN_CD * (0.7 + Math.random() * 0.6);
             e.spawnCycle++;
             var hiveDid = false;
+            // Barrier clamp helper — only active during BARRIER phase
+            var ab = this._anomaly;
+            var insideBarrier = this._anomalyBarrierActive && ab && ab.phase === 'BARRIER';
+            var bx2 = insideBarrier ? ab.bx : 0;
+            var by2 = insideBarrier ? ab.by : 0;
+            var lim = insideBarrier ? (ab.R - 32) : 0;
+            var lim2 = lim * lim;
+            var clampHive = function (x, y) {
+              if (!insideBarrier) return { x: x, y: y };
+              var dx = x - bx2, dy = y - by2;
+              var d2 = dx * dx + dy * dy;
+              if (d2 <= lim2) return { x: x, y: y };
+              var d = Math.sqrt(d2);
+              return { x: bx2 + (dx / d) * lim, y: by2 + (dy / d) * lim };
+            };
             if (e.spawnCycle % 3 === 0) {
               var sx2 = e.x + (Math.random() - 0.5) * 40;
               var sy2 = e.y + (Math.random() - 0.5) * 40;
+              var cp = clampHive(sx2, sy2); sx2 = cp.x; sy2 = cp.y;
               this._spawnShooterAt(sx2, sy2);
               hiveDid = true;
               this._hiveSpawnBeam(e.x, e.y, sx2, sy2);
@@ -191,6 +206,7 @@
                 var sAng = e.angle + Math.PI + (sw - 1) * 0.7;
                 var spx = e.x + Math.cos(sAng) * 35;
                 var spy = e.y + Math.sin(sAng) * 35;
+                var cp2 = clampHive(spx, spy); spx = cp2.x; spy = cp2.y;
                 this._spawnRusherAt(spx, spy);
                 var spawned = this.enemies[this.enemies.length - 1];
                 spawned.vx = Math.cos(sAng) * 6;
@@ -218,18 +234,14 @@
         e.x += e.vx * sc60; e.y += e.vy * sc60;
       }
 
-      // World border clamp
       var eHalf = e.tier === 3 ? C.T3_SIZE : e.tier === 2 ? C.T2_SIZE : C.SIZE;
       var eMargin = C.WORLD_HALF - eHalf * 1.2;
       var BOUNCE = 0.55;
-      if (e.x < -eMargin) { e.x = -eMargin; if (e.vx < 0) e.vx = Math.abs(e.vx) * BOUNCE; }
-      if (e.x >  eMargin) { e.x =  eMargin; if (e.vx > 0) e.vx = -Math.abs(e.vx) * BOUNCE; }
-      if (e.y < -eMargin) { e.y = -eMargin; if (e.vy < 0) e.vy = Math.abs(e.vy) * BOUNCE; }
-      if (e.y >  eMargin) { e.y =  eMargin; if (e.vy > 0) e.vy = -Math.abs(e.vy) * BOUNCE; }
 
-      // Anomaly quarantine: trapped enemies can't leave the firewall
+      // Anomaly quarantine FIRST: trapped enemies can't leave the firewall.
+      // (Skipped during INTRO so the staggered vacuum reads cleanly.)
       var ab = this._anomaly;
-      if (this._anomalyBarrierActive && ab) {
+      if (this._anomalyBarrierActive && ab && ab.phase !== 'INTRO') {
         var bdx = e.x - ab.bx, bdy = e.y - ab.by;
         var blim = ab.R - eHalf * 1.4;
         var bd2 = bdx * bdx + bdy * bdy;
@@ -242,6 +254,12 @@
           if (bvd > 0) { e.vx -= bnx * bvd * (1 + BOUNCE); e.vy -= bny * bvd * (1 + BOUNCE); }
         }
       }
+      // World border clamp LAST — wins over barrier so enemies never leak
+      // out of the map when the firewall extends past it.
+      if (e.x < -eMargin) { e.x = -eMargin; if (e.vx < 0) e.vx = Math.abs(e.vx) * BOUNCE; }
+      if (e.x >  eMargin) { e.x =  eMargin; if (e.vx > 0) e.vx = -Math.abs(e.vx) * BOUNCE; }
+      if (e.y < -eMargin) { e.y = -eMargin; if (e.vy < 0) e.vy = Math.abs(e.vy) * BOUNCE; }
+      if (e.y >  eMargin) { e.y =  eMargin; if (e.vy > 0) e.vy = -Math.abs(e.vy) * BOUNCE; }
     }
   };
 

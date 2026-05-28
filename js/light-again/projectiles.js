@@ -56,6 +56,65 @@
       }
 
       pr.life -= prMs;
+
+      // Anomaly glitch projectiles steer: toward the player while live, and
+      // toward their assigned far enemy once reflected (chasing it down).
+      // Reflected glitch projectiles stay slow but turn very hard so they
+      // really land on their target — but each picks a DIFFERENT enemy so
+      // the swarm spreads its damage out.
+      if (pr.homing) {
+        var htx, hty, hturn, hspd;
+        // Age 0→1 over the projectile's lifetime → speed grows over life.
+        var lifeMax = pr.isReflected ? C.PROJ_LIFE : C.ANO_PROJ_LIFE;
+        var age = 1 - pr.life / lifeMax;
+        if (age < 0) age = 0; else if (age > 1) age = 1;
+        var accelMul = 1 + age * (pr.isReflected ? C.ANO_PROJ_ACCEL_REFL : C.ANO_PROJ_ACCEL);
+        if (!pr.isReflected) {
+          htx = p.x; hty = p.y;
+          hturn = C.ANO_PROJ_TURN; hspd = C.ANO_PROJ_SPEED * accelMul;
+        } else {
+          if (pr.homeTarget && this.enemies.indexOf(pr.homeTarget) === -1) pr.homeTarget = null;
+          if (!pr.homeTarget) {
+            // Build the exclusion set of enemies already locked by sibling shots
+            var ex2 = [];
+            for (var ej = 0; ej < this.projectiles.length; ej++) {
+              var pp2 = this.projectiles[ej];
+              if (pp2 !== pr && pp2.homing && pp2.isReflected && pp2.homeTarget) ex2.push(pp2.homeTarget);
+            }
+            pr.homeTarget = this._pickDistantVisibleEnemy(ex2);
+          }
+          hturn = C.ANO_PROJ_TURN_REFL;
+          hspd  = C.ANO_PROJ_SPEED * accelMul;            // starts slow, accelerates harder
+          if (pr.homeTarget) { htx = pr.homeTarget.x; hty = pr.homeTarget.y; }
+        }
+        if (htx !== undefined) {
+          var desA = Math.atan2(hty - pr.y, htx - pr.x);
+          var curA = Math.atan2(pr.vy, pr.vx);
+          var dA   = Phaser.Math.Angle.Wrap(desA - curA);
+          var mT   = hturn * prDt;
+          if (dA > mT) dA = mT; else if (dA < -mT) dA = -mT;
+          var nA = curA + dA;
+          pr.vx = Math.cos(nA) * hspd; pr.vy = Math.sin(nA) * hspd;
+        }
+
+        // Swarm separation — siblings of the same kind push each other so
+        // they don't stack into a single dot when chasing the same target.
+        var sepR = C.ANO_PROJ_SEP, sepRSq = sepR * sepR;
+        var sepK = 60;  // px/s^2-ish push
+        for (var sj = 0; sj < this.projectiles.length; sj++) {
+          var pp = this.projectiles[sj];
+          if (pp === pr || !pp.homing) continue;
+          if (pp.isReflected !== pr.isReflected) continue;  // only same-team
+          var sdx = pr.x - pp.x, sdy = pr.y - pp.y;
+          var sd2 = sdx * sdx + sdy * sdy;
+          if (sd2 > sepRSq || sd2 < 0.01) continue;
+          var sd = Math.sqrt(sd2);
+          var sf = (1 - sd / sepR) * sepK * prDt;
+          pr.vx += (sdx / sd) * sf;
+          pr.vy += (sdy / sd) * sf;
+        }
+      }
+
       pr.x += pr.vx * prDt; pr.y += pr.vy * prDt;
       pr.spr.setPosition(pr.x, pr.y);
       pr.spr.rotation += pr.rotSpeed * prDt;
@@ -68,7 +127,11 @@
         slot.x = pr.x;
         slot.y = pr.y;
         slot.alpha = pr.isReflected ? 0.85 : 0.55;
-        slot.tint = pr.isReflected ? 0xaa44ff : 0xffaa22;
+        slot.tint = pr.glitch
+          ? (pr.isReflected
+              ? (Math.random() < 0.5 ? 0x00ffff : 0xffffff)   // cyan-glitch trail
+              : 0xffffff)                                       // pure white trail
+          : pr.isReflected ? 0xaa44ff : 0xffaa22;
         slot.rot = pr.spr.rotation;
         slot.active = true;
         slot.spr.setVisible(true);
@@ -98,7 +161,8 @@
         for (var ei = this.enemies.length - 1; ei >= 0; ei--) {
           var e = this.enemies[ei];
           var edx = pr.x - e.x, edy = pr.y - e.y;
-          var eThresh = C.PROJ_RADIUS + e.size * 0.5;
+          var prR = pr.glitch ? C.ANO_PROJ_RADIUS : C.PROJ_RADIUS;
+          var eThresh = prR + e.size * 0.5;
           if (edx * edx + edy * edy < eThresh * eThresh) {
             // Shield intercept
             if (e.tier === 3 && e.hasShield) {
@@ -168,7 +232,8 @@
         if (vuln && !p.invincible && !twActive) {
           var pdx = p.x - pr.x, pdy = p.y - pr.y;
           var pdSq = pdx * pdx + pdy * pdy;
-          var prThresh = pR + C.PROJ_RADIUS;
+          var prR2 = pr.glitch ? C.ANO_PROJ_RADIUS : C.PROJ_RADIUS;
+          var prThresh = pR + prR2;
           if (pdSq < prThresh * prThresh) {
             var pd = Math.sqrt(pdSq);
             var pnx = pd > 0.1 ? pdx / pd : 0;
@@ -196,7 +261,7 @@
           if (this.isStarPowered) arrowScale *= 1.25;
           var parryBonus = (pR * 1.5) / arrowScale; // ~16px at base, shrinks with bigger arrow
           if (dashLvl >= 2) parryBonus += 55;  // Lv2: magnetic vacuum catch zone
-          var ddThresh = pR + C.PROJ_RADIUS + parryBonus;
+          var ddThresh = pR + (pr.glitch ? C.ANO_PROJ_RADIUS : C.PROJ_RADIUS) + parryBonus;
           if (ddx * ddx + ddy * ddy < ddThresh * ddThresh) {
             var refSpd = C.PROJ_SPEED * C.PROJ_REFLECT_MULT;
 
@@ -226,6 +291,23 @@
             pr.life = C.PROJ_LIFE;
             pr.rotSpeed = 28;
             pr.spr.setTint(0xaa44ff);
+
+            // Glitch projectile: on parry it locks onto a random far on-screen
+            // enemy (different from the ones its siblings already chose) and
+            // chases it slowly with strong homing — steering above handles it.
+            if (pr.homing && this._pickDistantVisibleEnemy) {
+              var exGl = [];
+              for (var eg = 0; eg < this.projectiles.length; eg++) {
+                var pg = this.projectiles[eg];
+                if (pg !== pr && pg.homing && pg.isReflected && pg.homeTarget) exGl.push(pg.homeTarget);
+              }
+              pr.homeTarget = this._pickDistantVisibleEnemy(exGl);
+              if (pr.homeTarget) {
+                var gha = Phaser.Math.Angle.Between(pr.x, pr.y, pr.homeTarget.x, pr.homeTarget.y);
+                pr.vx = Math.cos(gha) * C.ANO_PROJ_SPEED;     // stays slow
+                pr.vy = Math.sin(gha) * C.ANO_PROJ_SPEED;
+              }
+            }
 
             // During TW: freeze reflected projectile in place
             if (twActive) {

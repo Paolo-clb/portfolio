@@ -111,11 +111,20 @@
                    : (label === 'PARADE' && count > 1) ? 'PARADE \u00d7' + count
                    : label;
 
-    // Stack upward from anchor — each slot is 48px above the previous
+    // Stack upward from anchor, but cap the stack so it never crosses into the
+    // top HUD strip (score / combo). First slot keeps its position above the
+    // player; deeper slots compress their spacing when room is tight and are
+    // hard-clamped at topBound so they can't escape upward into the UI.
+    var topBound = cam.height * 0.22;
+    var MAX_SLOTS = 7;
+    var SLOT_GAP_MAX = 48;
+    var SLOT_GAP_MIN = 20;
     if (!this._bigScoreSlots) this._bigScoreSlots = [];
     var slot = 0;
-    while (this._bigScoreSlots[slot] && slot < 7) slot++;
-    var sy = syBase - slot * 48;
+    while (this._bigScoreSlots[slot] && slot < MAX_SLOTS) slot++;
+    var available = Math.max(0, syBase - topBound);
+    var slotGap = Math.max(SLOT_GAP_MIN, Math.min(SLOT_GAP_MAX, available / MAX_SLOTS));
+    var sy = Math.max(syBase - slot * slotGap, topBound);
     var self = this;
 
     var txt = this.add.text(sx, sy, '+' + pts + ' ' + displayLbl + '!', {
@@ -137,9 +146,10 @@
       targets: txt, scaleX: 1.15, scaleY: 1.15,
       duration: popDur, ease: 'Back.easeOut',
     });
-    // 2. Shrink + float + fade — starts after pop + hold
+    // 2. Shrink + float + fade — starts after pop + hold. Clamp the float-up
+    //    target so popups already at the ceiling don't drift further into the HUD.
     this.tweens.add({
-      targets: txt, y: sy - 40, alpha: 0, scaleX: 0.65, scaleY: 0.65,
+      targets: txt, y: Math.max(sy - 40, topBound), alpha: 0, scaleX: 0.65, scaleY: 0.65,
       duration: 650, ease: 'Cubic.easeIn', delay: popDur + holdDur,
       onComplete: function () {
         self._bigScoreSlots[slot] = null;

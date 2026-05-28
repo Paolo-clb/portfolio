@@ -167,8 +167,9 @@ window.SITE_I18N = {
     laDelayExp:          'Explosion Retardée',
 
     // The Anomaly (mini-boss)
-    laAnomalyShielded:   'INTUABLE — ennemis restants :',
+    laAnomalyShielded:   'ennemis restants :',
     laAnomalyVuln:       'VULNÉRABLE !',
+    laAnomalyBigHint:    'TUEZ TOUS LES ENNEMIS POUR AFFAIBLIR LE BOSS',
 
     // Misc
     closeLbl: 'Fermer',
@@ -335,8 +336,9 @@ window.SITE_I18N = {
     laDelayExp:          'Delayed Explosion',
 
     // The Anomaly (mini-boss)
-    laAnomalyShielded:   'UNKILLABLE — enemies left:',
+    laAnomalyShielded:   'enemies left:',
     laAnomalyVuln:       'VULNERABLE!',
+    laAnomalyBigHint:    'KILL ALL ENEMIES TO WEAKEN THE BOSS',
 
     // Misc
     closeLbl: 'Close',

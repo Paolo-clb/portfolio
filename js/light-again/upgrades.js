@@ -34,7 +34,11 @@
       }
     }
 
-    this._upgradeKillThreshold = C.UPGRADE_KILL_INTERVAL;
+    // Hardcore mode ramps the gap: 100 → +150 → +200 → +250 (+50 each step).
+    // Sandbox keeps the flat C.UPGRADE_KILL_INTERVAL cadence.
+    var hardcore = (window.__laGameMode === 'hardcore');
+    this._upgradeKillInterval  = hardcore ? 100 : C.UPGRADE_KILL_INTERVAL;
+    this._upgradeKillThreshold = this._upgradeKillInterval;
     this._upgradeDraftOpen     = false;
 
     // Slow-mo transition state
@@ -65,7 +69,12 @@
     if (this._upgradePool.length === 0) return;
     if (this.totalKills < this._upgradeKillThreshold) return;
 
-    this._upgradeKillThreshold += C.UPGRADE_KILL_INTERVAL;
+    // Hardcore: next gap grows by +50 each draft (100, 150, 200, 250, …).
+    // Sandbox: flat cadence — interval stays at C.UPGRADE_KILL_INTERVAL.
+    if (window.__laGameMode === 'hardcore') {
+      this._upgradeKillInterval += 50;
+    }
+    this._upgradeKillThreshold += this._upgradeKillInterval;
     this._beginUpgradeSlowMo();
   };
 

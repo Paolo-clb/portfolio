@@ -474,6 +474,39 @@
     tm.addCanvas(key, oc);
   };
 
+  /* ---- The Anomaly's own projectile skin — tiny white "glitch byte" --------
+     A small cluster of bright pixel shards (white core with chromatic shards on
+     the edges). Stays white so it can be tinted per-channel at render time for
+     the RGB-flicker effect, matching the body's aesthetic. ------------------- */
+  LA.buildAnomalyProjTex = function (tm, key) {
+    if (tm.exists(key)) tm.remove(key);
+    var S = 18, pad = 2;
+    var oc = document.createElement('canvas');
+    oc.width = S + pad * 2; oc.height = S + pad * 2;
+    var g2 = oc.getContext('2d');
+    var cx = oc.width / 2, cy = oc.height / 2;
+
+    g2.save();
+    g2.globalCompositeOperation = 'lighter';
+    g2.shadowColor = 'rgba(255,255,255,0.9)';
+    g2.shadowBlur = 8;
+    g2.fillStyle = 'rgba(255,255,255,0.18)';
+    g2.beginPath(); g2.arc(cx, cy, 5, 0, Math.PI * 2); g2.fill();
+    g2.restore();
+
+    // Asymmetric data-moshed shards around a bright core
+    g2.fillStyle = '#ffffff';
+    var shards = [
+      [-3, -2, 3, 2], [1, -3, 2, 3], [-2, 1, 4, 2], [2, 1, 2, 3], [-1, -1, 3, 3],
+    ];
+    for (var i = 0; i < shards.length; i++) {
+      g2.fillRect(cx + shards[i][0], cy + shards[i][1], shards[i][2], shards[i][3]);
+    }
+    g2.beginPath(); g2.arc(cx, cy, 2.5, 0, Math.PI * 2); g2.fill();
+
+    tm.addCanvas(key, oc);
+  };
+
   LA.buildPixelTex = function (tm, key) {
     if (tm.exists(key)) return;
     var oc = document.createElement('canvas');

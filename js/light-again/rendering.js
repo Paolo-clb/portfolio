@@ -57,6 +57,7 @@
     };
     _bakePick('_la_pick_diamond_raw', '_la_pickaxe');
     _bakePick('_la_pick_gold_raw',    '_la_pickaxe_gold');
+    _bakePick('_la_pick_stone_raw',   '_la_pickaxe_stone');
 
     // Enchanted-netherite dash-attack animation: bake each spritesheet frame into
     // its own rotated/scaled texture (_la_neth_0.._N) — same +45° / size as the
@@ -95,6 +96,7 @@
     LA.buildPCBTex(tm, '_pcb', c);
     LA.buildStarTex(tm, '_star');
     LA.buildAnomalyTex(tm, '_anomaly');
+    LA.buildAnomalyProjTex(tm, '_anoproj');
   };
 
   M._checkTheme = function () {
@@ -125,10 +127,13 @@
     // mirrors the arrow's cyan→yellow. Falls back to the arrow if the PNGs failed.
     if (window.__laSteveSkin && this.textures.exists('_la_pickaxe')) {
       // Dash-attack → animated enchanted netherite (mirrors the magenta arrow);
-      // dash on cooldown → gold; otherwise diamond. Keeps the 3-skin alternation
-      // consistent with the arrow's cyan / yellow / magenta.
+      // whiff/punish (missed attack or missed dash-attack) → stone (mirrors the
+      // grey '_ar_whiff' arrow); dash on cooldown → gold; otherwise diamond.
       if (p.state === 'DASH_ATTACKING' && this.textures.exists('_la_neth_0')) {
         return '_la_neth_' + (Math.floor(this.gameTime * C.NETH_FPS) % C.NETH_FRAMES);
+      }
+      if (p.state === 'RECOVERY' && p.recoveryWhiff && this.textures.exists('_la_pickaxe_stone')) {
+        return '_la_pickaxe_stone';
       }
       return (!p.dashAvailable && this.textures.exists('_la_pickaxe_gold')) ? '_la_pickaxe_gold' : '_la_pickaxe';
     }
@@ -143,8 +148,10 @@
     var p = this.p;
     var key = this._pTexKey();
 
-    // Normal hit i-frames: flicker
-    if (p.invincible && !p.dashInvinc && !this._twActive && Math.floor(this.gameTime * 12.5) % 2 === 0) {
+    // Normal hit i-frames: flicker (suppressed during the anomaly intro so
+    // the player stays clearly visible while the cinematic plays).
+    if (p.invincible && !p.dashInvinc && !this._twActive && !this._anomalyIntroActive
+        && Math.floor(this.gameTime * 12.5) % 2 === 0) {
       this.playerSpr.setVisible(false);
       for (var i = 0; i < this.TRAIL_CAP; i++) this._trail[i].spr.setVisible(false);
       return;
@@ -484,6 +491,23 @@
         pr.spr.setAlpha(fpA);
         pr.spr.setScale(1.8);
         pr.spr.setTint(0xcc66ff);
+      } else if (pr.glitch) {
+        // Anomaly projectile (own skin). Two clean colour codes so reflected
+        // shots are unmistakable from live ones:
+        //   - LIVE     → really white glitch (mostly white with tiny RGB ticks)
+        //   - REFLECTED→ cyan glitch (cyan with white speckles)
+        if (pr.isReflected) {
+          var gCR = (Math.floor(gt * 50 + i) % 4);
+          pr.spr.setTint(gCR === 0 ? 0xffffff : 0x00ffff);
+          pr.spr.setAlpha(0.92 + 0.08 * Math.sin(gt * Math.PI * 30 + i));
+          pr.spr.setScale(1.10 + 0.22 * Math.sin(gt * Math.PI * 22 + i));
+        } else {
+          // Mostly white; only ~1 frame in 8 is a faint RGB tick.
+          var gCW = (Math.floor(gt * 45 + i) % 8);
+          pr.spr.setTint(gCW === 5 ? 0xddeeff : gCW === 6 ? 0xffddee : 0xffffff);
+          pr.spr.setAlpha(0.94 + 0.06 * Math.sin(gt * Math.PI * 26 + i));
+          pr.spr.setScale(0.85 + 0.18 * Math.sin(gt * Math.PI * 18 + i));
+        }
       } else if (pr.isReflected) {
         var pa = 0.75 + 0.25 * Math.sin(gt * Math.PI * 28 + i);
         pr.spr.setAlpha(pa);
@@ -701,7 +725,11 @@
         this._killCounterTxt.setDepth(102);
         this._killCounterTxt.setScrollFactor(0);
       }
-      var kcColor = killsLeft <= 15 ? '#ff7733' : killsLeft <= 40 ? '#ffcc44' : '#6699bb';
+      // Colour ramp is now proportional to the *current* interval (hardcore
+      // grows it each draft), not to a fixed 200-kill assumption.
+      var kcInterval = this._upgradeKillInterval || C.UPGRADE_KILL_INTERVAL;
+      var kcRatio = killsLeft / kcInterval;  // 1.0 just after a draft → 0.0 at the next one
+      var kcColor = kcRatio <= 0.10 ? '#ff7733' : kcRatio <= 0.25 ? '#ffcc44' : '#6699bb';
       this._killCounterTxt.setText('>> ' + killsLeft + ' kills');
       this._killCounterTxt.setColor(kcColor);
       var kcPulse = 1.0 + (this._killCounterPulse || 0) * 0.22;
@@ -711,11 +739,11 @@
       this._killCounterTxt.setVisible(true);
 
       // Thin progress bar aligned to counter right edge
-      var prog = 1 - Math.min(1, killsLeft / C.UPGRADE_KILL_INTERVAL);
+      var prog = 1 - Math.min(1, kcRatio);
       var pbW  = 100;
       var pbX  = w - _upMarginR - pbW;
       var pbY  = iy - 20;
-      var pbCol = killsLeft <= 15 ? 0xff7733 : killsLeft <= 40 ? 0xffcc44 : 0x3366aa;
+      var pbCol = kcRatio <= 0.10 ? 0xff7733 : kcRatio <= 0.25 ? 0xffcc44 : 0x3366aa;
       this.hudGfx.fillStyle(pbCol, 0.10);
       this.hudGfx.fillRect(pbX, pbY, pbW, 3);
       this.hudGfx.fillStyle(pbCol, 0.72);
