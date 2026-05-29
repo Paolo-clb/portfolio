@@ -72,6 +72,12 @@
       bodyHitT: 0,           // 0..1 white-flash on body-hit (decays)
       shieldRot: 0,
       spawnCD: C.GBR_SPAWN_CD * 1.4,  // first swarm delayed a hair
+      // Telegraph state — when spawnCD drops below GBR_SPAWN_TELEGRAPH_DUR we
+      // lock the slot positions in world-space and show targeting markers
+      // there until spawnCD hits 0 and the swarm actually pops out.
+      spawnPending:     false,
+      spawnTelegraphT:  0,
+      spawnSlots:       null,
       fractures: [],         // accumulated jagged crack lines
       // Shockwave attack state — see _beginGigaShockwave / _fireGigaShockwave
       shockwavePhase: null,  // null | 'CHARGING' | 'BLAST'
@@ -167,31 +173,93 @@
     if (g.y < -mw) g.y = -mw; else if (g.y > mw) g.y = mw;
 
     // Bruiser-swarm spawner — mirrors the generator's cadence (T3_SPAWN_CD)
+    // but with a deliberate two-step ritual:
+    //   1) TELEGRAPH (last GBR_SPAWN_TELEGRAPH_DUR ms): targeting markers
+    //      appear at the future slots so the player can read the swarm coming.
+    //   2) POP: bruisers burst out of the markers with ring fx + camera punch.
     g.spawnCD -= sMs;
+    if (!g.spawnPending && g.spawnCD <= C.GBR_SPAWN_TELEGRAPH_DUR && g.spawnCD > 0) {
+      this._gigaBruiserBeginSpawnTelegraph();
+    }
+    if (g.spawnPending) {
+      g.spawnTelegraphT = Math.max(0, g.spawnTelegraphT - sMs);
+    }
     if (g.spawnCD <= 0) {
       g.spawnCD = C.GBR_SPAWN_CD * (0.85 + Math.random() * 0.3);
-      var slots  = C.MAX_ENEMIES - this.enemies.length;
-      var swarmN = Math.min(slots, C.GBR_SWARM_SIZE);
-      if (swarmN > 0) {
-        var baseAng = Math.random() * TAU;
-        var ringR   = C.GBR_SIZE * 1.5;
-        for (var sw = 0; sw < swarmN; sw++) {
-          var sAng = baseAng + (sw / swarmN) * TAU;
-          var spx  = g.x + Math.cos(sAng) * ringR;
-          var spy  = g.y + Math.sin(sAng) * ringR;
-          this._spawnBruiserAt(spx, spy);
-          var spawned = this.enemies[this.enemies.length - 1];
-          spawned.vx = Math.cos(sAng) * 5;
-          spawned.vy = Math.sin(sAng) * 5;
-          this._hiveSpawnBeam(g.x, g.y, spx, spy);
-        }
-        this._explode(g.x, g.y, [187, 0, 255], 20);
-        this._explode(g.x, g.y, [255, 150, 255], 10);
-        this.cameras.main.shake(70, 0.004);
-      }
+      this._gigaBruiserPopSwarm();
     }
 
     this._renderGigaBruiser(dt);
+  };
+
+  /* ================================================================
+     SWARM SPAWN — telegraph (markers + beams), then pop
+     ================================================================ */
+  M._gigaBruiserBeginSpawnTelegraph = function () {
+    var g = this._gigaBruiser;
+    var slots = C.MAX_ENEMIES - this.enemies.length;
+    var swarmN = Math.min(slots, C.GBR_SWARM_SIZE);
+    if (swarmN <= 0) return;   // arena is full — skip this beat
+
+    g.spawnPending    = true;
+    g.spawnTelegraphT = C.GBR_SPAWN_TELEGRAPH_DUR;
+    g.spawnSlots      = [];
+    var baseAng = Math.random() * TAU;
+    var ringR   = C.GBR_SIZE * 1.65;
+    for (var ss = 0; ss < swarmN; ss++) {
+      var sAng = baseAng + (ss / swarmN) * TAU;
+      g.spawnSlots.push({
+        x:   g.x + Math.cos(sAng) * ringR,
+        y:   g.y + Math.sin(sAng) * ringR,
+        ang: sAng,
+      });
+    }
+    // Soft charge-up burst at the boss centre + slot pings
+    this._explode(g.x, g.y, [255, 120, 255], 8);
+    for (var ps = 0; ps < g.spawnSlots.length; ps++) {
+      this._explode(g.spawnSlots[ps].x, g.spawnSlots[ps].y, [255, 200, 255], 4);
+    }
+  };
+
+  M._gigaBruiserPopSwarm = function () {
+    var g = this._gigaBruiser;
+    if (!g.spawnSlots || g.spawnSlots.length === 0) {
+      g.spawnPending = false;
+      g.spawnSlots   = null;
+      return;
+    }
+
+    // Spawn each bruiser at its locked telegraph slot, with a small radial pop
+    for (var sw = 0; sw < g.spawnSlots.length; sw++) {
+      if (this.enemies.length >= C.MAX_ENEMIES) break;
+      var slot = g.spawnSlots[sw];
+      var sx = slot.x, sy = slot.y, sa = slot.ang;
+      this._spawnBruiserAt(sx, sy);
+      var spawned = this.enemies[this.enemies.length - 1];
+      // Eject harder than the old version so the pop reads
+      spawned.vx = Math.cos(sa) * 9;
+      spawned.vy = Math.sin(sa) * 9;
+      spawned.stunTimer = 220;     // brief stagger after pop-out (own AI takes over)
+      // Connection beam from boss → bruiser
+      this._hiveSpawnBeam(g.x, g.y, sx, sy);
+      // Per-slot mini-explosion + tiny wave ring so each pop is its own moment
+      this._explode(sx, sy, [187, 0, 255], 14);
+      this._explode(sx, sy, [255, 150, 255], 8);
+      this._explode(sx, sy, [255, 255, 255], 6);
+      this._spawnWaveRing(sx, sy, { maxRadius: C.T3_SIZE * 4, color: 0x9933ff, expandTime: 0.16 });
+    }
+
+    // Central burst on the boss — bigger than the per-slot pops so the
+    // origin is clearly the boss, not the bruisers themselves
+    this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 2.4, color: 0x9933ff, expandTime: 0.22 });
+    this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 1.6, color: 0xffffff, expandTime: 0.16 });
+    this._explode(g.x, g.y, [187, 0, 255], 28);
+    this._explode(g.x, g.y, [255, 150, 255], 16);
+    this._explode(g.x, g.y, [255, 255, 255], 12);
+    this.cameras.main.shake(140, 0.007);
+
+    g.spawnPending = false;
+    g.spawnSlots   = null;
   };
 
   /* ================================================================
@@ -328,6 +396,45 @@
       gfx.strokeCircle(g.x, g.y, ringR * 0.96);
       gfx.lineStyle(4, 0x88ddff, ringA * 0.55);
       gfx.strokeCircle(g.x, g.y, ringR * 1.04);
+    }
+
+    // ── SPAWN TELEGRAPH MARKERS ──────────────────────────────────────────
+    // Targeting reticles at each upcoming bruiser slot — outer ring contracts,
+    // inner ring expands, cardinal ticks spin, and a faint dotted-feel beam
+    // connects boss → slot. The whole thing intensifies as countdown → 0.
+    if (g.spawnPending && g.spawnSlots) {
+      var teleFrac = 1 - g.spawnTelegraphT / C.GBR_SPAWN_TELEGRAPH_DUR;  // 0 → 1
+      var teleA    = 0.40 + 0.55 * teleFrac;
+      for (var ts = 0; ts < g.spawnSlots.length; ts++) {
+        var slot   = g.spawnSlots[ts];
+        var baseR  = C.T3_SIZE * (1.6 - teleFrac * 0.6);   // outer ring CONTRACTS in
+        var innerR = C.T3_SIZE * (0.4 + teleFrac * 0.9);   // inner ring EXPANDS out
+        // Connecting beam (tracks the boss live — slots are static so the beam
+        // visibly snaps onto each marker as the boss drifts)
+        gfx.lineStyle(1.5, 0xff88ff, teleA * 0.45);
+        gfx.lineBetween(g.x, g.y, slot.x, slot.y);
+        // Outer contracting ring
+        gfx.lineStyle(2.0 + teleFrac * 2.4, 0xff66ff, teleA);
+        gfx.strokeCircle(slot.x, slot.y, baseR);
+        // Inner expanding ring
+        gfx.lineStyle(2.0, 0xffffff, teleA * 0.65);
+        gfx.strokeCircle(slot.x, slot.y, innerR);
+        // 4 cardinal tick marks spinning around the marker
+        for (var ck = 0; ck < 4; ck++) {
+          var ca   = (Math.PI / 2) * ck + gt * 3.0;
+          var tickIn  = baseR + 3;
+          var tickOut = baseR + 11 + teleFrac * 4;
+          var cx1 = slot.x + Math.cos(ca) * tickIn;
+          var cy1 = slot.y + Math.sin(ca) * tickIn;
+          var cx2 = slot.x + Math.cos(ca) * tickOut;
+          var cy2 = slot.y + Math.sin(ca) * tickOut;
+          gfx.lineStyle(1.5, 0xff66ff, teleA);
+          gfx.lineBetween(cx1, cy1, cx2, cy2);
+        }
+        // Central crosshair dot
+        gfx.fillStyle(0xffffff, teleA * 0.85);
+        gfx.fillCircle(slot.x, slot.y, 1.8 + teleFrac * 1.6);
+      }
     }
 
     // ── FRACTURES (separate gfx so they sit cleanly on top of the body) ──
@@ -628,7 +735,33 @@
     g.dead = true;
     var ex = g.x, ey = g.y;
 
-    this._floatLabel(ex, ey - C.GBR_SIZE - 14, 'GIGA SHATTERED', '#ff66ff', 0);
+    // Custom kill banner — bigger and stays on screen much longer than the
+    // generic _floatLabel so the moment really lands.
+    var killTxt = this.add.text(ex, ey - C.GBR_SIZE - 18, 'GIGA BRUISER KILLED', {
+      fontFamily: 'monospace', fontSize: '38px', fontStyle: 'bold',
+      color: '#ff66ff', stroke: '#000000', strokeThickness: 5,
+      shadow: { offsetX: 0, offsetY: 3, color: '#ff66ff', blur: 14, fill: true },
+    });
+    killTxt.setOrigin(0.5, 1);
+    killTxt.setDepth(75);
+    killTxt.setAlpha(0);
+    killTxt.setScale(0.55);
+    // Pop in with a satisfying overshoot
+    this.tweens.add({
+      targets: killTxt, scaleX: 1.0, scaleY: 1.0, alpha: 1.0,
+      duration: 320, ease: 'Back.easeOut',
+    });
+    // Drift slowly upward while held visible
+    this.tweens.add({
+      targets: killTxt, y: ey - C.GBR_SIZE - 62,
+      duration: 2200, ease: 'Sine.easeOut', delay: 320,
+    });
+    // Fade out at the end
+    this.tweens.add({
+      targets: killTxt, alpha: 0,
+      duration: 600, ease: 'Cubic.easeIn', delay: 2200,
+      onComplete: function () { killTxt.destroy(); },
+    });
 
     // Big death burst — purple core with white shrapnel, red embers
     this._explode(ex, ey, [255, 80, 80],   60);

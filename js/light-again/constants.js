@@ -189,6 +189,7 @@
     GBR_SHOCKWAVE_MAX_RADIUS: 880,   // outer radius of the push field (px)
     GBR_SHOCKWAVE_FORCE:      72,    // player impulse — heavy launch, real "yeet" feel
     GBR_SHOCKWAVE_ENEMY_FORCE:40,    // enemy impulse at point-blank
+    GBR_SPAWN_TELEGRAPH_DUR:  320,   // ms of telegraph (target markers + beams) before a swarm pops
   };
 
   /* ---- Upgrade branch definitions ---- */
