@@ -86,6 +86,7 @@
           if (e.hp <= 0) {
             var dex = e.x, dey = e.y;
             this._killEnemy(i);
+            if (this._tutEvent) this._tutEvent('basicKill');  // tutorial: a TRUE basic-attack kill
             this._trySpawnDelayedExplosion(dex, dey);
           } else {
             if (dist > 0.1) { e.vx -= (dx / dist) * 10; e.vy -= (dy / dist) * 10; }

@@ -168,7 +168,11 @@
         // STILL spawn — but only INSIDE the zone (positions clamped to the
         // barrier disc so nothing leaks out).
         e.spawnCD -= ms;
-        if (e.spawnCD <= 0) {
+        // Tutorial: keep the Bruiser lesson clean — suppress its minion swarms.
+        if (this._tutorialActive && e.spawnCD <= 0) {
+          e.spawnCD = C.T3_SPAWN_CD;
+        }
+        if (e.spawnCD <= 0 && !this._tutorialActive) {
           var hiveSlots = C.MAX_ENEMIES - this.enemies.length;
           if (hiveSlots <= 0) {
             e.spawnCD = 120;

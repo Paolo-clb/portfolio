@@ -16,8 +16,33 @@
   };
 
   LA.laIsHardcoreUnlocked = function () {
-    var p = LA.laGetUnlockProgress();
-    return p.t1 >= 100 && p.t2 >= 10 && p.t3 >= 3;
+    // Hardcore mode + the "I am Steve" skin unlock ONLY by FINISHING the tutorial.
+    return LA.laIsTutorialDone();
+  };
+
+  LA.laIsTutorialDone = function () {
+    try { return localStorage.getItem('la_tutorial_done') === '1'; } catch (e) { return false; }
+  };
+
+  LA.laMarkTutorialDone = function () {
+    // Finishing clears the saved resume-point and grants the rewards.
+    try {
+      localStorage.setItem('la_tutorial_done', '1');
+      localStorage.removeItem('la_tutorial_progress');
+    } catch (e) { /* ignore */ }
+  };
+
+  /* Resume point: the furthest step index reached (saved as the player advances
+     or skips). 0 = not started. Cleared on completion. */
+  LA.laGetTutorialProgress = function () {
+    try {
+      var n = parseInt(localStorage.getItem('la_tutorial_progress'), 10);
+      return isNaN(n) ? 0 : Math.max(0, n);
+    } catch (e) { return 0; }
+  };
+
+  LA.laSetTutorialProgress = function (n) {
+    try { localStorage.setItem('la_tutorial_progress', String(Math.max(0, n | 0))); } catch (e) { /* ignore */ }
   };
 
   LA.laAddKillProgress = function (tier) {

@@ -29,20 +29,18 @@
     return (typeof window.__siteT === 'function' ? window.__siteT(key) : null) || key;
   }
 
-  /* ---- Hardcore unlock helpers ---- */
+  /* ---- Hardcore unlock helper (now gated solely on tutorial completion) ---- */
   function laIsHardcoreUnlocked() {
     var LA = window.LightAgain;
     return (LA && typeof LA.laIsHardcoreUnlocked === 'function') ? LA.laIsHardcoreUnlocked() : false;
-  }
-  function laGetUnlockProgress() {
-    var LA = window.LightAgain;
-    return (LA && typeof LA.laGetUnlockProgress === 'function') ? LA.laGetUnlockProgress() : { t1: 0, t2: 0, t3: 0 };
   }
 
   /* ---- Mode select helpers ---- */
   function updateMenuBtn() {
     if (!menuBtnEl) return;
-    var show = (currentMode === 'sandbox');
+    // Home button is available whenever a run is active — sandbox, hardcore, and
+    // during the tutorial (which runs under sandbox mode).
+    var show = (currentMode === 'sandbox' || currentMode === 'hardcore');
     menuBtnEl.style.display = show ? 'flex' : 'none';
     // Toggle the header layout so the other controls reflow around the menu
     // button (× | menu | ? | ⏸) instead of leaving a gap when it's hidden.
@@ -81,15 +79,12 @@
         activeGame = window.createLightGame(container);
         activeGame.start();
       }
+      // First-ever launch: auto-run the interactive tutorial once the scene
+      // warms up (scene.update reads this flag after the loader clears). The
+      // player came through the mode menu, so finishing returns there.
       if (!localStorage.getItem('la_tutorial_seen')) {
-        var _tutOverlay = overlayEl;
-        var _tutWatcher = new MutationObserver(function () {
-          if (!document.getElementById('_la-loading')) {
-            _tutWatcher.disconnect();
-            if (overlayEl && overlayEl === _tutOverlay) showHelpPopup();
-          }
-        });
-        _tutWatcher.observe(document.body, { childList: true, subtree: true });
+        window.__laStartTutorialOnReady = true;
+        window.__laTutorialFromHome = true;
       }
     }
     clearPauseState(); // entering play → button shows ⏸, never a stale ▶
@@ -97,35 +92,36 @@
   }
 
   /* Build the hardcore-unlock progress panel (enemy kill checklist) */
-  function buildUnlockPanel(prog) {
-    var rows = [
-      { glyph: '\u25b2', color: '#ff3b56', name: tG('laEnemyScout'),   cur: Math.min(prog.t1, 100), max: 100 },
-      { glyph: '\u25c6', color: '#ffaa22', name: tG('laEnemyShooter'), cur: Math.min(prog.t2, 10),  max: 10 },
-      { glyph: '\u2b22', color: '#b066ff', name: tG('laEnemyBruiser'), cur: Math.min(prog.t3, 3),   max: 3 },
-    ];
-    var html =
-      '<div class="la-ms-unlock">' +
-        '<div class="la-ms-unlock-hint">\ud83d\udd12 ' + tG('laModeUnlockHint') + '</div>';
-    for (var i = 0; i < rows.length; i++) {
-      var r = rows[i];
-      var done = r.cur >= r.max;
-      var pct = Math.round(r.cur / r.max * 100);
-      html +=
-        '<div class="la-ms-prog-row">' +
-          '<span class="la-ms-prog-glyph" style="color:' + r.color + '">' + r.glyph + '</span>' +
-          '<span class="la-ms-prog-name">' + r.name + '</span>' +
-          '<span class="la-ms-bar"><span class="la-ms-bar-fill" style="width:' + pct + '%;background:' + (done ? '#3ddc84' : r.color) + '"></span></span>' +
-          '<span class="la-ms-prog-count" style="color:' + (done ? '#3ddc84' : '#8aa3c0') + '">' + (done ? '\u2713 ' : '') + r.cur + '/' + r.max + '</span>' +
-        '</div>';
-    }
-    html += '</div>';
-    return html;
+  // Home panel shown until the tutorial is finished: a progress bar + Resume /
+  // Restart. Hardcore + the pickaxe skin unlock ONLY by finishing the tutorial.
+  function buildTutorialPanel() {
+    var fr = (localStorage.getItem('portfolio_lang') || 'fr') !== 'en';
+    var LA = window.LightAgain;
+    var total = (LA && LA.TUTORIAL_STEP_COUNT) || 10;
+    var done = (LA && typeof LA.laGetTutorialProgress === 'function') ? LA.laGetTutorialProgress() : 0;
+    done = Math.max(0, Math.min(done, total));
+    var started = done > 0;
+    var pct = Math.round(done / total * 100);
+    var label = started
+      ? (fr ? '\u00c9tape ' : 'Step ') + Math.min(done + 1, total) + ' / ' + total
+      : (fr ? 'Pas encore commenc\u00e9' : 'Not started yet');
+    return '' +
+      '<div class="la-ms-tut">' +
+        '<div class="la-ms-tut-hint">\ud83c\udf93 ' + (fr
+          ? 'Termine le tutoriel pour d\u00e9bloquer le mode Hardcore + le skin \u00ab I am Steve \u00bb'
+          : 'Finish the tutorial to unlock Hardcore mode + the \u201cI am Steve\u201d skin') + '</div>' +
+        '<div class="la-ms-bar la-ms-tut-bar"><span class="la-ms-bar-fill" style="width:' + pct + '%;background:#00ffff"></span></div>' +
+        '<div class="la-ms-tut-label">' + label + '</div>' +
+        '<div class="la-ms-tut-btns">' +
+          (started ? '<button type="button" id="_la-tut-resume" class="la-ms-tut-btn la-ms-tut-btn--primary">' + (fr ? 'Reprendre \u25b6' : 'Resume \u25b6') + '</button>' : '') +
+          '<button type="button" id="_la-tut-restart" class="la-ms-tut-btn">' + (started ? (fr ? 'Recommencer' : 'Restart') : (fr ? 'Commencer \u25b6' : 'Start \u25b6')) + '</button>' +
+        '</div>' +
+      '</div>';
   }
 
   function showModeMenu(container, fromActiveGame) {
     if (menuEl) return;
     var unlocked = laIsHardcoreUnlocked();
-    var prog = laGetUnlockProgress();
     // Pickaxe skin is a reward for unlocking hardcore — force off if still locked.
     window.__laSteveSkin = unlocked && (localStorage.getItem('la_skin_steve') === '1');
 
@@ -158,18 +154,19 @@
         '#_la-mode-select .la-ms-name{font-size:1.4rem;font-weight:700;letter-spacing:.16em}' +
         '#_la-mode-select .la-ms-desc{font-size:.74rem;line-height:1.65;min-height:2.6em}' +
         '#_la-mode-select .la-ms-cta{margin-top:.4rem;padding:.55rem 1.7rem;border-radius:9px;font-size:.86rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}' +
-        '#_la-mode-select .la-ms-unlock{margin-top:1.6rem;padding:1.1rem 1.3rem;border:1px solid rgba(255,70,20,0.18);border-radius:12px;background:rgba(255,40,0,0.03);text-align:left}' +
-        '#_la-mode-select .la-ms-unlock-hint{font-size:.66rem;letter-spacing:.08em;color:#a8744f;text-transform:uppercase;margin-bottom:.9rem;text-align:center}' +
-        '#_la-mode-select .la-ms-prog-row{display:flex;align-items:center;gap:.7rem;margin:.5rem 0}' +
-        '#_la-mode-select .la-ms-prog-glyph{font-size:1rem;width:1.2rem;text-align:center;flex:none}' +
-        '#_la-mode-select .la-ms-prog-name{font-size:.72rem;color:#9fb4cc;width:6.5rem;flex:none;letter-spacing:.04em}' +
-        '#_la-mode-select .la-ms-bar{flex:1;height:.5rem;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden;min-width:60px}' +
+        '#_la-mode-select .la-ms-bar{height:.5rem;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden}' +
         '#_la-mode-select .la-ms-bar-fill{display:block;height:100%;border-radius:99px;transition:width .5s cubic-bezier(0.22,1,0.36,1)}' +
-        '#_la-mode-select .la-ms-prog-count{font-size:.72rem;font-weight:700;width:4rem;text-align:right;flex:none}' +
+        '#_la-mode-select .la-ms-tut{margin-top:1.6rem;padding:1.2rem 1.3rem;border:1px solid rgba(0,255,255,0.18);border-radius:12px;background:rgba(0,255,255,0.03);text-align:center}' +
+        '#_la-mode-select .la-ms-tut-hint{font-size:.68rem;letter-spacing:.04em;color:#6f9bc0;margin-bottom:1rem;line-height:1.55}' +
+        '#_la-mode-select .la-ms-tut-bar{max-width:320px;margin:.2rem auto .7rem}' +
+        '#_la-mode-select .la-ms-tut-label{font-size:.74rem;font-weight:700;color:#9fd4e8;letter-spacing:.06em;margin-bottom:1rem}' +
+        '#_la-mode-select .la-ms-tut-btns{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap}' +
+        '#_la-mode-select .la-ms-tut-btn{cursor:pointer;font-family:monospace;font-weight:700;font-size:.76rem;letter-spacing:.07em;padding:.55rem 1.3rem;border-radius:9px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.18);color:#cfe0ee;transition:transform .15s,background .2s,border-color .2s}' +
+        '#_la-mode-select .la-ms-tut-btn:hover{transform:translateY(-2px);background:rgba(0,255,255,0.1);border-color:rgba(0,255,255,0.5)}' +
+        '#_la-mode-select .la-ms-tut-btn--primary{background:rgba(0,255,255,0.12);border-color:rgba(0,255,255,0.55);color:#00ffff}' +
         '#_la-mode-select .la-ms-steve{display:inline-flex;align-items:center;gap:.5rem;margin-top:1.5rem;font-size:.74rem;letter-spacing:.05em;color:#8aa3c0;cursor:pointer;user-select:none;transition:color .2s}' +
         '#_la-mode-select .la-ms-steve:hover{color:#cfe6f5}' +
-        '#_la-mode-select .la-ms-steve input{width:15px;height:15px;margin:0;accent-color:#5fe0cf;cursor:pointer}' +
-        '@media (max-width:560px){#_la-mode-select .la-ms-prog-name{display:none}}';
+        '#_la-mode-select .la-ms-steve input{width:15px;height:15px;margin:0;accent-color:#5fe0cf;cursor:pointer}';
       document.head.appendChild(ms);
     }
 
@@ -178,7 +175,8 @@
     menuEl.style.cssText = [
       'position:absolute', 'inset:0', 'z-index:60',
       'display:flex', 'align-items:center', 'justify-content:center',
-      'background:rgba(4,5,18,0.96)', 'font-family:monospace', 'overflow-y:auto',
+      // Lighter scrim than before so the running game stays visible behind the menu.
+      'background:rgba(4,5,18,0.66)', 'font-family:monospace', 'overflow-y:auto',
       'animation:la-go-fade-in 0.32s cubic-bezier(0.22,1,0.36,1) both',
     ].join(';');
 
@@ -199,7 +197,7 @@
         '<div class="la-ms-glyph" style="color:#00ffff">\u221e</div>' +
         '<div class="la-ms-name" style="color:#00ffff">SANDBOX</div>' +
         '<div class="la-ms-desc" style="color:#6f93b8">' + tG('laModeSandboxDesc') + '</div>' +
-        '<div class="la-ms-cta" style="border:1.5px solid rgba(0,255,255,0.5);background:rgba(0,255,255,0.1);color:#00ffff">' + (fromActiveGame ? tG('laModeResume') : tG('laGoPlay')) + '</div>' +
+        '<div class="la-ms-cta" style="border:1.5px solid rgba(0,255,255,0.5);background:rgba(0,255,255,0.1);color:#00ffff">' + ((fromActiveGame && currentMode === 'sandbox') ? tG('laModeResume') : tG('laGoPlay')) + '</div>' +
       '</div>' +
 
       // HARDCORE card
@@ -207,11 +205,11 @@
         '<div class="la-ms-glyph" style="color:' + hcCol + '">\u2620</div>' +
         '<div class="la-ms-name" style="color:' + hcCol + '">HARDCORE</div>' +
         '<div class="la-ms-desc" style="color:' + (unlocked ? '#a8744f' : '#6a4233') + '">' + tG('laModeHardcoreDesc') + '</div>' +
-        '<div class="la-ms-cta" style="' + hcCtaStyle + '">' + (unlocked ? tG('laGoPlay') : '\ud83d\udd12 ' + tG('laModeHardcoreLocked')) + '</div>' +
+        '<div class="la-ms-cta" style="' + hcCtaStyle + '">' + ((fromActiveGame && currentMode === 'hardcore') ? tG('laModeResume') : (unlocked ? tG('laGoPlay') : '\ud83d\udd12 ' + tG('laModeHardcoreLocked'))) + '</div>' +
       '</div>' +
 
       '</div>' +
-      (unlocked ? '' : buildUnlockPanel(prog)) +
+      (unlocked ? '' : buildTutorialPanel()) +
       // Cosmetic pickaxe skin — unlocked alongside hardcore mode as a reward
       (unlocked ? '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-steve-cb"><span>I am Steve</span></label>' : '') +
       '</div>';
@@ -230,6 +228,17 @@
       });
     }
 
+    // Tutorial progress panel: Resume (from the saved step) / Restart (from 0).
+    // Both route through startTutorialFlow, which dismisses this menu and launches.
+    var tutResumeBtn = menuEl.querySelector('#_la-tut-resume');
+    var tutRestartBtn = menuEl.querySelector('#_la-tut-restart');
+    if (tutResumeBtn) tutResumeBtn.addEventListener('click', function () {
+      var LA = window.LightAgain;
+      var step = (LA && typeof LA.laGetTutorialProgress === 'function') ? LA.laGetTutorialProgress() : 0;
+      startTutorialFlow(step, true);   // from home → returns to home on skip/finish
+    });
+    if (tutRestartBtn) tutRestartBtn.addEventListener('click', function () { startTutorialFlow(0, true); });
+
     // Resume the current (paused) run without restarting it. "Reprendre" always
     // resumes — even if the player had manually paused before opening the menu —
     // and clears the pause state so the button can't stay stuck on ▶.
@@ -238,14 +247,18 @@
       clearPauseState();
       if (activeGame && typeof activeGame.resume === 'function') activeGame.resume();
     }
-    // Sandbox card: mid-game it acts as "Resume" (no restart); from the launch
-    // menu it starts a fresh sandbox run.
+    // Each card "Resumes" the CURRENT run when the menu was opened from that same
+    // mode; otherwise it (re)starts that mode. From the launch menu it starts fresh.
     function chooseSandbox() {
-      if (fromActiveGame) { resumeGame(); return; }
+      if (fromActiveGame && currentMode === 'sandbox') { resumeGame(); return; }
       dismissModeMenu();
-      startWithMode(container, 'sandbox', false);
+      startWithMode(container, 'sandbox', fromActiveGame);
     }
-    function chooseHardcore() { dismissModeMenu(); startWithMode(container, 'hardcore', fromActiveGame); }
+    function chooseHardcore() {
+      if (fromActiveGame && currentMode === 'hardcore') { resumeGame(); return; }
+      dismissModeMenu();
+      startWithMode(container, 'hardcore', fromActiveGame);
+    }
 
     sbBtn.addEventListener('click', chooseSandbox);
     sbBtn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseSandbox(); } });
@@ -766,6 +779,104 @@
   }
 
   /* ================================================================
+     TUTORIAL — launch flow (the ? button + first launch)
+     The static help popup (showHelpPopup) survives as a reference,
+     reachable from the tutorial overlay's "Voir l'aide" link.
+     ================================================================ */
+
+  // step:     0-based step to start at (home "Resume" passes the saved step;
+  //           the ? button and "Restart" pass 0 for a full run).
+  // fromHome: true when launched from the home menu (skip/finish returns there);
+  //           false when launched in-place via the ? button (stays in the run).
+  function startTutorialFlow(step, fromHome) {
+    var container = overlayEl && overlayEl.querySelector('.light-again-canvas');
+    if (!container) return;
+    // Can't cleanly reset while an upgrade draft / confirm is mid-flow.
+    if (document.getElementById('_la-upgrade-overlay')) return;
+    if (document.getElementById('_la-tutorial-confirm')) return;
+
+    step = step || 0;
+    window.__laTutorialStartStep = step;     // consumed by the scene / _startTutorial
+    window.__laTutorialFromHome  = !!fromHome;
+    var sc = window.__laSceneRef;
+
+    // No live game yet (mode menu showing) or a finished run on screen:
+    // (re)launch a fresh sandbox session that auto-starts the tutorial.
+    if (!activeGame || !sc || isLightAgainGameOverOpen()) {
+      if (helpPopupEl) closeHelpPopup(true);
+      dismissModeMenu();
+      window.__laStartTutorialOnReady = true;
+      if (activeGame && sc) startWithMode(container, 'sandbox', true);   // restart current scene
+      else                  startWithMode(container, 'sandbox', false);  // boot a fresh game
+      return;
+    }
+
+    // Live HARDCORE run: warn that starting the tutorial ends it, then relaunch
+    // in sandbox (the tutorial always runs under sandbox's forgiving rules).
+    if (currentMode === 'hardcore') {
+      showTutorialConfirm(container);
+      return;
+    }
+
+    // Live SANDBOX run: start the tutorial in place.
+    if (helpPopupEl) closeHelpPopup(true);
+    dismissModeMenu();  // no-op if closed; else the opaque menu (z60) would cover the tutorial (z56)
+    clearPauseState();
+    if (typeof activeGame.resume === 'function') activeGame.resume();
+    sc._startTutorial(step, !!fromHome);
+  }
+
+  function showTutorialConfirm(container) {
+    if (document.getElementById('_la-tutorial-confirm')) return;
+    var fr = (localStorage.getItem('portfolio_lang') || 'fr') !== 'en';
+
+    // Freeze the doomed hardcore run behind the dialog.
+    if (activeGame && typeof activeGame.pause === 'function') activeGame.pause();
+
+    var ov = document.createElement('div');
+    ov.id = '_la-tutorial-confirm';
+    ov.style.cssText = [
+      'position:absolute', 'inset:0', 'z-index:62',
+      'display:flex', 'align-items:center', 'justify-content:center',
+      'background:rgba(4,5,18,0.9)', 'font-family:monospace',
+    ].join(';');
+    ov.innerHTML =
+      '<div style="text-align:center;max-width:min(420px,92%);padding:1.8rem 1.6rem;border-radius:16px;' +
+        'background:rgba(8,10,24,0.96);border:1px solid rgba(255,80,30,0.4);box-shadow:0 0 40px rgba(255,60,0,0.12)">' +
+        '<div style="font-size:2rem;margin-bottom:.6rem">⚠️</div>' +
+        '<div style="font-size:.95rem;font-weight:700;color:#ffb499;margin-bottom:.7rem;letter-spacing:.04em">' +
+          (fr ? 'Lancer le tutoriel ?' : 'Start the tutorial?') + '</div>' +
+        '<div style="font-size:.78rem;line-height:1.6;color:#c8b0a8;margin-bottom:1.4rem">' +
+          (fr ? 'Cela mettra fin à ta partie <b style="color:#ff5530">Hardcore</b> en cours. Le tutoriel se déroule en <b style="color:#00ffff">Sandbox</b>.'
+              : 'This will end your current <b style="color:#ff5530">Hardcore</b> run. The tutorial runs in <b style="color:#00ffff">Sandbox</b>.') + '</div>' +
+        '<div style="display:flex;gap:.8rem;justify-content:center">' +
+          '<button id="_la-tc-cancel" type="button" style="cursor:pointer;font-family:monospace;font-weight:700;font-size:.78rem;padding:.5rem 1.2rem;border-radius:9px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);color:#cfe0ee">' +
+            (fr ? 'Annuler' : 'Cancel') + '</button>' +
+          '<button id="_la-tc-go" type="button" style="cursor:pointer;font-family:monospace;font-weight:800;font-size:.78rem;letter-spacing:.06em;padding:.5rem 1.3rem;border-radius:9px;background:rgba(0,255,255,0.12);border:1.5px solid rgba(0,255,255,0.55);color:#00ffff">' +
+            (fr ? 'Lancer le tuto ▶' : 'Start tutorial ▶') + '</button>' +
+        '</div>' +
+      '</div>';
+
+    container.style.position = 'relative';
+    container.appendChild(ov);
+
+    function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+
+    ov.querySelector('#_la-tc-cancel').addEventListener('click', function () {
+      close();
+      clearPauseState();
+      if (activeGame && typeof activeGame.resume === 'function') activeGame.resume();
+    });
+    ov.querySelector('#_la-tc-go').addEventListener('click', function () {
+      close();
+      window.__laStartTutorialOnReady = true;
+      startWithMode(container, 'sandbox', true);  // ends hardcore, restarts as sandbox + tutorial
+    });
+    var goBtn = ov.querySelector('#_la-tc-go');
+    if (goBtn) goBtn.focus();
+  }
+
+  /* ================================================================
      MODAL — open
      ================================================================ */
 
@@ -789,20 +900,14 @@
     closeBtn.setAttribute('aria-label', t('closeLbl'));
     closeBtn.addEventListener('click', closeLightAgain);
 
-    // Pause — même style que l'aide, à gauche du ?
-    var pauseBtn = document.createElement('button');
-    pauseBtn.type = 'button';
-    pauseBtn.className = 'light-again-help-btn light-again-pause-btn';
-    pauseBtn.setAttribute('aria-pressed', 'false');
-    updatePauseBtnUi(pauseBtn);
-    pauseBtn.addEventListener('click', toggleGamePause);
-
-    // Help button (?) — left of close, opens game instructions popup
+    // Help button (?) — left of close. Launches the interactive tutorial from
+    // the start (the static reference popup stays reachable from inside it).
+    // fromHome=false: launched mid-run, so finishing/skipping stays in-game.
     var helpBtn = document.createElement('button');
     helpBtn.className = 'light-again-help-btn';
     helpBtn.textContent = '?';
     helpBtn.setAttribute('aria-label', t('lightAgainHelp'));
-    helpBtn.addEventListener('click', showHelpPopup);
+    helpBtn.addEventListener('click', function () { startTutorialFlow(0, false); });
 
     // Phaser container (Phaser creates its own canvas inside)
     var container = document.createElement('div');
@@ -828,7 +933,6 @@
     });
 
     modal.appendChild(menuBtnEl);
-    modal.appendChild(pauseBtn);
     modal.appendChild(helpBtn);
     modal.appendChild(closeBtn);
     modal.appendChild(container);
@@ -867,6 +971,18 @@
       window.__laGameMode = mode;
       updateMenuBtn();
     };
+    // Tutorial ↔ shell bridge: react to tutorial start/stop (hide the Menu btn),
+    // let the tutorial overlay open the static reference popup, and let Skip bounce
+    // back to the home/mode-select menu (where the progress bar lives).
+    window.__laOnTutorialChange = function () { updateMenuBtn(); };
+    window.__laOpenReference = showHelpPopup;
+    window.__laShowHome = function () {
+      if (!overlayEl) return;
+      var c = overlayEl.querySelector('.light-again-canvas');
+      if (!c) return;
+      if (activeGame && typeof activeGame.pause === 'function') activeGame.pause();
+      showModeMenu(c, true);
+    };
     showModeMenu(container, false);
   }
 
@@ -903,6 +1019,15 @@
     currentMode = null;
     window.__laGameMode = null;
     window.__laOnModeChange = null;
+
+    // Tutorial state is per-session — clear so a reopen starts clean.
+    window.__laTutorialActive = false;
+    window.__laStartTutorialOnReady = false;
+    window.__laTutorialStartStep = 0;
+    window.__laTutorialFromHome = false;
+    window.__laOnTutorialChange = null;
+    window.__laOpenReference = null;
+    window.__laShowHome = null;
 
     // Stop game loop before tearing down DOM
     if (activeGame) { activeGame.stop(); activeGame = null; }

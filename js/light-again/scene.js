@@ -376,6 +376,7 @@
       this._initTimeStop();
       this._initAnomaly();
       this._initGigaBruiser();
+      this._initTutorial();
 
       cam.setBackgroundColor(LA.getColors().bgColor);
 
@@ -390,10 +391,12 @@
           ev.preventDefault();
           self._tryDash();
         }
-        // Clear Board (sandbox only): Delete / Backspace → screen-sweeping shockwave
+        // Clear Board (sandbox only): Delete / Backspace → screen-sweeping shockwave.
+        // Disabled during the tutorial (would wipe curated lesson enemies / cheese
+        // the Bruiser step's presence-based completion).
         if ((ev.code === 'Delete' || ev.code === 'Backspace') && !ev.repeat) {
           ev.preventDefault();
-          if (window.__laGameMode === 'sandbox' && self.p && self.p.state !== 'DEAD') self._clearBoard();
+          if (window.__laGameMode === 'sandbox' && !self._tutorialActive && self.p && self.p.state !== 'DEAD') self._clearBoard();
         }
         if (ev.code === 'KeyL' && !ev.repeat) {
           ev.preventDefault();
@@ -498,6 +501,12 @@
         if (self._killCounterTxt) { self._killCounterTxt.destroy(); self._killCounterTxt = null; }
         if (self._clearAnomaly)     self._clearAnomaly(true);
         if (self._clearGigaBruiser) self._clearGigaBruiser(true);
+        // Tear down any tutorial overlay so it can't outlive the scene (e.g. a
+        // mode switch from the home menu mid-tutorial would otherwise orphan it).
+        self._tutorialActive = false;
+        window.__laTutorialActive = false;
+        var tutOv = document.getElementById('_la-tut-overlay');
+        if (tutOv && tutOv.parentNode) tutOv.parentNode.removeChild(tutOv);
         window.__laSceneRef = null;
         if (self._onWindowFocus) {
           window.removeEventListener('focus', self._onWindowFocus);
@@ -546,6 +555,17 @@
       }
 
       this._checkTheme();
+
+      // Kick off the interactive tutorial once the loader has cleared. The flag
+      // is armed by shell.js on first launch, the ? button, or a hardcore→sandbox
+      // switch. Checked once per scene lifecycle.
+      if (this._loaderRemoved && !this._tutArmChecked) {
+        this._tutArmChecked = true;
+        if (window.__laStartTutorialOnReady) {
+          window.__laStartTutorialOnReady = false;
+          this._startTutorial();
+        }
+      }
 
       // Upgrade slow-mo transition (runs on real dt, not scaled)
       this._updateUpgradeSlowMo(dt);
@@ -772,6 +792,7 @@
       this._checkAnomalyCollision();
       this._updateGigaBruiser(ms, pMs, dt);
       this._checkGigaBruiserCollision();
+      this._updateTutorial(dt);
 
       // Star power timer countdown — uses real time so TW doesn't pause the bar
       if (this.isStarPowered) {
@@ -779,8 +800,9 @@
         if (this._starPowerTimer < 0) this._starPowerTimer = 0;
       }
 
-      // Natural spawns pause while the anomaly's quarantine barrier is up.
-      if (this.spawnTimer > -999000 && !this._anomalyBarrierActive) {
+      // Natural spawns pause while the anomaly's quarantine barrier is up, and
+      // during the tutorial (which curates its own lesson environments).
+      if (this.spawnTimer > -999000 && !this._anomalyBarrierActive && !this._tutorialActive) {
         this.spawnTimer += ms;
         var _sandbox = (window.__laGameMode === 'sandbox');
         // Sandbox: steady one-by-one stream, paced live by the mouse wheel.

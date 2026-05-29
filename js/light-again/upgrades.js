@@ -54,6 +54,7 @@
      CHECK TRIGGER — called after each kill / end of batch
      ================================================================ */
   M._checkUpgradeTrigger = function () {
+    if (this._tutorialActive) return;  // no upgrade drafts during the tutorial
     if (this._upgradeDraftOpen) return;
     if (this._upSlowMoPhase) return;
     if (this._twActive) return;  // don't trigger upgrades during time stop

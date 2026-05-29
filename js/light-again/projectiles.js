@@ -292,6 +292,7 @@
             pr.vy = Math.sin(refAng) * refSpd;
             pr.isReflected = true;
             pr._reflectedThisAtk = true;  // show tether only for this dash-attack
+            if (this._tutEvent) this._tutEvent('parade');  // tutorial: parry detected
             // Tag with the current dash-attack id so its eventual smash event is
             // attributed to the right popup bucket. Bumping pending count here
             // and decrementing on destroy lets us flush the parade popup the

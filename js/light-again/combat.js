@@ -384,6 +384,7 @@
     var p = this.p;
     var e = this.enemies[markedIdx];
     var ex = e.x, ey = e.y;
+    if (this._tutEvent) this._tutEvent('nuke');  // tutorial: mark+nuke detected
     var detoLvl  = (this._upgradeLevels && this._upgradeLevels.detonation) || 0;
     // Golden palette when fired at TW resolution
     var twDeto = !!this._twBatchWindow;

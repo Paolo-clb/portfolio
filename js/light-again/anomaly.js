@@ -71,6 +71,7 @@
   M._maybeSpawnAnomaly = function (ms) {
     // Shared boss gate: only one mini-boss alive at a time (anomaly OR giga
     // bruiser), and they share the same cooldown / spawn-min-delay budget.
+    if (this._tutorialActive) return;  // no surprise mini-bosses during the tutorial
     if (this._anomaly || this._gigaBruiser) return;
     if (!this.p || this.p.state === 'DEAD') return;
     if (this._anomalyCooldownT > 0) { this._anomalyCooldownT -= ms; return; }
