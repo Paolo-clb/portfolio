@@ -23,7 +23,7 @@
 
   // Number of tutorial steps — kept in sync with the array in _tutBuildSteps.
   // Exposed so the home menu can render the progress bar without a live scene.
-  LA.TUTORIAL_STEP_COUNT = 10;
+  LA.TUTORIAL_STEP_COUNT = 11;
 
   /* ---- language (mirror shell.js help popup) ---- */
   function tutFr() {
@@ -55,31 +55,41 @@
       '#_la-tut-overlay .la-tut-quest{position:absolute;top:6.2rem;left:50%;transform:translateX(-50%);' +
         'display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;justify-content:center;' +
         'max-width:min(620px,92%);padding:.6rem 1.05rem;border-radius:12px;' +
-        'background:rgba(4,8,20,.78);border:1px solid rgba(0,255,255,.32);' +
-        '-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);' +
-        'box-shadow:0 6px 26px rgba(0,0,0,.4);text-align:center}',
-      '#_la-tut-overlay .la-tut-quest.la-tut-done{border-color:rgba(61,220,132,.7);background:rgba(6,22,14,.82)}',
+        'background:transparent;border:1px solid rgba(0,255,255,.34);' +
+        'text-align:center}',
+      '#_la-tut-overlay .la-tut-quest.la-tut-done{border-color:rgba(61,220,132,.7);background:transparent}',
       '#_la-tut-overlay .la-tut-badge{font-size:.56rem;letter-spacing:.22em;font-weight:700;' +
         'padding:.18rem .5rem;border-radius:6px;background:rgba(0,255,255,.14);color:#00ffff;' +
         'border:1px solid rgba(0,255,255,.3);flex:none}',
       '#_la-tut-overlay .la-tut-done .la-tut-badge{background:rgba(61,220,132,.18);color:#3ddc84;border-color:rgba(61,220,132,.45)}',
-      '#_la-tut-overlay .la-tut-quest-text{font-size:.95rem;font-weight:700;letter-spacing:.01em;color:#dff6ff}',
+      '#_la-tut-overlay .la-tut-quest-text{font-size:.95rem;font-weight:700;letter-spacing:.01em;color:#dff6ff;' +
+        'text-shadow:0 1px 4px #000,0 0 9px rgba(0,0,0,.95)}',
       '#_la-tut-overlay .la-tut-progress{font-size:.86rem;font-weight:700;color:#ffcc00;letter-spacing:.05em}',
+
+      /* Combo-indicator highlight (combo step only) — a pulsing ring framing the
+         on-canvas combo counter at the top, with a caption pointing at it. */
+      '#_la-tut-overlay .la-tut-combo-cue{position:absolute;top:43px;left:50%;transform:translateX(-50%);' +
+        'width:120px;height:36px;border-radius:11px;border:2px solid #ffcc00;pointer-events:none;' +
+        'animation:la-tut-cue-pulse 1.05s ease-in-out infinite}',
+      '#_la-tut-overlay .la-tut-combo-tag{position:absolute;left:100%;top:50%;transform:translateY(-50%);' +
+        'margin-left:.55rem;white-space:nowrap;font-size:.8rem;font-weight:700;color:#ffcc00;' +
+        'text-shadow:0 1px 4px #000,0 0 9px rgba(0,0,0,.95)}',
+      '@keyframes la-tut-cue-pulse{0%,100%{opacity:.5;box-shadow:0 0 10px rgba(255,204,0,.4),inset 0 0 8px rgba(255,204,0,.16)}' +
+        '50%{opacity:1;box-shadow:0 0 22px rgba(255,204,0,.85),inset 0 0 15px rgba(255,204,0,.32)}}',
 
       /* Big tooltip card (lower third) */
       '#_la-tut-overlay .la-tut-tip{position:absolute;left:50%;bottom:4.6rem;transform:translateX(-50%);' +
         'width:min(560px,92%);padding:1.05rem 1.3rem 1.15rem;border-radius:16px;text-align:center;' +
-        'background:rgba(4,6,18,.82);border:1px solid rgba(0,255,255,.28);' +
-        'box-shadow:0 0 22px rgba(0,255,255,.08);' +
-        '-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}',
+        'background:transparent;border:1px solid rgba(0,255,255,.3)}',
       '#_la-tut-overlay .la-tut-tip-title{font-size:1.5rem;font-weight:800;letter-spacing:.16em;' +
-        'text-transform:uppercase;color:#00ffff;text-shadow:0 0 14px rgba(0,255,255,.4);margin-bottom:.7rem}',
+        'text-transform:uppercase;color:#00ffff;text-shadow:0 0 14px rgba(0,255,255,.4),0 2px 5px #000;margin-bottom:.7rem}',
       '#_la-tut-overlay .la-tut-keys{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;justify-content:center;margin-bottom:.7rem}',
       '#_la-tut-overlay .la-tut-kbd{display:inline-block;padding:.3rem .62rem;border-radius:7px;' +
         'background:rgba(0,255,255,.08);border:1px solid rgba(0,255,255,.45);border-bottom-width:3px;' +
         'color:#b9f6ff;font-weight:700;font-size:.82rem;letter-spacing:.02em}',
       '#_la-tut-overlay .la-tut-or{opacity:.45;font-size:.66rem;margin:0 .1rem;letter-spacing:.1em}',
-      '#_la-tut-overlay .la-tut-desc{font-size:.82rem;line-height:1.6;color:#a9c4d8}',
+      '#_la-tut-overlay .la-tut-desc{font-size:.82rem;line-height:1.6;color:#bcd4e6;' +
+        'text-shadow:0 1px 3px #000,0 0 7px rgba(0,0,0,.9)}',
       '#_la-tut-overlay .la-tut-desc b{color:#dff6ff}',
       '#_la-tut-overlay .la-tut-desc .c-dash{color:#00ffff}',
       '#_la-tut-overlay .la-tut-desc .c-datk{color:#ff14c8}',
@@ -139,13 +149,23 @@
     this._tutSteps         = null;
     this._tutStepIdx       = -1;
     this._tutTransitioning = false;
-    this._tutEvents        = { nuke: 0, parade: 0, shieldBreak: 0, basicKill: 0 };
+    this._tutEvents        = { nuke: 0, parade: 0, shieldBreak: 0, basicKill: 0, clear: 0 };
     this._tutDom           = null;
     this._tutLastProg      = undefined;
     this._tutDone          = false;
+    // True only during the final free-play step — re-enables the sandbox-only
+    // natural spawner + Clear Board (both gated off elsewhere while a tutorial runs).
+    this._tutSandboxStep   = false;
+    // True while the player has not yet acted on the current step — freezes enemy
+    // AI (scene.js gates _updateEnemies on this) so reading is never punished.
+    // Re-armed each step in _tutNext, cleared on the first player action, then
+    // re-armed again on respawn (see _tutBurstT).
+    this._tutEnemiesFrozen = false;
+    // Seconds left in the post-respawn knockback window, during which enemies
+    // stay live so they get flung away before the freeze re-latches. 0 = none.
+    this._tutBurstT = 0;
     // true → skip/finish bounces back to the home menu; false → stays in the
     // live game (tutorial launched in-place via the ? button mid-run).
-    this._tutReturnToHome  = false;
     // Re-armed on every scene (re)create so a restart (hardcore→sandbox switch,
     // ?-button restart) can still trigger the tutorial. _initTutorial runs in
     // create(), so this resets per scene lifecycle.
@@ -164,14 +184,14 @@
   /* ================================================================
      ENTER / EXIT
      ================================================================ */
-  M._startTutorial = function (startStep, fromHome) {
+  M._startTutorial = function (startStep) {
     ensureTutStyles();
     // Resume point: explicit arg wins, else the global armed by shell.js, else 0.
     if (startStep == null) startStep = window.__laTutorialStartStep || 0;
-    if (fromHome == null)  fromHome  = !!window.__laTutorialFromHome;
     window.__laTutorialStartStep = 0;
+    // Finishing/skipping always continues straight into live sandbox play now, so
+    // we no longer track whether the tutorial was launched from the home menu.
     window.__laTutorialFromHome  = false;
-    this._tutReturnToHome = !!fromHome;
     this._tutorialActive = true;
     window.__laTutorialActive = true;
     if (typeof window.__laOnTutorialChange === 'function') window.__laOnTutorialChange(true);
@@ -210,7 +230,8 @@
     this.comboMultiplier = 1;
     this.comboTimer     = 0;
     this.spawnTimer     = 0;
-    this._tutEvents     = { nuke: 0, parade: 0, shieldBreak: 0, basicKill: 0 };
+    this._tutSandboxStep = false;
+    this._tutEvents     = { nuke: 0, parade: 0, shieldBreak: 0, basicKill: 0, clear: 0 };
     this._tutLastProg   = undefined;
 
     this._tutBuildSteps();
@@ -269,6 +290,9 @@
 
   M._tutEndMode = function () {
     this._tutorialActive = false;
+    this._tutSandboxStep = false;
+    this._tutEnemiesFrozen = false;
+    this._tutBurstT = 0;
     window.__laTutorialActive = false;
     if (typeof window.__laOnTutorialChange === 'function') window.__laOnTutorialChange(false);
 
@@ -296,21 +320,45 @@
   /* ================================================================
      SPAWN HELPERS (curated lesson environments)
      ================================================================ */
-  M._tutSpawnOne = function (tier, dist) {
-    if (this.enemies.length >= C.MAX_ENEMIES) return null;
-    var ang = Math.random() * Math.PI * 2;
-    var pos = this._spawnPosNear(ang, dist, tier);
-    this._spawnTierAt(tier, pos.x, pos.y);
-    return this.enemies[this.enemies.length - 1] || null;
+  // Straight "up" on screen (camera is y-down, so up is the -Y direction).
+  // Tutorial enemies always spawn in a fan ABOVE the player so they never
+  // encircle them and stay grouped in plain view while the player reads.
+  var TUT_UP = -Math.PI / 2;
+  // Pull every curated spawn a bit closer to the player than its nominal radius
+  // so the group sits comfortably in view (not way up near the top edge).
+  var TUT_DIST_SCALE = 0.78;
+
+  // Force the just-spawned enemy fully visible NOW (skip the scale-up/fade-in
+  // pop). Its spawn anim only advances inside _updateEnemies, which the tutorial
+  // freezes while the player is still — without this, frozen enemies stay
+  // invisible (scale/alpha 0) until the player first moves.
+  M._tutRevealLast = function () {
+    var e = this.enemies[this.enemies.length - 1];
+    if (e) e._spawnAnimT = 1.0;
+    return e || null;
   };
 
+  M._tutSpawnOne = function (tier, dist) {
+    if (this.enemies.length >= C.MAX_ENEMIES) return null;
+    var ang = TUT_UP + (Math.random() - 0.5) * 0.7;   // small jitter around "up"
+    var pos = this._spawnPosNear(ang, dist * TUT_DIST_SCALE, tier);
+    this._spawnTierAt(tier, pos.x, pos.y);
+    return this._tutRevealLast();
+  };
+
+  // A group fanned across an arc ABOVE the player. Spread angularly + in depth
+  // so they read as distinct, spaced-out targets (enemy separation is frozen
+  // with the rest of the AI, so their spawn layout is what the player sees).
   M._tutSpawnRing = function (tier, count, dist) {
+    var SPREAD = 1.0;   // half-arc (~57° each side → ~114° fan above the player)
     for (var i = 0; i < count; i++) {
       if (this.enemies.length >= C.MAX_ENEMIES) break;
-      var ang = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
-      var d   = dist + (Math.random() - 0.5) * 70;
-      var pos = this._spawnPosNear(ang, d, tier);
+      var frac = count > 1 ? i / (count - 1) : 0.5;        // 0..1 across the fan
+      var ang  = TUT_UP + (frac - 0.5) * 2 * SPREAD + (Math.random() - 0.5) * 0.14;
+      var d    = dist * TUT_DIST_SCALE + (Math.random() - 0.5) * 90;  // depth variation → spacing
+      var pos  = this._spawnPosNear(ang, d, tier);
       this._spawnTierAt(tier, pos.x, pos.y);
+      this._tutRevealLast();
     }
   };
 
@@ -327,6 +375,9 @@
     var self = this;
     var fr = tutFr();
     var d  = function () { return self._tutData; };
+    // Spawn-rate the player must scroll up to in the final step (≈ floods the
+    // arena so the wheel's effect is obvious before the Clear Board payoff).
+    var sandTarget = 3;
 
     this._tutSteps = [
       /* 0 — MOVE */
@@ -398,11 +449,25 @@
         maintain: function () { if (self._tutCountTier(1) === 0) self._tutSpawnOne(1, 360); },
       },
 
-      /* 5 — COMBO → SHIELD */
+      /* 5 — MARK + NUKE */
+      {
+        title: fr ? 'Marque & Détonation' : 'Mark & Detonation',
+        quest: fr ? 'Marque un ennemi au dash, puis fais-le détoner' : 'Mark an enemy on a dash, then detonate it',
+        keys:  fr ? ['Dash  →  torpille torpille'] : ['Dash  →  torpedo-attack'],
+        desc:  fr
+          ? '<span class="c-dash">Dashe</span> À TRAVERS un ennemi pour le <span class="c-mark">marquer</span> (étincelles bleues), puis fais une <span class="c-torp">attaque torpille</span> dessus → <span class="c-shield">NUKE</span> à zone d’effet ! (⚠️ La dash-attaque ne déclenche pas la nuke.)'
+          : '<span class="c-dash">Dash</span> THROUGH an enemy to <span class="c-mark">mark</span> it (blue sparks), then <span class="c-torp">torpedo-attack</span> it → AoE <span class="c-shield">NUKE</span>! (⚠️ Dash-attack does NOT trigger it.)',
+        setup: function () { d().nuke0 = self._tutEvents.nuke; self._tutSpawnRing(1, 6, 230); },
+        check: function () { return self._tutEvents.nuke > d().nuke0; },
+        maintain: function () { if (self._tutCountTier(1) < 3) self._tutSpawnRing(1, 5, 230); },
+      },
+
+      /* 6 — COMBO → SHIELD */
       {
         title: fr ? 'Combo & Bouclier' : 'Combo & Shield',
         quest: fr ? 'Atteins un combo x10 pour gagner un bouclier' : 'Reach a x10 combo to earn a shield',
         keys:  null,
+        highlightCombo: true,   // point the player at the combo counter up top
         desc:  fr
           ? 'Tue sans t’arrêter : chaque kill monte le <span class="c-combo">combo</span>. À <span class="c-combo">x10</span>, tu gagnes un <span class="c-shield">bouclier</span> (absorbe un coup).'
           : 'Keep killing: each kill raises the <span class="c-combo">combo</span>. At <span class="c-combo">x10</span> you earn a <span class="c-shield">shield</span> (absorbs one hit).',
@@ -417,19 +482,6 @@
         // shield-count check could never become true (soft-lock).
         check: function () { return self.comboMultiplier >= 10; },
         maintain: function () { if (self._tutCountTier(1) < 6) self._tutSpawnRing(1, 8, 320); },
-      },
-
-      /* 6 — MARK + NUKE */
-      {
-        title: fr ? 'Marque & Détonation' : 'Mark & Detonation',
-        quest: fr ? 'Marque un ennemi au dash, puis fais-le détoner' : 'Mark an enemy on a dash, then detonate it',
-        keys:  fr ? ['Dash  →  torpille torpille'] : ['Dash  →  torpedo-attack'],
-        desc:  fr
-          ? '<span class="c-dash">Dashe</span> À TRAVERS un ennemi pour le <span class="c-mark">marquer</span> (étincelles bleues), puis fais une <span class="c-torp">attaque torpille</span> dessus → <span class="c-shield">NUKE</span> à zone d’effet ! (⚠️ La dash-attaque ne déclenche pas la nuke.)'
-          : '<span class="c-dash">Dash</span> THROUGH an enemy to <span class="c-mark">mark</span> it (blue sparks), then <span class="c-torp">torpedo-attack</span> it → AoE <span class="c-shield">NUKE</span>! (⚠️ Dash-attack does NOT trigger it.)',
-        setup: function () { d().nuke0 = self._tutEvents.nuke; self._tutSpawnRing(1, 6, 230); },
-        check: function () { return self._tutEvents.nuke > d().nuke0; },
-        maintain: function () { if (self._tutCountTier(1) < 3) self._tutSpawnRing(1, 5, 230); },
       },
 
       /* 7 — STAR POWER (the "bonus dash attack") */
@@ -489,7 +541,7 @@
 
       /* 9 — BRUISER (break shield) */
       {
-        title: fr ? 'Mastodonte' : 'Bruiser',
+        title: fr ? 'Bruiser' : 'Bruiser',
         quest: fr ? 'Brise le bouclier du Bruiser et achève-le' : 'Break the Bruiser’s shield and finish it',
         keys:  fr ? ['Dash-attaque  →  brise le bouclier'] : ['Dash-attack  →  break the shield'],
         desc:  fr
@@ -507,15 +559,88 @@
           }
         },
       },
+
+      /* 10 — SANDBOX TOOLS — two quests in one step: pace the spawn rate with the
+         mouse wheel, then sweep the board with Delete / Backspace. Both are
+         sandbox-only and normally gated OFF mid-tutorial; _tutSandboxStep re-opens
+         them (and the real natural spawner) just for this final free-play step. */
+      {
+        title: fr ? 'Sandbox' : 'Sandbox',
+        // Free play: never freeze enemies — the live spawner is the whole lesson,
+        // and the quest (wheel + Clear) doesn't require moving.
+        noFreeze: true,
+        quest: fr ? 'Accélère le spawn à la molette, puis vide l’arène' : 'Speed up spawns with the wheel, then wipe the arena',
+        keys:  fr ? ['Molette ↑', 'Suppr / Retour arrière'] : ['Wheel ↑', 'Delete / Backspace'],
+        desc:  fr
+          ? 'Outils <b>bac à sable</b> : la <span class="c-dash">molette</span> <b>accélère</b> (↑) ou calme (↓) l’apparition des ennemis. <span class="c-shield">Suppr</span> ou <span class="c-shield">Retour arrière</span> déclenche une onde qui <b>balaie l’arène</b> — sans points.'
+          : 'Sandbox-only tools : the <span class="c-dash">mouse wheel</span> <b>speeds up</b> (↑) or calms (↓) enemy spawns. <span class="c-shield">Delete</span> or <span class="c-shield">Backspace</span> fires a wave that <b>sweeps the arena</b> — no points.',
+        setup: function () {
+          // Free play: let the REAL sandbox spawner run (paced live by the wheel)
+          // and re-enable Clear Board for this step only.
+          self._tutSandboxStep = true;
+          self._sandboxRate = C.SANDBOX_RATE_DEFAULT;  // back to x1 so the speed-up is felt
+          self._spdUiTimer  = C.SANDBOX_SPEED_UI_DUR;  // flash the speed slider into view
+          self.spawnTimer   = 0;
+          d().clear0      = self._tutEvents.clear || 0;
+          d().sandSped    = false;
+          d().sandCleared = false;
+          self._tutSpawnRing(1, 4, 320);              // a few starters to multiply
+        },
+        progress: function () {
+          var dd = d();
+          var r = self._sandboxRate;
+          var rateStr = (r % 1 === 0) ? String(r) : r.toFixed(1);
+          var q1 = dd.sandSped ? '✓' : ('x' + rateStr + ' / x' + sandTarget);
+          var q2 = dd.sandCleared ? '✓' : '–';
+          return (fr ? 'Molette ' : 'Wheel ') + q1 + '   ·   ' + (fr ? 'Clear ' : 'Clear ') + q2;
+        },
+        // Two sticky sub-quests; the step clears once BOTH are satisfied.
+        maintain: function () {
+          var dd = d();
+          if (self._sandboxRate >= sandTarget) dd.sandSped = true;
+          if ((self._tutEvents.clear || 0) > dd.clear0) dd.sandCleared = true;
+        },
+        check: function () {
+          var dd = d();
+          return !!dd.sandSped && !!dd.sandCleared;
+        },
+      },
     ];
   };
 
   /* ================================================================
      PER-FRAME UPDATE — called from scene.update()
      ================================================================ */
+  // True the moment the player does anything — moves, dashes, or attacks. Used
+  // to thaw the frozen enemies on a step's (or a respawn's) first input.
+  M._tutPlayerActed = function (p) {
+    var inp = this._inputVec();
+    if (Math.abs(inp.dx) > 0.01 || Math.abs(inp.dy) > 0.01) return true;
+    return p.state === 'DASHING' || p.state === 'DASH_ATTACKING' ||
+           p.state === 'ATTACKING' || p.state === 'RECOVERY';
+  };
+
   M._tutTrack = function (dt) {
     var p = this.p, d = this._tutData;
     if (!p || !d) return;
+    // Freeze model: enemies spawn but hold still until the player's FIRST input
+    // on the step. Once that input lands they activate and STAY active (they do
+    // NOT re-freeze when the player stops). Dying re-arms the freeze: the respawn
+    // knockback shoves enemies away (burst window below), then they hold again
+    // and wait for a fresh input — exactly like a fresh step start. The sandbox
+    // free-play step opts out (noFreeze) and always runs live.
+    var step = this._tutSteps && this._tutSteps[this._tutStepIdx];
+    if (step && step.noFreeze) {
+      this._tutEnemiesFrozen = false;
+    } else if (this._tutBurstT > 0) {
+      // Respawn knockback: keep enemies live just long enough to be flung back,
+      // then latch the freeze on so they wait for the next input.
+      this._tutBurstT -= dt;
+      this._tutEnemiesFrozen = false;
+      if (this._tutBurstT <= 0) { this._tutBurstT = 0; this._tutEnemiesFrozen = true; }
+    } else if (this._tutEnemiesFrozen && this._tutPlayerActed(p)) {
+      this._tutEnemiesFrozen = false;
+    }
     if (p.state === 'DASHING' && d.prevState !== 'DASHING') d.dashed = true;
     if (p.state === 'DASH_ATTACKING' && p.hasHitDuringDashAttack) d.dashAtkHit = true;
     // Capture the kill baseline only on the FIRST star pickup so the 3-kill goal
@@ -574,6 +699,11 @@
     d.nuke0    = this._tutEvents.nuke;
     d.parade0  = this._tutEvents.parade;
     d.bruiser  = null;
+    this._tutSandboxStep = false;  // setup() re-arms it only for the sandbox step
+    // Freeze enemies until the player acts on this step (see _tutTrack). The
+    // sandbox free-play step never freezes — its spawner is the lesson.
+    this._tutEnemiesFrozen = !step.noFreeze;
+    this._tutBurstT = 0;   // no respawn-knockback window at a fresh step
     this._tutLastProg = undefined;
     this._tutTransitioning = false;
 
@@ -602,6 +732,10 @@
     dom.progress.textContent = '';
     dom.progress.style.display = 'none';
 
+    // Combo-indicator highlight: shown only on the step that teaches the combo,
+    // pointing the player at the on-canvas combo counter up top.
+    if (dom.comboCue) dom.comboCue.style.display = step.highlightCombo ? '' : 'none';
+
     // Re-trigger the enter animation on quest + tip.
     [dom.quest, dom.tip].forEach(function (el) {
       el.classList.remove('la-tut-anim');
@@ -612,6 +746,9 @@
 
   M._tutSucceed = function () {
     this._tutTransitioning = true;
+    // Stop the sandbox-step spawner immediately so no enemies pour in behind the
+    // "Done!" flash or the completion card.
+    this._tutSandboxStep = false;
     var fr = tutFr();
     var dom = this._tutDom;
     if (dom) {
@@ -619,6 +756,7 @@
       dom.badge.textContent = '✓';
       dom.questText.textContent = fr ? 'Réussi !' : 'Done!';
       dom.progress.style.display = 'none';
+      if (dom.comboCue) dom.comboCue.style.display = 'none';
     }
     if (this.cameras && this.cameras.main) this.cameras.main.flash(180, 0, 255, 200);
     this._triggerHitstop(60);
@@ -634,15 +772,12 @@
     });
   };
 
-  // SKIP — no rewards. Save the resume point, then return to the home menu if the
-  // tutorial was launched FROM the home; otherwise just drop back into the live
-  // sandbox run (launched in-place via the ? button).
+  // SKIP — no rewards. Save the resume point, then drop straight into the live
+  // sandbox run so the player keeps playing (never bounced back to the home menu).
   M._tutSkip = function () {
     if (this._tutDone) return;
     try { if (LA.laSetTutorialProgress) LA.laSetTutorialProgress(this._tutStepIdx); } catch (e) { /* ignore */ }
-    var toHome = this._tutReturnToHome;
     this._tutEndMode();
-    if (toHome && typeof window.__laShowHome === 'function') window.__laShowHome();
   };
 
   // FINISH — only reached by completing the LAST step. Grants the rewards (once).
@@ -656,9 +791,8 @@
     try { if (LA.laMarkTutorialDone) LA.laMarkTutorialDone(); } catch (e) { /* ignore */ }
     this._tutClearBoard();
     if (wasAlreadyDone) {
-      var toHome = this._tutReturnToHome;
+      // Rewards already earned on a prior run — skip the celebration, keep playing.
       this._tutEndMode();
-      if (toHome && typeof window.__laShowHome === 'function') window.__laShowHome();
     } else {
       this._tutShowComplete();
     }
@@ -672,8 +806,9 @@
 
     // Hide the step UI.
     if (dom) {
-      if (dom.quest) dom.quest.style.display = 'none';
-      if (dom.tip)   dom.tip.style.display = 'none';
+      if (dom.quest)    dom.quest.style.display = 'none';
+      if (dom.tip)      dom.tip.style.display = 'none';
+      if (dom.comboCue) dom.comboCue.style.display = 'none';
       var ctrl = ov.querySelector('.la-tut-controls');
       if (ctrl) ctrl.style.display = 'none';
     }
@@ -694,10 +829,9 @@
     ov.appendChild(panel);
 
     var self = this;
+    // "Continue ▶" drops straight into live sandbox play instead of the home menu.
     panel.querySelector('.la-tut-continue').addEventListener('click', function () {
-      var toHome = self._tutReturnToHome;
       self._tutEndMode();
-      if (toHome && typeof window.__laShowHome === 'function') window.__laShowHome();
     });
 
     if (this.cameras && this.cameras.main) {
@@ -732,6 +866,9 @@
         '<div class="la-tut-keys"></div>' +
         '<div class="la-tut-desc"></div>' +
       '</div>' +
+      '<div class="la-tut-combo-cue" style="display:none">' +
+        '<span class="la-tut-combo-tag">' + (fr ? '← Ton combo' : '← Your combo') + '</span>' +
+      '</div>' +
       '<div class="la-tut-controls">' +
         '<button type="button" class="la-tut-btn la-tut-ref">' + (fr ? 'Voir l’aide' : 'View help') + '</button>' +
         '<span class="la-tut-step"></span>' +
@@ -755,6 +892,7 @@
       step:      ov.querySelector('.la-tut-step'),
       skipBtn:   ov.querySelector('.la-tut-skip'),
       refBtn:    ov.querySelector('.la-tut-ref'),
+      comboCue:  ov.querySelector('.la-tut-combo-cue'),
     };
     this._tutDom.progress.style.display = 'none';
 

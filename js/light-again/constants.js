@@ -190,6 +190,33 @@
     GBR_SHOCKWAVE_FORCE:      72,    // player impulse — heavy launch, real "yeet" feel
     GBR_SHOCKWAVE_ENEMY_FORCE:40,    // enemy impulse at point-blank
     GBR_SPAWN_TELEGRAPH_DUR:  320,   // ms of telegraph (target markers + beams) before a swarm pops
+
+    /* ---- The Mirror (3rd mini-boss) — a rival duelist -------------------
+       An independent magenta rival that orbits the player and tries to
+       DASH-ATTACK them. It never fires, never base-attacks, never attacks in
+       sync with you. When you attack it, it DODGES with its own dash — unless
+       it just whiffed a lunge, in which case it has a long recovery (≈3× yours)
+       and THAT is your window to hit it. Immune to explosions/projectiles —
+       only your melee, during its recovery, breaks its 3 shield orbs. The
+       World: it freezes when your shockwave reaches it, fires its OWN time-stop
+       burst (shoving you), then keeps moving. Death drops a free upgrade. */
+    MIR_SIZE:          22,    // body half-extent
+    MIR_SHIELD_ORBS:   3,     // orbs = hits to kill (like the player's shields)
+    MIR_HIT_IFRAME:    260,   // ms between orb breaks (so one swing ≠ multi-break)
+    MIR_ROAM_SPEED:    3.6,   // px/frame orbit/approach speed
+    MIR_KEEP_DIST:     280,   // preferred orbit distance from the player
+    MIR_ATTACK_CD:     2200,  // ms between dash-attack attempts
+    MIR_TELEGRAPH:     520,   // ms aim/charge before the lunge
+    MIR_DASH_SPEED:    13,    // px/frame during the dash-attack lunge
+    MIR_DASH_DUR:      300,   // ms lunge duration
+    MIR_RECOVER_HIT:   420,   // ms recovery when the lunge connected
+    MIR_RECOVER_MULT:  3,     // miss recovery = this × the player's dash-atk whiff (punish window)
+    MIR_DODGE_SPEED:   16,    // px/frame dodge dash
+    MIR_DODGE_DUR:     220,   // ms dodge duration
+    MIR_DODGE_CD:      640,   // ms between dodges
+    MIR_HIT_RADIUS:    24,    // lunge hitbox vs the player
+    MIR_TW_WAVE_SPEED: 1500,  // px/s — speed of OUR World shockwave reaching it (freeze delay)
+    MIR_TW_PUSH:       28,    // impulse it shoves the player with during its own time-stop burst
   };
 
   /* ---- Upgrade branch definitions ---- */

@@ -48,7 +48,7 @@
      SPAWN — same far-off arrival as the anomaly, just no intro cinematic
      ================================================================ */
   M._spawnGigaBruiser = function () {
-    if (this._gigaBruiser || this._anomaly) return;
+    if (this._gigaBruiser || this._anomaly || this._mirror) return;
     if (!this.p || this.p.state === 'DEAD') return;
 
     var ang  = Math.random() * TAU;
@@ -104,7 +104,34 @@
     if (!this._gigaBruiser) return;
     var g = this._gigaBruiser, p = this.p;
     if (p.state === 'DEAD') { this._renderGigaBruiser(dt); return; }
-    if (this._twActive || sMs < 0.001) { this._renderGigaBruiser(dt); return; }
+
+    // ── THE WORLD ────────────────────────────────────────────────────────
+    // While time is stopped the boss is frozen like everything else — EXCEPT
+    // its defensive shockwave. If the player chips off enough HP during the
+    // freeze, the boss can still wind up the shockwave and SNAP ITS SHIELD
+    // BACK ON, so The World can't be used to burn it down while skipping the
+    // shield puzzle. The state machine ticks on player-time (pMs) so the
+    // windup/blast read at a normal pace; the knockback is suppressed inside
+    // _fireGigaShockwave (it must not fling the time-stopped player/crowd).
+    if (this._twActive) {
+      g.bodyHitT   = Math.max(0, g.bodyHitT   - dt * 4);
+      g.shieldHitT = Math.max(0, g.shieldHitT - dt * 3);
+      if (g.shockwaveCD > 0) g.shockwaveCD = Math.max(0, g.shockwaveCD - pMs);
+      if (g.shockwavePhase === 'CHARGING') {
+        g.shockwaveT += pMs;
+        if (g.shockwaveT >= C.GBR_SHOCKWAVE_CHARGE_DUR) this._fireGigaShockwave();
+      } else if (g.shockwavePhase === 'BLAST') {
+        g.shockwaveT += pMs;
+        if (g.shockwaveT >= C.GBR_SHOCKWAVE_BLAST_DUR) {
+          g.shockwavePhase = null;
+          g.shockwaveT     = 0;
+        }
+      }
+      this._renderGigaBruiser(dt);
+      return;
+    }
+
+    if (sMs < 0.001) { this._renderGigaBruiser(dt); return; }
 
     var sc60 = sMs / 16.7;
 
@@ -643,46 +670,51 @@
     this.cameras.main.shake(380, 0.024);
     this._triggerHitstop(C.DEFLECT_HEAVY_HS);
 
-    // Push the player FAR outward. The impulse barely drops with distance so
-    // wherever you are inside the field, you get launched hard.
-    var p   = this.p;
-    var maxR = C.GBR_SHOCKWAVE_MAX_RADIUS;
-    var pdx = p.x - g.x, pdy = p.y - g.y;
-    var pd  = Math.sqrt(pdx * pdx + pdy * pdy);
-    if (pd < maxR) {
-      if (pd < 0.1) {
-        // Right on top of him: pick a random direction so the push has a vector
-        var ra = Math.random() * Math.PI * 2;
-        pdx = Math.cos(ra); pdy = Math.sin(ra); pd = 1;
+    // During The World the shockwave is purely a defensive re-shield — it must
+    // NOT fling the (time-stopped) player around or shove the frozen crowd.
+    // Outside time stop it does its full knockback below.
+    if (!this._twActive) {
+      // Push the player FAR outward. The impulse barely drops with distance so
+      // wherever you are inside the field, you get launched hard.
+      var p   = this.p;
+      var maxR = C.GBR_SHOCKWAVE_MAX_RADIUS;
+      var pdx = p.x - g.x, pdy = p.y - g.y;
+      var pd  = Math.sqrt(pdx * pdx + pdy * pdy);
+      if (pd < maxR) {
+        if (pd < 0.1) {
+          // Right on top of him: pick a random direction so the push has a vector
+          var ra = Math.random() * Math.PI * 2;
+          pdx = Math.cos(ra); pdy = Math.sin(ra); pd = 1;
+        }
+        // Plancher de 80% → près ou loin, tu pars en orbite.
+        var pdrop = Math.max(0.80, 1 - pd / maxR);
+        var pimp  = C.GBR_SHOCKWAVE_FORCE * pdrop;
+        // OVERWRITE velocity rather than add — incoming dash speed shouldn't
+        // partially cancel the launch when the player is moving toward the boss.
+        p.vx = (pdx / pd) * pimp;
+        p.vy = (pdy / pd) * pimp;
+        // Longer i-frames so the long flight doesn't end in instant chip damage
+        if (!p.invincible) { p.invincible = true; p.invincTimer = 420; p.dashInvinc = true; }
+        // Break out of any in-progress attack/dash-attack — the blast resets state
+        if (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING') {
+          p.state = 'MOVING'; p.spinAngle = 0; p.atkTimer = 0;
+          p.atkAvailable = true; p.atkCooldown = 0;
+        }
       }
-      // Plancher de 80% → près ou loin, tu pars en orbite.
-      var pdrop = Math.max(0.80, 1 - pd / maxR);
-      var pimp  = C.GBR_SHOCKWAVE_FORCE * pdrop;
-      // OVERWRITE velocity rather than add — incoming dash speed shouldn't
-      // partially cancel the launch when the player is moving toward the boss.
-      p.vx = (pdx / pd) * pimp;
-      p.vy = (pdy / pd) * pimp;
-      // Longer i-frames so the long flight doesn't end in instant chip damage
-      if (!p.invincible) { p.invincible = true; p.invincTimer = 420; p.dashInvinc = true; }
-      // Break out of any in-progress attack/dash-attack — the blast resets state
-      if (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING') {
-        p.state = 'MOVING'; p.spinAngle = 0; p.atkTimer = 0;
-        p.atkAvailable = true; p.atkCooldown = 0;
-      }
-    }
 
-    // Push every enemy outward + stun them briefly
-    for (var i = 0; i < this.enemies.length; i++) {
-      var e = this.enemies[i];
-      var edx = e.x - g.x, edy = e.y - g.y;
-      var ed  = Math.sqrt(edx * edx + edy * edy);
-      if (ed >= maxR) continue;
-      if (ed < 0.1) { edx = (Math.random() - 0.5); edy = (Math.random() - 0.5); ed = 1; }
-      var edrop = Math.max(0.65, 1 - ed / maxR);
-      var eimp  = C.GBR_SHOCKWAVE_ENEMY_FORCE * edrop;
-      e.vx += (edx / ed) * eimp;
-      e.vy += (edy / ed) * eimp;
-      e.stunTimer = Math.max(e.stunTimer || 0, 420);
+      // Push every enemy outward + stun them briefly
+      for (var i = 0; i < this.enemies.length; i++) {
+        var e = this.enemies[i];
+        var edx = e.x - g.x, edy = e.y - g.y;
+        var ed  = Math.sqrt(edx * edx + edy * edy);
+        if (ed >= maxR) continue;
+        if (ed < 0.1) { edx = (Math.random() - 0.5); edy = (Math.random() - 0.5); ed = 1; }
+        var edrop = Math.max(0.65, 1 - ed / maxR);
+        var eimp  = C.GBR_SHOCKWAVE_ENEMY_FORCE * edrop;
+        e.vx += (edx / ed) * eimp;
+        e.vy += (edy / ed) * eimp;
+        e.stunTimer = Math.max(e.stunTimer || 0, 420);
+      }
     }
   };
 

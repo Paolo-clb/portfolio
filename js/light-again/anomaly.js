@@ -68,11 +68,22 @@
   /* ================================================================
      NATURAL SPAWN — rare, gated, works in BOTH modes (driven from update)
      ================================================================ */
+  /* Boss "bag" — draw without replacement so the three bosses cycle in a
+     shuffled order (never the same one twice until the bag empties + refills).
+     Keeps boss variety high run-to-run. */
+  M._drawBossFromBag = function () {
+    if (!this._bossBag || this._bossBag.length === 0) {
+      this._bossBag = ['anomaly', 'gigaBruiser', 'mirror'];
+    }
+    var i = (Math.random() * this._bossBag.length) | 0;  // random remaining = shuffled draw
+    return this._bossBag.splice(i, 1)[0];
+  };
+
   M._maybeSpawnAnomaly = function (ms) {
-    // Shared boss gate: only one mini-boss alive at a time (anomaly OR giga
-    // bruiser), and they share the same cooldown / spawn-min-delay budget.
+    // Shared boss gate: only one mini-boss alive at a time, sharing the same
+    // cooldown / spawn-min-delay budget across all three.
     if (this._tutorialActive) return;  // no surprise mini-bosses during the tutorial
-    if (this._anomaly || this._gigaBruiser) return;
+    if (this._anomaly || this._gigaBruiser || this._mirror) return;
     if (!this.p || this.p.state === 'DEAD') return;
     if (this._anomalyCooldownT > 0) { this._anomalyCooldownT -= ms; return; }
     if (this.gameTime < C.ANO_SPAWN_MIN_DELAY / 1000) return;
@@ -82,9 +93,10 @@
     if (this._anomalySpawnRollT < 1000) return;
     this._anomalySpawnRollT = 0;
     if (Math.random() < C.ANO_SPAWN_CHANCE) {
-      // 50/50 between the two bosses
-      if (Math.random() < 0.5) this._spawnAnomaly();
-      else                     this._spawnGigaBruiser();
+      var which = this._drawBossFromBag();
+      if      (which === 'gigaBruiser') this._spawnGigaBruiser();
+      else if (which === 'mirror')      this._spawnMirror();
+      else                              this._spawnAnomaly();
     }
   };
 
@@ -92,7 +104,7 @@
      SPAWN — create the entity off in the distance (debug + natural)
      ================================================================ */
   M._spawnAnomaly = function () {
-    if (this._anomaly) return;
+    if (this._anomaly || this._gigaBruiser || this._mirror) return;
     if (!this.p || this.p.state === 'DEAD') return;
 
     var ang  = Math.random() * TAU;
@@ -612,23 +624,7 @@
   /* Mirror of _sandboxRespawn's safe-bubble push: shoves nearby enemies away
      from the player and stuns them briefly so the fight starts on a clean beat. */
   M._anomalyResumeShockwave = function (p) {
-    var clearR = 340, clearRSq = clearR * clearR;
-    for (var i = 0; i < this.enemies.length; i++) {
-      var o = this.enemies[i];
-      var dx = o.x - p.x, dy = o.y - p.y;
-      var d2 = dx * dx + dy * dy;
-      if (d2 > clearRSq) continue;
-      var d = Math.sqrt(d2);
-      var nx = d > 0.1 ? dx / d : Math.random() - 0.5;
-      var ny = d > 0.1 ? dy / d : Math.random() - 0.5;
-      var push = 30 * (o.tier === 3 ? 0.6 : 1.0);
-      o.vx += nx * push;
-      o.vy += ny * push;
-      o.stunTimer = Math.max(o.stunTimer, 1000);
-    }
-    this.cameras.main.flash(350, 0, 180, 255);
-    this._explode(p.x, p.y, [0, 220, 255], 25);
-    this._spawnWaveRing(p.x, p.y, { maxRadius: clearR, color: 0x00ccff, expandTime: 0.45 });
+    this._safeBubblePush(p, 340);
   };
 
   /* ================================================================

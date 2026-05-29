@@ -553,8 +553,13 @@
     var BAR_W = 160, BAR_H = 7;
     var barX  = cx - BAR_W / 2;
 
+    // ---- Bottom cooldown / timer bars ----
+    // Hidden during the tutorial: they sit where the tutorial tip card lives and
+    // would overlap its UI.
+    var showBars = !this._tutorialActive;
+
     // ---- Dash cooldown bar ----
-    if (!p.dashAvailable) {
+    if (showBars && !p.dashAvailable) {
       var dashCdMax = C.DASH_CD * ((this._upgradeLevels && this._upgradeLevels.dash >= 1) ? 0.70 : 1.0);
       var dashF = p.state === 'DASHING' ? 0 : Math.max(0, Math.min(1, 1 - p.dashCooldown / dashCdMax));
       var dashY = h - 34;
@@ -571,7 +576,7 @@
     }
 
     // ---- Star Power timer bar ----
-    if (this.isStarPowered) {
+    if (showBars && this.isStarPowered) {
       var starF  = this._starPowerTimer / C.STAR_DUR;
       var starY  = h - 48;
       var starA  = this._starPowerWarning
@@ -590,7 +595,7 @@
     }
 
     // ---- The World bar ----
-    if (this._twUnlocked) {
+    if (showBars && this._twUnlocked) {
       var twY = h - 20;
       if (this._twActive) {
         var twTotalMs = (this._twWaveDurationMs || 0) + C.TW_DURATION;

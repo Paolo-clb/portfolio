@@ -282,6 +282,12 @@
     this._upSlowMoTimer = 0;
     this._upSlowMoTarget = SLOWMO_MIN_SCALE;
     this.scene.resume();
+
+    // Just picked an upgrade — clear a safe bubble around the player (the same
+    // push the sandbox respawn uses) so the fight resumes on a clean beat
+    // instead of dropping the player straight back onto whatever was crowding
+    // them. Pushed enemies drift out in slow-mo as time ramps back up.
+    if (this.p && this.p.state !== 'DEAD') this._safeBubblePush(this.p, 340);
   };
 
 })();

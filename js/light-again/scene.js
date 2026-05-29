@@ -376,6 +376,7 @@
       this._initTimeStop();
       this._initAnomaly();
       this._initGigaBruiser();
+      this._initMirror();
       this._initTutorial();
 
       cam.setBackgroundColor(LA.getColors().bgColor);
@@ -393,10 +394,11 @@
         }
         // Clear Board (sandbox only): Delete / Backspace → screen-sweeping shockwave.
         // Disabled during the tutorial (would wipe curated lesson enemies / cheese
-        // the Bruiser step's presence-based completion).
+        // the Bruiser step's presence-based completion) EXCEPT the final sandbox
+        // step, which teaches this very tool (_tutSandboxStep).
         if ((ev.code === 'Delete' || ev.code === 'Backspace') && !ev.repeat) {
           ev.preventDefault();
-          if (window.__laGameMode === 'sandbox' && !self._tutorialActive && self.p && self.p.state !== 'DEAD') self._clearBoard();
+          if (window.__laGameMode === 'sandbox' && (!self._tutorialActive || self._tutSandboxStep) && self.p && self.p.state !== 'DEAD') self._clearBoard();
         }
         if (ev.code === 'KeyL' && !ev.repeat) {
           ev.preventDefault();
@@ -417,6 +419,11 @@
         if (ev.code === 'KeyT' && !ev.repeat) {
           ev.preventDefault();
           self._spawnGigaBruiser();
+        }
+        // Cheat: force-spawn The Mirror mini-boss
+        if (ev.code === 'KeyH' && !ev.repeat) {
+          ev.preventDefault();
+          self._spawnMirror();
         }
 
       });
@@ -501,6 +508,7 @@
         if (self._killCounterTxt) { self._killCounterTxt.destroy(); self._killCounterTxt = null; }
         if (self._clearAnomaly)     self._clearAnomaly(true);
         if (self._clearGigaBruiser) self._clearGigaBruiser(true);
+        if (self._clearMirror)      self._clearMirror(true);
         // Tear down any tutorial overlay so it can't outlive the scene (e.g. a
         // mode switch from the home menu mid-tutorial would otherwise orphan it).
         self._tutorialActive = false;
@@ -784,7 +792,9 @@
         this._trLX = p.x; this._trLY = p.y;
       }
 
-      this._updateEnemies(sDt);
+      // During the tutorial, enemies hold still until the player acts — gives
+      // breathing room to read each step's tip without getting swarmed/killed.
+      if (!this._tutEnemiesFrozen) this._updateEnemies(sDt);
       this._updateProjectiles(sDt, pDt);
       this._checkCollisions();
       this._checkStarPickup();
@@ -792,6 +802,8 @@
       this._checkAnomalyCollision();
       this._updateGigaBruiser(ms, pMs, dt);
       this._checkGigaBruiserCollision();
+      this._updateMirror(ms, pMs, dt);
+      this._checkMirrorCollision();
       this._updateTutorial(dt);
 
       // Star power timer countdown — uses real time so TW doesn't pause the bar
@@ -801,8 +813,9 @@
       }
 
       // Natural spawns pause while the anomaly's quarantine barrier is up, and
-      // during the tutorial (which curates its own lesson environments).
-      if (this.spawnTimer > -999000 && !this._anomalyBarrierActive && !this._tutorialActive) {
+      // during the tutorial (which curates its own lesson environments) — except
+      // the final sandbox step, where the real wheel-paced spawner is the lesson.
+      if (this.spawnTimer > -999000 && !this._anomalyBarrierActive && (!this._tutorialActive || this._tutSandboxStep)) {
         this.spawnTimer += ms;
         var _sandbox = (window.__laGameMode === 'sandbox');
         // Sandbox: steady one-by-one stream, paced live by the mouse wheel.

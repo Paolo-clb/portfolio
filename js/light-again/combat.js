@@ -330,6 +330,7 @@
      ========================================================================== */
   M._clearBoard = function () {
     if (this._clearWave && this._clearWave.active) return;
+    if (this._tutEvent) this._tutEvent('clear');  // tutorial: Clear Board detected
     var cam = this.cameras.main;
     var zoom = cam.zoom || 1;
     // world-space half-diagonal of the viewport + margin → reaches every on-screen enemy

@@ -171,6 +171,10 @@ window.SITE_I18N = {
     laAnomalyVuln:       'VULNÉRABLE !',
     laAnomalyBigHint:    'TUEZ TOUS LES ENNEMIS POUR AFFAIBLIR LE BOSS',
 
+    // The Mirror (mini-boss)
+    laMirrorHint:        'esquive son dash, punis son trou',
+    laMirrorVuln:        'FRAPPE-LE !',
+
     // Misc
     closeLbl: 'Fermer',
   },
@@ -339,6 +343,10 @@ window.SITE_I18N = {
     laAnomalyShielded:   'enemies left:',
     laAnomalyVuln:       'VULNERABLE!',
     laAnomalyBigHint:    'KILL ALL ENEMIES TO WEAKEN THE BOSS',
+
+    // The Mirror (mini-boss)
+    laMirrorHint:        'dodge its dash, punish the whiff',
+    laMirrorVuln:        'HIT IT!',
 
     // Misc
     closeLbl: 'Close',

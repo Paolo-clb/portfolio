@@ -56,22 +56,22 @@
       'animation:la-go-fade-in 0.4s cubic-bezier(0.22,1,0.36,1) both,la-go-glow 2.4s ease infinite',
     ].join(';');
 
-    // Row 1: Score / Best Combo / Kills
+    // Row 1: Record / Best Combo / Kills (Score moved to its own prominent line)
     var statCol = 'display:flex;flex-direction:column;align-items:center;gap:.12rem;min-width:0';
+    var recColor = isNewRecord ? '#00ff88' : '#aabbcc';
+    var recExtra = isNewRecord ? '  <span style="font-size:.6rem;color:#00ff88;margin-left:.4rem">' + t('laGoNewRecord') + '</span>' : '';
     var row1 =
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem .6rem;margin-bottom:.5rem">' +
-        '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoScore') + '</span><span style="' + sVal('#00ffff') + '">' + playerScore + '</span></div>' +
+        '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoRecord') + '</span><span style="' + sVal(recColor) + '">' + localBest + '</span>' + recExtra + '</div>' +
         '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoBestCombo') + '</span><span style="' + sVal('#ffcc00') + '">x' + bestCombo + '</span></div>' +
         '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoKills') + '</span><span style="' + sVal('#ff6644') + '">' + totalKills + '</span></div>' +
       '</div>';
 
-    // Row 2: Personal Record
-    var recColor = isNewRecord ? '#00ff88' : '#aabbcc';
-    var recExtra = isNewRecord ? '  <span style="font-size:.6rem;color:#00ff88;margin-left:.4rem">' + t('laGoNewRecord') + '</span>' : '';
+    // Row 2: Score (now the standalone prominent line, where the record used to be)
     var row2 =
       '<div style="margin-bottom:.6rem;display:flex;flex-direction:column;align-items:center;gap:.12rem">' +
-        '<span style="' + sLbl + '">' + t('laGoRecord') + '</span>' +
-        '<span style="' + sVal(recColor) + '">' + localBest + '</span>' + recExtra +
+        '<span style="' + sLbl + '">' + t('laGoScore') + '</span>' +
+        '<span style="' + sVal('#00ffff') + '">' + playerScore + '</span>' +
       '</div>';
 
     // Game-over mode context.

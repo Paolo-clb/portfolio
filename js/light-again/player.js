@@ -177,6 +177,9 @@
     p.atkAvailable = true; p.atkCooldown = 0;
     this.timeScale = 1.0;
     this.spawnTimer = 0;
+    // Dying is a setback: drop the combo, exactly like taking a hit that costs a
+    // shield does. (No-op if the combo was already at x1.)
+    this._breakCombo();
     this.playerSpr.setVisible(true);
     for (var ti = 0; ti < this.TRAIL_CAP; ti++) this._trail[ti].spr.setVisible(true);
     for (var oi = 0; oi < this._shieldOrbs.length; oi++) this._shieldOrbs[oi].setVisible(false);
@@ -187,7 +190,24 @@
     // Clear a safe bubble: shove nearby enemies outward and stun them, so the
     // player isn't instantly re-killed when the i-frames expire while standing
     // on a swarm (fixes the sandbox spawn-kill loop).
-    var clearR = 340, clearRSq = clearR * clearR;
+    this._safeBubblePush(p, 340);
+
+    // Tutorial: re-arm the per-step freeze. Enemies stay live just long enough to
+    // be flung away by the knockback above (the burst window), then they hold
+    // still and wait for the player's next input — like the step just started.
+    if (this._tutorialActive && !this._tutSandboxStep) {
+      this._tutBurstT = 0.7;
+      this._tutEnemiesFrozen = false;
+    }
+  };
+
+  /* Safe-bubble push: shove every enemy within `clearR` of the player outward
+     and stun them briefly, with a cyan flash + wave ring. Shared by the sandbox
+     respawn, the anomaly's time-resume, and the upgrade-draft close — anywhere
+     the player needs a clean beat to restart without being instantly swarmed. */
+  M._safeBubblePush = function (p, clearR) {
+    clearR = clearR || 340;
+    var clearRSq = clearR * clearR;
     for (var k = 0; k < this.enemies.length; k++) {
       var o = this.enemies[k];
       var dx = o.x - p.x, dy = o.y - p.y;
@@ -199,7 +219,7 @@
       var push = 30 * (o.tier === 3 ? 0.6 : 1.0);
       o.vx += nx * push;
       o.vy += ny * push;
-      o.stunTimer = Math.max(o.stunTimer, 1000);
+      o.stunTimer = Math.max(o.stunTimer || 0, 1000);
     }
 
     this.cameras.main.flash(350, 0, 180, 255);
