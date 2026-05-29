@@ -335,8 +335,8 @@
         quest: fr ? 'Déplace-toi dans l’arène' : 'Move around the arena',
         keys:  fr ? ['Z Q S D', 'W A S D', 'Flèches'] : ['W A S D', 'Z Q S D', 'Arrows'],
         desc:  fr
-          ? 'Bienvenue ! On commence par les bases : <b>bouge</b> dans la direction des touches.'
-          : 'Welcome! Let’s start with the basics: <b>move</b> in the key direction.',
+          ? 'Bienvenue ! <b>Bouge</b> dans la direction des touches.'
+          : 'Welcome! <b>Move</b> in the key direction.',
         setup: function () { d().moveT = 0; },
         check: function (dt) {
           var inp = self._inputVec();
@@ -349,7 +349,7 @@
       {
         title: 'Dash',
         quest: fr ? 'Réalise un dash' : 'Perform a dash',
-        keys:  fr ? ['Clic droit', 'Espace', 'Maj'] : ['Right click', 'Space', 'Shift'],
+        keys:  fr ? ['Maj', 'Espace', 'Clic droit'] : ['Shift', 'Space', 'Right click'],
         desc:  fr
           ? 'Le <span class="c-dash">dash</span> te propulse dans la direction de ton déplacement, avec une brève invincibilité.'
           : 'The <span class="c-dash">dash</span> launches you in your movement direction, with brief invincibility.',
@@ -362,8 +362,8 @@
         quest: fr ? 'Détruis l’éclaireur à l’attaque torpille' : 'Destroy the scout with the torpedo attack',
         keys:  fr ? ['Clic gauche'] : ['Left click'],
         desc:  fr
-          ? 'L’<span class="c-torp">attaque torpille</span> : ta flèche fonce vers le curseur en rotation. Vise l’éclaireur <span class="c-torp">▲</span> ! <b>⚠️ La rater</b> te laisse vulnérable un instant (récupération) — vise juste.'
-          : 'The <span class="c-torp">torpedo attack</span>: your arrow spins toward the cursor. Aim at the scout <span class="c-torp">▲</span>! <b>⚠️ Whiffing it</b> leaves you exposed for a moment (recovery) — aim true.',
+          ? 'L’<span class="c-torp">attaque torpille</span> : ta flèche fonce vers le curseur en rotation. Vise l’éclaireur <span class="c-torp">▲</span> ! <b>⚠️ La rater</b> te laisse vulnérable un instant (récupération).'
+          : 'The <span class="c-torp">torpedo attack</span>: your arrow spins toward the cursor. Aim at the scout <span class="c-torp">▲</span>! <b>⚠️ Whiffing it</b> leaves you exposed for a moment (recovery).',
         setup: function () { self._tutSpawnOne(1, 340); },
         // Must be a BASIC-attack kill — killing it another way (e.g. dash-attack) does NOT count.
         check: function () { return self._tutEvents.basicKill - d().basicKill0 >= 1; },
@@ -391,8 +391,8 @@
         quest: fr ? 'Touche l’éclaireur avec une dash-attaque' : 'Hit the scout with a dash-attack',
         keys:  fr ? ['Clic gauche  (pendant un dash)'] : ['Left click  (during a dash)'],
         desc:  fr
-          ? 'Clique pendant un <span class="c-dash">dash</span> : la <span class="c-datk">dash-attaque</span> est plus rapide, plus large, et traverse les ennemis. <b>⚠️ La rater coûte cher</b> : récupération encore plus longue qu’une attaque ratée.'
-          : 'Click during a <span class="c-dash">dash</span>: the <span class="c-datk">dash-attack</span> is faster, wider, and pierces enemies. <b>⚠️ Whiffing it is costly</b>: an even longer recovery than a missed attack.',
+          ? 'Clique pendant un <span class="c-dash">dash</span> : la <span class="c-datk">dash-attaque</span> est plus rapide, plus large, et traverse les ennemis. <b>⚠️ Récupération plus longue qu’une attaque ratée.'
+          : 'Click during a <span class="c-dash">dash</span>: the <span class="c-datk">dash-attack</span> is faster, wider, and pierces enemies. <b>⚠️ A longer recovery than a missed attack.',
         setup: function () { self._tutSpawnOne(1, 360); },
         check: function () { return !!d().dashAtkHit; },
         maintain: function () { if (self._tutCountTier(1) === 0) self._tutSpawnOne(1, 360); },
@@ -423,10 +423,10 @@
       {
         title: fr ? 'Marque & Détonation' : 'Mark & Detonation',
         quest: fr ? 'Marque un ennemi au dash, puis fais-le détoner' : 'Mark an enemy on a dash, then detonate it',
-        keys:  fr ? ['Dash  →  Clic gauche'] : ['Dash  →  Left click'],
+        keys:  fr ? ['Dash  →  torpille torpille'] : ['Dash  →  torpedo-attack'],
         desc:  fr
-          ? '<span class="c-dash">Dashe</span> À TRAVERS un ennemi pour le <span class="c-mark">marquer</span> (étincelles bleues), puis fais une <span class="c-torp">attaque torpille</span> dessus → <span class="c-shield">NUKE</span> à zone d’effet ! (La dash-attaque ne déclenche pas la nuke.)'
-          : '<span class="c-dash">Dash</span> THROUGH an enemy to <span class="c-mark">mark</span> it (blue sparks), then <span class="c-torp">torpedo-attack</span> it → AoE <span class="c-shield">NUKE</span>! (Dash-attack does NOT trigger it.)',
+          ? '<span class="c-dash">Dashe</span> À TRAVERS un ennemi pour le <span class="c-mark">marquer</span> (étincelles bleues), puis fais une <span class="c-torp">attaque torpille</span> dessus → <span class="c-shield">NUKE</span> à zone d’effet ! (⚠️ La dash-attaque ne déclenche pas la nuke.)'
+          : '<span class="c-dash">Dash</span> THROUGH an enemy to <span class="c-mark">mark</span> it (blue sparks), then <span class="c-torp">torpedo-attack</span> it → AoE <span class="c-shield">NUKE</span>! (⚠️ Dash-attack does NOT trigger it.)',
         setup: function () { d().nuke0 = self._tutEvents.nuke; self._tutSpawnRing(1, 6, 230); },
         check: function () { return self._tutEvents.nuke > d().nuke0; },
         maintain: function () { if (self._tutCountTier(1) < 3) self._tutSpawnRing(1, 5, 230); },
@@ -438,8 +438,8 @@
         quest: fr ? 'Ramasse l’étoile et pulvérise 3 ennemis' : 'Grab the star and smash 3 enemies',
         keys:  fr ? ['Clic gauche  (survolté)'] : ['Left click  (overdriven)'],
         desc:  fr
-          ? 'L’<span class="c-star">étoile bonus</span> te survolte : ton attaque devient une <span class="c-datk">dash-attaque spammable</span>. Fonce dans le tas !'
-          : 'The <span class="c-star">bonus star</span> overdrives you: your attack becomes a <span class="c-datk">spammable dash-attack</span>. Go wild!',
+          ? 'Au contract de l’<span class="c-star">étoile bonus</span> : ton attaque devient un <span class="c-datk">dash-attaque spammable</span>. Fonce dans le tas !'
+          : 'The <span class="c-star">bonus star</span> overdrives you : your attack becomes a <span class="c-datk">spammable dash-attack</span>. Go wild!',
         setup: function () {
           self._tutSpawnRing(1, 8, 300);
           self._spawnStar(self.p.x + 120, self.p.y - 40);
@@ -471,8 +471,8 @@
         quest: fr ? 'Renvoie le projectile du Tireur' : 'Reflect the Shooter’s projectile',
         keys:  fr ? ['Dash-attaque sur le projectile'] : ['Dash-attack onto the projectile'],
         desc:  fr
-          ? 'Le Tireur <span class="c-shooter">◆</span> garde ses distances et tire. Une <span class="c-datk">dash-attaque</span> sur un projectile le <span class="c-datk">renvoie</span> à l’envoyeur (<span class="c-combo">x2 points</span>). L’attaque simple ne renvoie pas.'
-          : 'The Shooter <span class="c-shooter">◆</span> keeps its distance and fires. A <span class="c-datk">dash-attack</span> on a projectile <span class="c-datk">reflects</span> it back (<span class="c-combo">x2 points</span>). The basic attack does not.',
+          ? 'Le Tireur <span class="c-shooter">◆</span> garde ses distances et tire. Un <span class="c-datk">dash-attaque</span> sur un projectile le <span class="c-datk">renvoie</span> à l’envoyeur (<span class="c-combo">x2 points</span>). ⚠️ L’attaque simple ne renvoie pas.'
+          : 'The Shooter <span class="c-shooter">◆</span> keeps its distance and fires. A <span class="c-datk">dash-attack</span> on a projectile <span class="c-datk">reflects</span> it back (<span class="c-combo">x2 points</span>). ⚠️ The basic attack does not.',
         setup: function () {
           d().parade0 = self._tutEvents.parade;
           var e = self._tutSpawnOne(2, 430);
@@ -490,11 +490,11 @@
       /* 9 — BRUISER (break shield) */
       {
         title: fr ? 'Mastodonte' : 'Bruiser',
-        quest: fr ? 'Brise le bouclier du Mastodonte et achève-le' : 'Break the Bruiser’s shield and finish it',
+        quest: fr ? 'Brise le bouclier du Bruiser et achève-le' : 'Break the Bruiser’s shield and finish it',
         keys:  fr ? ['Dash-attaque  →  brise le bouclier'] : ['Dash-attack  →  break the shield'],
         desc:  fr
-          ? 'Le <span class="c-bruiser">Mastodonte ⬢</span> a un <span class="c-shield">bouclier</span> que seule la <span class="c-datk">dash-attaque</span> brise, puis achève-le. Astuce : <span class="c-mark">marque-le</span> au dash puis <span class="c-shield">NUKE</span> — il ignore le bouclier !'
-          : 'The <span class="c-bruiser">Bruiser ⬢</span> has a <span class="c-shield">shield</span> only the <span class="c-datk">dash-attack</span> can break — then finish it. Tip: <span class="c-mark">mark it</span> on a dash then <span class="c-shield">NUKE</span> — it ignores the shield!',
+          ? 'Le <span class="c-bruiser">Bruiser ⬢</span> a un <span class="c-shield">bouclier</span> que seule la <span class="c-datk">dash-attaque</span> brise, puis achève-le. Astuce : <span class="c-mark">marque-le</span> au dash puis <span class="c-shield">NUKE</span> — one shot !'
+          : 'The <span class="c-bruiser">Bruiser ⬢</span> has a <span class="c-shield">shield</span> only the <span class="c-datk">dash-attack</span> can break — then finish it. Tip: <span class="c-mark">mark it</span> on a dash then <span class="c-shield">NUKE</span> — one shot !',
         setup: function () { d().bruiser = self._tutSpawnOne(3, 360); },
         check: function () {
           var b = d().bruiser;
