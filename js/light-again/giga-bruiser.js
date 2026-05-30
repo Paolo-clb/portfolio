@@ -42,25 +42,48 @@
     if (g.gfx)         g.gfx.destroy();
     if (g.shieldGfx)   g.shieldGfx.destroy();
     if (g.fractureGfx) g.fractureGfx.destroy();
+    if (g.spawnFxGfx)  g.spawnFxGfx.destroy();
   };
 
   /* ================================================================
-     SPAWN — same far-off arrival as the anomaly, just no intro cinematic
+     SPAWN — coalesce slowly, IN the player's field of view, then go active.
+     Instead of the anomaly's far-off arrival, the Giga Bruiser materialises
+     right where the player is looking via a slow cinematic (_gigaBruiser
+     TickArrival) — intangible until it has fully formed.
      ================================================================ */
   M._spawnGigaBruiser = function () {
     if (this._gigaBruiser || this._anomaly || this._mirror) return;
     if (!this.p || this.p.state === 'DEAD') return;
 
-    var ang  = Math.random() * TAU;
-    var dist = 820;
-    var m    = C.WORLD_HALF - C.GBR_SIZE * 1.5;
-    var x = Math.max(-m, Math.min(m, this.p.x + Math.cos(ang) * dist));
-    var y = Math.max(-m, Math.min(m, this.p.y + Math.sin(ang) * dist));
+    var p   = this.p;
+    var cam = this.cameras.main;
+    // Appear directly in the player's field of view: out in front of where the
+    // ship is facing, far enough not to overlap but comfortably on-screen.
+    var view    = cam.worldView;
+    var viewMin = Math.min(view.width, view.height);
+    var dist    = Math.max(C.GBR_SIZE * 4, viewMin * 0.36);
+    var ang     = p.angle;
+    var x = p.x + Math.cos(ang) * dist;
+    var y = p.y + Math.sin(ang) * dist;
+    // Clamp to the intersection of (visible rect − margin) and (world bounds),
+    // so the arrival is always both in-frame AND reachable inside the arena.
+    var m      = C.WORLD_HALF - C.GBR_SIZE * 1.5;
+    var margin = C.GBR_SIZE * 1.7;
+    var loX = Math.max(view.x + margin, -m), hiX = Math.min(view.right  - margin, m);
+    var loY = Math.max(view.y + margin, -m), hiY = Math.min(view.bottom - margin, m);
+    if (loX > hiX) loX = hiX = (view.x + view.right)  / 2;
+    if (loY > hiY) loY = hiY = (view.y + view.bottom) / 2;
+    x = Math.min(hiX, Math.max(loX, x));
+    y = Math.min(hiY, Math.max(loY, y));
 
     var gfx         = this.add.graphics(); gfx.setDepth(25);
     var fractureGfx = this.add.graphics(); fractureGfx.setDepth(26);
     var shieldGfx   = this.add.graphics(); shieldGfx.setDepth(27);
     shieldGfx.setBlendMode(Phaser.BlendModes.ADD);
+    // Full-alpha cinematic layer (drawn behind the forming body) for the
+    // converging-energy entrance — never faded by the materialisation alpha.
+    var spawnFxGfx  = this.add.graphics(); spawnFxGfx.setDepth(24);
+    spawnFxGfx.setBlendMode(Phaser.BlendModes.ADD);
 
     this._gigaBruiser = {
       x: x, y: y, vx: 0, vy: 0,
@@ -85,16 +108,19 @@
       shockwaveCD:    0,     // ms until another shockwave is allowed
       dmgAccum:       0,     // HP lost since last shockwave (or since spawn)
       gfx: gfx, shieldGfx: shieldGfx, fractureGfx: fractureGfx,
+      spawnFxGfx: spawnFxGfx,
+      // Cinematic arrival state — materialises in view before it becomes active.
+      spawnPhase: 'ARRIVING', spawnT: 0, introT01: 0,
+      introScale: 0.0, introAlpha: 0.0, _gatherBurst: false,
       dead: false,
     };
 
-    // Arrival burst (purple — bruiser palette, not anomaly's magenta)
-    this._spawnWaveRing(x, y, { maxRadius: 240, color: 0x9933ff, expandTime: 0.34 });
-    this._spawnWaveRing(x, y, { maxRadius: 160, color: 0xffffff, expandTime: 0.22 });
-    this._explode(x, y, [187, 0, 255], 28);
-    this._explode(x, y, [255, 180, 255], 16);
-    this._explode(x, y, [255, 255, 255], 14);
-    this.cameras.main.shake(160, 0.010);
+    // Gather telegraph — a soft pulse marking where it will coalesce. The big
+    // "fully formed" burst fires later, at the end of the arrival cinematic.
+    this._spawnWaveRing(x, y, { maxRadius: C.GBR_SIZE * 2.2, color: 0x9933ff, expandTime: 0.50 });
+    this._explode(x, y, [187, 0, 255], 12);
+    this._explode(x, y, [255, 180, 255], 8);
+    this.cameras.main.shake(120, 0.005);
   };
 
   /* ================================================================
@@ -104,6 +130,15 @@
     if (!this._gigaBruiser) return;
     var g = this._gigaBruiser, p = this.p;
     if (p.state === 'DEAD') { this._renderGigaBruiser(dt); return; }
+
+    // ── CINEMATIC ENTRANCE ───────────────────────────────────────────────
+    // Materialise in view on REAL dt (smooth, constant pace, unaffected by
+    // hitstop / slow-mo / The World). The boss is intangible while forming.
+    if (g.spawnPhase === 'ARRIVING') {
+      this._gigaBruiserTickArrival(g, p, dt);
+      this._renderGigaBruiser(dt);
+      return;
+    }
 
     // ── THE WORLD ────────────────────────────────────────────────────────
     // While time is stopped the boss is frozen like everything else — EXCEPT
@@ -220,6 +255,117 @@
   };
 
   /* ================================================================
+     CINEMATIC ENTRANCE — slow materialisation in the player's view
+     ================================================================ */
+  M._gigaBruiserTickArrival = function (g, p, dt) {
+    var DUR = C.GBR_ARRIVE_DUR;
+    g.spawnT += dt * 1000;
+    var t = g.spawnT / DUR; if (t > 1) t = 1;
+    g.introT01 = t;
+
+    // Stays lively while forming — winds down toward the idle spin once formed.
+    g.angle     += dt * 60 * 0.05;
+    g.shieldRot += dt * 60 * 0.07;
+
+    // Scale: slow smoothstep build to a 1.12 overshoot, then settle to 1.0.
+    var grow;
+    if (t < 0.82) { var u = t / 0.82;        grow = (u * u * (3 - 2 * u)) * 1.12; }
+    else          { var v = (t - 0.82) / 0.18; grow = 1.12 - 0.12 * (v * v * (3 - 2 * v)); }
+    g.introScale = grow;
+    g.introAlpha = Math.min(1, t / 0.32);   // fade in over the first third
+
+    // Ambient energy sparks while it coalesces.
+    if (Math.random() < 0.18) this._explode(g.x, g.y, [255, 150, 255], 4);
+
+    // Halfway "lock-in" pulse — the silhouette snaps into focus.
+    if (!g._gatherBurst && t >= 0.5) {
+      g._gatherBurst = true;
+      this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 1.7, color: 0xff66ff, expandTime: 0.20 });
+      this._explode(g.x, g.y, [255, 120, 255], 14);
+      this.cameras.main.shake(180, 0.006);
+    }
+
+    if (t >= 1) this._gigaBruiserFinishArrival(g);
+  };
+
+  M._gigaBruiserFinishArrival = function (g) {
+    g.spawnPhase = null;
+    g.introScale = 1.0; g.introAlpha = 1.0;
+    if (g.spawnFxGfx) g.spawnFxGfx.clear();
+
+    // Big "fully formed" burst — layered rings + shrapnel + a cyan shield snap.
+    this._spawnWaveRing(g.x, g.y, { maxRadius: 300,             color: 0x9933ff, expandTime: 0.34 });
+    this._spawnWaveRing(g.x, g.y, { maxRadius: 200,             color: 0xffffff, expandTime: 0.22 });
+    this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 2.6, color: 0x66ddff, expandTime: 0.20 });
+    this._explode(g.x, g.y, [187, 0, 255],  34);
+    this._explode(g.x, g.y, [255, 180, 255], 20);
+    this._explode(g.x, g.y, [255, 255, 255], 16);
+    this.cameras.main.flash(180, 200, 120, 255);
+    this.cameras.main.shake(240, 0.014);
+    this._triggerHitstop(C.HITSTOP_DUR);
+  };
+
+  /* Cinematic gather FX — converging rings, inrushing streaks, a forming core
+     and an early targeting reticle. Drawn on the full-alpha spawnFxGfx so it
+     reads bright while the body itself is still fading in. */
+  M._drawGigaArrivalFx = function (afx, g) {
+    var gt = this.gameTime;
+    var t  = g.introT01 || 0;
+    var R  = C.GBR_SIZE;
+
+    // ── Targeting reticle (strong early, fades as the body forms) ──
+    var telA = Math.max(0, 1 - t / 0.6);
+    if (telA > 0) {
+      var rr = R * (2.6 - 1.4 * t) + 8 * Math.sin(gt * 6);
+      afx.lineStyle(2, 0xff66ff, telA * 0.7);
+      this._strokeHex(afx, g.x, g.y, rr, -gt * 0.6);
+      afx.lineStyle(1, 0xffffff, telA * 0.4);
+      this._strokeHex(afx, g.x, g.y, rr * 1.12, gt * 0.4);
+      for (var c = 0; c < 4; c++) {
+        var ca = (Math.PI / 2) * c + gt * 1.5;
+        afx.lineStyle(1.5, 0xff88ff, telA * 0.8);
+        afx.lineBetween(
+          g.x + Math.cos(ca) * (rr + 6),  g.y + Math.sin(ca) * (rr + 6),
+          g.x + Math.cos(ca) * (rr + 18), g.y + Math.sin(ca) * (rr + 18)
+        );
+      }
+    }
+
+    // ── Converging energy rings — a steady stream collapsing inward ──
+    for (var k = 0; k < 4; k++) {
+      var rp = ((t * 2.6 + k / 4) % 1);              // 0 (far) → 1 (centre)
+      var cr = R * (3.4 * (1 - rp) + 0.25);
+      var ca2 = rp * 0.55 * Math.min(1, t * 1.6);    // brightens as it slams in
+      afx.lineStyle(2.5, 0xff66ff, ca2);
+      afx.strokeCircle(g.x, g.y, cr);
+      afx.lineStyle(1, 0xffffff, ca2 * 0.5);
+      afx.strokeCircle(g.x, g.y, cr * 0.96);
+    }
+
+    // ── Inrushing streaks (energy pulled into the forming core) ──
+    var sN = 10;
+    for (var s = 0; s < sN; s++) {
+      var sa    = (TAU / sN) * s + gt * 0.8;
+      var phase = ((t * 2.0 + s / sN) % 1);
+      var outR  = R * (3.2 - 2.4 * phase);
+      var inR   = Math.max(0, outR - (16 + 22 * t));
+      var sA    = phase * 0.6 * Math.min(1, t * 1.6);
+      afx.lineStyle(2, 0xffaaff, sA);
+      afx.lineBetween(
+        g.x + Math.cos(sa) * outR, g.y + Math.sin(sa) * outR,
+        g.x + Math.cos(sa) * inR,  g.y + Math.sin(sa) * inR
+      );
+    }
+
+    // ── Forming core (white-hot, grows with t) ──
+    var coreR = R * (0.10 + 0.22 * t) * (1 + 0.18 * Math.sin(gt * 12));
+    afx.fillStyle(0xff88ff, 0.4 * t);
+    afx.fillCircle(g.x, g.y, coreR * 2.4);
+    afx.fillStyle(0xffffff, 0.5 + 0.5 * t);
+    afx.fillCircle(g.x, g.y, coreR);
+  };
+
+  /* ================================================================
      SWARM SPAWN — telegraph (markers + beams), then pop
      ================================================================ */
   M._gigaBruiserBeginSpawnTelegraph = function () {
@@ -296,7 +442,10 @@
     var g = this._gigaBruiser;
     if (!g) return;
     var gt = this.gameTime;
-    var R  = C.GBR_SIZE;
+    // Materialisation transform — the whole boss scales + fades in during the
+    // ARRIVING cinematic (introScale/introAlpha default to 1 once formed).
+    var introScale = (g.introScale != null) ? g.introScale : 1;
+    var R  = C.GBR_SIZE * introScale;
 
     // Body colour: purple → red as HP drops. Charging tints it toward white.
     var hpFrac = Math.max(0, g.hp / g.hpMax);
@@ -560,6 +709,19 @@
         }
       }
     }
+
+    // ── CINEMATIC ARRIVAL FX + MATERIALISATION FADE ──────────────────────
+    // The gather FX layer is full-alpha (drawn behind the forming body); the
+    // body + fractures + shield fade in together via introAlpha.
+    var afx = g.spawnFxGfx;
+    if (afx) {
+      afx.clear();
+      if (g.spawnPhase === 'ARRIVING') this._drawGigaArrivalFx(afx, g);
+    }
+    var ia = (g.introAlpha != null) ? g.introAlpha : 1;
+    gfx.setAlpha(ia);
+    fgfx.setAlpha(ia);
+    sgfx.setAlpha(ia);
   };
 
   /* Stroke + fill a flat-topped hexagon centred on (cx,cy). The Phaser Graphics
@@ -827,6 +989,7 @@
   M._checkGigaBruiserCollision = function () {
     var g = this._gigaBruiser;
     if (!g || g.dead) return;
+    if (g.spawnPhase === 'ARRIVING') return;   // intangible while materialising
     var p = this.p;
     var isAtk  = p.state === 'ATTACKING';
     var isDAtk = p.state === 'DASH_ATTACKING';

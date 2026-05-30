@@ -190,6 +190,7 @@
     GBR_SHOCKWAVE_FORCE:      72,    // player impulse — heavy launch, real "yeet" feel
     GBR_SHOCKWAVE_ENEMY_FORCE:40,    // enemy impulse at point-blank
     GBR_SPAWN_TELEGRAPH_DUR:  320,   // ms of telegraph (target markers + beams) before a swarm pops
+    GBR_ARRIVE_DUR:           2000,  // ms of the cinematic materialisation when it appears in view
 
     /* ---- The Mirror (3rd mini-boss) — a rival duelist -------------------
        An independent magenta rival that orbits the player and tries to
@@ -200,23 +201,31 @@
        only your melee, during its recovery, breaks its 3 shield orbs. The
        World: it freezes when your shockwave reaches it, fires its OWN time-stop
        burst (shoving you), then keeps moving. Death drops a free upgrade. */
-    MIR_SIZE:          22,    // body half-extent
+    MIR_SIZE:          28,    // body half-extent (bigger sprite/shield — was 22)
+    MIR_SPAWN_DUR:     1300,  // ms of the cinematic "peel off the player" entrance
     MIR_SHIELD_ORBS:   3,     // orbs = hits to kill (like the player's shields)
-    MIR_HIT_IFRAME:    260,   // ms between orb breaks (so one swing ≠ multi-break)
+    MIR_HIT_IFRAME:    240,   // ms between orb breaks (so one swing ≠ multi-break)
     MIR_ROAM_SPEED:    3.6,   // px/frame orbit/approach speed
     MIR_KEEP_DIST:     280,   // preferred orbit distance from the player
-    MIR_ATTACK_CD:     2200,  // ms between dash-attack attempts
-    MIR_TELEGRAPH:     520,   // ms aim/charge before the lunge
-    MIR_DASH_SPEED:    13,    // px/frame during the dash-attack lunge
-    MIR_DASH_DUR:      300,   // ms lunge duration
+    MIR_ATTACK_CD:     2000,  // ms between dash-attack attempts
+    MIR_TELEGRAPH:     480,   // ms aim/charge before the lunge
+    MIR_DASH_SPEED:    30,    // px/frame during the dash-attack lunge (faster — was 13)
+    MIR_DASH_DUR:      250,   // ms lunge duration (shorter so the fast lunge keeps a sane range)
     MIR_RECOVER_HIT:   420,   // ms recovery when the lunge connected
     MIR_RECOVER_MULT:  3,     // miss recovery = this × the player's dash-atk whiff (punish window)
-    MIR_DODGE_SPEED:   16,    // px/frame dodge dash
-    MIR_DODGE_DUR:     220,   // ms dodge duration
-    MIR_DODGE_CD:      640,   // ms between dodges
-    MIR_HIT_RADIUS:    24,    // lunge hitbox vs the player
+    MIR_DODGE_SPEED:   26,    // px/frame dodge dash (snappy, animated real dodge — was 16)
+    MIR_DODGE_DUR:     190,   // ms dodge duration
+    MIR_DODGE_CD:      560,   // ms between dodges (it's hittable while this window ticks)
+    MIR_HIT_RADIUS:    30,    // lunge hitbox vs the player
     MIR_TW_WAVE_SPEED: 1500,  // px/s — speed of OUR World shockwave reaching it (freeze delay)
     MIR_TW_PUSH:       28,    // impulse it shoves the player with during its own time-stop burst
+    // Projectile nova — radial volley of shards fired around the boss
+    MIR_NOVA_CD:       2600,  // base ms between volleys (randomised; ROAM only, never vulnerable)
+    MIR_NOVA_COUNT:    14,    // projectiles per ring
+    MIR_NOVA_SPEED:    5.5,   // px/frame outward speed
+    MIR_NOVA_LIFE:     2600,  // ms projectile lifetime
+    MIR_NOVA_RADIUS:   7,     // projectile hit radius vs the player
+    MIR_NOVA_MAX:      90,    // soft cap on concurrent live projectiles
   };
 
   /* ---- Upgrade branch definitions ---- */

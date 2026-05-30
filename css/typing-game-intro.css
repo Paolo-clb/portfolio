@@ -62,6 +62,12 @@
   transform: none;
 }
 
+/* Not-yet-typed chars: invisible but still occupy space so the box is sized
+   to the full text from the start (no growing while typing). */
+.typing-game__text--intro .typing-game__char--pending {
+  color: transparent;
+}
+
 /* Each typewriter char fades in */
 .typing-game__intro-char {
   animation: intro-char-in 0.15s ease forwards;

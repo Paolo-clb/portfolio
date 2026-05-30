@@ -104,7 +104,7 @@ window.createTypingGameIntro = function (deps) {
 
     var chars = t('introText').split('');
     var idx = 0;
-    var speed = 27;
+    var speed = 16;
     var introCombo = 0;
     var introTrailTimestamps = [];
     var introTrailSpeed = 0;
@@ -135,34 +135,47 @@ window.createTypingGameIntro = function (deps) {
         trailLen = Math.round(trailLen * (0.15 + introTrailSpeed * 0.85));
       }
 
-      for (var i = 0; i < idx; i++) {
-        var cls = 'typing-game__char typing-game__char--correct';
+      function cursorSpan() {
+        var cursorCls = 'typing-game__char typing-game__char--cursor';
+        if (introCombo >= 60) cursorCls += ' typing-game__char--combo-3';
+        else if (introCombo >= 30) cursorCls += ' typing-game__char--combo-2';
+        else if (introCombo >= 10) cursorCls += ' typing-game__char--combo-1';
+        return '<span class="' + cursorCls + '">\u200B</span>';
+      }
+
+      // Render every char (typed + not-yet-typed) so the box keeps its final
+      // size from the start; untyped chars are hidden via --pending.
+      for (var i = 0; i < chars.length; i++) {
+        if (!introFinished && i === idx) html += cursorSpan();
+
+        var typed = i < idx;
+        var cls = 'typing-game__char';
         var trailAttr = '';
 
-        if (!introFinished && trailLen > 0) {
-          var distFromCursor = idx - i;
-          if (distFromCursor <= trailLen && distFromCursor >= 1) {
-            cls += ' typing-game__char--trail';
-            var trailOpacity = (1 - (distFromCursor - 1) / trailLen) * introTrailSpeed;
-            trailOpacity = Math.max(0.05, Math.min(1, trailOpacity));
-            trailAttr = ' style="--trail-opacity:' + trailOpacity.toFixed(3)
-              + ';--trail-r:' + tc.r
-              + ';--trail-g:' + tc.g
-              + ';--trail-b:' + tc.b + '"';
+        if (typed) {
+          cls += ' typing-game__char--correct';
+          if (!introFinished && trailLen > 0) {
+            var distFromCursor = idx - i;
+            if (distFromCursor <= trailLen && distFromCursor >= 1) {
+              cls += ' typing-game__char--trail';
+              var trailOpacity = (1 - (distFromCursor - 1) / trailLen) * introTrailSpeed;
+              trailOpacity = Math.max(0.05, Math.min(1, trailOpacity));
+              trailAttr = ' style="--trail-opacity:' + trailOpacity.toFixed(3)
+                + ';--trail-r:' + tc.r
+                + ';--trail-g:' + tc.g
+                + ';--trail-b:' + tc.b + '"';
+            }
           }
+        } else {
+          cls += ' typing-game__char--pending';
         }
 
         var ch = chars[i] === ' ' ? ' ' : chars[i];
         html += '<span class="' + cls + '"' + trailAttr + '>' + ch + '</span>';
       }
 
-      if (!introFinished) {
-        var cursorCls = 'typing-game__char typing-game__char--cursor';
-        if (introCombo >= 60) cursorCls += ' typing-game__char--combo-3';
-        else if (introCombo >= 30) cursorCls += ' typing-game__char--combo-2';
-        else if (introCombo >= 10) cursorCls += ' typing-game__char--combo-1';
-        html += '<span class="' + cursorCls + '">\u200B</span>';
-      }
+      // Cursor at the very end (all chars typed but not yet finished)
+      if (!introFinished && idx >= chars.length) html += cursorSpan();
 
       introInner.innerHTML = html;
     }

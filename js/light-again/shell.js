@@ -166,7 +166,17 @@
         '#_la-mode-select .la-ms-tut-btn--primary{background:rgba(0,255,255,0.12);border-color:rgba(0,255,255,0.55);color:#00ffff}' +
         '#_la-mode-select .la-ms-steve{display:inline-flex;align-items:center;gap:.5rem;margin-top:1.5rem;font-size:.74rem;letter-spacing:.05em;color:#8aa3c0;cursor:pointer;user-select:none;transition:color .2s}' +
         '#_la-mode-select .la-ms-steve:hover{color:#cfe6f5}' +
-        '#_la-mode-select .la-ms-steve input{width:15px;height:15px;margin:0;accent-color:#5fe0cf;cursor:pointer}';
+        '#_la-mode-select .la-ms-steve input{width:15px;height:15px;margin:0;accent-color:#5fe0cf;cursor:pointer}' +
+        // Active-run highlight: a soft pulsing ring drawn via ::after so it never
+        // fights the per-mode coloured hover box-shadow.
+        '#_la-mode-select .la-ms-card--active::after{content:"";position:absolute;inset:-1px;border-radius:16px;pointer-events:none;border:1.5px solid rgba(143,233,192,0.45);box-shadow:0 0 22px rgba(143,233,192,0.12) inset;animation:la-ms-active-pulse 2.2s ease-in-out infinite}' +
+        '@keyframes la-ms-active-pulse{0%,100%{opacity:.45}50%{opacity:.95}}' +
+        // "En cours" badge pinned to the active card corner.
+        '#_la-mode-select .la-ms-active-badge{position:absolute;top:.65rem;right:.65rem;z-index:2;display:flex;align-items:center;gap:.32rem;font-size:.52rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.22rem .55rem;border-radius:99px;background:rgba(143,233,192,0.1);border:1px solid rgba(143,233,192,0.32);color:#8fe9c0}' +
+        '#_la-mode-select .la-ms-active-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:#8fe9c0;box-shadow:0 0 6px #8fe9c0;animation:la-ms-active-pulse 1.4s ease-in-out infinite}' +
+        // Footer tip line (menu icon doubles as pause).
+        '#_la-mode-select .la-ms-tip{margin-top:1.35rem;font-size:.62rem;letter-spacing:.03em;line-height:1.55;color:#5d7f9c;opacity:.9}' +
+        '#_la-mode-select .la-ms-tip b{color:#8fb6d6;font-weight:700}';
       document.head.appendChild(ms);
     }
 
@@ -180,7 +190,14 @@
       'animation:la-go-fade-in 0.32s cubic-bezier(0.22,1,0.36,1) both',
     ].join(';');
 
-    var hcCardCls = 'la-ms-card la-ms-card--hardcore ' + (unlocked ? 'la-ms-card--enabled' : 'la-ms-card--locked');
+    // Which mode (if any) has a live run behind this menu — drives the card
+    // highlight + "En cours" badge so the player sees at a glance where they were.
+    var fr = (localStorage.getItem('portfolio_lang') || 'fr') !== 'en';
+    var sbActive = fromActiveGame && currentMode === 'sandbox';
+    var hcActive = fromActiveGame && currentMode === 'hardcore';
+    var activeBadge = '<div class="la-ms-active-badge">' + (fr ? 'En cours' : 'In progress') + '</div>';
+
+    var hcCardCls = 'la-ms-card la-ms-card--hardcore ' + (unlocked ? 'la-ms-card--enabled' : 'la-ms-card--locked') + (hcActive ? ' la-ms-card--active' : '');
     var hcCol = unlocked ? '#ff5530' : '#7a4634';
     var hcCtaStyle = unlocked
       ? 'border:1.5px solid rgba(255,70,20,0.55);background:rgba(255,70,20,0.12);color:#ff5530'
@@ -193,7 +210,8 @@
       '<div class="la-ms-cards">' +
 
       // SANDBOX card
-      '<div id="_la-ms-sandbox" class="la-ms-card la-ms-card--sandbox la-ms-card--enabled" role="button" tabindex="0">' +
+      '<div id="_la-ms-sandbox" class="la-ms-card la-ms-card--sandbox la-ms-card--enabled' + (sbActive ? ' la-ms-card--active' : '') + '" role="button" tabindex="0">' +
+        (sbActive ? activeBadge : '') +
         '<div class="la-ms-glyph" style="color:#00ffff">\u221e</div>' +
         '<div class="la-ms-name" style="color:#00ffff">SANDBOX</div>' +
         '<div class="la-ms-desc" style="color:#6f93b8">' + tG('laModeSandboxDesc') + '</div>' +
@@ -202,6 +220,7 @@
 
       // HARDCORE card
       '<div id="_la-ms-hardcore" class="' + hcCardCls + '"' + (unlocked ? ' role="button" tabindex="0"' : '') + '>' +
+        (hcActive ? activeBadge : '') +
         '<div class="la-ms-glyph" style="color:' + hcCol + '">\u2620</div>' +
         '<div class="la-ms-name" style="color:' + hcCol + '">HARDCORE</div>' +
         '<div class="la-ms-desc" style="color:' + (unlocked ? '#a8744f' : '#6a4233') + '">' + tG('laModeHardcoreDesc') + '</div>' +
@@ -209,6 +228,9 @@
       '</div>' +
 
       '</div>' +
+      '<div class="la-ms-tip">' + (fr
+        ? '💡 L’icône <b>menu</b> (en haut à droite) sert aussi à mettre la partie <b>en pause</b>.'
+        : '💡 The <b>menu</b> icon (top right) also <b>pauses</b> the game during a run.') + '</div>' +
       (unlocked ? '' : buildTutorialPanel()) +
       // Cosmetic pickaxe skin — unlocked alongside hardcore mode as a reward
       (unlocked ? '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-steve-cb"><span>I am Steve</span></label>' : '') +
