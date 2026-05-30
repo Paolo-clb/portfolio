@@ -6,7 +6,9 @@
 
      • ROAM      — orbits you at a preferred distance, weaving. On a random
                    cadence it fires a NOVA: a radial volley of spinning shards
-                   all around itself (never while it is vulnerable).
+                   that slow, then DETONATE in small blasts. DASH-PARRY a shard
+                   in flight → it rockets along your dash heading and explodes on
+                   contact for PARADE score (never homes back). Never while vuln.
      • TELEGRAPH — locks a lunge direction at you, charging (aim beam).
      • DASH      — a FAST dash-attack along the locked line. The body SPINS on
                    itself with a cycling colour gradient + afterimage streak,
@@ -87,6 +89,14 @@
     if (mir.ghosts) {
       for (var i = 0; i < mir.ghosts.length; i++) {
         if (mir.ghosts[i].spr) mir.ghosts[i].spr.destroy();
+      }
+    }
+    // Settle any in-flight parried shards' PARADE buckets so the pending count
+    // (bumped at parry time) can't leak when the boss is cleared mid-deflect.
+    if (mir.shots) {
+      for (var si = 0; si < mir.shots.length; si++) {
+        var sh = mir.shots[si];
+        if (sh.reflected && sh._dashAtkId && this._paradeFlushIfDone) this._paradeFlushIfDone(sh._dashAtkId);
       }
     }
   };
@@ -461,7 +471,7 @@
           y: mir.y + Math.sin(a) * ringR,
           vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
           life: C.MIR_NOVA_LIFE, spin: Math.random() * TAU,
-          hue: i / n + L * 0.5,
+          hue: i / n + L * 0.5, reflected: false,
         });
       }
     }
@@ -473,27 +483,180 @@
     if (!mir.shots.length) return;
     var sc60 = pMs / 16.7;
     var pR = C.SIZE * 0.6;
-    var hitThr = C.MIR_NOVA_RADIUS + pR;
+    var hitThr = C.MIR_NOVA_RADIUS + pR;          // direct clip vs the player
     var wm = C.WORLD_HALF;
-    var safe = p.invincible || p.state === 'DASHING' || p.state === 'DASH_ATTACKING'
-            || this._twActive || p.state === 'DEAD';
+    var twActive = this._twActive;
+    var drag = Math.pow(C.MIR_NOVA_DRAG, sc60);
+
+    // Dash-attack parry geometry — mirrors the normal projectile parry box so
+    // deflecting a shard feels identical to deflecting any projectile.
+    var isDAtk = p.state === 'DASH_ATTACKING';
+    var parryThrSq = 0;
+    if (isDAtk) {
+      var dashLvl = (this._upgradeLevels && this._upgradeLevels.dashAtk) || 0;
+      var cm = this.comboMultiplier, aScale;
+      if      (cm >= 50) aScale = 1.34;
+      else if (cm >= 25) aScale = 1.17;
+      else if (cm >= 10) aScale = 1.08;
+      else if (cm >= 5)  aScale = 1.035;
+      else               aScale = 1.0;
+      aScale *= 1.08;
+      if (this.isStarPowered) aScale *= 1.25;
+      var parryBonus = (pR * 1.5) / aScale;
+      if (dashLvl >= 2) parryBonus += 55;          // Lv2 magnetic vacuum catch zone
+      var parryThr = pR + C.MIR_NOVA_RADIUS + parryBonus;
+      parryThrSq = parryThr * parryThr;
+    }
 
     for (var i = mir.shots.length - 1; i >= 0; i--) {
       var s = mir.shots[i];
       s.life -= pMs;
-      s.spin += sc60 * 0.25;
+      s.spin += sc60 * (s.reflected ? 0.5 : 0.25);
+      if (!s.reflected) { s.vx *= drag; s.vy *= drag; }   // boss shards slow + "hang"
       s.x += s.vx * sc60;
       s.y += s.vy * sc60;
-      if (s.life <= 0 || s.x < -wm || s.x > wm || s.y < -wm || s.y > wm) {
+
+      // Off-world → gone (off-screen, no blast). Settle its PARADE bucket if parried.
+      if (s.x < -wm || s.x > wm || s.y < -wm || s.y > wm) {
         mir.shots.splice(i, 1);
+        if (s.reflected && s._dashAtkId && this._paradeFlushIfDone) this._paradeFlushIfDone(s._dashAtkId);
         continue;
       }
-      if (!safe) {
-        var dx = p.x - s.x, dy = p.y - s.y;
-        if (dx * dx + dy * dy < hitThr * hitThr) {
-          var d = Math.sqrt(dx * dx + dy * dy) || 1;
-          this._damagePlayer(dx / d, dy / d);
+
+      // Fuse spent → DETONATE where it sits.
+      if (s.life <= 0) {
+        this._mirrorDetonateShard(mir, s);
+        mir.shots.splice(i, 1);
+        if (s.reflected && s._dashAtkId && this._paradeFlushIfDone) this._paradeFlushIfDone(s._dashAtkId);
+        continue;
+      }
+
+      if (s.reflected) {
+        // Parried shard → explode on the first enemy it touches.
+        var er = C.MIR_NOVA_RADIUS + 3;
+        var hit = false;
+        for (var ei = 0; ei < this.enemies.length; ei++) {
+          var e = this.enemies[ei];
+          var ex = s.x - e.x, ey = s.y - e.y;
+          var et = er + e.size * 0.5;
+          if (ex * ex + ey * ey < et * et) { hit = true; break; }
+        }
+        if (hit) {
+          this._mirrorDetonateShard(mir, s);
           mir.shots.splice(i, 1);
+          if (s._dashAtkId && this._paradeFlushIfDone) this._paradeFlushIfDone(s._dashAtkId);
+          continue;
+        }
+      } else {
+        // Live boss shard. DASH-PARRY takes priority — the player is "safe" while
+        // dash-attacking, so it can't be clipped at the same instant.
+        if (isDAtk) {
+          var rdx = p.x - s.x, rdy = p.y - s.y;
+          if (rdx * rdx + rdy * rdy < parryThrSq) {
+            this._mirrorReflectShard(mir, s, p);
+            continue;
+          }
+        }
+        // Direct clip → detonate on the player (the blast carries the damage).
+        if (!p.invincible && !twActive &&
+            p.state !== 'DASHING' && p.state !== 'DASH_ATTACKING' && p.state !== 'DEAD') {
+          var pdx = p.x - s.x, pdy = p.y - s.y;
+          if (pdx * pdx + pdy * pdy < hitThr * hitThr) {
+            this._mirrorDetonateShard(mir, s);
+            mir.shots.splice(i, 1);
+            continue;
+          }
+        }
+      }
+    }
+  };
+
+  /* ---- PARRY: a dash-attack catches a live shard. It rockets off along the
+         player's DASH heading (never homes back to the boss) with a short fuse,
+         then detonates on contact for PARADE score. ---- */
+  M._mirrorReflectShard = function (mir, s, p) {
+    var ax = p.atkDx, ay = p.atkDy;
+    var al = Math.sqrt(ax * ax + ay * ay);
+    if (al < 0.01) { ax = Math.cos(p.angle); ay = Math.sin(p.angle); al = 1; }
+    ax /= al; ay /= al;
+    var spd = C.MIR_NOVA_REFLECT_SPEED;
+    s.vx = ax * spd; s.vy = ay * spd;
+    s.reflected = true;
+    s.life = C.MIR_NOVA_REFLECT_LIFE;
+
+    // Group every shard parried during this dash-attack into one "PARADE ×N"
+    // popup (shared with reflected projectiles tagged with the same id).
+    s._dashAtkId = this._currentDashAtkId || 0;
+    if (s._dashAtkId) {
+      this._paradePending = this._paradePending || {};
+      this._paradePending[s._dashAtkId] = (this._paradePending[s._dashAtkId] || 0) + 1;
+    }
+
+    p.hasHitDuringDashAttack = true;
+    if (this._tutEvent) this._tutEvent('parade');
+    this._triggerHitstop(C.DEFLECT_HEAVY_HS);
+    this.cameras.main.shake(70, 0.006);
+    this._explode(s.x, s.y, [170, 68, 255], 10);
+    this._explode(s.x, s.y, [255, 255, 255], 6);
+  };
+
+  /* ---- DETONATE: a small, stylish blast. A parried shard chews enemies in its
+         radius (PARADE score); a live boss shard just clips the player if they
+         are standing inside the (telegraphed) blast. ---- */
+  M._mirrorDetonateShard = function (mir, s) {
+    var x = s.x, y = s.y;
+    var R = C.MIR_SHARD_EXP_RADIUS;
+
+    if (s.reflected) {
+      var hitAny = false;
+      var pOwnBatch = !this._twBatchWindow;
+      if (pOwnBatch) this._beginBatch('PARADE', { dashAtkId: s._dashAtkId });
+      var R2 = R * R;
+      for (var ei = this.enemies.length - 1; ei >= 0; ei--) {
+        var e = this.enemies[ei];
+        var dx = e.x - x, dy = e.y - y;
+        var d2 = dx * dx + dy * dy;
+        if (d2 > R2) continue;
+        if (e.tier === 3 && e.hasShield) { this._breakShield(e); hitAny = true; continue; }
+        e.hp -= C.MIR_SHARD_EXP_DMG;
+        if (e.hp <= 0) {
+          this._killEnemy(ei, { batch: true, reflected: true });
+        } else {
+          e.stunTimer = Math.max(e.stunTimer || 0, 250);
+          var d = Math.sqrt(d2) || 1;
+          e.vx += (dx / d) * C.SHOCKWAVE_FORCE * 0.8;
+          e.vy += (dy / d) * C.SHOCKWAVE_FORCE * 0.8;
+        }
+        hitAny = true;
+      }
+      if (pOwnBatch) this._endBatch();
+
+      // Stylish violet blast (reads as "yours", like a reflected projectile smash).
+      this._spawnWaveRing(x, y, { maxRadius: R * 1.15, color: 0xaa44ff, expandTime: 0.18 });
+      this._spawnWaveRing(x, y, { maxRadius: R * 0.55, color: 0xffffff, expandTime: 0.12 });
+      this._explode(x, y, [170, 68, 255], 16);
+      this._explode(x, y, [220, 150, 255], 10);
+      this._explode(x, y, [255, 255, 255], 8);
+      if (hitAny) {
+        this._triggerHitstop(C.DEFLECT_HEAVY_HS);
+        this.cameras.main.shake(70, 0.006);
+      }
+    } else {
+      // Boss blast: small magenta-gradient pop; clips the player if inside it.
+      var col = gradAt(s.hue || 0);
+      var cr = (col >> 16) & 255, cg = (col >> 8) & 255, cb = col & 255;
+      this._spawnWaveRing(x, y, { maxRadius: R,        color: col,      expandTime: 0.16 });
+      this._spawnWaveRing(x, y, { maxRadius: R * 0.5,  color: 0xffffff, expandTime: 0.10 });
+      this._explode(x, y, [cr, cg, cb], 12);
+      this._explode(x, y, [255, 255, 255], 6);
+      var p = this.p;
+      if (!p.invincible && !this._twActive &&
+          p.state !== 'DASHING' && p.state !== 'DASH_ATTACKING' && p.state !== 'DEAD') {
+        var ddx = p.x - x, ddy = p.y - y;
+        var dmgR = R * 0.85;                  // a touch forgiving vs the visual blast
+        if (ddx * ddx + ddy * ddy < dmgR * dmgR) {
+          var dd = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+          this._damagePlayer(ddx / dd, ddy / dd);
         }
       }
     }
@@ -848,25 +1011,56 @@
     if (mir.shotGfx) mir.shotGfx.clear();
   };
 
-  /* ---- Nova shards: spinning 4-point gradient stars with a glow + bright core ---- */
+  /* ---- Nova shards: spinning 4-point gradient stars. Live boss shards flash a
+         growing white "fuse" ring over the last fifth of their life so the
+         imminent blast is readable (parry it or step out). Parried shards switch
+         to a brighter violet/white look that pulses as their own fuse runs down. ---- */
   M._renderMirrorShots = function (mir) {
     var g = mir.shotGfx;
     g.clear();
     if (!mir.shots.length) return;
     var gt = this.gameTime;
+    var R = C.MIR_SHARD_EXP_RADIUS;
     for (var i = 0; i < mir.shots.length; i++) {
       var s = mir.shots[i];
-      var col = gradAt(s.hue + gt * 0.5);
       var r = 6;
+
+      if (s.reflected) {
+        // Player-owned: violet/white, brighter, pulses harder as it nears the pop.
+        var rf = 1 - Math.max(0, s.life) / C.MIR_NOVA_REFLECT_LIFE;   // 0→1 over life
+        var pr = 1 + 0.35 * Math.max(0, Math.sin(gt * 40)) * rf;
+        g.fillStyle(0xaa44ff, 0.32);
+        g.fillCircle(s.x, s.y, r * 2.4 * pr);
+        g.fillStyle(0xcc88ff, 0.95);
+        drawStar4(g, s.x, s.y, r * 1.9 * pr, r * 0.6, s.spin);
+        g.fillStyle(0xffffff, 0.95);
+        g.fillCircle(s.x, s.y, r * 0.62);
+        if (rf > 0.6) {                          // imminent-detonation ring
+          g.lineStyle(1.5, 0xffffff, (rf - 0.6) / 0.4 * 0.8);
+          g.strokeCircle(s.x, s.y, R * (0.5 + 0.5 * rf));
+        }
+        continue;
+      }
+
+      // Boss shard: spinning gradient star + a fuse warning over the last ~22%.
+      var col = gradAt(s.hue + gt * 0.5);
+      var fz  = 1 - Math.max(0, s.life) / C.MIR_NOVA_LIFE;            // 0→1 over fuse
+      var warn = fz > 0.78 ? (fz - 0.78) / 0.22 : 0;
+      var ps = 1 + warn * 0.5 * (0.5 + 0.5 * Math.sin(gt * 36));
       // glow
-      g.fillStyle(col, 0.28);
-      g.fillCircle(s.x, s.y, r * 2.1);
+      g.fillStyle(col, 0.28 + warn * 0.3);
+      g.fillCircle(s.x, s.y, r * 2.1 * ps);
       // 4-point shard
       g.fillStyle(col, 0.9);
-      drawStar4(g, s.x, s.y, r * 1.7, r * 0.55, s.spin);
+      drawStar4(g, s.x, s.y, r * 1.7 * ps, r * 0.55, s.spin);
       // white-hot core
       g.fillStyle(0xffffff, 0.9);
-      g.fillCircle(s.x, s.y, r * 0.5);
+      g.fillCircle(s.x, s.y, r * 0.5 * ps);
+      // fuse warning ring — grows toward the real blast radius as it's about to pop
+      if (warn > 0) {
+        g.lineStyle(1.2, 0xffffff, warn * 0.7);
+        g.strokeCircle(s.x, s.y, R * (0.45 + 0.55 * warn));
+      }
     }
   };
 

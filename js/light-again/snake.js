@@ -125,6 +125,8 @@
       segs: segs, segMaxHp: 0, speed: 0,
       slitherPhase: Math.random() * TAU,
       orbitSign: Math.random() < 0.5 ? -1 : 1,
+      wanderAng: 0,
+      spitCD: 700 + Math.random() * 900,
       headClink: 0, splitFlash: 0, introReveal: 0,
     };
     this._snakeInitWormStats(worm, true);
@@ -136,7 +138,6 @@
     this._snake = {
       worms: [worm], dead: false,
       spawnPhase: 'EMERGE', introT: 0,
-      spitCD: C.SNAKE_SPIT_CD * 0.9,
       gfx: gfx, fxGfx: fxGfx, _lastX: hx, _lastY: hy,
     };
 
@@ -196,7 +197,7 @@
     // Frozen during The World / hitstop / slow-mo — render only.
     if (this._twActive || sMs < 0.001) { this._renderSnake(dt); return; }
 
-    // Gameplay timers + movement.
+    // Gameplay timers + movement + per-worm venom spit.
     for (i = 0; i < s.worms.length; i++) {
       w = s.worms[i];
       for (j = 0; j < w.segs.length; j++) {
@@ -204,13 +205,13 @@
         if (sg.aoeIframe > 0) sg.aoeIframe = Math.max(0, sg.aoeIframe - sMs);
       }
       this._snakeMoveWorm(w, sMs, dt);
-    }
-
-    // Shared venom spit — only one worm spits at a time so projectiles stay sane.
-    s.spitCD -= sMs;
-    if (s.spitCD <= 0) {
-      this._snakeTrySpit();
-      s.spitCD = C.SNAKE_SPIT_CD * (0.8 + Math.random() * 0.5);
+      // Every worm spits on its OWN cadence; shorter worms fire fewer bolts, less
+      // often (per-worm spitCD + length-scaled count). Global cap keeps it sane.
+      w.spitCD -= sMs;
+      if (w.spitCD <= 0) {
+        this._snakeWormSpit(w);
+        w.spitCD = this._snakeSpitCD(w.segs.length);
+      }
     }
 
     if (s.worms.length) { s._lastX = s.worms[0].hx; s._lastY = s.worms[0].hy; }
@@ -268,17 +269,42 @@
     var tdx = p.x - worm.hx, tdy = p.y - worm.hy;
     var td  = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
     var aim = Math.atan2(tdy, tdx);
-    var speed = worm.speed;
 
-    // Pure slither-chase: hunt the player, weaving on a sine wiggle (faster
-    // weave when short). It hugs the player at SNAKE_KEEP_DIST by curving into
-    // an orbit so heads don't perfectly stack — the wiggle still brings the
-    // dangerous head sweeping across you. No lunge (that read too "Mirror").
-    worm.slitherPhase += dt * C.SNAKE_SLITHER_FREQ * (1 + shortF * 0.9);
+    // Frantic slither-chase. Each worm weaves on its own fast sine wiggle PLUS a
+    // drifting personal "wander" offset, so every worm hunts on an individual
+    // path and approaches from its own angle instead of clumping onto one point.
+    worm.slitherPhase += dt * C.SNAKE_SLITHER_FREQ * (1 + shortF * 1.1);
+    worm.wanderAng += (Math.random() - 0.5) * dt * C.SNAKE_WANDER_RATE * (1 + shortF);
+    if (worm.wanderAng >  C.SNAKE_WANDER_MAX) worm.wanderAng =  C.SNAKE_WANDER_MAX;
+    else if (worm.wanderAng < -C.SNAKE_WANDER_MAX) worm.wanderAng = -C.SNAKE_WANDER_MAX;
     var wiggle = Math.sin(worm.slitherPhase) * C.SNAKE_SLITHER_AMP;
-    var desired = aim + wiggle;
-    if (td < C.SNAKE_KEEP_DIST) desired = aim + worm.orbitSign * (Math.PI * 0.5) + wiggle;
+    var desired = aim + wiggle + worm.wanderAng;
+    if (td < C.SNAKE_KEEP_DIST) desired = aim + worm.orbitSign * (Math.PI * 0.5) + wiggle + worm.wanderAng;
+
+    // Separation: bend the head away from other worm heads so the pack spreads
+    // out across the arena instead of stacking on top of each other.
+    var sn = this._snake;
+    var sepx = 0, sepy = 0, sepR = C.SNAKE_SEP_RADIUS, sepR2 = sepR * sepR;
+    for (var wi = 0; wi < sn.worms.length; wi++) {
+      var o = sn.worms[wi];
+      if (o === worm) continue;
+      var odx = worm.hx - o.hx, ody = worm.hy - o.hy;
+      var od2 = odx * odx + ody * ody;
+      if (od2 > sepR2 || od2 < 0.01) continue;
+      var od = Math.sqrt(od2);
+      var wgt = (1 - od / sepR) / od;
+      sepx += odx * wgt; sepy += ody * wgt;
+    }
+    if (sepx !== 0 || sepy !== 0) {
+      var dvx = Math.cos(desired) + sepx * C.SNAKE_SEP_FORCE;
+      var dvy = Math.sin(desired) + sepy * C.SNAKE_SEP_FORCE;
+      if (dvx !== 0 || dvy !== 0) desired = Math.atan2(dvy, dvx);
+    }
+
     this._snakeSteer(worm, desired, C.SNAKE_TURN * dt);
+
+    // Frantic speed surge — a throbbing variation so motion never reads steady.
+    var speed = worm.speed * (1 + 0.14 * Math.sin(worm.slitherPhase * 0.6));
 
     // Integrate the head (snappy: velocity follows the steered heading).
     worm.hvx = Math.cos(worm.hAngle) * speed;
@@ -320,29 +346,32 @@
   };
 
   /* ----------------------------------------------------------------
-     VENOM SPIT — one (long enough) worm fires a small reflectable fan
+     VENOM SPIT — EVERY worm fires on its own cadence; shorter worms fire
+     fewer bolts, less often (scaled by length). The global MAX_PROJECTILES
+     cap in _spawnProjectile keeps the total swarm bounded.
      ---------------------------------------------------------------- */
-  M._snakeTrySpit = function () {
-    var s = this._snake;
-    if (!s || s.dead || s.spawnPhase === 'EMERGE') return;
-    // Pick the longest eligible worm.
-    var best = null;
-    for (var i = 0; i < s.worms.length; i++) {
-      var w = s.worms[i];
-      if (w.segs.length < C.SNAKE_SPIT_MIN_LEN) continue;
-      if (!best || w.segs.length > best.segs.length) best = w;
-    }
-    if (!best) return;
+  M._snakeSpitCount = function (len) {
+    var n = Math.round(len / C.SNAKE_SPIT_PER_LEN);
+    if (n < 1) n = 1; else if (n > C.SNAKE_SPIT_COUNT) n = C.SNAKE_SPIT_COUNT;
+    return n;
+  };
+  M._snakeSpitCD = function (len) {
+    var f = len / C.SNAKE_SPEED_LEN_REF;
+    if (f > 1) f = 1; else if (f < 0) f = 0;
+    // Shorter worm → longer interval (spits less often), with jitter to desync.
+    return C.SNAKE_SPIT_CD * (0.85 + (1 - f) * 1.7) * (0.7 + Math.random() * 0.6);
+  };
+  M._snakeWormSpit = function (worm) {
     var p = this.p;
-    var base = Math.atan2(p.y - best.hy, p.x - best.hx);
-    var n = C.SNAKE_SPIT_COUNT;
+    var n = this._snakeSpitCount(worm.segs.length);
+    var base = Math.atan2(p.y - worm.hy, p.x - worm.hx);
     for (var k = 0; k < n; k++) {
       var t = n > 1 ? (k / (n - 1) - 0.5) : 0;
       var ang = base + t * 2 * C.SNAKE_SPIT_SPREAD;
-      this._spawnSnakeSpit(best.hx, best.hy, ang);
+      this._spawnSnakeSpit(worm.hx, worm.hy, ang);
     }
-    this._explode(best.hx, best.hy, [120, 255, 150], 10);
-    this._spawnWaveRing(best.hx, best.hy, { maxRadius: C.SNAKE_HEAD_SIZE * 2.4, color: 0x33ff88, expandTime: 0.18 });
+    this._explode(worm.hx, worm.hy, [120, 255, 150], 8);
+    this._spawnWaveRing(worm.hx, worm.hy, { maxRadius: C.SNAKE_HEAD_SIZE * 2.2, color: 0x33ff88, expandTime: 0.16 });
   };
 
   /* A venom bolt rides the normal projectile system (so dash-attack can PARRY
@@ -428,6 +457,8 @@
           segs: back, segMaxHp: 0, speed: 0,
           slitherPhase: Math.random() * TAU,
           orbitSign: Math.random() < 0.5 ? -1 : 1,
+          wanderAng: (Math.random() - 0.5) * 1.2,
+          spitCD: 500 + Math.random() * 1100,
           headClink: 0, splitFlash: 1, introReveal: 999,
         };
         this._snakeInitWormStats(nw, false);

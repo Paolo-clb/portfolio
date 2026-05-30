@@ -12,19 +12,34 @@
     var canvas    = this.game.canvas;
     var container = canvas.parentElement;
     var playerScore = this.score;
-    var bestCombo   = Math.max(this.bestCombo || 1, this.comboMultiplier);
-    var totalKills  = this.totalKills || 0;
+    var runCombo    = Math.max(this.bestCombo || 1, this.comboMultiplier);
+    var runKills    = this.totalKills || 0;
     var sceneRef    = this;
 
     var t = LA.laGoT;
     var _escHtml = LA.escHtml;
     var _llPlayerId = LA.llGetPlayerId();
 
-    // ----- Local record -----
-    var prevRecord = parseInt(localStorage.getItem('lightGameHighScore'), 10) || 0;
-    var isNewRecord = playerScore > prevRecord;
-    if (isNewRecord) localStorage.setItem('lightGameHighScore', playerScore);
-    var localBest = Math.max(playerScore, prevRecord);
+    // ----- All-time records (local) -----
+    // Game-over only ever appears in hardcore, so these are the hardcore bests.
+    // Each is compared against the run we just finished; a beaten record gets a
+    // celebratory pop + green glow + "★ Record !" badge in the Records section.
+    function readRec(key) { return parseInt(localStorage.getItem(key), 10) || 0; }
+    var prevScore = readRec('lightGameHighScore');
+    var prevCombo = readRec('lightGameBestCombo');
+    var prevKills = readRec('lightGameBestKills');
+
+    var isNewScore = playerScore > prevScore;
+    var isNewCombo = runCombo > prevCombo;
+    var isNewKills = runKills > prevKills;
+
+    if (isNewScore) localStorage.setItem('lightGameHighScore', playerScore);
+    if (isNewCombo) localStorage.setItem('lightGameBestCombo', runCombo);
+    if (isNewKills) localStorage.setItem('lightGameBestKills', runKills);
+
+    var bestScore = Math.max(playerScore, prevScore);
+    var bestCombo = Math.max(runCombo, prevCombo);
+    var bestKills = Math.max(runKills, prevKills);
 
     // ----- Inject keyframes -----
     if (!document.getElementById('_la-go-styles')) {
@@ -33,48 +48,80 @@
       st.textContent =
         '@keyframes la-go-fade-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}' +
         '@keyframes la-go-glow{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 22px 4px var(--la-accent-glow)}}' +
-        '@keyframes la-go-spin{to{transform:rotate(360deg)}}';
+        '@keyframes la-go-spin{to{transform:rotate(360deg)}}' +
+        // Beaten-record juice: the value pops in, the cell keeps a soft green
+        // pulse, and the badge slides down. Green = success (see theming note).
+        '@keyframes la-go-rec-pop{0%{transform:scale(.4);opacity:0}55%{transform:scale(1.28)}80%{transform:scale(.94)}100%{transform:scale(1);opacity:1}}' +
+        '@keyframes la-go-rec-glow{0%,100%{box-shadow:0 0 7px rgba(0,255,136,0.10);border-color:rgba(0,255,136,0.32)}50%{box-shadow:0 0 18px rgba(0,255,136,0.30);border-color:rgba(0,255,136,0.6)}}' +
+        '@keyframes la-go-badge-in{0%{opacity:0;transform:translateY(-5px) scale(.6)}70%{transform:translateY(0) scale(1.12)}100%{opacity:1;transform:none}}';
       document.head.appendChild(st);
     }
 
     // ----- CSS helpers -----
     var sLbl = 'font-size:.55rem;letter-spacing:.1em;color:#7799bb;text-transform:uppercase;display:block;margin-bottom:.15rem';
     var sVal = function (c) { return 'font-size:1.2rem;font-weight:700;color:' + c + ';text-shadow:0 0 8px ' + c + '44'; };
-    var sSection = 'font-size:.55rem;letter-spacing:.12em;color:#5577aa;text-transform:uppercase;margin:1rem 0 .4rem;text-align:left';
+    var sSection = 'font-size:.55rem;letter-spacing:.16em;color:#5577aa;text-transform:uppercase;margin:.2rem 0 .45rem;text-align:center';
+    var statCol = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.12rem;min-width:0';
 
     // ----- Build overlay -----
     var overlay = document.createElement('div');
     overlay.id  = '_la-go-overlay';
-    overlay.style.cssText = 'position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;pointer-events:none;font-family:monospace';
+    // Full-screen scrim matches the home / mode-select look (var(--la-win-bg)):
+    // the frozen death scene stays visible behind a soft, theme-aware dim, so the
+    // panel itself can be near-transparent instead of a heavy blurred slab.
+    overlay.style.cssText = 'position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;pointer-events:none;font-family:monospace;background:var(--la-win-bg)';
 
     var panel = document.createElement('div');
     panel.style.cssText = [
       'pointer-events:auto', 'text-align:center',
       'padding:1.3rem 1.8rem 1rem', 'border:1px solid var(--la-accent-soft)', 'border-radius:14px',
-      // Hardcore-only screen: kept very see-through (--la-go-bg) so the frozen
-      // death scene shows through; the strong blur + accent frame keep it legible.
-      'background:var(--la-go-bg)', 'max-width:420px', 'width:92%', 'color:#e0e0ff',
-      '-webkit-backdrop-filter:blur(10px)', 'backdrop-filter:blur(10px)',
+      // Like the home cards: a very faint accent tint + only a light blur. The
+      // overlay scrim above does the legibility work, so this stays see-through.
+      'background:var(--la-accent-faint)', 'max-width:430px', 'width:92%', 'color:#e0e0ff',
+      '-webkit-backdrop-filter:blur(3px)', 'backdrop-filter:blur(3px)',
       'max-height:85vh', 'overflow-y:auto',
       'animation:la-go-fade-in 0.4s cubic-bezier(0.22,1,0.36,1) both,la-go-glow 2.4s ease infinite',
     ].join(';');
 
-    // Row 1: Record / Best Combo / Kills (Score moved to its own prominent line)
-    var statCol = 'display:flex;flex-direction:column;align-items:center;gap:.12rem;min-width:0';
-    var recColor = isNewRecord ? '#00ff88' : '#aabbcc';
-    var recExtra = isNewRecord ? '  <span style="font-size:.6rem;color:#00ff88;margin-left:.4rem">' + t('laGoNewRecord') + '</span>' : '';
+    // ----- Record cell builder (Records section) -----
+    // A beaten record pops in, keeps a green pulsing frame, and shows a badge;
+    // an un-beaten record sits in a neutral faint frame. `delay` staggers the pops.
+    function recCell(label, value, color, beaten, delay) {
+      var cell = statCol + ';padding:.5rem .35rem;border-radius:9px;border:1px solid ';
+      cell += beaten
+        ? 'rgba(0,255,136,0.45);background:rgba(0,255,136,0.06);animation:la-go-rec-glow 1.9s ' + delay + 's ease-in-out infinite'
+        : 'rgba(255,255,255,0.07);background:rgba(255,255,255,0.02)';
+      var valStyle = sVal(color) + ';display:inline-block';
+      if (beaten) valStyle += ';animation:la-go-rec-pop .65s ' + delay + 's cubic-bezier(0.34,1.56,0.64,1) both';
+      var badge = beaten
+        ? '<span style="display:block;margin-top:.1rem;font-size:.48rem;font-weight:700;letter-spacing:.08em;color:#00ff88;text-transform:uppercase;animation:la-go-badge-in .5s ' + (delay + 0.25) + 's both">★ ' + t('laGoNewBadge') + '</span>'
+        : '';
+      return '<div style="' + cell + '"><span style="' + sLbl + '">' + label + '</span><span style="' + valStyle + '">' + value + '</span>' + badge + '</div>';
+    }
+
+    // Row 1: this run's score — the standalone prominent headline.
     var row1 =
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem .6rem;margin-bottom:.5rem">' +
-        '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoRecord') + '</span><span style="' + sVal(recColor) + '">' + localBest + '</span>' + recExtra + '</div>' +
-        '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoBestCombo') + '</span><span style="' + sVal('#ffcc00') + '">x' + bestCombo + '</span></div>' +
-        '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoKills') + '</span><span style="' + sVal('#ff6644') + '">' + totalKills + '</span></div>' +
+      '<div style="margin-bottom:.9rem;display:flex;flex-direction:column;align-items:center;gap:.1rem">' +
+        '<span style="' + sLbl + ';font-size:.6rem">' + t('laGoScore') + '</span>' +
+        '<span style="font-size:2.4rem;font-weight:800;line-height:1;color:#00ffff;text-shadow:0 0 16px #00ffff66">' + playerScore + '</span>' +
       '</div>';
 
-    // Row 2: Score (now the standalone prominent line, where the record used to be)
+    // Row 2: the rest of this run's stats (combo + kills), clearly grouped under
+    // a "This run" header so they read as run data, not all-time records.
     var row2 =
-      '<div style="margin-bottom:.6rem;display:flex;flex-direction:column;align-items:center;gap:.12rem">' +
-        '<span style="' + sLbl + '">' + t('laGoScore') + '</span>' +
-        '<span style="' + sVal('#00ffff') + '">' + playerScore + '</span>' +
+      '<div style="' + sSection + '">' + t('laGoThisRun') + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .6rem;margin-bottom:.6rem">' +
+        '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoComboShort') + '</span><span style="' + sVal('#ffcc00') + '">x' + runCombo + '</span></div>' +
+        '<div style="' + statCol + '"><span style="' + sLbl + '">' + t('laGoKillsShort') + '</span><span style="' + sVal('#ff6644') + '">' + runKills + '</span></div>' +
+      '</div>';
+
+    // Row 3: all-time records — Score / Combo / Kills. Beaten ones celebrate.
+    var row3 =
+      '<div style="' + sSection + '">' + t('laGoRecords') + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.45rem;margin-bottom:.7rem">' +
+        recCell(t('laGoScore'), bestScore, '#00ffff', isNewScore, 0.15) +
+        recCell(t('laGoComboShort'), 'x' + bestCombo, '#ffcc00', isNewCombo, 0.30) +
+        recCell(t('laGoKillsShort'), bestKills, '#ff6644', isNewKills, 0.45) +
       '</div>';
 
     // Game-over mode context.
@@ -112,7 +159,9 @@
         '<span>I am Steve</span>' +
       '</label>';
 
-    panel.innerHTML = row1 + row2 + btnHtml + steveHtml + lbHtml;
+    var divider = '<div style="height:1px;margin:.2rem 0 .7rem;background:linear-gradient(90deg,transparent,var(--la-accent-soft),transparent)"></div>';
+
+    panel.innerHTML = row1 + row2 + row3 + divider + btnHtml + steveHtml + lbHtml;
     overlay.appendChild(panel);
 
     // ----- Wire "I am Steve" skin toggle (applies on the next replay) -----

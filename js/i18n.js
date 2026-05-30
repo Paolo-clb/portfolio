@@ -122,6 +122,11 @@ window.SITE_I18N = {
     laGoSubmit:     'Soumettre',
     laGoSubmitted:  'Envoyé !',
     laGoNewRecord:  'Nouveau record !',
+    laGoNewBadge:   'Record !',
+    laGoThisRun:    'Cette partie',
+    laGoRecords:    'Records',
+    laGoComboShort: 'Combo',
+    laGoKillsShort: 'Ennemis',
     laGoNamePlc:    'Ton pseudo',
     laGoReplayPrompt: 'Rejouer en',
 
@@ -295,6 +300,11 @@ window.SITE_I18N = {
     laGoSubmit:     'Submit',
     laGoSubmitted:  'Submitted!',
     laGoNewRecord:  'New record!',
+    laGoNewBadge:   'Record!',
+    laGoThisRun:    'This run',
+    laGoRecords:    'Records',
+    laGoComboShort: 'Combo',
+    laGoKillsShort: 'Enemies',
     laGoNamePlc:    'Your name',
     laGoReplayPrompt: 'Play again in',
 

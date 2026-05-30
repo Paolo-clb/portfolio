@@ -219,13 +219,21 @@
     MIR_HIT_RADIUS:    30,    // lunge hitbox vs the player
     MIR_TW_WAVE_SPEED: 1500,  // px/s — speed of OUR World shockwave reaching it (freeze delay)
     MIR_TW_PUSH:       28,    // impulse it shoves the player with during its own time-stop burst
-    // Projectile nova — radial volley of shards fired around the boss
+    // Projectile nova — radial volley of shards that fly out, slow, then
+    // DETONATE in small stylish blasts. Dash-attack PARRY a shard in flight →
+    // it rockets along your dash heading and explodes on contact for PARADE
+    // score (never homes back to the boss).
     MIR_NOVA_CD:       2600,  // base ms between volleys (randomised; ROAM only, never vulnerable)
     MIR_NOVA_COUNT:    14,    // projectiles per ring
-    MIR_NOVA_SPEED:    5.5,   // px/frame outward speed
-    MIR_NOVA_LIFE:     2600,  // ms projectile lifetime
-    MIR_NOVA_RADIUS:   7,     // projectile hit radius vs the player
+    MIR_NOVA_SPEED:    5.5,   // px/frame initial outward speed
+    MIR_NOVA_DRAG:     0.986, // per-60fps-frame velocity retention (shards slow + "hang" before popping)
+    MIR_NOVA_LIFE:     1700,  // ms fuse — detonates on-screen when it runs out
+    MIR_NOVA_RADIUS:   7,     // projectile hit radius vs the player (direct clip → detonate)
     MIR_NOVA_MAX:      90,    // soft cap on concurrent live projectiles
+    MIR_NOVA_REFLECT_SPEED: 13,   // px/frame once parried — snappy, no drag
+    MIR_NOVA_REFLECT_LIFE:  900,  // ms fuse after a parry (then it detonates)
+    MIR_SHARD_EXP_RADIUS:   46,   // small detonation blast radius
+    MIR_SHARD_EXP_DMG:      2,    // damage a parried shard's blast deals to enemies
 
     /* ---- The Serpent (4th mini-boss) — a splitting snake ----------------
        A slithering worm led by an INVULNERABLE armoured head, trailing a
@@ -251,18 +259,22 @@
     SNAKE_SPACING:       29,    // distance kept between consecutive node centres (px)
     SNAKE_SEG_HP_MAX:    4,     // hits a segment can hold (longest worm)
     SNAKE_HP_PER_LEN:    3.0,   // segMaxHp = clamp(round(len/this), 1, SEG_HP_MAX)
-    SNAKE_SPEED_BASE:    2.2,   // px/frame for a full-length worm
-    SNAKE_SPEED_SHORT:   1.7,   // extra speed factor as a worm shrinks toward len 1
+    SNAKE_SPEED_BASE:    2.5,   // px/frame for a full-length worm (frantic)
+    SNAKE_SPEED_SHORT:   2.1,   // tiny worms are very fast, darting threats
     SNAKE_SPEED_LEN_REF: 14,    // length at which a worm moves at SNAKE_SPEED_BASE
-    SNAKE_TURN:          2.7,   // head steering turn rate (rad/s)
-    SNAKE_SLITHER_AMP:   0.52,  // lateral wiggle amplitude (rad) — the "slither"
-    SNAKE_SLITHER_FREQ:  4.6,   // wiggle frequency (scaled up for short worms)
+    SNAKE_TURN:          3.7,   // head steering turn rate (rad/s) — snappier/erratic
+    SNAKE_SLITHER_AMP:   0.62,  // lateral wiggle amplitude (rad) — the "slither"
+    SNAKE_SLITHER_FREQ:  6.0,   // wiggle frequency (scaled up for short worms) — frenetic
     SNAKE_KEEP_DIST:     110,   // head presses this close while cruising (no lunge now)
-    SNAKE_SPIT_CD:       3000,  // shared ms between venom spits (one worm spits at a time)
-    SNAKE_SPIT_COUNT:    6,     // venom mini-serpents per spit (more projectiles)
+    SNAKE_SEP_RADIUS:    130,   // worm heads repel each other within this so they don't stack
+    SNAKE_SEP_FORCE:     1.7,   // how hard separation bends a head off its neighbours
+    SNAKE_WANDER_MAX:    0.95,  // each worm aims at its own drifting offset around you (rad)
+    SNAKE_WANDER_RATE:   3.6,   // how fast that personal aim-offset random-walks
+    SNAKE_SPIT_CD:       3000,  // per-worm base ms between spits (scaled longer when short)
+    SNAKE_SPIT_COUNT:    6,     // bolts a FULL-length worm fires (shorter worms fire fewer)
+    SNAKE_SPIT_PER_LEN:  3.6,   // bolts = clamp(round(len/this), 1, SPIT_COUNT)
     SNAKE_SPIT_SPREAD:   0.72,  // fan half-spread of a spit (rad)
     SNAKE_SPIT_SPEED:    300,   // venom projectile speed (px/s) — slow enough to parry
-    SNAKE_SPIT_MIN_LEN:  3,     // shorter worms still spit (more bolts after splits)
     SNAKE_SPIT_NODES:    5,     // body nodes drawn on each writhing mini-serpent bolt
     SNAKE_HEAD_HIT_R:    24,    // head contact radius vs the player (px)
     SNAKE_MELEE_DMG:     1,     // a basic attack chips a segment by this
