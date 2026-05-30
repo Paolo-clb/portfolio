@@ -65,6 +65,29 @@
     });
   };
 
+  /* Unified mini-boss KILL banner — big, bold, held on screen for a beat. Every
+     mini-boss (Anomaly / Giga Bruiser / Mirror / Serpent) uses this exact timing
+     so the "boss down" moment reads the same: pop-in → long hold → drift + fade
+     (~2.8 s total). `x,y` is the world baseline (callers offset by boss size). */
+  M._bossKillBanner = function (x, y, text, color, glowColor) {
+    var txt = this.add.text(x, y, text, {
+      fontFamily: 'monospace', fontSize: '38px', fontStyle: 'bold',
+      color: color, stroke: '#000000', strokeThickness: 5,
+      shadow: { offsetX: 0, offsetY: 3, color: glowColor || color, blur: 14, fill: true },
+    });
+    txt.setOrigin(0.5, 1);
+    txt.setDepth(75);
+    txt.setAlpha(0);
+    txt.setScale(0.55);
+    // Pop in with a satisfying overshoot
+    this.tweens.add({ targets: txt, scaleX: 1.0, scaleY: 1.0, alpha: 1.0, duration: 320, ease: 'Back.easeOut' });
+    // Drift slowly upward while held visible
+    this.tweens.add({ targets: txt, y: y - 44, duration: 2200, ease: 'Sine.easeOut', delay: 320 });
+    // Fade out at the end
+    this.tweens.add({ targets: txt, alpha: 0, duration: 600, ease: 'Cubic.easeIn', delay: 2200,
+      onComplete: function () { txt.destroy(); } });
+  };
+
   M._floatScore = function (wx, wy, pts, tier) {
     var col, sz, shCol;
     if (tier === 3) {
@@ -429,6 +452,10 @@
     }
     if (ownBatch) this._endBatch();
 
+    // The nuke also chips any serpent segments in range — throttled so the
+    // frequent storm of nukes only nibbles the worm instead of vaporising it.
+    if (this._snake && !this._snake.dead) this._damageSnakeAoe(ex, ey, detRadius, C.SNAKE_AOE_DMG);
+
     // Star spawn: detonation killed ≥ STAR_DETO_THRESH enemies
     if (detoKills >= C.STAR_DETO_THRESH) {
       var self = this;
@@ -591,6 +618,9 @@
     }
 
     if (dOwnBatch) this._endBatch();
+
+    // Delayed explosions chip serpent segments too — same throttled AoE.
+    if (this._snake && !this._snake.dead) this._damageSnakeAoe(x, y, radius, C.SNAKE_AOE_DMG);
 
     // Visuals — ring matches the warning circle's red color
     this._explode(x, y, [255, 34, 34], 45);

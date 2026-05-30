@@ -52,7 +52,7 @@
      TickArrival) — intangible until it has fully formed.
      ================================================================ */
   M._spawnGigaBruiser = function () {
-    if (this._gigaBruiser || this._anomaly || this._mirror) return;
+    if (this._gigaBruiser || this._anomaly || this._mirror || this._snake) return;
     if (!this.p || this.p.state === 'DEAD') return;
 
     var p   = this.p;
@@ -929,33 +929,8 @@
     g.dead = true;
     var ex = g.x, ey = g.y;
 
-    // Custom kill banner — bigger and stays on screen much longer than the
-    // generic _floatLabel so the moment really lands.
-    var killTxt = this.add.text(ex, ey - C.GBR_SIZE - 18, 'GIGA BRUISER KILLED', {
-      fontFamily: 'monospace', fontSize: '38px', fontStyle: 'bold',
-      color: '#ff66ff', stroke: '#000000', strokeThickness: 5,
-      shadow: { offsetX: 0, offsetY: 3, color: '#ff66ff', blur: 14, fill: true },
-    });
-    killTxt.setOrigin(0.5, 1);
-    killTxt.setDepth(75);
-    killTxt.setAlpha(0);
-    killTxt.setScale(0.55);
-    // Pop in with a satisfying overshoot
-    this.tweens.add({
-      targets: killTxt, scaleX: 1.0, scaleY: 1.0, alpha: 1.0,
-      duration: 320, ease: 'Back.easeOut',
-    });
-    // Drift slowly upward while held visible
-    this.tweens.add({
-      targets: killTxt, y: ey - C.GBR_SIZE - 62,
-      duration: 2200, ease: 'Sine.easeOut', delay: 320,
-    });
-    // Fade out at the end
-    this.tweens.add({
-      targets: killTxt, alpha: 0,
-      duration: 600, ease: 'Cubic.easeIn', delay: 2200,
-      onComplete: function () { killTxt.destroy(); },
-    });
+    // Unified mini-boss kill banner (shared timing across all four bosses).
+    this._bossKillBanner(ex, ey - C.GBR_SIZE - 18, 'GIGA BRUISER KILLED', '#ff66ff');
 
     // Big death burst — purple core with white shrapnel, red embers
     this._explode(ex, ey, [255, 80, 80],   60);

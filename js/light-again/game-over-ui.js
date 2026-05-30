@@ -32,7 +32,7 @@
       st.id = '_la-go-styles';
       st.textContent =
         '@keyframes la-go-fade-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}' +
-        '@keyframes la-go-glow{0%,100%{box-shadow:0 0 0 0 rgba(0,255,255,0.2)}50%{box-shadow:0 0 22px 4px rgba(0,255,255,0.12)}}' +
+        '@keyframes la-go-glow{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 22px 4px var(--la-accent-glow)}}' +
         '@keyframes la-go-spin{to{transform:rotate(360deg)}}';
       document.head.appendChild(st);
     }
@@ -50,8 +50,11 @@
     var panel = document.createElement('div');
     panel.style.cssText = [
       'pointer-events:auto', 'text-align:center',
-      'padding:1.3rem 1.8rem 1rem', 'border:1px solid rgba(0,255,255,0.28)', 'border-radius:14px',
-      'background:rgba(4,5,18,0.72)', 'max-width:420px', 'width:92%', 'color:#e0e0ff',
+      'padding:1.3rem 1.8rem 1rem', 'border:1px solid var(--la-accent-soft)', 'border-radius:14px',
+      // Hardcore-only screen: kept very see-through (--la-go-bg) so the frozen
+      // death scene shows through; the strong blur + accent frame keep it legible.
+      'background:var(--la-go-bg)', 'max-width:420px', 'width:92%', 'color:#e0e0ff',
+      '-webkit-backdrop-filter:blur(10px)', 'backdrop-filter:blur(10px)',
       'max-height:85vh', 'overflow-y:auto',
       'animation:la-go-fade-in 0.4s cubic-bezier(0.22,1,0.36,1) both,la-go-glow 2.4s ease infinite',
     ].join(';');
@@ -84,14 +87,14 @@
     var btnHtml =
       '<div style="font-size:.55rem;letter-spacing:.12em;color:#5577aa;text-transform:uppercase;margin-bottom:.45rem">' + t('laGoReplayPrompt') + '</div>' +
       '<div style="display:flex;gap:.6rem;justify-content:center;margin-bottom:.4rem">' +
-        '<button id="_la-go-sandbox" style="padding:.5rem 1.3rem;border:1.5px solid rgba(0,255,255,0.5);border-radius:8px;background:rgba(0,255,255,0.08);color:#00ffff;font-family:monospace;font-size:.85rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s,box-shadow .2s">' + t('laGoSandboxBtn') + '</button>' +
+        '<button id="_la-go-sandbox" style="padding:.5rem 1.3rem;border:1.5px solid var(--la-accent-line);border-radius:8px;background:var(--la-accent-fill);color:var(--la-accent);font-family:monospace;font-size:.85rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s,box-shadow .2s">' + t('laGoSandboxBtn') + '</button>' +
         '<button id="_la-go-hardcore"' + (unlocked ? '' : ' disabled') + ' style="padding:.5rem 1.3rem;border:1.5px solid rgba(255,60,0,' + (unlocked ? '0.55' : '0.18') + ');border-radius:8px;background:rgba(255,60,0,' + (unlocked ? '0.1' : '0.04') + ');color:' + (unlocked ? '#ff4422' : '#442211') + ';font-family:monospace;font-size:.85rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:' + (unlocked ? 'pointer' : 'not-allowed') + ';transition:background .2s,box-shadow .2s">' + t('laGoHardcoreBtn') + '</button>' +
       '</div>' +
       '<div style="font-size:.55rem;color:#556688;letter-spacing:.06em;margin-bottom:.6rem">' + t('laGoEnterHint') + '</div>';
 
     // Leaderboard only in hardcore
     var lbSpinRow =
-      '<div style="width:18px;height:18px;border:2px solid rgba(0,255,255,0.15);border-top-color:rgba(0,255,255,0.7);border-radius:50%;animation:la-go-spin .7s linear infinite"></div>' +
+      '<div style="width:18px;height:18px;border:2px solid var(--la-accent-soft);border-top-color:var(--la-accent);border-radius:50%;animation:la-go-spin .7s linear infinite"></div>' +
       '<span style="margin-left:.5rem;font-size:.65rem;color:#6688aa">' + t('laGoLoading') + '</span>';
     var lbHtml = isHardcore
       ? '<div style="' + sSection + '">' + t('laGoWorldRecord') + '</div>' +
@@ -126,8 +129,8 @@
     var sbBtn = panel.querySelector('#_la-go-sandbox');
     var hcBtn = panel.querySelector('#_la-go-hardcore');
 
-    sbBtn.addEventListener('mouseenter', function () { sbBtn.style.background = 'rgba(0,255,255,0.16)'; sbBtn.style.boxShadow = '0 0 16px rgba(0,255,255,0.22)'; });
-    sbBtn.addEventListener('mouseleave', function () { sbBtn.style.background = 'rgba(0,255,255,0.08)'; sbBtn.style.boxShadow = ''; });
+    sbBtn.addEventListener('mouseenter', function () { sbBtn.style.background = 'var(--la-accent-fill-hi)'; sbBtn.style.boxShadow = '0 0 16px var(--la-accent-glow)'; });
+    sbBtn.addEventListener('mouseleave', function () { sbBtn.style.background = 'var(--la-accent-fill)'; sbBtn.style.boxShadow = ''; });
     if (unlocked) {
       hcBtn.addEventListener('mouseenter', function () { hcBtn.style.background = 'rgba(255,60,0,0.2)'; hcBtn.style.boxShadow = '0 0 14px rgba(255,60,0,0.18)'; });
       hcBtn.addEventListener('mouseleave', function () { hcBtn.style.background = 'rgba(255,60,0,0.11)'; hcBtn.style.boxShadow = ''; });
@@ -165,12 +168,19 @@
     sbBtn.addEventListener('click', function () { doReplay('sandbox'); });
     if (unlocked) hcBtn.addEventListener('click', function () { doReplay('hardcore'); });
     document.addEventListener('keydown', onKey);
-    this.events.once('shutdown', function () {
+    // Clean teardown — drops the keydown listener, clears the host flag and pulls
+    // the overlay. Exposed so the shell can call it when the player presses Home
+    // from this screen (otherwise the mode menu would overlap the translucent
+    // game-over panel). Also runs on scene shutdown (replay/restart).
+    function dismissGameOver() {
       document.removeEventListener('keydown', onKey);
       clearGameOverHostFlag();
       var el = document.getElementById('_la-go-overlay');
-      if (el) el.remove();
-    });
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      if (window.__laDismissGameOver === dismissGameOver) window.__laDismissGameOver = null;
+    }
+    window.__laDismissGameOver = dismissGameOver;
+    this.events.once('shutdown', dismissGameOver);
 
     container.style.position = 'relative';
     container.dataset.laGameover = '1';
@@ -314,13 +324,13 @@
       form.style.cssText = 'margin:.6rem 0;display:flex;gap:.4rem;justify-content:center;align-items:center';
       form.innerHTML =
         '<input id="_la-go-name" type="text" maxlength="16" placeholder="' + _escHtml(t('laGoNamePlc')) + '" style="' +
-          'padding:.35rem .6rem;border:1px solid rgba(0,255,255,0.35);border-radius:6px;' +
+          'padding:.35rem .6rem;border:1px solid var(--la-accent-soft);border-radius:6px;' +
           'background:rgba(0,0,0,0.35);color:#e0e0ff;font-family:monospace;font-size:.75rem;' +
           'width:120px;outline:none' +
         '">' +
         '<button id="_la-go-send" style="' +
-          'padding:.35rem .8rem;border:1.5px solid rgba(0,255,255,0.5);border-radius:6px;' +
-          'background:rgba(0,255,255,0.10);color:#00ffff;font-family:monospace;font-size:.72rem;' +
+          'padding:.35rem .8rem;border:1.5px solid var(--la-accent-line);border-radius:6px;' +
+          'background:var(--la-accent-fill);color:var(--la-accent);font-family:monospace;font-size:.72rem;' +
           'font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;' +
           'transition:background .2s' +
         '">' + t('laGoSubmit') + '</button>';

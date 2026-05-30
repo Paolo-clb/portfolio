@@ -135,9 +135,9 @@
     ANO_LASER_WIDTH:     17,     // deadly beam half-width for the hit test (px)
     ANO_CROSS_FIRE:      2200,   // deadly duration of the rotating-cross attack (ms)
     ANO_CROSS_ROT:       0.00055,// cross rotation speed (rad/ms) — slow & readable
-    ANO_PROJ_CD:         3600,   // ms between homing-projectile swarms
-    ANO_PROJ_SWARM_MIN:  5,      // swarm size (min)
-    ANO_PROJ_SWARM_MAX:  8,      // swarm size (max)
+    ANO_PROJ_CD:         4800,   // ms between homing-projectile swarms (rarer salvos — was 3600)
+    ANO_PROJ_SWARM_MIN:  3,      // swarm size (min) — 2 fewer per salvo (was 5)
+    ANO_PROJ_SWARM_MAX:  5,      // swarm size (max) — 3 fewer per salvo (was 8)
     ANO_PROJ_SPEED:      200,    // homing projectile speed — small and slow
     ANO_PROJ_LIFE:       8500,   // homing projectile lifetime (ms) — pursues longer
     ANO_PROJ_TURN:       3.8,    // homing turn rate (rad/s) toward target
@@ -226,6 +226,52 @@
     MIR_NOVA_LIFE:     2600,  // ms projectile lifetime
     MIR_NOVA_RADIUS:   7,     // projectile hit radius vs the player
     MIR_NOVA_MAX:      90,    // soft cap on concurrent live projectiles
+
+    /* ---- The Serpent (4th mini-boss) — a splitting snake ----------------
+       A slithering worm led by an INVULNERABLE armoured head, trailing a
+       chain of body segments that each have their own HP (you can see a
+       segment getting chipped — it reddens and cracks). Break a body segment
+       that ISN'T the tail and the worm SPLITS in two: the part behind the cut
+       grows its own new invulnerable head and slithers off on its own. Splits
+       cascade, so one long serpent becomes a writhing nest of small ones.
+       The SHORTER a worm is, the FRAGILER its segments (fewer hits to break)
+       and the FASTER it moves — small worms are quick, snappy darts. The head
+       is the only part that hurts the player (touch = damage, especially mid
+       lunge); the body is safe to dive into and carve up. Segments take damage
+       from EVERY source — melee, dash-attack, reflected projectiles, the nuke,
+       delayed explosions — but explosions are throttled (small fixed damage +
+       per-segment AoE i-frames + a per-blast cap) so the constant storm of
+       explosions only chips the worm instead of deleting it. A worm dies when
+       it's reduced to a lone head; the boss dies when every worm is gone, and
+       (like the others) drops a free upgrade. Self-contained on this._snake,
+       never in this.enemies. */
+    SNAKE_SEG_SIZE:      18,    // body-segment radius (px)
+    SNAKE_HEAD_SIZE:     25,    // head radius (px) — chunkier than the body
+    SNAKE_SEG_COUNT:     22,    // long by default → more sub-serpents on splits, harder
+    SNAKE_SPACING:       29,    // distance kept between consecutive node centres (px)
+    SNAKE_SEG_HP_MAX:    4,     // hits a segment can hold (longest worm)
+    SNAKE_HP_PER_LEN:    3.0,   // segMaxHp = clamp(round(len/this), 1, SEG_HP_MAX)
+    SNAKE_SPEED_BASE:    2.2,   // px/frame for a full-length worm
+    SNAKE_SPEED_SHORT:   1.7,   // extra speed factor as a worm shrinks toward len 1
+    SNAKE_SPEED_LEN_REF: 14,    // length at which a worm moves at SNAKE_SPEED_BASE
+    SNAKE_TURN:          2.7,   // head steering turn rate (rad/s)
+    SNAKE_SLITHER_AMP:   0.52,  // lateral wiggle amplitude (rad) — the "slither"
+    SNAKE_SLITHER_FREQ:  4.6,   // wiggle frequency (scaled up for short worms)
+    SNAKE_KEEP_DIST:     110,   // head presses this close while cruising (no lunge now)
+    SNAKE_SPIT_CD:       3000,  // shared ms between venom spits (one worm spits at a time)
+    SNAKE_SPIT_COUNT:    6,     // venom mini-serpents per spit (more projectiles)
+    SNAKE_SPIT_SPREAD:   0.72,  // fan half-spread of a spit (rad)
+    SNAKE_SPIT_SPEED:    300,   // venom projectile speed (px/s) — slow enough to parry
+    SNAKE_SPIT_MIN_LEN:  3,     // shorter worms still spit (more bolts after splits)
+    SNAKE_SPIT_NODES:    5,     // body nodes drawn on each writhing mini-serpent bolt
+    SNAKE_HEAD_HIT_R:    24,    // head contact radius vs the player (px)
+    SNAKE_MELEE_DMG:     1,     // a basic attack chips a segment by this
+    SNAKE_DASH_DMG:      2,     // a dash-attack carves a segment by this
+    SNAKE_PROJ_DMG:      1,     // a reflected projectile (non-smash) chips by this
+    SNAKE_AOE_DMG:       1,     // explosions only ever chip a segment by this (throttled)
+    SNAKE_AOE_IFRAME:    340,   // ms a segment is immune to further explosion damage
+    SNAKE_AOE_MAX_SEG:   3,     // max segments a single explosion may damage
+    SNAKE_ARRIVE_DUR:    2200,  // ms of the cinematic "rise from a rift" entrance (longer body)
   };
 
   /* ---- Upgrade branch definitions ---- */

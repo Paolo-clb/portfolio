@@ -73,7 +73,7 @@
      Keeps boss variety high run-to-run. */
   M._drawBossFromBag = function () {
     if (!this._bossBag || this._bossBag.length === 0) {
-      this._bossBag = ['anomaly', 'gigaBruiser', 'mirror'];
+      this._bossBag = ['anomaly', 'gigaBruiser', 'mirror', 'snake'];
     }
     var i = (Math.random() * this._bossBag.length) | 0;  // random remaining = shuffled draw
     return this._bossBag.splice(i, 1)[0];
@@ -83,7 +83,7 @@
     // Shared boss gate: only one mini-boss alive at a time, sharing the same
     // cooldown / spawn-min-delay budget across all three.
     if (this._tutorialActive) return;  // no surprise mini-bosses during the tutorial
-    if (this._anomaly || this._gigaBruiser || this._mirror) return;
+    if (this._anomaly || this._gigaBruiser || this._mirror || this._snake) return;
     if (!this.p || this.p.state === 'DEAD') return;
     if (this._anomalyCooldownT > 0) { this._anomalyCooldownT -= ms; return; }
     if (this.gameTime < C.ANO_SPAWN_MIN_DELAY / 1000) return;
@@ -96,6 +96,7 @@
       var which = this._drawBossFromBag();
       if      (which === 'gigaBruiser') this._spawnGigaBruiser();
       else if (which === 'mirror')      this._spawnMirror();
+      else if (which === 'snake')       this._spawnSnake();
       else                              this._spawnAnomaly();
     }
   };
@@ -104,7 +105,7 @@
      SPAWN — create the entity off in the distance (debug + natural)
      ================================================================ */
   M._spawnAnomaly = function () {
-    if (this._anomaly || this._gigaBruiser || this._mirror) return;
+    if (this._anomaly || this._gigaBruiser || this._mirror || this._snake) return;
     if (!this.p || this.p.state === 'DEAD') return;
 
     var ang  = Math.random() * TAU;
@@ -864,7 +865,7 @@
 
     // No score and no combo for the anomaly — the reward is the free upgrade.
     // Just a neutral flavour label (no "+points").
-    this._floatLabel(ex, ey - 24, 'ANOMALY PURGED', '#ff66cc', 0);
+    this._bossKillBanner(ex, ey - C.ANO_SIZE - 14, 'ANOMALY PURGED', '#ff66cc');
 
     // RGB death burst + barrier collapse
     this._explode(ex, ey, [255, 40, 40],  50);

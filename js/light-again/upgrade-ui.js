@@ -15,7 +15,7 @@
     st.id = '_la-up-styles';
     st.textContent = [
       '@keyframes la-up-fade{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}',
-      '@keyframes la-up-glow{0%,100%{box-shadow:0 0 0 0 rgba(0,255,255,0.15)}50%{box-shadow:0 0 24px 6px rgba(0,255,255,0.10)}}',
+      '@keyframes la-up-glow{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 24px 6px var(--la-accent-glow)}}',
       '@keyframes la-up-shine{0%{background-position:200% 0}100%{background-position:-200% 0}}',
     ].join('');
     document.head.appendChild(st);
@@ -39,7 +39,7 @@
     overlay.style.cssText = [
       'position:absolute', 'inset:0', 'z-index:55',
       'display:flex', 'align-items:center', 'justify-content:center',
-      'background:rgba(2,2,10,0.60)', 'font-family:monospace',
+      'background:var(--la-win-scrim)', 'font-family:monospace',
       'pointer-events:auto',
     ].join(';');
 
@@ -47,8 +47,9 @@
     var panel = document.createElement('div');
     panel.style.cssText = [
       'text-align:center', 'padding:1.2rem 1.6rem 1rem',
-      'border:1px solid rgba(0,255,255,0.25)', 'border-radius:14px',
-      'background:rgba(4,5,18,0.82)', 'max-width:520px', 'width:94%',
+      'border:1px solid var(--la-accent-soft)', 'border-radius:14px',
+      'background:var(--la-win-bg-strong)', 'max-width:520px', 'width:94%',
+      '-webkit-backdrop-filter:blur(7px)', 'backdrop-filter:blur(7px)',
       'color:#e0e0ff',
       'animation:la-up-fade 0.35s cubic-bezier(0.22,1,0.36,1) both,la-up-glow 2.6s ease infinite',
     ].join(';');
@@ -67,10 +68,11 @@
       (function (choice) {
         var def = LA.UPGRADES[choice.id];
         var isLv2 = choice.level === 2;
-        var borderColor = isLv2 ? 'rgba(255,200,50,0.55)' : 'rgba(0,255,255,0.45)';
-        var glowColor   = isLv2 ? 'rgba(255,200,50,0.12)' : 'rgba(0,255,255,0.10)';
+        // Lv2 keeps its semantic gold; Lv1 chrome follows the portfolio theme accent.
+        var borderColor = isLv2 ? 'rgba(255,200,50,0.55)' : 'var(--la-accent-line)';
+        var glowColor   = isLv2 ? 'rgba(255,200,50,0.12)' : 'var(--la-accent-glow)';
         var lvlLabel    = isLv2 ? 'Niv. 2' : 'Niv. 1';
-        var lvlColor    = isLv2 ? '#ffc832' : '#00ffff';
+        var lvlColor    = isLv2 ? '#ffc832' : 'var(--la-accent)';
 
         var card = document.createElement('button');
         card.className = '_la-up-card';
@@ -92,7 +94,7 @@
         card.addEventListener('mouseenter', function () {
           card.style.transform = 'translateY(-4px) scale(1.03)';
           card.style.boxShadow = '0 0 20px 4px ' + glowColor;
-          card.style.borderColor = isLv2 ? 'rgba(255,200,50,0.85)' : 'rgba(0,255,255,0.8)';
+          card.style.borderColor = isLv2 ? 'rgba(255,200,50,0.85)' : 'var(--la-accent)';
         });
         card.addEventListener('mouseleave', function () {
           card.style.transform = '';
@@ -105,7 +107,7 @@
         imgWrap.style.cssText = [
           'width:64px', 'height:64px', 'margin:0 auto .5rem',
           'border:1.5px solid ' + borderColor, 'border-radius:8px',
-          'background:rgba(0,255,255,0.04)',
+          'background:' + (isLv2 ? 'rgba(255,200,50,0.05)' : 'var(--la-accent-faint)'),
           'display:flex', 'align-items:center', 'justify-content:center',
           'font-size:1.6rem', 'color:' + lvlColor,
         ].join(';');
@@ -125,9 +127,9 @@
           'display:inline-block',
           'font-size:.5rem', 'letter-spacing:.08em', 'text-transform:uppercase',
           'padding:.1rem .4rem', 'border-radius:4px', 'margin-bottom:.35rem',
-          'background:' + (isLv2 ? 'rgba(255,200,50,0.15)' : 'rgba(0,255,255,0.12)'),
+          'background:' + (isLv2 ? 'rgba(255,200,50,0.15)' : 'var(--la-accent-fill)'),
           'color:' + lvlColor,
-          'border:1px solid ' + (isLv2 ? 'rgba(255,200,50,0.3)' : 'rgba(0,255,255,0.25)'),
+          'border:1px solid ' + (isLv2 ? 'rgba(255,200,50,0.3)' : 'var(--la-accent-soft)'),
         ].join(';');
         badge.textContent = lvlLabel;
         card.appendChild(badge);

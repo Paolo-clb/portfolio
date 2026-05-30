@@ -377,6 +377,7 @@
       this._initAnomaly();
       this._initGigaBruiser();
       this._initMirror();
+      this._initSnake();
       this._initTutorial();
 
       cam.setBackgroundColor(LA.getColors().bgColor);
@@ -424,6 +425,11 @@
         if (ev.code === 'KeyH' && !ev.repeat) {
           ev.preventDefault();
           self._spawnMirror();
+        }
+        // Cheat: force-spawn The Serpent mini-boss (the splitting snake)
+        if (ev.code === 'KeyJ' && !ev.repeat) {
+          ev.preventDefault();
+          self._spawnSnake();
         }
 
       });
@@ -509,6 +515,7 @@
         if (self._clearAnomaly)     self._clearAnomaly(true);
         if (self._clearGigaBruiser) self._clearGigaBruiser(true);
         if (self._clearMirror)      self._clearMirror(true);
+        if (self._clearSnake)       self._clearSnake(true);
         // Tear down any tutorial overlay so it can't outlive the scene (e.g. a
         // mode switch from the home menu mid-tutorial would otherwise orphan it).
         self._tutorialActive = false;
@@ -804,6 +811,8 @@
       this._checkGigaBruiserCollision();
       this._updateMirror(ms, pMs, dt);
       this._checkMirrorCollision();
+      this._updateSnake(ms, pMs, dt);
+      this._checkSnakeCollision();
       this._updateTutorial(dt);
 
       // Star power timer countdown — uses real time so TW doesn't pause the bar

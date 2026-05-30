@@ -376,6 +376,61 @@
   transform: translateY(0) scale(1);
 }
 
+/* ============================================================
+   Themeable window tokens — game-over / home / upgrades / tutorial
+   The game keeps its dark, neon art direction, but the *chrome*
+   (frames, glow, titles, primary buttons) follows the portfolio
+   theme accent. Gameplay stat colors (score, combo, kills, hardcore)
+   stay fixed in the JS that builds each pop-up. Every game pop-up
+   lives inside .light-again-modal, so all of them inherit these.
+   ============================================================ */
+.light-again-modal {
+  --la-accent: #f2a285;
+  --la-accent-soft: rgba(242, 162, 133, 0.30);
+  --la-accent-line: rgba(242, 162, 133, 0.55);
+  --la-accent-faint: rgba(242, 162, 133, 0.05);
+  --la-accent-fill: rgba(242, 162, 133, 0.10);
+  --la-accent-fill-hi: rgba(242, 162, 133, 0.18);
+  --la-accent-glow: rgba(242, 162, 133, 0.22);
+  --la-win-bg: rgba(7, 7, 18, 0.66);
+  /* Game-over panel — far more see-through than the rest (hardcore only); the
+     blur + accent frame keep it readable over the frozen death scene. */
+  --la-go-bg: rgba(7, 7, 18, 0.40);
+  --la-win-bg-strong: rgba(7, 7, 18, 0.82);
+  --la-win-border: rgba(242, 162, 133, 0.20);
+  --la-win-scrim: rgba(3, 3, 12, 0.58);
+}
+
+[data-theme="dark"] .light-again-modal {
+  --la-accent: #ff4ecb;
+  --la-accent-soft: rgba(255, 78, 203, 0.30);
+  --la-accent-line: rgba(255, 78, 203, 0.55);
+  --la-accent-faint: rgba(255, 78, 203, 0.05);
+  --la-accent-fill: rgba(255, 78, 203, 0.10);
+  --la-accent-fill-hi: rgba(255, 78, 203, 0.18);
+  --la-accent-glow: rgba(255, 78, 203, 0.22);
+  --la-win-bg: rgba(8, 4, 20, 0.68);
+  --la-go-bg: rgba(8, 4, 20, 0.42);
+  --la-win-bg-strong: rgba(8, 4, 20, 0.84);
+  --la-win-border: rgba(255, 78, 203, 0.20);
+  --la-win-scrim: rgba(4, 2, 14, 0.60);
+}
+
+[data-theme="nature"] .light-again-modal {
+  --la-accent: #6fcf3f;
+  --la-accent-soft: rgba(94, 184, 58, 0.30);
+  --la-accent-line: rgba(94, 184, 58, 0.55);
+  --la-accent-faint: rgba(94, 184, 58, 0.05);
+  --la-accent-fill: rgba(94, 184, 58, 0.10);
+  --la-accent-fill-hi: rgba(94, 184, 58, 0.18);
+  --la-accent-glow: rgba(94, 184, 58, 0.22);
+  --la-win-bg: rgba(4, 10, 4, 0.68);
+  --la-go-bg: rgba(4, 10, 4, 0.42);
+  --la-win-bg-strong: rgba(4, 10, 4, 0.84);
+  --la-win-border: rgba(94, 184, 58, 0.20);
+  --la-win-scrim: rgba(2, 7, 2, 0.60);
+}
+
 /* Close button pinned top-right of the modal */
 .light-again-modal > .modal__close {
   position: absolute;

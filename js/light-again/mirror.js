@@ -95,7 +95,7 @@
      SPAWN — emerges out of the player, then peels off into ROAM.
      ================================================================ */
   M._spawnMirror = function () {
-    if (this._mirror || this._anomaly || this._gigaBruiser) return;
+    if (this._mirror || this._anomaly || this._gigaBruiser || this._snake) return;
     if (!this.p || this.p.state === 'DEAD') return;
     var p = this.p;
 
@@ -598,7 +598,7 @@
     mir.dead = true;
     var ex = mir.x, ey = mir.y;
 
-    this._floatLabel(ex, ey - C.MIR_SIZE - 14, 'RIVAL DOWN', '#ff8ad0', 0);
+    this._bossKillBanner(ex, ey - C.MIR_SIZE - 14, 'RIVAL DOWN', '#ff8ad0');
 
     this._explode(ex, ey, [255, 70, 180], 54);
     this._explode(ex, ey, [180, 96, 255], 36);

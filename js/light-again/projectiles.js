@@ -124,9 +124,10 @@
       pr.spr.setPosition(pr.x, pr.y);
       pr.spr.rotation += pr.rotSpeed * prDt;
 
-      // Trail: inject a new slot into the global pool
+      // Trail: inject a new slot into the global pool. Un-parried venom bolts
+      // are drawn as procedural mini-serpents (no shard trail) by _renderSnakeVenom.
       var spd = pr.vx * pr.vx + pr.vy * pr.vy;
-      if (spd > 0.01) {
+      if (spd > 0.01 && !(pr.snakeSpit && !pr.isReflected)) {
         var slot = this._projTrailPool[this._projTrailPoolW % this._projTrailPool.length];
         this._projTrailPoolW++;
         slot.x = pr.x;
@@ -162,6 +163,14 @@
       }
 
       if (pr.isReflected) {
+        // Reflected projectiles also carve the serpent's body segments (head is
+        // intangible). A direct segment hit consumes the projectile.
+        if (this._snake && !this._snake.dead && this._snakeReflectedHit(pr)) {
+          if (pr._twPending) this._twResolvePending();
+          this._destroyProjectile(pr);
+          this.projectiles.splice(i, 1);
+          continue;
+        }
         // Reflected projectile hits enemies
         for (var ei = this.enemies.length - 1; ei >= 0; ei--) {
           var e = this.enemies[ei];
@@ -209,6 +218,8 @@
                 }
               }
               if (pOwnBatch) this._endBatch();
+              // Smash shockwave also chips serpent segments around it (throttled).
+              if (this._snake && !this._snake.dead) this._damageSnakeAoe(pr.x, pr.y, smashAoe, C.SNAKE_AOE_DMG);
               this._explode(pr.x, pr.y, [170, 68, 255], 30);
               this._explode(pr.x, pr.y, [255, 255, 255], 15);
               this._explode(pr.x, pr.y, [200, 120, 255], 10);
@@ -291,6 +302,9 @@
             pr.vx = Math.cos(refAng) * refSpd;
             pr.vy = Math.sin(refAng) * refSpd;
             pr.isReflected = true;
+            // A parried venom bolt loses its mini-serpent skin → show the
+            // normal reflected sprite (hidden while it was the snake's).
+            if (pr.snakeSpit && pr.spr) pr.spr.setVisible(true);
             pr._reflectedThisAtk = true;  // show tether only for this dash-attack
             if (this._tutEvent) this._tutEvent('parade');  // tutorial: parry detected
             // Tag with the current dash-attack id so its eventual smash event is

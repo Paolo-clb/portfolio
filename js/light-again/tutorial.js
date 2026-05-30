@@ -51,20 +51,42 @@
 
       '#_la-tut-overlay{position:absolute;inset:0;z-index:56;pointer-events:none;font-family:monospace;color:#e6f6ff}',
 
-      /* Quest banner (top, under the score HUD) */
+      /* Quest banner (top, under the score HUD) — a column: a header row
+         (badge + title + progress) plus, on multi-goal steps, a sub-quest checklist. */
       '#_la-tut-overlay .la-tut-quest{position:absolute;top:6.2rem;left:50%;transform:translateX(-50%);' +
-        'display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;justify-content:center;' +
+        'display:flex;flex-direction:column;align-items:center;gap:.45rem;' +
         'max-width:min(620px,92%);padding:.6rem 1.05rem;border-radius:12px;' +
-        'background:transparent;border:1px solid rgba(0,255,255,.34);' +
+        'background:transparent;border:1px solid var(--la-accent-soft);' +
         'text-align:center}',
+      '#_la-tut-overlay .la-tut-quest-head{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;justify-content:center}',
       '#_la-tut-overlay .la-tut-quest.la-tut-done{border-color:rgba(61,220,132,.7);background:transparent}',
       '#_la-tut-overlay .la-tut-badge{font-size:.56rem;letter-spacing:.22em;font-weight:700;' +
-        'padding:.18rem .5rem;border-radius:6px;background:rgba(0,255,255,.14);color:#00ffff;' +
-        'border:1px solid rgba(0,255,255,.3);flex:none}',
+        'padding:.18rem .5rem;border-radius:6px;background:var(--la-accent-fill);color:var(--la-accent);' +
+        'border:1px solid var(--la-accent-soft);flex:none}',
       '#_la-tut-overlay .la-tut-done .la-tut-badge{background:rgba(61,220,132,.18);color:#3ddc84;border-color:rgba(61,220,132,.45)}',
       '#_la-tut-overlay .la-tut-quest-text{font-size:.95rem;font-weight:700;letter-spacing:.01em;color:#dff6ff;' +
         'text-shadow:0 1px 4px #000,0 0 9px rgba(0,0,0,.95)}',
       '#_la-tut-overlay .la-tut-progress{font-size:.86rem;font-weight:700;color:#ffcc00;letter-spacing:.05em}',
+
+      /* Sub-quest checklist (multi-goal steps, e.g. the final sandbox step):
+         one ticked-off line per goal so it's obvious BOTH must be done. */
+      '#_la-tut-overlay .la-tut-subquests{display:flex;flex-direction:column;gap:.32rem;width:100%;margin-top:.05rem}',
+      '#_la-tut-overlay .la-tut-subq{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:center;' +
+        'font-size:.82rem;font-weight:700;color:#bcd4e6;text-shadow:0 1px 4px #000,0 0 9px rgba(0,0,0,.95);' +
+        'opacity:.9;transition:color .25s,opacity .25s}',
+      '#_la-tut-overlay .la-tut-subq-ic{flex:none;width:1.15rem;height:1.15rem;line-height:1;display:inline-flex;' +
+        'align-items:center;justify-content:center;border-radius:50%;font-size:.66rem;font-weight:800;' +
+        'color:#7fb0c8;border:1.5px solid var(--la-accent-soft);background:var(--la-accent-faint)}',
+      '#_la-tut-overlay .la-tut-subq-label b{color:#dff6ff}',
+      '#_la-tut-overlay .la-tut-subq-label .c-dash{color:#00ffff}',
+      '#_la-tut-overlay .la-tut-subq-label .c-shield{color:#00ffff}',
+      '#_la-tut-overlay .la-tut-subq-prog{flex:none;font-size:.78rem;font-weight:700;color:#ffcc00;letter-spacing:.04em}',
+      '#_la-tut-overlay .la-tut-subq .la-tut-kbd{padding:.13rem .4rem;font-size:.71rem;border-bottom-width:2px}',
+      '#_la-tut-overlay .la-tut-subq-done{color:#9be8bf;opacity:1}',
+      '#_la-tut-overlay .la-tut-subq-done .la-tut-subq-ic{color:#08160f;background:#3ddc84;border-color:#3ddc84}',
+      '#_la-tut-overlay .la-tut-subq-done .la-tut-subq-prog{color:#3ddc84}',
+      '@keyframes la-tut-subq-pop{0%{transform:scale(1)}40%{transform:scale(1.09)}100%{transform:scale(1)}}',
+      '#_la-tut-overlay .la-tut-subq-pop{animation:la-tut-subq-pop .42s ease-out}',
 
       /* Combo-indicator highlight (combo step only) — a pulsing ring framing the
          on-canvas combo counter at the top, with a caption pointing at it. */
@@ -80,13 +102,13 @@
       /* Big tooltip card (lower third) */
       '#_la-tut-overlay .la-tut-tip{position:absolute;left:50%;bottom:4.6rem;transform:translateX(-50%);' +
         'width:min(560px,92%);padding:1.05rem 1.3rem 1.15rem;border-radius:16px;text-align:center;' +
-        'background:transparent;border:1px solid rgba(0,255,255,.3)}',
+        'background:transparent;border:1px solid var(--la-accent-soft)}',
       '#_la-tut-overlay .la-tut-tip-title{font-size:1.5rem;font-weight:800;letter-spacing:.16em;' +
-        'text-transform:uppercase;color:#00ffff;text-shadow:0 0 14px rgba(0,255,255,.4),0 2px 5px #000;margin-bottom:.7rem}',
+        'text-transform:uppercase;color:var(--la-accent);text-shadow:0 0 14px var(--la-accent-glow),0 2px 5px #000;margin-bottom:.7rem}',
       '#_la-tut-overlay .la-tut-keys{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;justify-content:center;margin-bottom:.7rem}',
       '#_la-tut-overlay .la-tut-kbd{display:inline-block;padding:.3rem .62rem;border-radius:7px;' +
-        'background:rgba(0,255,255,.08);border:1px solid rgba(0,255,255,.45);border-bottom-width:3px;' +
-        'color:#b9f6ff;font-weight:700;font-size:.82rem;letter-spacing:.02em}',
+        'background:var(--la-accent-fill);border:1px solid var(--la-accent-line);border-bottom-width:3px;' +
+        'color:var(--la-accent);font-weight:700;font-size:.82rem;letter-spacing:.02em}',
       '#_la-tut-overlay .la-tut-or{opacity:.45;font-size:.66rem;margin:0 .1rem;letter-spacing:.1em}',
       '#_la-tut-overlay .la-tut-desc{font-size:.82rem;line-height:1.6;color:#bcd4e6;' +
         'text-shadow:0 1px 3px #000,0 0 7px rgba(0,0,0,.9)}',
@@ -110,9 +132,9 @@
       '#_la-tut-overlay .la-tut-step{font-size:.7rem;letter-spacing:.18em;color:#6f93b8;font-weight:700}',
       '#_la-tut-overlay .la-tut-btn{pointer-events:auto;cursor:pointer;font-family:monospace;font-weight:700;' +
         'font-size:.72rem;letter-spacing:.08em;padding:.42rem .9rem;border-radius:8px;' +
-        'background:rgba(8,12,28,.85);border:1px solid rgba(0,255,255,.3);color:#bdeaff;' +
+        'background:rgba(8,12,28,.85);border:1px solid var(--la-accent-soft);color:#bdeaff;' +
         'transition:background .2s,border-color .2s,transform .15s}',
-      '#_la-tut-overlay .la-tut-btn:hover{background:rgba(0,255,255,.14);border-color:rgba(0,255,255,.6);transform:translateY(-1px)}',
+      '#_la-tut-overlay .la-tut-btn:hover{background:var(--la-accent-fill);border-color:var(--la-accent-line);transform:translateY(-1px)}',
       '#_la-tut-overlay .la-tut-skip{color:#d8b9c4;border-color:rgba(255,120,150,.3)}',
       '#_la-tut-overlay .la-tut-skip:hover{background:rgba(255,80,120,.12);border-color:rgba(255,120,150,.6)}',
 
@@ -120,7 +142,7 @@
       '#_la-tut-overlay .la-tut-complete{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);' +
         'pointer-events:auto;width:min(440px,92%);padding:2rem 1.6rem 1.6rem;border-radius:18px;text-align:center;' +
         'background:linear-gradient(160deg,rgba(8,14,28,.96),rgba(14,10,26,.96));' +
-        'border:1px solid rgba(0,255,255,.35);box-shadow:0 0 50px rgba(0,255,255,.12),inset 0 0 30px rgba(0,255,255,.04);' +
+        'border:1px solid var(--la-accent-soft);box-shadow:0 0 50px var(--la-accent-glow),inset 0 0 30px var(--la-accent-faint);' +
         'animation:la-tut-pop .45s cubic-bezier(.22,1,.36,1) both}',
       '#_la-tut-overlay .la-tut-complete-glyph{font-size:2.6rem;line-height:1;margin-bottom:.5rem}',
       '#_la-tut-overlay .la-tut-complete-title{font-size:1.15rem;font-weight:800;letter-spacing:.1em;' +
@@ -132,8 +154,8 @@
       '#_la-tut-overlay .la-tut-complete-hint{font-size:.66rem;letter-spacing:.06em;color:#6f8aa0;margin:1.1rem 0 1.3rem}',
       '#_la-tut-overlay .la-tut-continue{pointer-events:auto;cursor:pointer;font-family:monospace;font-weight:800;' +
         'font-size:.85rem;letter-spacing:.12em;text-transform:uppercase;padding:.6rem 1.8rem;border-radius:10px;' +
-        'background:rgba(0,255,255,.12);border:1.5px solid rgba(0,255,255,.55);color:#00ffff;transition:transform .15s,box-shadow .2s,background .2s}',
-      '#_la-tut-overlay .la-tut-continue:hover{transform:translateY(-2px);background:rgba(0,255,255,.2);box-shadow:0 0 22px rgba(0,255,255,.25)}',
+        'background:var(--la-accent-fill);border:1.5px solid var(--la-accent-line);color:var(--la-accent);transition:transform .15s,box-shadow .2s,background .2s}',
+      '#_la-tut-overlay .la-tut-continue:hover{transform:translateY(-2px);background:var(--la-accent-fill-hi);box-shadow:0 0 22px var(--la-accent-glow)}',
 
       '@media (max-width:560px){#_la-tut-overlay .la-tut-tip-title{font-size:1.2rem}#_la-tut-overlay .la-tut-tip{bottom:3.6rem}}',
     ].join('');
@@ -210,6 +232,8 @@
     // unfinished intro freezes the world → soft-lock). Clears their world state.
     if (this._clearAnomaly) this._clearAnomaly(true);
     if (this._clearGigaBruiser) this._clearGigaBruiser(true);
+    if (this._clearMirror) this._clearMirror(true);
+    if (this._clearSnake) this._clearSnake(true);
     this._anomalyBarrierActive = false;
     this._anomalyIntroActive = false;
     this._anomalyCooldownT = 0;
@@ -569,7 +593,7 @@
         // Free play: never freeze enemies — the live spawner is the whole lesson,
         // and the quest (wheel + Clear) doesn't require moving.
         noFreeze: true,
-        quest: fr ? 'Accélère le spawn à la molette, puis vide l’arène' : 'Speed up spawns with the wheel, then wipe the arena',
+        quest: fr ? 'Les 2 outils du bac à sable' : 'The 2 sandbox tools',
         keys:  fr ? ['Molette ↑', 'Suppr / Retour arrière'] : ['Wheel ↑', 'Delete / Backspace'],
         desc:  fr
           ? 'Outils <b>bac à sable</b> : la <span class="c-dash">molette</span> <b>accélère</b> (↑) ou calme (↓) l’apparition des ennemis. <span class="c-shield">Suppr</span> ou <span class="c-shield">Retour arrière</span> déclenche une onde qui <b>balaie l’arène</b> — sans points.'
@@ -586,15 +610,28 @@
           d().sandCleared = false;
           self._tutSpawnRing(1, 4, 320);              // a few starters to multiply
         },
-        progress: function () {
-          var dd = d();
-          var r = self._sandboxRate;
-          var rateStr = (r % 1 === 0) ? String(r) : r.toFixed(1);
-          var q1 = dd.sandSped ? '✓' : ('x' + rateStr + ' / x' + sandTarget);
-          var q2 = dd.sandCleared ? '✓' : '–';
-          return (fr ? 'Molette ' : 'Wheel ') + q1 + '   ·   ' + (fr ? 'Clear ' : 'Clear ') + q2;
-        },
-        // Two sticky sub-quests; the step clears once BOTH are satisfied.
+        // Two explicit, separately-ticked sub-quests so it's unmistakable that
+        // BOTH must be done: pace the spawns UP with the wheel, AND sweep the
+        // board with Delete/Backspace. Rendered as a checklist under the header.
+        subQuests: [
+          {
+            label: fr ? 'Accélère l’apparition à la <span class="c-dash">molette</span>'
+                      : 'Speed up the spawns with the <span class="c-dash">wheel</span>',
+            keys:  fr ? ['Molette ↑'] : ['Wheel ↑'],
+            prog:  function () {
+              var r = self._sandboxRate;
+              var rateStr = (r % 1 === 0) ? String(r) : r.toFixed(1);
+              return 'x' + rateStr + ' / x' + sandTarget;
+            },
+            done:  function () { return !!d().sandSped; },
+          },
+          {
+            label: fr ? 'Balaie toute l’arène d’un coup' : 'Sweep the whole arena at once',
+            keys:  fr ? ['Suppr', 'Retour arrière'] : ['Delete', 'Backspace'],
+            done:  function () { return !!d().sandCleared; },
+          },
+        ],
+        // Two sticky goals; the step clears once BOTH are satisfied.
         maintain: function () {
           var dd = d();
           if (self._sandboxRate >= sandTarget) dd.sandSped = true;
@@ -670,6 +707,9 @@
       }
     }
 
+    // Multi-goal steps tick their checklist live (the final sandbox step).
+    if (this._tutDom && this._tutDom.subqRows) this._tutUpdateSubQuests();
+
     if (step.check(dt)) this._tutSucceed();
   };
 
@@ -732,6 +772,11 @@
     dom.progress.textContent = '';
     dom.progress.style.display = 'none';
 
+    // Sub-quest checklist: steps that bundle several goals into one step (the
+    // final sandbox step) list each goal on its own ticked line so it's obvious
+    // BOTH must be done. Rebuilt per step; hidden for single-goal steps.
+    this._tutBuildSubQuests(step);
+
     // Combo-indicator highlight: shown only on the step that teaches the combo,
     // pointing the player at the on-canvas combo counter up top.
     if (dom.comboCue) dom.comboCue.style.display = step.highlightCombo ? '' : 'none';
@@ -742,6 +787,79 @@
       void el.offsetWidth;
       el.classList.add('la-tut-anim');
     });
+  };
+
+  /* Sub-quest checklist — builds one ticked-off line per goal for multi-goal
+     steps (currently only the final sandbox step). Rebuilt every step; the
+     container is hidden for single-goal steps. Each sub-quest is a plain object
+     { label, keys?, done(), prog?() }: done() flips the line to ✓, prog() feeds
+     the little per-line counter (e.g. "x1 / x3"). Both are polled per frame in
+     _tutUpdateSubQuests so the checklist ticks live as the player acts. */
+  M._tutBuildSubQuests = function (step) {
+    var dom = this._tutDom;
+    if (!dom || !dom.subquests) return;
+    var wrap = dom.subquests;
+    wrap.innerHTML = '';
+    dom.subqRows = null;
+
+    var subs = step && step.subQuests;
+    if (!subs || !subs.length) { wrap.style.display = 'none'; return; }
+
+    var fr = tutFr();
+    var rows = [];
+    for (var i = 0; i < subs.length; i++) {
+      var sq = subs[i];
+      var keysHtml = (sq.keys && sq.keys.length) ? ' ' + buildKeysHtml(sq.keys, fr) : '';
+      var row = document.createElement('div');
+      row.className = 'la-tut-subq';
+      row.innerHTML =
+        '<span class="la-tut-subq-ic">' + (i + 1) + '</span>' +
+        '<span class="la-tut-subq-label">' + sq.label + keysHtml + '</span>' +
+        '<span class="la-tut-subq-prog"></span>';
+      wrap.appendChild(row);
+      rows.push({
+        el:     row,
+        ic:     row.querySelector('.la-tut-subq-ic'),
+        prog:   row.querySelector('.la-tut-subq-prog'),
+        doneFn: sq.done,
+        progFn: sq.prog,
+        idx:    i,
+        _done:  undefined,
+        _prog:  undefined,
+      });
+    }
+    dom.subqRows = rows;
+    wrap.style.display = '';
+    this._tutUpdateSubQuests();
+  };
+
+  /* Per-frame refresh of the sub-quest checklist — flips each line to ✓ (with a
+     pop) the moment its goal fires, and updates its little progress counter.
+     Called from _updateTutorial only while subqRows exist. */
+  M._tutUpdateSubQuests = function () {
+    var dom = this._tutDom;
+    if (!dom || !dom.subqRows) return;
+    var rows = dom.subqRows;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var done = !!(r.doneFn && r.doneFn());
+      if (done !== r._done) {
+        r._done = done;
+        r.el.classList.toggle('la-tut-subq-done', done);
+        r.ic.textContent = done ? '✓' : String(r.idx + 1);
+        if (done) {                       // replay the tick-off pop
+          r.el.classList.remove('la-tut-subq-pop');
+          void r.el.offsetWidth;
+          r.el.classList.add('la-tut-subq-pop');
+        }
+      }
+      var pg = done ? '' : (r.progFn ? r.progFn() : '');
+      if (pg !== r._prog) {
+        r._prog = pg;
+        r.prog.textContent = pg || '';
+        r.prog.style.display = pg ? '' : 'none';
+      }
+    }
   };
 
   M._tutSucceed = function () {
@@ -857,9 +975,12 @@
     ov.id = '_la-tut-overlay';
     ov.innerHTML =
       '<div class="la-tut-quest la-tut-anim">' +
-        '<span class="la-tut-badge">' + (fr ? 'QUÊTE' : 'QUEST') + '</span>' +
-        '<span class="la-tut-quest-text"></span>' +
-        '<span class="la-tut-progress"></span>' +
+        '<div class="la-tut-quest-head">' +
+          '<span class="la-tut-badge">' + (fr ? 'QUÊTE' : 'QUEST') + '</span>' +
+          '<span class="la-tut-quest-text"></span>' +
+          '<span class="la-tut-progress"></span>' +
+        '</div>' +
+        '<div class="la-tut-subquests" style="display:none"></div>' +
       '</div>' +
       '<div class="la-tut-tip la-tut-anim">' +
         '<div class="la-tut-tip-title"></div>' +
@@ -893,6 +1014,8 @@
       skipBtn:   ov.querySelector('.la-tut-skip'),
       refBtn:    ov.querySelector('.la-tut-ref'),
       comboCue:  ov.querySelector('.la-tut-combo-cue'),
+      subquests: ov.querySelector('.la-tut-subquests'),
+      subqRows:  null,   // [{el,ic,prog,_done,_prog}] — rebuilt per step in _tutBuildSubQuests
     };
     this._tutDom.progress.style.display = 'none';
 

@@ -110,7 +110,7 @@
         '<div class="la-ms-tut-hint">' + (fr
           ? 'Termine le tutoriel pour d\u00e9bloquer le mode Hardcore'
           : 'Finish the tutorial to unlock Hardcore mode') + '</div>' +
-        '<div class="la-ms-bar la-ms-tut-bar"><span class="la-ms-bar-fill" style="width:' + pct + '%;background:#00ffff"></span></div>' +
+        '<div class="la-ms-bar la-ms-tut-bar"><span class="la-ms-bar-fill" style="width:' + pct + '%;background:var(--la-accent)"></span></div>' +
         '<div class="la-ms-tut-label">' + label + '</div>' +
         '<div class="la-ms-tut-btns">' +
           (started ? '<button type="button" id="_la-tut-resume" class="la-ms-tut-btn la-ms-tut-btn--primary">' + (fr ? 'Reprendre \u25b6' : 'Resume \u25b6') + '</button>' : '') +
@@ -121,6 +121,13 @@
 
   function showModeMenu(container, fromActiveGame) {
     if (menuEl) return;
+    // A game-over run is DEAD — capture that BEFORE tearing the screen down (the
+    // teardown clears the flag), so the menu offers a fresh "Play" instead of a
+    // "Resume" that would try to resume a dead scene and crash.
+    var wasGameOver = isLightAgainGameOverOpen();
+    // Arriving from the game-over screen (Home pressed)? Tear it down first so the
+    // mode menu cleanly replaces it instead of overlapping its translucent panel.
+    if (typeof window.__laDismissGameOver === 'function') window.__laDismissGameOver();
     var unlocked = laIsHardcoreUnlocked();
     // Pickaxe skin is a reward for unlocking hardcore — force off if still locked.
     window.__laSteveSkin = unlocked && (localStorage.getItem('la_skin_steve') === '1');
@@ -130,7 +137,7 @@
       st.id = '_la-go-styles';
       st.textContent =
         '@keyframes la-go-fade-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}' +
-        '@keyframes la-go-glow{0%,100%{box-shadow:0 0 0 0 rgba(0,255,255,0.2)}50%{box-shadow:0 0 22px 4px rgba(0,255,255,0.12)}}' +
+        '@keyframes la-go-glow{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 22px 4px var(--la-accent-glow)}}' +
         '@keyframes la-go-spin{to{transform:rotate(360deg)}}';
       document.head.appendChild(st);
     }
@@ -139,14 +146,14 @@
       ms.id = '_la-ms-styles';
       ms.textContent =
         '#_la-mode-select .la-ms-wrap{text-align:center;width:min(780px,94%);padding:2rem 1.5rem}' +
-        '#_la-mode-select .la-ms-title{font-size:1rem;letter-spacing:.32em;color:#3a86b8;text-transform:uppercase;margin-bottom:1.8rem}' +
+        '#_la-mode-select .la-ms-title{font-size:1rem;letter-spacing:.32em;color:var(--la-accent);text-transform:uppercase;margin-bottom:1.8rem}' +
         '#_la-mode-select .la-ms-return{font-size:.55rem;letter-spacing:.2em;color:#445; text-transform:uppercase;margin-bottom:.5rem}' +
         '#_la-mode-select .la-ms-cards{display:flex;gap:1.2rem;justify-content:center;flex-wrap:wrap}' +
         '#_la-mode-select .la-ms-card{position:relative;flex:1 1 230px;max-width:320px;min-width:200px;padding:1.7rem 1.3rem 1.5rem;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:.65rem;transition:transform .2s ease,box-shadow .25s ease,border-color .25s ease,background .25s ease}' +
         '#_la-mode-select .la-ms-card--enabled{cursor:pointer}' +
         '#_la-mode-select .la-ms-card--enabled:hover{transform:translateY(-5px)}' +
-        '#_la-mode-select .la-ms-card--sandbox{border:1px solid rgba(0,255,255,0.3);background:rgba(0,255,255,0.04)}' +
-        '#_la-mode-select .la-ms-card--sandbox:hover{border-color:rgba(0,255,255,0.65);box-shadow:0 0 30px rgba(0,255,255,0.2);background:rgba(0,255,255,0.08)}' +
+        '#_la-mode-select .la-ms-card--sandbox{border:1px solid var(--la-accent-soft);background:var(--la-accent-faint)}' +
+        '#_la-mode-select .la-ms-card--sandbox:hover{border-color:var(--la-accent-line);box-shadow:0 0 30px var(--la-accent-glow);background:var(--la-accent-fill)}' +
         '#_la-mode-select .la-ms-card--hardcore{border:1px solid rgba(255,70,20,0.32);background:rgba(255,45,0,0.035)}' +
         '#_la-mode-select .la-ms-card--hardcore.la-ms-card--enabled:hover{border-color:rgba(255,80,30,0.7);box-shadow:0 0 30px rgba(255,60,0,0.22);background:rgba(255,60,0,0.07)}' +
         '#_la-mode-select .la-ms-card--locked{border-style:dashed;cursor:not-allowed}' +
@@ -156,14 +163,14 @@
         '#_la-mode-select .la-ms-cta{margin-top:.4rem;padding:.55rem 1.7rem;border-radius:9px;font-size:.86rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}' +
         '#_la-mode-select .la-ms-bar{height:.5rem;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden}' +
         '#_la-mode-select .la-ms-bar-fill{display:block;height:100%;border-radius:99px;transition:width .5s cubic-bezier(0.22,1,0.36,1)}' +
-        '#_la-mode-select .la-ms-tut{margin-top:1.6rem;padding:1.2rem 1.3rem;border:1px solid rgba(0,255,255,0.18);border-radius:12px;background:rgba(0,255,255,0.03);text-align:center}' +
+        '#_la-mode-select .la-ms-tut{margin-top:1.6rem;padding:1.2rem 1.3rem;border:1px solid var(--la-accent-soft);border-radius:12px;background:var(--la-accent-faint);text-align:center}' +
         '#_la-mode-select .la-ms-tut-hint{font-size:.68rem;letter-spacing:.04em;color:#6f9bc0;margin-bottom:1rem;line-height:1.55}' +
         '#_la-mode-select .la-ms-tut-bar{max-width:320px;margin:.2rem auto .7rem}' +
         '#_la-mode-select .la-ms-tut-label{font-size:.74rem;font-weight:700;color:#9fd4e8;letter-spacing:.06em;margin-bottom:1rem}' +
         '#_la-mode-select .la-ms-tut-btns{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap}' +
         '#_la-mode-select .la-ms-tut-btn{cursor:pointer;font-family:monospace;font-weight:700;font-size:.76rem;letter-spacing:.07em;padding:.55rem 1.3rem;border-radius:9px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.18);color:#cfe0ee;transition:transform .15s,background .2s,border-color .2s}' +
-        '#_la-mode-select .la-ms-tut-btn:hover{transform:translateY(-2px);background:rgba(0,255,255,0.1);border-color:rgba(0,255,255,0.5)}' +
-        '#_la-mode-select .la-ms-tut-btn--primary{background:rgba(0,255,255,0.12);border-color:rgba(0,255,255,0.55);color:#00ffff}' +
+        '#_la-mode-select .la-ms-tut-btn:hover{transform:translateY(-2px);background:var(--la-accent-fill);border-color:var(--la-accent-line)}' +
+        '#_la-mode-select .la-ms-tut-btn--primary{background:var(--la-accent-fill);border-color:var(--la-accent-line);color:var(--la-accent)}' +
         '#_la-mode-select .la-ms-steve{display:inline-flex;align-items:center;gap:.5rem;margin-top:1.5rem;font-size:.74rem;letter-spacing:.05em;color:#8aa3c0;cursor:pointer;user-select:none;transition:color .2s}' +
         '#_la-mode-select .la-ms-steve:hover{color:#cfe6f5}' +
         '#_la-mode-select .la-ms-steve input{width:15px;height:15px;margin:0;accent-color:#5fe0cf;cursor:pointer}' +
@@ -186,15 +193,18 @@
       'position:absolute', 'inset:0', 'z-index:60',
       'display:flex', 'align-items:center', 'justify-content:center',
       // Lighter scrim than before so the running game stays visible behind the menu.
-      'background:rgba(4,5,18,0.66)', 'font-family:monospace', 'overflow-y:auto',
+      // Shared token so the game-over panel matches this exactly + adapts to theme.
+      'background:var(--la-win-bg)', 'font-family:monospace', 'overflow-y:auto',
       'animation:la-go-fade-in 0.32s cubic-bezier(0.22,1,0.36,1) both',
     ].join(';');
 
     // Which mode (if any) has a live run behind this menu — drives the card
     // highlight + "En cours" badge so the player sees at a glance where they were.
     var fr = (localStorage.getItem('portfolio_lang') || 'fr') !== 'en';
-    var sbActive = fromActiveGame && currentMode === 'sandbox';
-    var hcActive = fromActiveGame && currentMode === 'hardcore';
+    // Resumable only if we came from a LIVE run — a dead game-over run restarts fresh.
+    var resumable = fromActiveGame && !wasGameOver;
+    var sbActive = resumable && currentMode === 'sandbox';
+    var hcActive = resumable && currentMode === 'hardcore';
     var activeBadge = '<div class="la-ms-active-badge">' + (fr ? 'En cours' : 'In progress') + '</div>';
 
     var hcCardCls = 'la-ms-card la-ms-card--hardcore ' + (unlocked ? 'la-ms-card--enabled' : 'la-ms-card--locked') + (hcActive ? ' la-ms-card--active' : '');
@@ -212,10 +222,10 @@
       // SANDBOX card
       '<div id="_la-ms-sandbox" class="la-ms-card la-ms-card--sandbox la-ms-card--enabled' + (sbActive ? ' la-ms-card--active' : '') + '" role="button" tabindex="0">' +
         (sbActive ? activeBadge : '') +
-        '<div class="la-ms-glyph" style="color:#00ffff">\u221e</div>' +
-        '<div class="la-ms-name" style="color:#00ffff">SANDBOX</div>' +
+        '<div class="la-ms-glyph" style="color:var(--la-accent)">\u221e</div>' +
+        '<div class="la-ms-name" style="color:var(--la-accent)">SANDBOX</div>' +
         '<div class="la-ms-desc" style="color:#6f93b8">' + tG('laModeSandboxDesc') + '</div>' +
-        '<div class="la-ms-cta" style="border:1.5px solid rgba(0,255,255,0.5);background:rgba(0,255,255,0.1);color:#00ffff">' + ((fromActiveGame && currentMode === 'sandbox') ? tG('laModeResume') : tG('laGoPlay')) + '</div>' +
+        '<div class="la-ms-cta" style="border:1.5px solid var(--la-accent-line);background:var(--la-accent-fill);color:var(--la-accent)">' + ((resumable && currentMode === 'sandbox') ? tG('laModeResume') : tG('laGoPlay')) + '</div>' +
       '</div>' +
 
       // HARDCORE card
@@ -224,7 +234,7 @@
         '<div class="la-ms-glyph" style="color:' + hcCol + '">\u2620</div>' +
         '<div class="la-ms-name" style="color:' + hcCol + '">HARDCORE</div>' +
         '<div class="la-ms-desc" style="color:' + (unlocked ? '#a8744f' : '#6a4233') + '">' + tG('laModeHardcoreDesc') + '</div>' +
-        '<div class="la-ms-cta" style="' + hcCtaStyle + '">' + ((fromActiveGame && currentMode === 'hardcore') ? tG('laModeResume') : (unlocked ? tG('laGoPlay') : '\ud83d\udd12 ' + tG('laModeHardcoreLocked'))) + '</div>' +
+        '<div class="la-ms-cta" style="' + hcCtaStyle + '">' + ((resumable && currentMode === 'hardcore') ? tG('laModeResume') : (unlocked ? tG('laGoPlay') : '\ud83d\udd12 ' + tG('laModeHardcoreLocked'))) + '</div>' +
       '</div>' +
 
       '</div>' +
@@ -272,12 +282,12 @@
     // Each card "Resumes" the CURRENT run when the menu was opened from that same
     // mode; otherwise it (re)starts that mode. From the launch menu it starts fresh.
     function chooseSandbox() {
-      if (fromActiveGame && currentMode === 'sandbox') { resumeGame(); return; }
+      if (resumable && currentMode === 'sandbox') { resumeGame(); return; }
       dismissModeMenu();
       startWithMode(container, 'sandbox', fromActiveGame);
     }
     function chooseHardcore() {
-      if (fromActiveGame && currentMode === 'hardcore') { resumeGame(); return; }
+      if (resumable && currentMode === 'hardcore') { resumeGame(); return; }
       dismissModeMenu();
       startWithMode(container, 'hardcore', fromActiveGame);
     }
@@ -856,12 +866,12 @@
         '<div style="font-size:.95rem;font-weight:700;color:#ffb499;margin-bottom:.7rem;letter-spacing:.04em">' +
           (fr ? 'Lancer le tutoriel ?' : 'Start the tutorial?') + '</div>' +
         '<div style="font-size:.78rem;line-height:1.6;color:#c8b0a8;margin-bottom:1.4rem">' +
-          (fr ? 'Cela mettra fin à ta partie <b style="color:#ff5530">Hardcore</b> en cours. Le tutoriel se déroule en <b style="color:#00ffff">Sandbox</b>.'
-              : 'This will end your current <b style="color:#ff5530">Hardcore</b> run. The tutorial runs in <b style="color:#00ffff">Sandbox</b>.') + '</div>' +
+          (fr ? 'Cela mettra fin à ta partie <b style="color:#ff5530">Hardcore</b> en cours. Le tutoriel se déroule en <b style="color:var(--la-accent)">Sandbox</b>.'
+              : 'This will end your current <b style="color:#ff5530">Hardcore</b> run. The tutorial runs in <b style="color:var(--la-accent)">Sandbox</b>.') + '</div>' +
         '<div style="display:flex;gap:.8rem;justify-content:center">' +
           '<button id="_la-tc-cancel" type="button" style="cursor:pointer;font-family:monospace;font-weight:700;font-size:.78rem;padding:.5rem 1.2rem;border-radius:9px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);color:#cfe0ee">' +
             (fr ? 'Annuler' : 'Cancel') + '</button>' +
-          '<button id="_la-tc-go" type="button" style="cursor:pointer;font-family:monospace;font-weight:800;font-size:.78rem;letter-spacing:.06em;padding:.5rem 1.3rem;border-radius:9px;background:rgba(0,255,255,0.12);border:1.5px solid rgba(0,255,255,0.55);color:#00ffff">' +
+          '<button id="_la-tc-go" type="button" style="cursor:pointer;font-family:monospace;font-weight:800;font-size:.78rem;letter-spacing:.06em;padding:.5rem 1.3rem;border-radius:9px;background:var(--la-accent-fill);border:1.5px solid var(--la-accent-line);color:var(--la-accent)">' +
             (fr ? 'Lancer le tuto ▶' : 'Start tutorial ▶') + '</button>' +
         '</div>' +
       '</div>';
@@ -971,6 +981,13 @@
     };
     document.addEventListener('keydown', overlayEl._onKeyDown);
 
+    /* --- Suppress the browser context menu while the game is open --- */
+    // Right-click is the dash input; spamming it (especially clicking just
+    // outside the canvas) would otherwise pop the native right-click menu.
+    // Block it page-wide for as long as Light Again is on screen.
+    overlayEl._onContextMenu = function (e) { e.preventDefault(); };
+    document.addEventListener('contextmenu', overlayEl._onContextMenu);
+
     /* --- Kill switch --- */
     killPerformance();
 
@@ -1016,6 +1033,9 @@
     if (trapCleanup) { trapCleanup(); trapCleanup = null; }
     if (overlayEl._onKeyDown) {
       document.removeEventListener('keydown', overlayEl._onKeyDown);
+    }
+    if (overlayEl._onContextMenu) {
+      document.removeEventListener('contextmenu', overlayEl._onContextMenu);
     }
 
     // Clear restart flag — prevents stale __laRestartPending=true from making the next
