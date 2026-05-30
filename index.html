@@ -30,6 +30,7 @@
   <link rel="stylesheet" href="css/visualizer.css?v=1" />
   <link rel="stylesheet" href="css/rain.css?v=1" />
   <link rel="stylesheet" href="css/light-again.css?v=1" />
+  <link rel="stylesheet" href="css/perso-projects.css?v=1" />
   <!-- Restore saved theme + lang before any IIFE to avoid flash -->
   <script>(function(){var t=localStorage.getItem('portfolio_theme');if(t==='dark'||t==='nature'){document.documentElement.setAttribute('data-theme',t);var f={dark:'assets/images/favicon-dark.svg',nature:'assets/images/favicon-nature.svg'};var l=document.querySelector('link[rel="icon"]');if(l)l.href=f[t];var m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.content=t==='dark'?'#9c27b0':'#5eb83a';}var g=localStorage.getItem('portfolio_lang');if(g==='en')document.documentElement.lang='en';var a=localStorage.getItem('portfolio_animations');if(a==='off')document.documentElement.setAttribute('data-animations','off');if(!a){var w=false;if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)w=true;if(!w&&navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=2)w=true;if(!w&&navigator.deviceMemory&&navigator.deviceMemory<=2)w=true;if(w){window.__weakDeviceDetected=true;window.__weakDeviceAnimFlowActive=true;}}})()</script>
   <noscript><style>body{background:#100f18;color:#e8e3e4;font-family:'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;margin:0}body>*:not(noscript){display:none!important}</style><p>Ce site nécessite JavaScript pour fonctionner. Veuillez l'activer dans les paramètres de votre navigateur.</p></noscript>
@@ -116,11 +117,21 @@
   </header>
 
   <main>
-    <!-- Hero Section — Typing Game -->
+    <!-- Hero Section — Personal projects carousel (Typing Game is the default slide) -->
     <section class="hero section" id="hero">
       <div class="container hero__content">
         <h2 class="section__title">Paolo Colombat : <em>Typing Game</em></h2>
-        <div class="typing-game" id="typing-game"></div>
+        <!-- Personal-projects carousel. Edge nav tabs are injected by js/perso-projects.js.
+             Slide visibility is handled in CSS (.hero__slide / --active) — no FOUC since
+             css/perso-projects.css is loaded in <head>. -->
+        <div class="hero__carousel" id="hero-carousel">
+          <div class="hero__slide hero__slide--active" data-project="typing">
+            <div class="typing-game" id="typing-game"></div>
+          </div>
+          <div class="hero__slide" data-project="light-again" aria-hidden="true">
+            <div class="la-preview" id="la-preview"><!-- built by js/perso-projects.js --></div>
+          </div>
+        </div>
       </div>
       <a href="#projects" class="scroll-hint" id="scroll-hint" aria-label="Scroll down">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -243,5 +254,6 @@
   <script src="js/light-again/tutorial.js"></script>
   <script src="js/light-again/scene.js"></script>
   <script src="js/light-again/shell.js"></script>
+  <script src="js/perso-projects.js"></script>
 </body>
 </html>

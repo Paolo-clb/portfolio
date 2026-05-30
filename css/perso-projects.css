@@ -1,0 +1,408 @@
+/* ==========================================================================
+   Personal projects — Home carousel
+   Turns the hero into a swipeable showcase of personal projects.
+   Typing Game is the default slide; Light Again gets a preview slide.
+   Edge nav tabs (vertical, echoing the sticky Light Again launcher) move
+   between projects and the big hero title swaps per project.
+
+   Accent colors derive from --clr-primary via color-mix, so the whole
+   component follows the active portfolio theme (coral / magenta / green)
+   with no per-theme overrides.
+   ========================================================================== */
+
+.hero {
+  /* Theme-adaptive accent tints, all derived from the current --clr-primary */
+  --pp-edge:      color-mix(in srgb, var(--clr-primary) 24%, transparent);
+  --pp-edge-soft: color-mix(in srgb, var(--clr-primary) 14%, transparent);
+  --pp-line:      color-mix(in srgb, var(--clr-primary) 50%, transparent);
+  --pp-fill:      color-mix(in srgb, var(--clr-primary) 12%, transparent);
+  --pp-fill-soft: color-mix(in srgb, var(--clr-primary) 7%,  transparent);
+  --pp-glow:      color-mix(in srgb, var(--clr-primary) 22%, transparent);
+}
+
+/* ============================================================
+   Carousel + slides
+   ============================================================ */
+
+.hero__carousel {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.hero__slide {
+  display: none;
+  width: 100%;
+}
+
+.hero__slide.hero__slide--active {
+  display: block;
+}
+
+/* Directional enter animation (--enter-x set inline by the controller) */
+@keyframes pp-slide-enter {
+  from { opacity: 0; transform: translateX(var(--enter-x, 28px)); }
+  to   { opacity: 1; transform: none; }
+}
+
+.hero__slide--entering {
+  animation: pp-slide-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+[data-animations="off"] .hero__slide--entering {
+  animation: none;
+}
+
+/* ============================================================
+   Edge nav tabs — vertical, echo the sticky Light Again launcher
+   Positioned absolutely inside .hero (controller sets `top` to the
+   carousel's vertical center, which sits above the page-fold center
+   where the fixed launcher lives — so they don't collide).
+   ============================================================ */
+
+.hero__nav {
+  position: absolute;
+  z-index: 80; /* below sticky launcher (90) + modals (200), above particles */
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: 40px;
+  min-height: 122px;
+  padding: 1.3rem 0;
+  background: rgba(16, 15, 24, 0.9);
+  border: 1.5px solid var(--pp-edge);
+  color: var(--clr-primary);
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.4s ease,
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* Shown only once the carousel is enabled */
+.hero__nav--ready {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* A direction with no adjacent project is removed entirely */
+.hero__nav[hidden] {
+  display: none;
+}
+
+.hero__nav--prev {
+  left: 0;
+  border-left: none;
+  border-radius: 0 9px 9px 0;
+  box-shadow: 2px 0 22px var(--pp-glow);
+}
+
+.hero__nav--next {
+  right: 0;
+  border-right: none;
+  border-radius: 9px 0 0 9px;
+  box-shadow: -2px 0 22px var(--pp-glow);
+}
+
+.hero__nav:hover,
+.hero__nav:focus-visible {
+  outline: none;
+  width: 46px;
+  border-color: var(--pp-line);
+}
+
+.hero__nav--prev:hover,
+.hero__nav--prev:focus-visible { box-shadow: 4px 0 30px var(--pp-glow); }
+
+.hero__nav--next:hover,
+.hero__nav--next:focus-visible { box-shadow: -4px 0 30px var(--pp-glow); }
+
+.hero__nav__label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--clr-text-muted);
+  user-select: none;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.hero__nav:hover .hero__nav__label,
+.hero__nav:focus-visible .hero__nav__label {
+  color: var(--clr-primary);
+}
+
+.hero__nav__chevron {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  stroke: currentColor;
+  opacity: 0.78;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.hero__nav:hover .hero__nav__chevron,
+.hero__nav:focus-visible .hero__nav__chevron {
+  opacity: 1;
+  transform: scale(1.22);
+}
+
+/* Suppress nav tabs while the fullscreen Light Again modal is open */
+body.la-modal-open .hero__nav {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Light Again — preview slide
+   ============================================================ */
+
+.la-preview {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  gap: 1.4rem 2.2rem;
+  align-items: center;
+  text-align: left;
+  padding: 0.5rem 0 0.25rem;
+}
+
+/* ---- Video placeholder (drop a <video> inside .la-preview__media later) ---- */
+
+.la-preview__media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--pp-edge);
+  background:
+    radial-gradient(circle at 42% 58%, var(--pp-glow) 0%, transparent 60%),
+    radial-gradient(circle at 72% 26%, var(--pp-fill) 0%, transparent 46%),
+    linear-gradient(155deg, #0b0919 0%, #1b1628 55%, #0d0b1a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
+}
+
+.la-preview__media video,
+.la-preview__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Drifting shimmer over the placeholder */
+.la-preview__media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(220deg, rgba(255, 255, 255, 0.06) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+.la-preview__play-glyph {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1.5px solid var(--pp-line);
+  background: rgba(16, 15, 24, 0.55);
+  color: var(--clr-primary);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  animation: pp-pulse 2.6s ease-in-out infinite;
+}
+
+.la-preview__play-glyph svg { width: 26px; height: 26px; margin-left: 3px; fill: currentColor; }
+
+@keyframes pp-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--pp-glow); }
+  50%      { box-shadow: 0 0 26px 5px var(--pp-glow); }
+}
+
+[data-animations="off"] .la-preview__play-glyph { animation: none; }
+
+.la-preview__media-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--clr-text-muted);
+  background: linear-gradient(0deg, rgba(8, 7, 14, 0.78) 0%, transparent 100%);
+  text-align: center;
+}
+
+/* ---- Info column ---- */
+
+.la-preview__info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.la-preview__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 99px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--clr-primary);
+  background: var(--pp-fill);
+  border: 1px solid var(--pp-edge);
+}
+
+.la-preview__badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--clr-primary);
+  box-shadow: 0 0 7px var(--clr-primary);
+}
+
+.la-preview__tagline {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--clr-primary);
+  letter-spacing: 0.02em;
+}
+
+.la-preview__lead {
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--clr-text);
+}
+
+.la-preview__body {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--clr-text-muted);
+}
+
+.la-preview__tech {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--clr-text-muted);
+  padding: 0.65rem 0.8rem;
+  border-left: 2px solid var(--pp-line);
+  background: var(--pp-fill-soft);
+  border-radius: 0 8px 8px 0;
+}
+
+.la-preview__tech b {
+  color: var(--clr-text);
+  font-weight: 600;
+}
+
+.la-preview__cta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.la-preview__play {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 1.5rem;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--clr-bg);
+  background: var(--clr-primary);
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.la-preview__play svg { width: 17px; height: 17px; fill: currentColor; }
+
+.la-preview__play:hover {
+  background: var(--clr-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--pp-glow);
+}
+
+.la-preview__play:focus-visible {
+  outline: 2px solid var(--pp-line);
+  outline-offset: 3px;
+}
+
+/* Desktop-only note shown instead of the Play button on mobile */
+.la-preview__desktop-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+}
+
+.la-preview__desktop-note svg { width: 16px; height: 16px; stroke: currentColor; fill: none; }
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 860px) {
+  .la-preview {
+    grid-template-columns: 1fr;
+    gap: 1.1rem;
+    max-width: 560px;
+    text-align: center;
+  }
+  .la-preview__info { align-items: center; }
+  .la-preview__tech { text-align: left; }
+}
+
+/* Nav tabs are touch-friendlier and slightly inset on small screens */
+@media (max-width: 600px) {
+  .hero__nav {
+    width: 34px;
+    min-height: 104px;
+    gap: 0.45rem;
+    padding: 1rem 0;
+  }
+  .hero__nav:hover,
+  .hero__nav:focus-visible { width: 38px; }
+  .hero__nav__label { font-size: 0.6rem; letter-spacing: 0.12em; }
+  .hero__nav__chevron { width: 15px; height: 15px; }
+}

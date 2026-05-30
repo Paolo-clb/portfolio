@@ -127,6 +127,8 @@
       orbitSign: Math.random() < 0.5 ? -1 : 1,
       wanderAng: 0,
       spitCD: 700 + Math.random() * 900,
+      whipCD: 1500 + Math.random() * 1800, whipT: 0, whipHit: false,
+      whipDir: 0, whipSign: 1,
       headClink: 0, splitFlash: 0, introReveal: 0,
     };
     this._snakeInitWormStats(worm, true);
@@ -138,7 +140,8 @@
     this._snake = {
       worms: [worm], dead: false,
       spawnPhase: 'EMERGE', introT: 0,
-      gfx: gfx, fxGfx: fxGfx, _lastX: hx, _lastY: hy,
+      gfx: gfx, fxGfx: fxGfx, splitFx: [],
+      _lastX: hx, _lastY: hy,
     };
 
     // Rift entrance burst
@@ -212,6 +215,10 @@
         this._snakeWormSpit(w);
         w.spitCD = this._snakeSpitCD(w.segs.length);
       }
+      // Defensive COUP DE QUEUE — a longer worm lashes its tail when attacked,
+      // repelling the player + enemies (no damage). May reshape s.worms? No — the
+      // whip never splits, so iterating s.worms here stays safe.
+      this._snakeUpdateWhip(w, sMs);
     }
 
     if (s.worms.length) { s._lastX = s.worms[0].hx; s._lastY = s.worms[0].hy; }
@@ -229,13 +236,18 @@
     var t = s.introT / C.SNAKE_ARRIVE_DUR; if (t > 1) t = 1;
     var reveal = t * total;
 
-    // Per-segment pop as each one crosses into existence.
+    // Per-segment pop as each one crosses into existence — each newborn node
+    // punches in with a `_pop` overshoot (scaled up + white-hot, decayed in the
+    // renderer), so the body reads as ZIPPING into being head→tail rather than
+    // blandly appearing.
     var prev = Math.floor(w.introReveal);
     var now  = Math.floor(reveal);
     for (var k = prev; k < now && k < total; k++) {
       var sg = w.segs[k];
-      this._explode(sg.x, sg.y, [120, 255, 150], 10);
-      this._spawnWaveRing(sg.x, sg.y, { maxRadius: C.SNAKE_SEG_SIZE * 3, color: 0x33ff88, expandTime: 0.18 });
+      sg._pop = 1;
+      this._explode(sg.x, sg.y, [150, 255, 180], 12);
+      this._spawnWaveRing(sg.x, sg.y, { maxRadius: C.SNAKE_SEG_SIZE * 3.2, color: 0x33ff88, expandTime: 0.16 });
+      this._explode(sg.x, sg.y, [255, 255, 255], 4);
     }
     w.introReveal = reveal;
 
@@ -374,8 +386,11 @@
     this._spawnWaveRing(worm.hx, worm.hy, { maxRadius: C.SNAKE_HEAD_SIZE * 2.2, color: 0x33ff88, expandTime: 0.16 });
   };
 
-  /* A venom bolt rides the normal projectile system (so dash-attack can PARRY
-     it back — a reflected venom bolt then chews other enemies / segments). */
+  /* A venom bolt rides the normal projectile system, but its PARRY is unique:
+     instead of bouncing straight back as a lone shard, a dash-attack bursts it
+     into a fan of tamed hatchlings (_snakeParrySplit, called from projectiles.js
+     deflect branch). Drawn as a writhing mini-serpent both in flight (green) and
+     when parried (cyan) by _renderSnakeVenom — the default shard sprite is hidden. */
   M._spawnSnakeSpit = function (ex, ey, angle) {
     var before = this.projectiles.length;
     this._spawnProjectile(ex, ey, angle, C.SNAKE_SPIT_SPEED, null);
@@ -383,9 +398,207 @@
       var pr = this.projectiles[this.projectiles.length - 1];
       pr.snakeSpit = true;
       pr.snakeWig  = Math.random() * TAU;   // per-bolt wiggle phase seed
-      // Drawn as a procedural writhing mini-serpent by _renderSnakeVenom — hide
-      // the default shard sprite (it reappears if the bolt is parried back).
       if (pr.spr) pr.spr.setVisible(false);
+    }
+  };
+
+  /* PARRY → SPLIT. A dash-attack on a venom bolt (pr) bursts it into a forward
+     fan of CYAN "hatchling" serpents that scatter along the player's dash heading
+     (never homing back to the boss). Each hatchling is a LIGHT reflected projectile
+     (smashed=false → clean cyan, no violet smash blast), so it carves the serpent's
+     own segments (_snakeReflectedHit) AND chews the swarm while keeping the
+     mini-serpent skin. The split itself is the payoff. The caller destroys the
+     original bolt afterwards. */
+  M._snakeParrySplit = function (pr) {
+    var p = this.p;
+    var ax = p.atkDx, ay = p.atkDy, al = Math.sqrt(ax * ax + ay * ay);
+    if (al < 0.01) { ax = Math.cos(p.angle); ay = Math.sin(p.angle); al = 1; }
+    ax /= al; ay /= al;
+    var baseAng = Math.atan2(ay, ax);
+
+    var n   = C.SNAKE_PARRY_SPLIT;
+    var spd = C.PROJ_SPEED * C.PROJ_REFLECT_MULT;
+    var twActive = this._twActive;
+
+    for (var k = 0; k < n; k++) {
+      var t   = n > 1 ? (k / (n - 1) - 0.5) : 0;                 // -0.5 … 0.5
+      var ang = baseAng + t * 2 * C.SNAKE_PARRY_SPREAD + (Math.random() - 0.5) * 0.22;
+      var before = this.projectiles.length;
+      this._spawnProjectile(pr.x, pr.y, ang, spd, null);
+      if (this.projectiles.length === before) break;            // hit MAX_PROJECTILES cap
+      var c = this.projectiles[this.projectiles.length - 1];
+      c.snakeSpit   = true;
+      c.snakeWig    = Math.random() * TAU;
+      c.isReflected = true;
+      c.smashed     = false;          // a light spray — the SPLIT itself is the payoff
+      c.rotSpeed    = 24;
+      c.life        = C.PROJ_LIFE;
+      if (c.spr) c.spr.setVisible(false);   // keep the serpent skin (cyan via _renderSnakeVenom)
+      if (twActive) this._twFreezeProjectile(c);
+    }
+
+    p.hasHitDuringDashAttack = true;
+    if (this._tutEvent) this._tutEvent('parade');
+    this._triggerHitstop(C.DEFLECT_HEAVY_HS);
+    this.cameras.main.shake(80, 0.008);
+    // "burst into hatchlings" pop at the parry point.
+    this._spawnWaveRing(pr.x, pr.y, { maxRadius: 78, color: 0x66ffff, expandTime: 0.18 });
+    this._spawnWaveRing(pr.x, pr.y, { maxRadius: 40, color: 0xffffff, expandTime: 0.12 });
+    this._explode(pr.x, pr.y, [120, 255, 230], 16);
+    this._explode(pr.x, pr.y, [255, 255, 255], 8);
+  };
+
+  /* ================================================================
+     COUP DE QUEUE — a defensive tail-whip. Does NO damage; instead it
+     flings the player (breaking their attack) AND any nearby enemies
+     outward, so a long worm can shake off an attacker. Only worms at least
+     SNAKE_WHIP_MIN_LEN long can do it, on a per-worm cooldown, and ONLY when
+     the player is actually attacking close by (so it reads as self-defence,
+     not random shoving).
+     ================================================================ */
+  M._snakeWhipCD = function () {
+    return C.SNAKE_WHIP_CD * (0.8 + Math.random() * 0.5);
+  };
+
+  /* The player is provoking this worm: in an offensive state AND close to its
+     body. (The head always chases you, so the cooldown is what keeps the whip
+     from firing every time you're merely near it.) */
+  M._snakeWhipProvoked = function (worm) {
+    var p = this.p;
+    if (p.state !== 'ATTACKING' && p.state !== 'DASH_ATTACKING' && p.state !== 'DASHING') return false;
+    var R2 = C.SNAKE_WHIP_TRIGGER_DIST * C.SNAKE_WHIP_TRIGGER_DIST;
+    var segs = worm.segs;
+    for (var i = 0; i < segs.length; i++) {
+      var dx = p.x - segs[i].x, dy = p.y - segs[i].y;
+      if (dx * dx + dy * dy < R2) return true;
+    }
+    return false;
+  };
+
+  /* Per-worm whip state machine: idle (cooldown) → windup (telegraph) → strike
+     (one-shot knockback) → recover. Called once per worm per gameplay frame. */
+  M._snakeUpdateWhip = function (worm, sMs) {
+    if (worm.whipT > 0) {
+      worm.whipT += sMs;
+      if (!worm.whipHit && worm.whipT >= C.SNAKE_WHIP_WINDUP) {
+        worm.whipHit = true;
+        this._snakeTailWhipStrike(worm);
+      }
+      if (worm.whipT >= C.SNAKE_WHIP_DUR) {
+        worm.whipT = 0; worm.whipHit = false;
+        worm.whipCD = this._snakeWhipCD();
+      }
+      return;
+    }
+    worm.whipCD -= sMs;
+    if (worm.whipCD > 0) return;
+    if (worm.segs.length < C.SNAKE_WHIP_MIN_LEN) return;
+    if (!this._snakeWhipProvoked(worm)) return;
+
+    // Begin a whip: lock the sweep direction (toward the player) so the
+    // telegraph is honest, pick a sweep side, and flash the tail.
+    var p = this.p, tail = worm.segs[worm.segs.length - 1];
+    worm.whipT    = 0.0001;
+    worm.whipHit  = false;
+    worm.whipDir  = Math.atan2(p.y - tail.y, p.x - tail.x);
+    worm.whipSign = Math.random() < 0.5 ? -1 : 1;
+    this._explode(tail.x, tail.y, [255, 224, 100], 10);
+    this._spawnWaveRing(tail.x, tail.y, { maxRadius: C.SNAKE_SEG_SIZE * 2.4, color: 0xffe066, expandTime: 0.16 });
+  };
+
+  /* The strike instant: shove the player (no damage, breaks their attack) and
+     every enemy within SNAKE_WHIP_RADIUS of the body, each pushed away from the
+     nearest body node. Frozen states never reach here (gated in _updateSnake). */
+  M._snakeTailWhipStrike = function (worm) {
+    var segs = worm.segs;
+    if (!segs.length) return;
+    var R2 = C.SNAKE_WHIP_RADIUS * C.SNAKE_WHIP_RADIUS;
+    var tail = segs[segs.length - 1];
+
+    // ── PLAYER: flung outward, attack cancelled, brief i-frames (no damage) ──
+    var p = this.p;
+    if (p.state !== 'DEAD' && !this._twActive) {
+      var pSeg = null, pBest = Infinity, i, dx, dy, d2;
+      for (i = 0; i < segs.length; i++) {
+        dx = p.x - segs[i].x; dy = p.y - segs[i].y; d2 = dx * dx + dy * dy;
+        if (d2 < pBest) { pBest = d2; pSeg = segs[i]; }
+      }
+      if (pSeg && pBest < R2) {
+        var pdx = p.x - pSeg.x, pdy = p.y - pSeg.y, pd = Math.sqrt(pBest);
+        if (pd < 0.1) { var ra = Math.random() * TAU; pdx = Math.cos(ra); pdy = Math.sin(ra); pd = 1; }
+        p.vx = (pdx / pd) * C.SNAKE_WHIP_PLAYER_FORCE;
+        p.vy = (pdy / pd) * C.SNAKE_WHIP_PLAYER_FORCE;
+        // Short i-frames so the shove doesn't immediately end on the deadly head.
+        if (!p.invincible) { p.invincible = true; p.invincTimer = 240; p.dashInvinc = true; }
+        // Cancel the player's swing/dash — that's the whole defensive point.
+        if (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING' || p.state === 'DASHING') {
+          p.state = 'MOVING'; p.spinAngle = 0; p.atkTimer = 0;
+          p.atkAvailable = true; p.atkCooldown = 0;
+        }
+      }
+    }
+
+    // ── ENEMIES: shoved outward + briefly stunned ──
+    for (var e = 0; e < this.enemies.length; e++) {
+      var en = this.enemies[e];
+      var eSeg = null, eBest = Infinity, j, edx, edy, ed2;
+      for (j = 0; j < segs.length; j++) {
+        edx = en.x - segs[j].x; edy = en.y - segs[j].y; ed2 = edx * edx + edy * edy;
+        if (ed2 < eBest) { eBest = ed2; eSeg = segs[j]; }
+      }
+      if (!eSeg || eBest >= R2) continue;
+      var ex = en.x - eSeg.x, ey = en.y - eSeg.y, ed = Math.sqrt(eBest);
+      if (ed < 0.1) { ex = Math.random() - 0.5; ey = Math.random() - 0.5; ed = 1; }
+      en.vx += (ex / ed) * C.SNAKE_WHIP_ENEMY_FORCE;
+      en.vy += (ey / ed) * C.SNAKE_WHIP_ENEMY_FORCE;
+      en.stunTimer = Math.max(en.stunTimer || 0, 300);
+    }
+
+    // ── FX: a hard crack of light + shock rings off the lashing tail ──
+    this._spawnWaveRing(tail.x, tail.y, { maxRadius: C.SNAKE_WHIP_RADIUS * 1.15, color: 0x9dffc0, expandTime: 0.26 });
+    this._spawnWaveRing(tail.x, tail.y, { maxRadius: C.SNAKE_WHIP_RADIUS * 0.66, color: 0xffffff, expandTime: 0.18 });
+    this._explode(tail.x, tail.y, [150, 255, 190], 24);
+    this._explode(tail.x, tail.y, [255, 255, 255], 12);
+    this.cameras.main.shake(120, 0.009);
+    this._triggerHitstop(C.HITSTOP_DUR);
+  };
+
+  /* Draw the whip: a coiling telegraph during windup, then a bright crescent
+     blade sweeping across the player-facing side during the strike + recover. */
+  M._renderSnakeWhip = function (w, gfx, fx) {
+    if (!w.segs.length) return;
+    var tail = w.segs[w.segs.length - 1];
+    var wu  = C.SNAKE_WHIP_WINDUP, dur = C.SNAKE_WHIP_DUR;
+    var arc = C.SNAKE_WHIP_ARC, R = C.SNAKE_WHIP_RADIUS;
+    var dir = w.whipDir, sign = w.whipSign;
+
+    if (w.whipT < wu) {
+      // WIND-UP — a yellow coil winds back on the far side, brightening.
+      var tg = w.whipT / wu;
+      var a0 = dir - sign * arc * 0.5;
+      fx.lineStyle(3 + tg * 4, 0xffe066, 0.30 + tg * 0.55);
+      fx.beginPath();
+      fx.arc(tail.x, tail.y, R * (0.34 + tg * 0.30), a0 - sign * 0.25, a0 + sign * 0.55, sign < 0);
+      fx.strokePath();
+      fx.fillStyle(0xffffff, tg * 0.55);
+      fx.fillCircle(tail.x, tail.y, 6 + tg * 7);
+    } else {
+      // STRIKE + RECOVER — the crescent sweeps the full arc, fading out.
+      var ts = (w.whipT - wu) / (dur - wu); if (ts > 1) ts = 1;
+      var fade = 1 - ts;
+      var swStart = dir - sign * arc * 0.5;
+      var swEnd   = swStart + sign * arc * Math.min(1, ts * 1.7);
+      var lo = Math.min(swStart, swEnd), hi = Math.max(swStart, swEnd);
+      for (var r = 0; r < 3; r++) {
+        var rr = R * (0.58 + r * 0.20);
+        fx.lineStyle(6 - r * 1.6, r === 0 ? 0xffffff : 0x9dffc0, fade * (0.6 - r * 0.13));
+        fx.beginPath();
+        fx.arc(tail.x, tail.y, rr, lo, hi);
+        fx.strokePath();
+      }
+      // Bright spark riding the leading edge of the blade.
+      fx.fillStyle(0xffffff, fade * 0.85);
+      fx.fillCircle(tail.x + Math.cos(swEnd) * R * 0.78, tail.y + Math.sin(swEnd) * R * 0.78, 5 + fade * 3);
     }
   };
 
@@ -459,18 +672,16 @@
           orbitSign: Math.random() < 0.5 ? -1 : 1,
           wanderAng: (Math.random() - 0.5) * 1.2,
           spitCD: 500 + Math.random() * 1100,
+          whipCD: C.SNAKE_WHIP_CD * (0.6 + Math.random() * 0.6), whipT: 0,
+          whipHit: false, whipDir: 0, whipSign: 1,
           headClink: 0, splitFlash: 1, introReveal: 999,
         };
         this._snakeInitWormStats(nw, false);
         s.worms.push(nw);
 
-        // Split flash on the original too, + a divider burst at the cut.
+        // Split flash on the original too + a cinematic "tear" at the cut.
         worm.splitFlash = 1;
-        this._spawnWaveRing(nh.x, nh.y, { maxRadius: C.SNAKE_SEG_SIZE * 4, color: 0xffe066, expandTime: 0.22 });
-        this._explode(nh.x, nh.y, [255, 220, 120], 16);
-        this._explode(nh.x, nh.y, [120, 255, 150], 10);
-        this.cameras.main.shake(90, 0.008);
-        this._triggerHitstop(C.HITSTOP_DUR);
+        this._snakeSplitBurst(nh.x, nh.y, nw.hAngle);
       }
     }
 
@@ -633,22 +844,33 @@
       }
     }
 
-    // 3) HEAD CLINK — attacking into an invulnerable head just bounces.
+    // 3) HEAD CLINK — attacking the invulnerable head just bounces you off.
+    //    BOTH a basic attack and a DASH-ATTACK rebound now (dash bounces harder,
+    //    flips the venom, and gets extra ricochet juice so the armoured head
+    //    reads clearly as "can't break this, you're knocked back").
     for (i = 0; i < s.worms.length; i++) {
       w = s.worms[i];
       dx = p.x - w.hx; dy = p.y - w.hy;
       var hthr = pR + C.SNAKE_HEAD_SIZE;
       if (dx * dx + dy * dy < hthr * hthr) {
         var hd = Math.sqrt(dx * dx + dy * dy) || 1;
+        var hnx = dx / hd, hny = dy / hd;
         w.headClink = 1;
         this._explode(w.hx, w.hy, [150, 230, 255], 8);
         this._triggerHitstop(C.HITSTOP_DUR);
-        if (isAtk) {
-          p.vx = (dx / hd) * C.REBOUND_IMP; p.vy = (dy / hd) * C.REBOUND_IMP;
+        if (isAtk || isDAtk) {
+          var rimp = isDAtk ? C.REBOUND_IMP * 1.5 : C.REBOUND_IMP;
+          p.vx = hnx * rimp; p.vy = hny * rimp;
           p.state = 'MOVING'; p.spinAngle = 0; p.atkTimer = 0;
           p.atkAvailable = true; p.atkCooldown = 0;
+          if (isDAtk) {
+            this._explode(w.hx, w.hy, [200, 240, 255], 16);
+            this._explode(w.hx, w.hy, [255, 255, 255], 8);
+            this._spawnWaveRing(w.hx, w.hy, { maxRadius: C.SNAKE_HEAD_SIZE * 2.6, color: 0x9fefff, expandTime: 0.22 });
+            this.cameras.main.shake(80, 0.008);
+          }
         }
-        if (!p.invincible) { p.invincible = true; p.invincTimer = 120; p.dashInvinc = true; }
+        if (!p.invincible) { p.invincible = true; p.invincTimer = 140; p.dashInvinc = true; }
         return;
       }
     }
@@ -661,6 +883,61 @@
     this._explode(seg.x, seg.y, [120, 255, 150], 22);
     this._explode(seg.x, seg.y, [255, 255, 255], 10);
     this._spawnWaveRing(seg.x, seg.y, { maxRadius: C.SNAKE_SEG_SIZE * 3.2, color: 0x33ff88, expandTime: 0.20 });
+  };
+
+  /* Cinematic SPLIT burst at a cut — a flash of light that "tears" the worm in
+     two. Layered instant FX (rings + sparks) PLUS a short animated slash pushed
+     to s.splitFx (rendered in _renderSnakeSplits). Kept fast + with only a tiny
+     hitstop/shake so cascading splits never bog the rhythm down. */
+  M._snakeSplitBurst = function (x, y, ang) {
+    var s = this._snake;
+    if (s) s.splitFx.push({ x: x, y: y, ang: ang, t: 0, life: C.SNAKE_SPLIT_FX_LIFE });
+    // Instant burst: gold tear ring + green guts + a white hot core.
+    this._spawnWaveRing(x, y, { maxRadius: C.SNAKE_SEG_SIZE * 4.4, color: 0xffe066, expandTime: 0.22 });
+    this._spawnWaveRing(x, y, { maxRadius: C.SNAKE_SEG_SIZE * 2.4, color: 0xffffff, expandTime: 0.14 });
+    this._explode(x, y, [255, 224, 120], 18);
+    this._explode(x, y, [120, 255, 160], 12);
+    this._explode(x, y, [255, 255, 255], 8);
+    this.cameras.main.shake(55, 0.006);     // lighter than before — splits are frequent
+    this._triggerHitstop(C.HITSTOP_DUR);
+  };
+
+  /* Animate every live split-slash: a bright bar across the cut that lengthens
+     then the two halves slide apart along the worm axis, plus a perpendicular
+     shock streak — all fading out over SNAKE_SPLIT_FX_LIFE. */
+  M._renderSnakeSplits = function (fx, dt) {
+    var s = this._snake;
+    if (!s) return;
+    for (var i = s.splitFx.length - 1; i >= 0; i--) {
+      var f = s.splitFx[i];
+      f.t += dt;
+      var u = f.t / f.life;
+      if (u >= 1) { s.splitFx.splice(i, 1); continue; }
+      var fade = 1 - u;
+      var ca = Math.cos(f.ang), sa = Math.sin(f.ang);     // along the body axis
+      var px = -sa, py = ca;                               // perpendicular (the cut line)
+
+      // White-hot core flashing out.
+      fx.fillStyle(0xffffff, fade * 0.9);
+      fx.fillCircle(f.x, f.y, (C.SNAKE_SEG_SIZE * 0.5) * (1 + u * 1.4));
+      fx.fillStyle(0xffe066, fade * 0.5);
+      fx.fillCircle(f.x, f.y, (C.SNAKE_SEG_SIZE * 0.8) * (1 + u * 1.8));
+
+      // The cut bar: a bright line across the body that grows.
+      var barLen = C.SNAKE_SEG_SIZE * (1.1 + u * 1.8);
+      fx.lineStyle(5 * fade + 1, 0xffffff, fade);
+      fx.lineBetween(f.x - px * barLen, f.y - py * barLen, f.x + px * barLen, f.y + py * barLen);
+
+      // The two halves recoil apart along the axis (sliding light streaks).
+      var sep = C.SNAKE_SEG_SIZE * (0.4 + u * 2.6);
+      for (var sgn = -1; sgn <= 1; sgn += 2) {
+        var hx = f.x + ca * sep * sgn, hy = f.y + sa * sep * sgn;
+        fx.fillStyle(sgn < 0 ? 0xbfffd9 : 0xffe9a0, fade * 0.75);
+        fx.fillCircle(hx, hy, (C.SNAKE_SEG_SIZE * 0.7) * fade + 2);
+        fx.lineStyle(3 * fade + 0.5, 0xffffff, fade * 0.8);
+        fx.lineBetween(f.x, f.y, hx, hy);
+      }
+    }
   };
 
   M._snakeHeadPoof = function (worm) {
@@ -696,10 +973,17 @@
     this._triggerHitstop(C.DETONATION_HITSTOP);
 
     // Sweep the serpent's live venom so a dead boss can't keep tagging the
-    // player. Reflected bolts are spared — a parried venom bolt is now yours.
+    // player. Parried hatchlings are SPARED (they're yours) — but the serpent
+    // renderer dies with the boss, so reveal their default shard sprite (tinted
+    // cyan) and drop the snakeSpit tag so they finish out as normal reflects.
     for (var pi = this.projectiles.length - 1; pi >= 0; pi--) {
       var pr = this.projectiles[pi];
-      if (!pr.snakeSpit || pr.isReflected) continue;
+      if (!pr.snakeSpit) continue;
+      if (pr.isReflected) {
+        if (pr.spr) { pr.spr.setVisible(true); pr.spr.setTint(0x66ffff); }
+        pr.snakeSpit = false;
+        continue;
+      }
       this._explode(pr.x, pr.y, [120, 255, 150], 6);
       this._destroyProjectile(pr);
       this.projectiles.splice(pi, 1);
@@ -742,12 +1026,18 @@
         var baseR = C.SNAKE_SEG_SIZE * (0.74 + 0.26 * frac);
         // gentle taper toward the tail
         baseR *= 0.78 + 0.22 * (1 - i / Math.max(1, w.segs.length));
+        // spawn-pop overshoot: a freshly-revealed node briefly swells + flashes
+        // white-hot, then settles (decayed here so it's frame-rate independent).
+        var pop = sg._pop || 0;
+        if (pop > 0) { pop = Math.max(0, pop - dt * 6); sg._pop = pop; }
+        baseR *= 1 + pop * 0.55;
         var col = lerpC(BODY_OK, BODY_HURT, dmg);
         if (sg.hitFlash > 0) col = lerpC(col, 0xffffff, sg.hitFlash);
+        if (pop > 0) col = lerpC(col, 0xffffff, pop * 0.8);
 
         // soft additive glow under the body
-        fx.fillStyle(col, 0.14 + sg.hitFlash * 0.4);
-        fx.fillCircle(sg.x, sg.y, baseR * 1.5);
+        fx.fillStyle(col, 0.14 + sg.hitFlash * 0.4 + pop * 0.5);
+        fx.fillCircle(sg.x, sg.y, baseR * (1.5 + pop * 0.6));
 
         // solid body + dark rim
         gfx.fillStyle(col, 1.0);
@@ -775,10 +1065,16 @@
       if (!emerging || revealCount >= 0) {
         this._renderSnakeHead(w, gfx, fx, gt, emerging ? Math.min(1, s.introT / (C.SNAKE_ARRIVE_DUR * 0.3)) : 1);
       }
+
+      // ── TAIL WHIP (coup de queue) crescent ──
+      if (!emerging && w.whipT > 0) this._renderSnakeWhip(w, gfx, fx);
     }
 
     // Venom volleys ride as procedural writhing mini-serpents.
     this._renderSnakeVenom(gfx, fx);
+
+    // Cinematic split-slashes flashing over recent cuts.
+    this._renderSnakeSplits(fx, dt);
   };
 
   /* Faceless armoured head — no eyes / no snout. A plated invulnerable orb,
@@ -822,17 +1118,24 @@
     }
   };
 
-  /* Render each (un-parried) venom bolt as a small writhing serpent: a head
-     node with a flicking tongue + a tapering body that slithers on a sine wave
-     perpendicular to travel. Parried bolts revert to the normal reflected skin
-     (their default sprite is re-shown at reflect time). */
+  /* Render each venom bolt as a small writhing serpent: a head node with a
+     flicking tongue + a tapering body that slithers on a sine wave perpendicular
+     to travel. ENEMY bolts are GREEN; a PARRIED bolt's hatchlings are CYAN +
+     a little bigger/brighter ("tamed", now yours) so the split reads instantly. */
   M._renderSnakeVenom = function (gfx, fx) {
     var gt = this.gameTime;
     var N = C.SNAKE_SPIT_NODES;
     var spacing = 6.5, baseR = 6.2, amp = 3.4;
     for (var i = 0; i < this.projectiles.length; i++) {
       var pr = this.projectiles[i];
-      if (!pr.snakeSpit || pr.isReflected) continue;
+      if (!pr.snakeSpit) continue;
+      var tamed = pr.isReflected;
+      var headCol = tamed ? 0xd9ffff : 0x9dffc0;
+      var bodyA   = tamed ? 0x57e3ff : 0x2fe06e;
+      var bodyB   = tamed ? 0x1f86c4 : 0x119a4c;
+      var tongCol = tamed ? 0xeaffff : 0xff3a5e;
+      var rimCol  = tamed ? 0x06303a : 0x0b3a22;
+      var sizeMul = tamed ? 1.14 : 1.0;
       var vx = pr.vx, vy = pr.vy;
       var vl = Math.sqrt(vx * vx + vy * vy) || 1;
       var dx = vx / vl, dy = vy / vl;     // forward
@@ -844,21 +1147,21 @@
         var lateral = k === 0 ? 0 : Math.sin(phase - k * 0.9) * amp * (k / N + 0.4);
         var nx = pr.x + dx * along + px * lateral;
         var ny = pr.y + dy * along + py * lateral;
-        var r  = baseR * (1 - k * 0.12);
+        var r  = baseR * (1 - k * 0.12) * sizeMul;
         var head = k === 0;
-        var col = head ? 0x9dffc0 : lerpC(0x2fe06e, 0x119a4c, k / N);
-        fx.fillStyle(col, head ? 0.45 : 0.24);
+        var col = head ? headCol : lerpC(bodyA, bodyB, k / N);
+        fx.fillStyle(col, (head ? 0.45 : 0.24) + (tamed ? 0.18 : 0));
         fx.fillCircle(nx, ny, r * 1.7);
         gfx.fillStyle(col, 1.0);
         gfx.fillCircle(nx, ny, r);
-        gfx.lineStyle(1.2, 0x0b3a22, 0.85);
+        gfx.lineStyle(1.2, rimCol, 0.85);
         gfx.strokeCircle(nx, ny, r);
         if (head) {
           // flicking forked tongue
           var fa = Math.atan2(dy, dx);
           var flick = Math.sin(phase * 1.6) * 0.45;
           var tl = r * 2.1;
-          gfx.lineStyle(1.4, 0xff3a5e, 0.85);
+          gfx.lineStyle(1.4, tongCol, 0.85);
           gfx.lineBetween(nx, ny, nx + Math.cos(fa + flick) * tl, ny + Math.sin(fa + flick) * tl);
           gfx.lineBetween(nx, ny, nx + Math.cos(fa - flick) * tl, ny + Math.sin(fa - flick) * tl);
         }

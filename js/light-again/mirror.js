@@ -47,6 +47,30 @@
   // factor so the sprite visually matches its larger hit/shield footprint.
   var BASE_SCL = C.MIR_SIZE / C.SIZE;
 
+  /* ---- DECOY GAMBIT (last-shield illusions) ----
+     When only ONE shield orb is left, the rival fractures into itself + 2 fakes
+     that scatter and duel exactly like it. Tell the real one apart: it is more
+     OPAQUE and still wears its shield orb; the decoys are see-through and bare.
+
+     The trio then duels in a shared cycle: WANDER (weave) → ASSAULT (the three
+     lunge one-after-another, "à la suite") → RECOVER (off-balance). As in the
+     rest of the fight, the real one can ONLY be damaged during that recover
+     window — strike it then to shatter its last shield (the next hit finishes
+     it). Outside the window it DODGES your swing. Hitting a decoy at ANY time
+     bursts it in one hit AND provokes an immediate assault → another window. */
+  var DECOY_COUNT    = 2;     // 2 fakes + the real one = 3 rivals
+  var DECOY_ALPHA    = 0.6;   // illusions are translucent (the real one stays solid)
+  var DECOY_GHOSTS   = 8;     // afterimage pool size per decoy
+  var GAMBIT_DISPERSE = 850;  // ms: the fan-out cinematic
+  var GAMBIT_SPREAD   = 1.0;  // dispersal distance (× MIR_KEEP_DIST)
+  var GAMBIT_TELE     = 240;  // ms: per-rival lunge wind-up
+  var GAMBIT_DASH     = 260;  // ms: per-rival lunge duration
+  var GAMBIT_STEP     = 150;  // ms stagger between each rival's lunge (the "à la suite")
+  var GAMBIT_RECOVER  = 950;  // ms off-balance after an assault — the ONLY damage window
+  var GAMBIT_CD_MIN   = 1500; // ms: soonest a spontaneous assault recurs during WANDER
+  var GAMBIT_CD_MAX   = 2600; // ms: latest a spontaneous assault recurs during WANDER
+  var EXPOSE_IFRAME   = 380;  // ms pause after the shield shatters, before the kill blow
+
   /* ---- gradient helpers ---- */
   function lerpCol(a, b, t) {
     var ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
@@ -89,6 +113,19 @@
     if (mir.ghosts) {
       for (var i = 0; i < mir.ghosts.length; i++) {
         if (mir.ghosts[i].spr) mir.ghosts[i].spr.destroy();
+      }
+    }
+    // Decoy gambit: tear down any live illusions + their afterimage pools.
+    if (mir.decoys) {
+      for (var di = 0; di < mir.decoys.length; di++) {
+        var dd = mir.decoys[di];
+        if (dd.spr)     dd.spr.destroy();
+        if (dd.glowSpr) dd.glowSpr.destroy();
+        if (dd.ghosts) {
+          for (var dg = 0; dg < dd.ghosts.length; dg++) {
+            if (dd.ghosts[dg].spr) dd.ghosts[dg].spr.destroy();
+          }
+        }
       }
     }
     // Settle any in-flight parried shards' PARADE buckets so the pending count
@@ -156,6 +193,10 @@
       _rotA: outAng, _sclX: BASE_SCL, _sclY: BASE_SCL,
       // The World handling
       twPhase: null, twTimer: 0, twWas: false,
+      // Decoy gambit (last-shield illusions): shared WANDER→ASSAULT→RECOVER cycle.
+      gambit: false, gambitPhase: null, gambitT: 0, gambitDone: false, exposed: false,
+      gMode: 'WANDER', gModeT: 0, gAssaultCD: 0, gAssaultEnd: 0, gDodgeT: 0, decoys: [],
+      gFromX: p.x, gFromY: p.y, gAng: 0,
       dead: false,
       spr: spr, glowSpr: glowSpr, gfx: gfx, shotGfx: shotGfx, shieldGfx: shieldGfx,
     };
@@ -196,6 +237,13 @@
     // Nova shards fly + hit on player-time regardless of the boss's own freeze
     // (you can still dodge them while The World is active).
     this._updateMirrorShots(mir, p, pMs);
+
+    // --- Decoy gambit takes over the whole duel until the last shield breaks ---
+    if (mir.gambit) {
+      mir.twWas = !!this._twActive;     // keep the World edge fresh for when it ends
+      this._mirrorUpdateGambit(mir, p, sc60, pMs, dt);
+      return;
+    }
 
     /* ---- The World handling (rising/falling edge) ---- */
     var tw = !!this._twActive;
@@ -700,6 +748,10 @@
     if (!isAtk && !isDAtk) return;
 
     var pR = C.SIZE * 0.6;
+
+    // Decoy gambit: identify + strike the REAL (shielded) rival; fakes burst.
+    if (mir.gambit) { this._mirrorGambitHit(p, isAtk, isDAtk, pR); return; }
+
     var dx = p.x - mir.x, dy = p.y - mir.y;
     var d2 = dx * dx + dy * dy;
     var thr = pR + C.MIR_SIZE + (isDAtk ? 12 : 0);
@@ -712,7 +764,7 @@
     // Can it slip away? It dodges from ROAM / TELEGRAPH / its own DASH (juking
     // out of a committed lunge) whenever the dodge is off cooldown. It CANNOT
     // dodge while recovering → that's the guaranteed window.
-    var canDodge = mir.dodgeCD <= 0 &&
+    var canDodge = mir.dodgeCD <= 0 && !mir.exposed &&
                    (mir.state === 'ROAM' || mir.state === 'TELEGRAPH' || mir.state === 'DASH');
     if (canDodge) {
       this._mirrorStartDodge(mir, p);
@@ -741,6 +793,14 @@
   M._damageMirror = function (amount) {
     var mir = this._mirror;
     if (!mir || mir.dead) return;
+
+    // A correct strike on the real rival mid-gambit SHATTERS its last shield and
+    // dispels the illusions — but does not kill. One more blow finishes it.
+    if (mir.gambit) { this._mirrorShatterGambit(); return; }
+
+    // Last shield already shattered → the finishing blow.
+    if (mir.exposed || mir.orbs <= 0) { this._killMirror(); return; }
+
     mir.orbs -= (amount || 1);
     mir.hitT = 1.0;
     mir.hitIframe = C.MIR_HIT_IFRAME;
@@ -749,7 +809,467 @@
     this._spawnWaveRing(mir.x, mir.y, { maxRadius: C.MIR_SIZE * 2.4, color: ORB_COL, expandTime: 0.18 });
     this._triggerHitstop(C.HITSTOP_DUR);
     this.cameras.main.shake(80, 0.008);
+
+    // Down to its LAST shield → conjure the decoys to guard it.
+    if (mir.orbs === 1 && !mir.gambitDone) { this._mirrorBeginGambit(); return; }
     if (mir.orbs <= 0) this._killMirror();
+  };
+
+  /* ================================================================
+     DECOY GAMBIT — the rival splits into itself + 2 illusions to guard its
+     last shield. They scatter and duel identically; only the real one is
+     opaque and shielded. Strike a fake → it bursts + the real one ripostes.
+     Strike the real one → its shield shatters and the next hit finishes it.
+     ================================================================ */
+  M._mirrorBeginGambit = function () {
+    var mir = this._mirror, p = this.p;
+    if (!mir || !p) return;
+    mir.gambit = true; mir.gambitPhase = 'DISPERSE'; mir.gambitT = 0;
+    mir.gMode = 'WANDER'; mir.gModeT = 0; mir.gAssaultCD = GAMBIT_CD_MIN;
+    mir.gAssaultEnd = 0; mir.gDodgeT = 0; mir.vulnerable = false;
+    mir.state = 'DASH';                          // launching look while it fans out
+    mir.vx = 0; mir.vy = 0; mir.didHit = false;
+
+    // All three launch from the real one's current spot, then fan outward.
+    var cx = mir.x, cy = mir.y;
+    var baseAng = Math.atan2(p.y - cy, p.x - cx) + Math.PI;  // bias the spread away from you
+    var slots = DECOY_COUNT + 1;
+    mir.gFromX = cx; mir.gFromY = cy;
+    mir.gAng = baseAng;
+
+    mir.decoys = [];
+    for (var i = 0; i < DECOY_COUNT; i++) {
+      var d = this._mirrorSpawnDecoy(cx, cy);
+      d.gAng = baseAng + (TAU / slots) * (i + 1);
+      mir.decoys.push(d);
+    }
+
+    // Cinematic: the rival fractures into three.
+    this._spawnWaveRing(cx, cy, { maxRadius: C.MIR_SIZE * 6,   color: BODY_COL, expandTime: 0.34 });
+    this._spawnWaveRing(cx, cy, { maxRadius: C.MIR_SIZE * 3.4, color: 0xffffff, expandTime: 0.22 });
+    this._explode(cx, cy, [255, 70, 180], 30);
+    this._explode(cx, cy, [180, 96, 255], 20);
+    this._explode(cx, cy, [255, 255, 255], 16);
+    this.cameras.main.flash(170, 255, 120, 210);
+    this.cameras.main.shake(200, 0.014);
+    this._triggerHitstop(C.DETONATION_HITSTOP);
+  };
+
+  M._mirrorSpawnDecoy = function (x, y) {
+    var glowSpr = this.add.image(x, y, '_ar_cyan');
+    glowSpr.setBlendMode(Phaser.BlendModes.ADD); glowSpr.setDepth(30);
+    glowSpr.setTint(BODY_COL); glowSpr.setScale(BASE_SCL * 1.5); glowSpr.setAlpha(0.10);
+
+    var spr = this.add.image(x, y, '_ar_cyan');
+    spr.setBlendMode(Phaser.BlendModes.ADD); spr.setDepth(31);
+    spr.setTint(BODY_COL); spr.setScale(BASE_SCL); spr.setAlpha(DECOY_ALPHA);
+
+    var ghosts = [];
+    for (var gi = 0; gi < DECOY_GHOSTS; gi++) {
+      var gs = this.add.image(x, y, '_ar_cyan');
+      gs.setBlendMode(Phaser.BlendModes.ADD); gs.setDepth(29);
+      gs.setTint(BODY_COL); gs.setVisible(false);
+      ghosts.push({ spr: gs, alpha: 0, active: false });
+    }
+
+    return {
+      x: x, y: y, vx: 0, vy: 0, angle: Math.random() * TAU,
+      gAng: 0, aStart: 0, aPhase: 'WANDER', _locked: false, _launched: false,
+      lockAng: 0, dashSpin: 0, didHit: false, _sdir: (Math.random() < 0.5 ? 1 : -1),
+      _rotA: 0, _sclX: BASE_SCL, _sclY: BASE_SCL,
+      spr: spr, glowSpr: glowSpr, ghosts: ghosts, ghostW: 0,
+    };
+  };
+
+  M._mirrorUpdateGambit = function (mir, p, sc60, pMs, dt) {
+    // Dispersal cinematic — the three fan out from the split point (real dt).
+    if (mir.gambitPhase === 'DISPERSE') {
+      mir.gambitT += dt * 1000;
+      var t = mir.gambitT / GAMBIT_DISPERSE; if (t > 1) t = 1;
+      var ease = t * t * (3 - 2 * t);
+      var dist = C.MIR_KEEP_DIST * GAMBIT_SPREAD;
+      this._mirrorDisperseEntity(mir, p, dist, ease, dt, true);
+      for (var i = 0; i < mir.decoys.length; i++) {
+        this._mirrorDisperseEntity(mir.decoys[i], p, dist, ease, dt, false);
+      }
+      if (t >= 1) {
+        mir.gambitPhase = 'ACTIVE';
+        mir.gMode = 'WANDER'; mir.gModeT = 0;
+        mir.gAssaultCD = GAMBIT_CD_MIN + Math.random() * (GAMBIT_CD_MAX - GAMBIT_CD_MIN);
+      }
+      this._renderMirror(dt);
+      return;
+    }
+
+    // Shared combat cycle for the whole trio:
+    //   WANDER  — weave around you; a volley brews on gAssaultCD.
+    //   ASSAULT — the three lunge ONE AFTER ANOTHER (staggered by GAMBIT_STEP).
+    //   RECOVER — all off-balance; the ONLY window the real one can be hit.
+    mir.gModeT += pMs;
+    mir.gDodgeT = Math.max(0, (mir.gDodgeT || 0) - pMs);
+
+    if (mir.gMode === 'WANDER') {
+      mir.vulnerable = false;
+      mir.gAssaultCD -= pMs;
+      if (mir.gAssaultCD <= 0) this._mirrorBeginAssault();
+    } else if (mir.gMode === 'ASSAULT') {
+      if (mir.gModeT >= mir.gAssaultEnd) {
+        mir.gMode = 'RECOVER'; mir.gModeT = 0; mir.vulnerable = true;
+        this._explode(mir.x, mir.y, [255, 224, 64], 10);   // "off-balance" puff
+      }
+    } else { // RECOVER
+      if (mir.gModeT >= GAMBIT_RECOVER) {
+        mir.gMode = 'WANDER'; mir.gModeT = 0; mir.vulnerable = false;
+        mir.gAssaultCD = GAMBIT_CD_MIN + Math.random() * (GAMBIT_CD_MAX - GAMBIT_CD_MIN);
+      }
+    }
+
+    // Tick every rival under the shared mode (real first so decoys can read it).
+    this._mirrorEntityTick(mir, p, sc60, pMs, true);
+    for (var j = 0; j < mir.decoys.length; j++) {
+      this._mirrorEntityTick(mir.decoys[j], p, sc60, pMs, false);
+    }
+    this._renderMirror(dt);
+  };
+
+  M._mirrorDisperseEntity = function (ent, p, dist, ease, dt, isReal) {
+    var mir = this._mirror;
+    ent.x = mir.gFromX + Math.cos(ent.gAng) * dist * ease;
+    ent.y = mir.gFromY + Math.sin(ent.gAng) * dist * ease;
+    var m = C.WORLD_HALF - C.MIR_SIZE * 1.5;
+    if (ent.x < -m) ent.x = -m; else if (ent.x > m) ent.x = m;
+    if (ent.y < -m) ent.y = -m; else if (ent.y > m) ent.y = m;
+    ent.angle = Math.atan2(p.y - ent.y, p.x - ent.x);
+    ent.dashSpin = (ent.dashSpin || 0) + dt * 60 * 0.6;
+    this._mirrorSeedGhost(ent, isReal, 0.55, gradAt((ent.ghostW || 0) * 0.13));
+  };
+
+  /* ---- One rival's per-frame logic during the gambit (real + each decoy),
+         driven by the shared mir.gMode. In ASSAULT each rival runs its own
+         staggered lunge keyed off ent.aStart so the three strike in sequence. ---- */
+  M._mirrorEntityTick = function (ent, p, sc60, pMs, isReal) {
+    var mir = this._mirror, mode = mir.gMode, aPhase = 'WANDER';
+
+    // Real one slipping a mistimed swing: coast, intangible (handled in the hit).
+    if (isReal && mir.gDodgeT > 0) {
+      var frd = Math.pow(0.86, pMs / 16.7);
+      ent.vx *= frd; ent.vy *= frd;
+      ent.angle = Math.atan2(p.y - ent.y, p.x - ent.x);
+      this._mirrorIntegrate(ent, sc60);
+      ent.state = 'DODGE'; ent.spin += sc60 * 0.05;
+      return;
+    }
+
+    if (mode === 'ASSAULT') {
+      var localT = mir.gModeT - (ent.aStart || 0);
+      if (localT < 0) {                          // not its turn yet → brace + aim
+        var frb = Math.pow(0.84, pMs / 16.7); ent.vx *= frb; ent.vy *= frb;
+        ent.angle = Math.atan2(p.y - ent.y, p.x - ent.x);
+        aPhase = 'BRACE';
+      } else if (localT < GAMBIT_TELE) {         // wind-up: lock aim, then track
+        if (!ent._locked) { ent.lockAng = Math.atan2(p.y - ent.y, p.x - ent.x); ent._locked = true; }
+        var frt = Math.pow(0.82, pMs / 16.7); ent.vx *= frt; ent.vy *= frt;
+        var aim = Math.atan2(p.y - ent.y, p.x - ent.x);
+        ent.lockAng += Phaser.Math.Angle.Wrap(aim - ent.lockAng) * Math.min(1, 3 * pMs / 1000);
+        ent.angle = ent.lockAng;
+        aPhase = 'TELE';
+      } else if (localT < GAMBIT_TELE + GAMBIT_DASH) {   // the lunge
+        if (!ent._launched) {
+          ent._launched = true; ent.didHit = false;
+          ent.vx = Math.cos(ent.lockAng) * C.MIR_DASH_SPEED;
+          ent.vy = Math.sin(ent.lockAng) * C.MIR_DASH_SPEED;
+          this._explode(ent.x, ent.y, [255, 255, 255], 8);
+        }
+        ent.dashSpin += sc60 * 0.7;
+        this._mirrorSeedGhost(ent, isReal, 0.6, gradAt((ent.ghostW || 0) * 0.13));
+        if (isReal && !ent.didHit) this._mirrorLungeHit(ent, p);   // only the real connects
+        aPhase = 'DASH';
+      } else {                                   // done → brace until the volley resolves
+        var fre = Math.pow(0.86, pMs / 16.7); ent.vx *= fre; ent.vy *= fre;
+        aPhase = 'BRACE';
+      }
+    } else if (mode === 'RECOVER') {             // off-balance — the kill window
+      var frr = Math.pow(0.9, pMs / 16.7); ent.vx *= frr; ent.vy *= frr;
+      ent.angle = Math.atan2(p.y - ent.y, p.x - ent.x);
+      aPhase = 'RECOVER';
+    } else {                                     // WANDER
+      this._mirrorGambitWander(ent, p, sc60);
+      aPhase = 'WANDER';
+    }
+    ent.aPhase = aPhase;
+
+    this._mirrorIntegrate(ent, sc60);
+
+    // Map the real one's sub-phase onto mir.state so the shared body render shows
+    // the right look (and keeps the shield drawn).
+    if (isReal) {
+      ent.spin += sc60 * 0.05;
+      ent.state = (aPhase === 'TELE') ? 'TELEGRAPH'
+                : (aPhase === 'DASH') ? 'DASH'
+                : (mode === 'RECOVER') ? 'RECOVER'
+                : 'ROAM';
+    }
+  };
+
+  /* ---- Integrate velocity + clamp to the arena (shared by every rival). ---- */
+  M._mirrorIntegrate = function (ent, sc60) {
+    ent.x += ent.vx * sc60;
+    ent.y += ent.vy * sc60;
+    var mm = C.WORLD_HALF - C.MIR_SIZE * 1.5;
+    if (ent.x < -mm) ent.x = -mm; else if (ent.x > mm) ent.x = mm;
+    if (ent.y < -mm) ent.y = -mm; else if (ent.y > mm) ent.y = mm;
+  };
+
+  /* ---- The real rival's lunge contact vs the player (decoys never connect). ---- */
+  M._mirrorLungeHit = function (ent, p) {
+    var dx = p.x - ent.x, dy = p.y - ent.y;
+    var thr = C.MIR_HIT_RADIUS + C.SIZE * 0.6;
+    if (dx * dx + dy * dy < thr * thr) {
+      var safe = p.invincible || p.state === 'DASHING' || p.state === 'DASH_ATTACKING'
+              || this._twActive || p.state === 'DEAD';
+      if (!safe) {
+        var dd = Math.sqrt(dx * dx + dy * dy) || 1;
+        this._damagePlayer(dx / dd, dy / dd);
+        ent.didHit = true;
+      }
+    }
+  };
+
+  /* ---- Begin a synchronized sequential assault: all three lunge "à la suite".
+         The roster is shuffled so the real one's slot in the volley varies, and
+         (with decoys gone) this naturally degrades to a single solo lunge. ---- */
+  M._mirrorBeginAssault = function () {
+    var mir = this._mirror, p = this.p;
+    if (!mir || !p) return;
+    mir.gMode = 'ASSAULT'; mir.gModeT = 0; mir.vulnerable = false; mir.gDodgeT = 0;
+
+    var roster = [mir];
+    for (var r = 0; r < mir.decoys.length; r++) roster.push(mir.decoys[r]);
+    for (var i = roster.length - 1; i > 0; i--) {           // Fisher–Yates shuffle
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = roster[i]; roster[i] = roster[j]; roster[j] = tmp;
+    }
+    for (var k = 0; k < roster.length; k++) {
+      var e = roster[k];
+      e.aStart = k * GAMBIT_STEP;
+      e.aPhase = 'BRACE'; e._locked = false; e._launched = false; e.didHit = false;
+    }
+    mir.gAssaultEnd = (roster.length - 1) * GAMBIT_STEP + GAMBIT_TELE + GAMBIT_DASH;
+
+    this.cameras.main.flash(110, 255, 90, 170);
+    this._spawnWaveRing(mir.x, mir.y, { maxRadius: C.MIR_SIZE * 3.2, color: BODY_COL, expandTime: 0.18 });
+  };
+
+  /* ---- Real one slips a mistimed swing (outside the recover window). ---- */
+  M._mirrorGambitDodge = function (mir, p) {
+    if (mir.dodgeCD > 0) return;                  // on cooldown → the swing just whiffs
+    var dx = mir.x - p.x, dy = mir.y - p.y;
+    var d  = Math.sqrt(dx * dx + dy * dy) || 1;
+    var awx = dx / d, awy = dy / d;
+    var perpx = -awy, perpy = awx;
+    var toCx = -mir.x, toCy = -mir.y;
+    var cl = Math.sqrt(toCx * toCx + toCy * toCy) || 1;
+    var side = (perpx * (toCx / cl) + perpy * (toCy / cl)) >= 0 ? 1 : -1;
+    var dgx = awx * 0.45 + perpx * side, dgy = awy * 0.45 + perpy * side;
+    var dl = Math.sqrt(dgx * dgx + dgy * dgy) || 1;
+    mir.vx = (dgx / dl) * C.MIR_DODGE_SPEED;
+    mir.vy = (dgy / dl) * C.MIR_DODGE_SPEED;
+    mir.dodgeCD = C.MIR_DODGE_CD;
+    mir.gDodgeT = C.MIR_DODGE_DUR;
+    mir.dodgeFlashT = 1.0;
+    mir.hitIframe = C.MIR_DODGE_DUR + 40;
+    this._explode(mir.x, mir.y, [180, 96, 255], 8);
+  };
+
+  /* ---- Weave around the player, spreading away from the other rivals. ---- */
+  M._mirrorGambitWander = function (ent, p, sc60) {
+    var dx = p.x - ent.x, dy = p.y - ent.y;
+    var d = Math.sqrt(dx * dx + dy * dy) || 1;
+    var nx = dx / d, ny = dy / d;
+    var radial = (d - C.MIR_KEEP_DIST) / C.MIR_KEEP_DIST;
+    if (ent._sdir == null) ent._sdir = (Math.random() < 0.5 ? 1 : -1);
+    var tx = -ny * ent._sdir, ty = nx * ent._sdir;
+    var spd = C.MIR_ROAM_SPEED;
+    var desVx = (nx * radial * 2.2 + tx) * spd;
+    var desVy = (ny * radial * 2.2 + ty) * spd;
+
+    // Separation so the three never clump (real boss is index -1).
+    var mir = this._mirror, list = mir.decoys, sep = C.MIR_KEEP_DIST * 0.75;
+    for (var i = -1; i < list.length; i++) {
+      var o = (i < 0) ? mir : list[i];
+      if (o === ent) continue;
+      var ox = ent.x - o.x, oy = ent.y - o.y;
+      var od2 = ox * ox + oy * oy;
+      if (od2 < sep * sep) {
+        var od = Math.sqrt(od2) || 1;
+        desVx += (ox / od) * spd * 1.1;
+        desVy += (oy / od) * spd * 1.1;
+      }
+    }
+
+    var k = 1 - Math.pow(1 - 0.08, sc60);
+    ent.vx += (desVx - ent.vx) * k;
+    ent.vy += (desVy - ent.vy) * k;
+    ent.angle = Math.atan2(dy, dx);
+    if (Math.random() < 0.004) ent._sdir = -ent._sdir;
+  };
+
+  /* ---- Player struck one of the three. A DECOY bursts on ANY hit (and provokes
+         a fresh sequential assault → a new window). The REAL one can only be hit
+         in the RECOVER window (off-balance after a volley), exactly like its
+         dash-attack recovery in the rest of the fight; any other time it dodges. ---- */
+  M._mirrorGambitHit = function (p, isAtk, isDAtk, pR) {
+    var mir = this._mirror;
+    if (mir.gambitPhase !== 'ACTIVE') return;   // intangible while dispersing
+    var thr = pR + C.MIR_SIZE + (isDAtk ? 12 : 0);
+    var thr2 = thr * thr;
+
+    // Decoy → bursts in one hit at any moment + provokes the trio's next assault.
+    for (var di = mir.decoys.length - 1; di >= 0; di--) {
+      var d = mir.decoys[di];
+      var ddx = p.x - d.x, ddy = p.y - d.y;
+      if (ddx * ddx + ddy * ddy <= thr2) {
+        this._mirrorPoofDecoy(di);
+        this._mirrorEndSwing(p, isAtk, isDAtk, 0.4);
+        return;
+      }
+    }
+
+    // Real one.
+    var rdx = p.x - mir.x, rdy = p.y - mir.y;
+    if (rdx * rdx + rdy * rdy > thr2) return;
+    if (mir.hitIframe > 0) return;              // just hit / mid-dodge → intangible
+
+    if (mir.gMode === 'RECOVER' || mir.exposed) {
+      // The window: shatter the last shield (handled in _damageMirror).
+      var rd = Math.sqrt(rdx * rdx + rdy * rdy) || 0.001;
+      mir.vx += (-rdx / rd) * 8; mir.vy += (-rdy / rd) * 8;
+      this._mirrorEndSwing(p, isAtk, isDAtk, 0.3);
+      this._damageMirror(1);
+    } else {
+      // Mistimed → it slips your swing (the swing whiffs, no shield broken).
+      this._mirrorGambitDodge(mir, p);
+    }
+  };
+
+  /* ---- End the player's swing the same way a normal body hit does. ---- */
+  M._mirrorEndSwing = function (p, isAtk, isDAtk, fric) {
+    if (isAtk) {
+      p.state = 'MOVING'; p.spinAngle = 0; p.atkTimer = 0;
+      p.atkAvailable = true; p.atkCooldown = 0;
+      p.vx *= fric; p.vy *= fric;
+      if (!p.invincible) { p.invincible = true; p.invincTimer = 120; p.dashInvinc = true; }
+    } else {
+      p.hasHitDuringDashAttack = true;
+    }
+  };
+
+  M._mirrorPoofDecoy = function (idx) {
+    var mir = this._mirror;
+    if (!mir || !mir.decoys) return;
+    var d = mir.decoys[idx];
+    if (!d) return;
+    this._spawnWaveRing(d.x, d.y, { maxRadius: C.MIR_SIZE * 2.6, color: BODY_COL, expandTime: 0.20 });
+    this._spawnWaveRing(d.x, d.y, { maxRadius: C.MIR_SIZE * 1.4, color: 0xffffff, expandTime: 0.14 });
+    this._explode(d.x, d.y, [255, 70, 180], 16);
+    this._explode(d.x, d.y, [255, 255, 255], 10);
+    if (d.spr) d.spr.destroy();
+    if (d.glowSpr) d.glowSpr.destroy();
+    if (d.ghosts) { for (var g = 0; g < d.ghosts.length; g++) if (d.ghosts[g].spr) d.ghosts[g].spr.destroy(); }
+    mir.decoys.splice(idx, 1);
+    this._triggerHitstop(C.HITSTOP_DUR);
+    this.cameras.main.shake(90, 0.008);
+    // Misread → the trio immediately launches a fresh sequential assault, which
+    // resolves into another off-balance window on the real one.
+    if (mir.gambit && mir.gambitPhase === 'ACTIVE') this._mirrorBeginAssault();
+  };
+
+  M._mirrorShatterGambit = function () {
+    var mir = this._mirror;
+    if (!mir) return;
+    mir.orbs = 0;
+    mir.hitT = 1.0;
+    mir.hitIframe = EXPOSE_IFRAME;
+    var ex = mir.x, ey = mir.y;
+    this._spawnWaveRing(ex, ey, { maxRadius: C.MIR_SIZE * 4.5, color: ORB_COL, expandTime: 0.30 });
+    this._spawnWaveRing(ex, ey, { maxRadius: C.MIR_SIZE * 2.6, color: 0xffffff, expandTime: 0.18 });
+    this._explode(ex, ey, [180, 96, 255], 34);
+    this._explode(ex, ey, [220, 150, 255], 20);
+    this._explode(ex, ey, [255, 255, 255], 16);
+    this.cameras.main.flash(180, 200, 120, 255);
+    this.cameras.main.shake(180, 0.014);
+    this._triggerHitstop(C.DETONATION_HITSTOP);
+    this._mirrorEndGambit(true);
+  };
+
+  M._mirrorEndGambit = function (shattered) {
+    var mir = this._mirror;
+    if (!mir) return;
+    mir.gambit = false; mir.gambitPhase = null; mir.gambitDone = true;
+    if (shattered) mir.exposed = true;
+    if (mir.decoys) {
+      for (var i = 0; i < mir.decoys.length; i++) {
+        var d = mir.decoys[i];
+        this._spawnWaveRing(d.x, d.y, { maxRadius: C.MIR_SIZE * 2.2, color: BODY_COL, expandTime: 0.18 });
+        this._explode(d.x, d.y, [255, 70, 180], 12);
+        this._explode(d.x, d.y, [255, 255, 255], 8);
+        if (d.spr) d.spr.destroy();
+        if (d.glowSpr) d.glowSpr.destroy();
+        if (d.ghosts) { for (var g = 0; g < d.ghosts.length; g++) if (d.ghosts[g].spr) d.ghosts[g].spr.destroy(); }
+      }
+      mir.decoys = [];
+    }
+    // Off-balance, shieldless — the window to finish it.
+    mir.state = 'RECOVER'; mir.stateT = 0; mir.recoverDur = 900; mir.vulnerable = true;
+    mir.gMode = 'WANDER'; mir.gModeT = 0; mir.gDodgeT = 0;
+    mir.attackCD = C.MIR_ATTACK_CD; mir.novaCD = C.MIR_NOVA_CD;
+  };
+
+  /* ---- Afterimage seeding shared by the real rival (mir.ghosts) and decoys. ---- */
+  M._mirrorSeedGhost = function (ent, isReal, alpha, tint) {
+    var pool = isReal ? this._mirror.ghosts : ent.ghosts;
+    if (!pool || !pool.length) return;
+    var g = pool[(ent.ghostW || 0) % pool.length];
+    ent.ghostW = (ent.ghostW || 0) + 1;
+    g.active = true; g.alpha = alpha;
+    g.spr.setPosition(ent.x, ent.y);
+    g.spr.setRotation(ent._rotA != null ? ent._rotA : ent.angle);
+    g.spr.setScale(ent._sclX || BASE_SCL, ent._sclY || BASE_SCL);
+    g.spr.setTint(tint || BODY_COL);
+    g.spr.setAlpha(alpha * (isReal ? 1 : 0.7));
+    g.spr.setVisible(true);
+  };
+
+  /* ---- Render the decoys (illusory bodies: translucent, no shield). They mirror
+         the real one's look in every phase — including the amber off-balance look
+         during RECOVER — so ONLY the shield + opacity ever give the real away. ---- */
+  M._renderMirrorDecoys = function (mir, gt, dt) {
+    var dispersing = mir.gambitPhase === 'DISPERSE';
+    var recover    = mir.gMode === 'RECOVER';
+    for (var i = 0; i < mir.decoys.length; i++) {
+      var d = mir.decoys[i];
+      // decay this decoy's afterimages
+      for (var gi = 0; gi < d.ghosts.length; gi++) {
+        var gh = d.ghosts[gi];
+        if (!gh.active) continue;
+        gh.alpha -= dt * 3.2;
+        if (gh.alpha <= 0) { gh.active = false; gh.spr.setVisible(false); }
+        else gh.spr.setAlpha(gh.alpha * 0.5);
+      }
+      var dashing  = dispersing || d.aPhase === 'DASH';
+      var charging = d.aPhase === 'TELE';
+      var col = BODY_COL, a = DECOY_ALPHA, sx = BASE_SCL, sy = BASE_SCL, rot = d.angle;
+      if (dashing)       { col = gradAt(gt * 1.6); sx = sy = BASE_SCL * 1.18; rot = d.dashSpin; a = DECOY_ALPHA + 0.12; }
+      else if (charging) { col = (Math.sin(gt * Math.PI * 8) > 0) ? 0xffffff : BODY_COL; rot = d.lockAng; }
+      else if (recover)  { col = (Math.sin(gt * Math.PI * 12) > 0) ? VULN_COL : 0xff8a3a;
+                           sx = sy = BASE_SCL * (0.92 + 0.06 * Math.sin(gt * 22)); }
+      d._rotA = rot; d._sclX = sx; d._sclY = sy;
+      d.spr.setPosition(d.x, d.y); d.spr.setRotation(rot); d.spr.setScale(sx, sy);
+      d.spr.setAlpha(a); d.spr.setTint(col);
+      d.glowSpr.setPosition(d.x, d.y); d.glowSpr.setRotation(rot);
+      d.glowSpr.setScale(Math.max(sx, sy) * 1.5 + (dashing ? 0.5 : 0));
+      d.glowSpr.setAlpha(0.10 + (dashing ? 0.12 : 0)); d.glowSpr.setTint(col);
+    }
   };
 
   /* ================================================================
@@ -852,9 +1372,11 @@
     mir.glowSpr.setTint(bodyCol);
 
     // ---- gfx: telegraph beam + dizzy stars ----
+    // Suppressed during the gambit: a real-only beam/stars would betray which
+    // rival is the real one — the only tells are its shield + higher opacity.
     var g = mir.gfx;
     g.clear();
-    if (charging) {
+    if (charging && !mir.gambit) {
       var cp2 = Math.min(1, mir.stateT / C.MIR_TELEGRAPH);
       var len = 480;
       var ebx = mir.x + Math.cos(mir.lockAng) * len;
@@ -865,7 +1387,7 @@
       g.lineStyle(1, 0xffffff, a1 * 0.7);
       g.beginPath(); g.moveTo(mir.x, mir.y); g.lineTo(ebx, eby); g.strokePath();
     }
-    if (vuln) {
+    if (vuln && !mir.gambit) {
       // dizzy ring of orbiting stars to telegraph the punish window
       var dn = 3;
       for (var s = 0; s < dn; s++) {
@@ -910,6 +1432,9 @@
         sg.strokeCircle(pts[kk].x, pts[kk].y, 7.5 + 1.0 * Math.sin(gt * 6 + kk));
       }
     }
+
+    // Decoy gambit: draw the illusions (translucent, shield-less rivals).
+    if (mir.gambit && mir.decoys && mir.decoys.length) this._renderMirrorDecoys(mir, gt, dt);
   };
 
   /* ---- Cinematic spawn look: born white-hot from the player, peeling off

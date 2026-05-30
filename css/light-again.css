@@ -34,11 +34,23 @@
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: -2px 0 22px rgba(242, 162, 133, 0.1);
-  animation: la-slide-in 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+  /* No inject-time entrance: the launcher is hidden while the home hero (which
+     has its own Light Again carousel tab) is on screen, and slides in via the
+     transition below once the user scrolls into the lower sections. */
   transition:
     width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.3s ease,
-    border-color 0.3s ease;
+    border-color 0.3s ease,
+    opacity 0.35s ease,
+    transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hidden while the hero is in view (carousel already surfaces Light Again there);
+   revealed for 1-click play once scrolled into the lower sections. */
+body.hero-in-view .light-again-btn {
+  opacity: 0;
+  transform: translateY(-50%) translateX(52px);
+  pointer-events: none;
 }
 
 .light-again-btn:hover,

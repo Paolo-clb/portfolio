@@ -139,6 +139,14 @@
   let isFocused = true; // whether the game container has focus
   window.__typingGameFocused = function () { return isFocused; };
   window.__typingGameWPM = function () { return calcWPM ? calcWPM() : 0; };
+  // Re-assert the hero title for whatever state the typing game is in. Called by
+  // the home carousel (perso-projects.js) when it switches back to this slide,
+  // so the title returns to "Typing Game" (game) or "Paolo Colombat" (intro).
+  window.__typingRefreshHeroTitle = function () {
+    if (!heroTitleEl) return;
+    if (!introActive && navbarEl) heroTitleEl.innerHTML = t('heroTitleHTML');
+    else heroTitleEl.textContent = t('heroIntro');
+  };
   let blurHintTimer = null; // debounce timer for focus hint
   let trailTimestamps = []; // timestamps of recent correct keystrokes for trail speed calc
   let trailSpeed = 0; // 0–1 speed factor for trail intensity

@@ -1083,6 +1083,10 @@
      ================================================================ */
 
   function boot() {
+    // Public launcher — lets the home "personal projects" carousel (perso-projects.js)
+    // open the game from the Light Again preview slide, same as the sticky tab.
+    window.__openLightAgain = openLightAgain;
+
     // Pickaxe skin flag (reward — only honoured once hardcore is unlocked)
     window.__laSteveSkin = laIsHardcoreUnlocked() && (localStorage.getItem('la_skin_steve') === '1');
 

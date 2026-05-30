@@ -112,6 +112,9 @@
       // Cinematic arrival state — materialises in view before it becomes active.
       spawnPhase: 'ARRIVING', spawnT: 0, introT01: 0,
       introScale: 0.0, introAlpha: 0.0, _gatherBurst: false,
+      // Blink/teleport state — when the shield breaks it may implode here (OUT)
+      // and re-materialise far away, in view (IN). Intangible during both.
+      telePhase: null, teleT: 0, teleDestX: 0, teleDestY: 0, _teleInBurst: false,
       dead: false,
     };
 
@@ -136,6 +139,16 @@
     // hitstop / slow-mo / The World). The boss is intangible while forming.
     if (g.spawnPhase === 'ARRIVING') {
       this._gigaBruiserTickArrival(g, p, dt);
+      this._renderGigaBruiser(dt);
+      return;
+    }
+
+    // ── BLINK / TELEPORT ─────────────────────────────────────────────────
+    // Same deal as the arrival: drives on REAL dt for a smooth constant pace
+    // and the boss is intangible (and frozen-in-place logic-wise) while it
+    // implodes out and re-materialises far away.
+    if (g.telePhase) {
+      this._gigaBruiserTickTeleport(g, p, dt);
       this._renderGigaBruiser(dt);
       return;
     }
@@ -363,6 +376,192 @@
     afx.fillCircle(g.x, g.y, coreR * 2.4);
     afx.fillStyle(0xffffff, 0.5 + 0.5 * t);
     afx.fillCircle(g.x, g.y, coreR);
+  };
+
+  /* ================================================================
+     BLINK / TELEPORT — heavy implosion here, faster re-materialise far away.
+     Rolled when the shield is broken (see _breakGigaShield). The IN phase is a
+     quicker echo of the spawn cinematic; the OUT phase is its mirror image —
+     everything is sucked inward and the boss folds out of existence.
+     ================================================================ */
+
+  /* Pick a destination: in the player's field of view, as FAR from the player
+     as the visible area (clamped to the world) reasonably allows. Samples a
+     handful of candidate points and keeps the farthest, with a little jitter so
+     the landing spot isn't perfectly predictable. */
+  M._pickGigaTeleportDest = function () {
+    var p    = this.p;
+    var view = this.cameras.main.worldView;
+    var viewMin = Math.min(view.width, view.height);
+    var m      = C.WORLD_HALF - C.GBR_SIZE * 1.5;
+    var margin = C.GBR_SIZE * 1.7;
+    var loX = Math.max(view.x + margin, -m), hiX = Math.min(view.right  - margin, m);
+    var loY = Math.max(view.y + margin, -m), hiY = Math.min(view.bottom - margin, m);
+    if (loX > hiX) loX = hiX = (view.x + view.right)  / 2;
+    if (loY > hiY) loY = hiY = (view.y + view.bottom) / 2;
+
+    var minDist = viewMin * C.GBR_TELE_MIN_DIST_FRAC;
+    // Two-tier pick: prefer the farthest candidate that clears minDist; if the
+    // visible box is too cramped for that, fall back to the overall farthest.
+    var best = null, bestScore = -1;        // farthest beyond minDist
+    var fb   = null, fbScore   = -1;        // overall farthest (fallback)
+    for (var i = 0; i < 16; i++) {
+      var cx  = loX + Math.random() * (hiX - loX);
+      var cy  = loY + Math.random() * (hiY - loY);
+      var ddx = cx - p.x, ddy = cy - p.y;
+      var dist = Math.sqrt(ddx * ddx + ddy * ddy);
+      // A touch of randomness so the landing spot varies run to run.
+      var score = dist + Math.random() * viewMin * 0.18;
+      if (score > fbScore) { fbScore = score; fb = { x: cx, y: cy }; }
+      if (dist >= minDist && score > bestScore) { bestScore = score; best = { x: cx, y: cy }; }
+    }
+    return best || fb || { x: (loX + hiX) / 2, y: (loY + hiY) / 2 };
+  };
+
+  /* Begin the blink — implode at the current spot. Destination is locked now so
+     the IN cinematic can fire its "incoming" burst at the right place. */
+  M._beginGigaTeleport = function () {
+    var g = this._gigaBruiser;
+    if (!g || g.dead) return;
+
+    var dest = this._pickGigaTeleportDest();
+    g.teleDestX = dest.x;
+    g.teleDestY = dest.y;
+    g.telePhase = 'OUT';
+    g.teleT     = 0;
+    g.introT01  = 0;
+    g.vx = 0; g.vy = 0;
+    // A blink in mid-ritual would leave stale, world-locked swarm markers behind.
+    g.spawnPending = false;
+    g.spawnSlots   = null;
+
+    // Departure burst — heavy implosion punch at the OLD location.
+    this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 2.8, color: 0xcc66ff, expandTime: 0.18 });
+    this._explode(g.x, g.y, [200, 120, 255], 22);
+    this._explode(g.x, g.y, [255, 255, 255], 12);
+    this.cameras.main.shake(160, 0.011);
+  };
+
+  M._gigaBruiserTickTeleport = function (g, p, dt) {
+    g.teleT += dt * 1000;
+    // Keep it lively — spin a little faster than idle through the whole blink.
+    g.angle     += dt * 60 * 0.06;
+    g.shieldRot += dt * 60 * 0.10;
+
+    if (g.telePhase === 'OUT') {
+      var t = g.teleT / C.GBR_TELE_OUT_DUR; if (t > 1) t = 1;
+      g.introT01 = t;
+      // Brief anticipation swell, then a hard implosion to a point.
+      var s;
+      if (t < 0.24) { var u = t / 0.24;        s = 1 + 0.20 * (u * u * (3 - 2 * u)); }
+      else          { var v = (t - 0.24) / 0.76; s = 1.20 * (1 - v * v); }
+      g.introScale = s < 0 ? 0 : s;
+      g.introAlpha = Math.max(0, 1 - t * t);
+      if (Math.random() < 0.5) this._explode(g.x, g.y, [200, 120, 255], 4);
+
+      if (t >= 1) {
+        // Final blink-out pop at the OLD spot, then jump and start re-forming.
+        this._explode(g.x, g.y, [255, 255, 255], 18);
+        this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 1.2, color: 0xffffff, expandTime: 0.10 });
+        this.cameras.main.flash(90, 200, 140, 255);
+        g.x = g.teleDestX; g.y = g.teleDestY;
+        g.vx = 0; g.vy = 0;
+        this._gigaBruiserBeginTeleportIn(g);
+      }
+      return;
+    }
+
+    // telePhase === 'IN' — faster echo of the spawn arrival curves.
+    var ti = g.teleT / C.GBR_TELE_IN_DUR; if (ti > 1) ti = 1;
+    g.introT01 = ti;
+    var grow;
+    if (ti < 0.82) { var a = ti / 0.82;        grow = (a * a * (3 - 2 * a)) * 1.12; }
+    else           { var b = (ti - 0.82) / 0.18; grow = 1.12 - 0.12 * (b * b * (3 - 2 * b)); }
+    g.introScale = grow;
+    g.introAlpha = Math.min(1, ti / 0.26);
+    if (Math.random() < 0.20) this._explode(g.x, g.y, [255, 150, 255], 4);
+
+    // Halfway "lock-in" pulse — the silhouette snaps into focus at the new spot.
+    if (!g._teleInBurst && ti >= 0.5) {
+      g._teleInBurst = true;
+      this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 1.7, color: 0xff66ff, expandTime: 0.16 });
+      this._explode(g.x, g.y, [255, 120, 255], 12);
+      this.cameras.main.shake(120, 0.005);
+    }
+
+    if (ti >= 1) this._gigaBruiserFinishTeleport(g);
+  };
+
+  M._gigaBruiserBeginTeleportIn = function (g) {
+    g.telePhase   = 'IN';
+    g.teleT       = 0;
+    g.introT01    = 0;
+    g._teleInBurst = false;
+    g.introScale  = 0; g.introAlpha = 0;
+    // "Incoming" burst at the DESTINATION so the eye snaps to where it's landing.
+    this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 2.2, color: 0x9933ff, expandTime: 0.30 });
+    this._explode(g.x, g.y, [187, 0, 255],  14);
+    this._explode(g.x, g.y, [255, 180, 255], 10);
+    this.cameras.main.shake(120, 0.006);
+  };
+
+  M._gigaBruiserFinishTeleport = function (g) {
+    g.telePhase  = null;
+    g.teleT      = 0;
+    g.introScale = 1.0; g.introAlpha = 1.0;
+    if (g.spawnFxGfx) g.spawnFxGfx.clear();
+
+    // Fully-formed flourish — a lighter, snappier version of the spawn finish.
+    this._spawnWaveRing(g.x, g.y, { maxRadius: 240,              color: 0x9933ff, expandTime: 0.28 });
+    this._spawnWaveRing(g.x, g.y, { maxRadius: 160,              color: 0xffffff, expandTime: 0.18 });
+    this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 2.4, color: 0x66ddff, expandTime: 0.18 });
+    this._explode(g.x, g.y, [187, 0, 255],  28);
+    this._explode(g.x, g.y, [255, 180, 255], 16);
+    this._explode(g.x, g.y, [255, 255, 255], 12);
+    this.cameras.main.flash(150, 200, 120, 255);
+    this.cameras.main.shake(200, 0.012);
+    this._triggerHitstop(C.HITSTOP_DUR);
+  };
+
+  /* Implosion FX for the OUT phase — the mirror of _drawGigaArrivalFx: rings
+     and streaks rush INWARD and a white-hot core flares then collapses. Drawn on
+     the full-alpha spawnFxGfx so it stays bright as the body fades to nothing. */
+  M._drawGigaTeleportOutFx = function (afx, g) {
+    var gt = this.gameTime;
+    var t  = g.introT01 || 0;     // 0 → 1 across the implosion
+    var R  = C.GBR_SIZE;
+    var inv = 1 - t;
+
+    // Rings collapsing toward the centre, brightening as they shrink.
+    for (var k = 0; k < 4; k++) {
+      var rp = ((inv * 1.1 + k / 4) % 1);          // big → small as t climbs
+      var cr = R * (0.2 + 3.2 * rp);
+      var ca = (1 - rp) * 0.7 * Math.min(1, inv * 2 + 0.15);
+      afx.lineStyle(3, 0xcc66ff, ca);
+      afx.strokeCircle(g.x, g.y, cr);
+      afx.lineStyle(1.2, 0xffffff, ca * 0.5);
+      afx.strokeCircle(g.x, g.y, cr * 0.94);
+    }
+
+    // Streaks yanked inward — the energy folding into the core.
+    var sN = 12;
+    for (var s = 0; s < sN; s++) {
+      var sa   = (TAU / sN) * s - gt * 1.2;
+      var outR = R * (3.0 - 2.0 * t);
+      var inR  = Math.max(0, outR * inv * 0.55);
+      afx.lineStyle(2, 0xffaaff, 0.5 * inv + 0.18);
+      afx.lineBetween(
+        g.x + Math.cos(sa) * outR, g.y + Math.sin(sa) * outR,
+        g.x + Math.cos(sa) * inR,  g.y + Math.sin(sa) * inR
+      );
+    }
+
+    // Collapsing white-hot core — flares up then vanishes to a pinpoint.
+    var flare = Math.sin(Math.min(1, t) * Math.PI);   // 0 → 1 → 0
+    afx.fillStyle(0xff88ff, 0.5 * flare);
+    afx.fillCircle(g.x, g.y, R * (0.5 + 1.4 * flare));
+    afx.fillStyle(0xffffff, 0.85 * flare);
+    afx.fillCircle(g.x, g.y, R * (0.16 + 0.5 * flare));
   };
 
   /* ================================================================
@@ -716,7 +915,9 @@
     var afx = g.spawnFxGfx;
     if (afx) {
       afx.clear();
-      if (g.spawnPhase === 'ARRIVING') this._drawGigaArrivalFx(afx, g);
+      if      (g.spawnPhase === 'ARRIVING') this._drawGigaArrivalFx(afx, g);
+      else if (g.telePhase  === 'IN')       this._drawGigaArrivalFx(afx, g);
+      else if (g.telePhase  === 'OUT')      this._drawGigaTeleportOutFx(afx, g);
     }
     var ia = (g.introAlpha != null) ? g.introAlpha : 1;
     gfx.setAlpha(ia);
@@ -918,6 +1119,15 @@
     this.cameras.main.flash(140, 180, 220, 255);
     this.cameras.main.shake(220, 0.016);
     this._triggerHitstop(C.DEFLECT_HEAVY_HS);
+
+    // …and it may BLINK AWAY: implode here, re-materialise far across the
+    // player's view. The shield stays down — the player keeps the exposed
+    // window they earned, they just have to chase the boss down. Skipped if
+    // it's still arriving, already mid-blink, or busy with a shockwave.
+    if (!g.telePhase && !g.shockwavePhase && g.spawnPhase !== 'ARRIVING'
+        && Math.random() < C.GBR_TELE_CHANCE) {
+      this._beginGigaTeleport();
+    }
   };
 
   /* ================================================================
@@ -965,6 +1175,7 @@
     var g = this._gigaBruiser;
     if (!g || g.dead) return;
     if (g.spawnPhase === 'ARRIVING') return;   // intangible while materialising
+    if (g.telePhase) return;                   // intangible while blinking away
     var p = this.p;
     var isAtk  = p.state === 'ATTACKING';
     var isDAtk = p.state === 'DASH_ATTACKING';

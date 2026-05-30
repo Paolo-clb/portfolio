@@ -191,6 +191,13 @@
     GBR_SHOCKWAVE_ENEMY_FORCE:40,    // enemy impulse at point-blank
     GBR_SPAWN_TELEGRAPH_DUR:  320,   // ms of telegraph (target markers + beams) before a swarm pops
     GBR_ARRIVE_DUR:           2000,  // ms of the cinematic materialisation when it appears in view
+    /* Blink — when the shield is BROKEN the boss has GBR_TELE_CHANCE odds of
+       teleporting away: a heavy implosion (OUT) then a faster re-materialise
+       (IN) — a quicker echo of the spawn cinematic — at a far, in-view spot. */
+    GBR_TELE_CHANCE:          0.5,   // probability of blinking away when its shield breaks
+    GBR_TELE_OUT_DUR:         300,   // ms of the implosion / dissipation at the old spot
+    GBR_TELE_IN_DUR:          850,   // ms of the (faster than spawn) re-materialise at the new spot
+    GBR_TELE_MIN_DIST_FRAC:   0.42,  // destination must sit ≥ this × min(view w,h) from the player
 
     /* ---- The Mirror (3rd mini-boss) — a rival duelist -------------------
        An independent magenta rival that orbits the player and tries to
@@ -253,10 +260,10 @@
        it's reduced to a lone head; the boss dies when every worm is gone, and
        (like the others) drops a free upgrade. Self-contained on this._snake,
        never in this.enemies. */
-    SNAKE_SEG_SIZE:      18,    // body-segment radius (px)
-    SNAKE_HEAD_SIZE:     25,    // head radius (px) — chunkier than the body
-    SNAKE_SEG_COUNT:     22,    // long by default → more sub-serpents on splits, harder
-    SNAKE_SPACING:       29,    // distance kept between consecutive node centres (px)
+    SNAKE_SEG_SIZE:      22,    // body-segment radius (px) — chunkier base serpent
+    SNAKE_HEAD_SIZE:     31,    // head radius (px) — chunkier than the body
+    SNAKE_SEG_COUNT:     32,    // very long by default → many more sub-serpents on splits, harder
+    SNAKE_SPACING:       34,    // distance kept between consecutive node centres (px)
     SNAKE_SEG_HP_MAX:    4,     // hits a segment can hold (longest worm)
     SNAKE_HP_PER_LEN:    3.0,   // segMaxHp = clamp(round(len/this), 1, SEG_HP_MAX)
     SNAKE_SPEED_BASE:    2.5,   // px/frame for a full-length worm (frantic)
@@ -266,7 +273,7 @@
     SNAKE_SLITHER_AMP:   0.62,  // lateral wiggle amplitude (rad) — the "slither"
     SNAKE_SLITHER_FREQ:  6.0,   // wiggle frequency (scaled up for short worms) — frenetic
     SNAKE_KEEP_DIST:     110,   // head presses this close while cruising (no lunge now)
-    SNAKE_SEP_RADIUS:    130,   // worm heads repel each other within this so they don't stack
+    SNAKE_SEP_RADIUS:    155,   // worm heads repel each other within this so they don't stack
     SNAKE_SEP_FORCE:     1.7,   // how hard separation bends a head off its neighbours
     SNAKE_WANDER_MAX:    0.95,  // each worm aims at its own drifting offset around you (rad)
     SNAKE_WANDER_RATE:   3.6,   // how fast that personal aim-offset random-walks
@@ -276,14 +283,33 @@
     SNAKE_SPIT_SPREAD:   0.72,  // fan half-spread of a spit (rad)
     SNAKE_SPIT_SPEED:    300,   // venom projectile speed (px/s) — slow enough to parry
     SNAKE_SPIT_NODES:    5,     // body nodes drawn on each writhing mini-serpent bolt
-    SNAKE_HEAD_HIT_R:    24,    // head contact radius vs the player (px)
+    // PARRY = SPLIT: dash-attacking a venom bolt doesn't bounce it straight back
+    // (like a shooter shard) — it BURSTS into a forward fan of tamed CYAN
+    // hatchling serpents that scatter into the boss + the swarm (echoes the
+    // serpent's own splitting theme; its unique reflect signature).
+    SNAKE_PARRY_SPLIT:   3,     // hatchlings a parried bolt bursts into
+    SNAKE_PARRY_SPREAD:  0.6,   // half-width of the hatchling fan around the dash heading (rad)
+    SNAKE_SPLIT_FX_LIFE:   0.36,  // seconds the cinematic split-slash FX animates
+    SNAKE_HEAD_HIT_R:    29,    // head contact radius vs the player (px)
     SNAKE_MELEE_DMG:     1,     // a basic attack chips a segment by this
     SNAKE_DASH_DMG:      2,     // a dash-attack carves a segment by this
     SNAKE_PROJ_DMG:      1,     // a reflected projectile (non-smash) chips by this
     SNAKE_AOE_DMG:       1,     // explosions only ever chip a segment by this (throttled)
     SNAKE_AOE_IFRAME:    340,   // ms a segment is immune to further explosion damage
     SNAKE_AOE_MAX_SEG:   3,     // max segments a single explosion may damage
-    SNAKE_ARRIVE_DUR:    2200,  // ms of the cinematic "rise from a rift" entrance (longer body)
+    SNAKE_ARRIVE_DUR:    1500,  // ms of the cinematic "rise from a rift" entrance — snappier per-segment pop
+    // ── TAIL WHIP (COUP DE QUEUE): a defensive, no-damage knockback the longer
+    //    worms lash out when the player attacks them — repels the player AND
+    //    nearby enemies, buying the serpent breathing room. ──
+    SNAKE_WHIP_CD:           2600,  // base ms between tail-whips (per worm, jittered)
+    SNAKE_WHIP_MIN_LEN:      6,     // only worms at least this long can tail-whip
+    SNAKE_WHIP_TRIGGER_DIST: 165,   // player must be ATTACKING within this of the body to provoke one
+    SNAKE_WHIP_WINDUP:       150,   // ms the tail coils back (telegraph) before the lash connects
+    SNAKE_WHIP_DUR:          560,   // ms of the full whip animation (windup + strike + recover)
+    SNAKE_WHIP_RADIUS:       150,   // knockback reach around the body at the strike instant (px)
+    SNAKE_WHIP_ARC:          2.5,   // angular span of the sweeping crescent blade (rad)
+    SNAKE_WHIP_PLAYER_FORCE: 17,    // outward impulse flung at the player (NO damage)
+    SNAKE_WHIP_ENEMY_FORCE:  14,    // outward impulse flung at caught enemies
   };
 
   /* ---- Upgrade branch definitions ---- */

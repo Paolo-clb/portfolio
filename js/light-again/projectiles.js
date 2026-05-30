@@ -124,10 +124,11 @@
       pr.spr.setPosition(pr.x, pr.y);
       pr.spr.rotation += pr.rotSpeed * prDt;
 
-      // Trail: inject a new slot into the global pool. Un-parried venom bolts
-      // are drawn as procedural mini-serpents (no shard trail) by _renderSnakeVenom.
+      // Trail: inject a new slot into the global pool. Venom bolts (enemy OR
+      // parried hatchlings) are drawn as procedural mini-serpents by
+      // _renderSnakeVenom, so they get no shard trail.
       var spd = pr.vx * pr.vx + pr.vy * pr.vy;
-      if (spd > 0.01 && !(pr.snakeSpit && !pr.isReflected)) {
+      if (spd > 0.01 && !pr.snakeSpit) {
         var slot = this._projTrailPool[this._projTrailPoolW % this._projTrailPool.length];
         this._projTrailPoolW++;
         slot.x = pr.x;
@@ -279,6 +280,17 @@
           if (dashLvl >= 2) parryBonus += 55;  // Lv2: magnetic vacuum catch zone
           var ddThresh = pR + (pr.glitch ? C.ANO_PROJ_RADIUS : C.PROJ_RADIUS) + parryBonus;
           if (ddx * ddx + ddy * ddy < ddThresh * ddThresh) {
+            // SNAKE venom has a UNIQUE parry: it bursts into a fan of tamed cyan
+            // hatchling serpents instead of bouncing back as one shard. The
+            // original bolt is consumed; _snakeParrySplit spawns the hatchlings.
+            if (pr.snakeSpit && this._snake && !this._snake.dead && this._snakeParrySplit) {
+              this._snakeParrySplit(pr);
+              if (pr._twPending) this._twResolvePending();
+              this._destroyProjectile(pr);
+              this.projectiles.splice(i, 1);
+              continue;
+            }
+
             var refSpd = C.PROJ_SPEED * C.PROJ_REFLECT_MULT;
 
             var refAng;
