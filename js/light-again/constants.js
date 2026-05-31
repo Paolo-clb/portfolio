@@ -415,9 +415,9 @@
        — UNGUIDED this time — when that boss dies. A natural spawn is guided by
        a magenta chevron (same look as the Anomaly/Tree pointer). Self-contained
        on this._fount (mirrors digital-tree.js). One at a time. */
-    CURSE_FOUNT_SPAWN_MIN_DELAY: 24000,  // ms of play before the first fountain may appear
-    CURSE_FOUNT_SPAWN_CHANCE:    0.085,  // per-eligible-second spawn roll
-    CURSE_FOUNT_COOLDOWN:        30000,  // ms after one is consumed/lost before another
+    CURSE_FOUNT_SPAWN_CHANCE:    0.085,  // per-eligible-second spawn roll (once the boss-kill gate is met)
+    CURSE_FOUNT_BOSS_REQ_START:  1,      // bosses to defeat before the FIRST fountain may appear
+    CURSE_FOUNT_BOSS_REQ_STEP:   1,      // +bosses required after each consumed fountain (1 → 2 → 3 …)
     CURSE_FOUNT_SPAWN_DIST_MIN:  640,    // min spawn distance from the player (px)
     CURSE_FOUNT_SPAWN_DIST_MAX:  1020,   // max spawn distance from the player (px)
     CURSE_FOUNT_ZONE_R:          260,    // mist-zone radius (≈ a no-upgrade dash-mark detonation)
@@ -456,6 +456,10 @@
     HIGHWAY_FLOW_SPEED:          14,     // px/frame conveyor carry at full strength (≈ +2× top speed → ~3× total)
     HIGHWAY_FLOW_CAP_MULT:       1.35,   // hard cap on summed conveyor magnitude (overlap guard) × FLOW_SPEED
     HIGHWAY_ENEMY_FLOW_MULT:     0.9,    // enemies caught in the flow are swept too, at this × the player's carry
+    HIGHWAY_INVULN_GRACE:        280,    // ms of invincibility granted while riding (lingers this long after exit)
+    HIGHWAY_EXHAUST_ZONE:        270,    // px before+past the downstream mouth where enemies get launched out (anti-stack)
+    HIGHWAY_EJECT_SPEED:         12,     // px/frame forward launch velocity enemies reach at the exhaust mouth
+    HIGHWAY_EJECT_SPREAD:        3.6,    // px/frame lateral fan added at the mouth so they scatter, not single-file
     HIGHWAY_SPAWN_NEAR_MIN:      160,    // the corridor passes at least this close to the player...
     HIGHWAY_SPAWN_NEAR_MAX:      840,    // ...and at most this far, so it's discoverable without a pointer
   };

@@ -208,6 +208,8 @@
     // so kills made DURING the fight don't shorten the gap to the next boss.
     this._bossDraftPending = true;
     this._advanceBossThreshold();
+    // Curse-Fountain pacing: this boss counts toward the next fountain's gate.
+    if (this._noteBossDefeat) this._noteBossDefeat();
 
     var self = this;
     // Beat 1 (~0.56s): the arrow surges with power once the wave has swept through.

@@ -288,7 +288,10 @@
       var ms = document.createElement('style');
       ms.id = '_la-ms-styles';
       ms.textContent =
-        '#_la-mode-select .la-ms-wrap{text-align:center;width:min(780px,94%);padding:2rem 1.5rem}' +
+        // margin:auto centers the panel when it fits AND stays scroll-safe when it
+        // overflows (auto margins collapse to 0, so the top never gets clipped — the
+        // classic flex centering + overflow fix).
+        '#_la-mode-select .la-ms-wrap{text-align:center;width:min(780px,94%);padding:2rem 1.5rem;margin:auto}' +
         '#_la-mode-select .la-ms-title{font-size:1rem;letter-spacing:.32em;color:var(--la-accent);text-transform:uppercase;margin-bottom:1.8rem}' +
         '#_la-mode-select .la-ms-return{font-size:.55rem;letter-spacing:.2em;color:#445; text-transform:uppercase;margin-bottom:.5rem}' +
         '#_la-mode-select .la-ms-cards{display:flex;gap:1.2rem;justify-content:center;flex-wrap:wrap}' +
@@ -324,8 +327,9 @@
         // "En cours" badge pinned to the active card corner.
         '#_la-mode-select .la-ms-active-badge{position:absolute;top:.65rem;right:.65rem;z-index:2;display:flex;align-items:center;gap:.32rem;font-size:.52rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.22rem .55rem;border-radius:99px;background:rgba(143,233,192,0.1);border:1px solid rgba(143,233,192,0.32);color:#8fe9c0}' +
         '#_la-mode-select .la-ms-active-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:#8fe9c0;box-shadow:0 0 6px #8fe9c0;animation:la-ms-active-pulse 1.4s ease-in-out infinite}' +
-        // Footer tip line (menu icon doubles as pause).
-        '#_la-mode-select .la-ms-tip{position:absolute;left:50%;bottom:.85rem;transform:translateX(-50%);width:min(780px,92%);text-align:center;font-size:.62rem;letter-spacing:.03em;line-height:1.55;color:#5d7f9c;opacity:.9}' +
+        // Footer tip line (menu icon doubles as pause). Lives in normal flow at the
+        // bottom of the panel so it scrolls with the content and can never overlap it.
+        '#_la-mode-select .la-ms-tip{margin:1.5rem auto 0;max-width:560px;text-align:center;font-size:.62rem;letter-spacing:.03em;line-height:1.55;color:#5d7f9c;opacity:.9}' +
         '#_la-mode-select .la-ms-tip b{color:#8fb6d6;font-weight:700}' +
         // Run loadout: chips + hover→3-levels detail (lives in the resume section).
         '#_la-mode-select .la-lo{width:100%;margin-top:.3rem;padding-top:.85rem;border-top:1px solid rgba(255,255,255,0.1);text-align:left}' +
@@ -362,7 +366,23 @@
         '#_la-mode-select .la-ms-resume .la-lo-chip{width:60px;height:60px;border-radius:12px}' +
         '#_la-mode-select .la-ms-resume .la-lo-chip .la-lo-svg{width:30px;height:30px}' +
         '#_la-mode-select .la-ms-resume .la-lo-pip{width:5px;height:5px}' +
-        '#_la-mode-select .la-ms-resume .la-lo-detail{min-height:84px;text-align:left}';
+        '#_la-mode-select .la-ms-resume .la-lo-detail{min-height:84px;text-align:left}' +
+        // Compact layout — applied only when a "resume" section is present (the crowded
+        // case: resume + the two cards + the tutorial banner all stacked). Tightens the
+        // big vertical gaps so everything fits without scrolling, keeping the spacious
+        // look intact for the simpler menus.
+        '#_la-mode-select.la-ms--stacked .la-ms-wrap{padding-top:1.2rem;padding-bottom:1.2rem}' +
+        '#_la-mode-select.la-ms--stacked .la-ms-title{margin-bottom:.9rem}' +
+        '#_la-mode-select.la-ms--stacked .la-ms-resume{margin-bottom:1rem;padding:1rem 1.3rem .95rem}' +
+        '#_la-mode-select.la-ms--stacked .la-ms-resume-top{margin-bottom:.7rem}' +
+        '#_la-mode-select.la-ms--stacked .la-ms-resume-btn{margin-top:.7rem;padding:.6rem 1rem}' +
+        '#_la-mode-select.la-ms--stacked .la-ms-resume .la-lo-chips{margin-bottom:.6rem}' +
+        '#_la-mode-select.la-ms--stacked .la-ms-resume .la-lo-detail{min-height:72px}' +
+        '#_la-mode-select.la-ms--stacked .la-ms-card{padding:1.2rem 1.2rem 1.05rem}' +
+        '#_la-mode-select.la-ms--stacked .la-ms-tut{margin-top:.95rem;padding:.95rem 1.2rem}' +
+        '#_la-mode-select.la-ms--stacked .la-ms-tut-hint{margin-bottom:.65rem}' +
+        '#_la-mode-select.la-ms--stacked .la-ms-tut-label{margin-bottom:.65rem}' +
+        '#_la-mode-select.la-ms--stacked .la-ms-tip{margin-top:1rem}';
       document.head.appendChild(ms);
     }
 
@@ -398,6 +418,8 @@
     // lives in the top section now).
     var canResume    = !!loadout;
     var hasTopResume = canResume || tutorialRunning;
+    // Crowded layout (resume section stacked above the cards/tutorial) → compact CSS.
+    if (hasTopResume) menuEl.className = 'la-ms--stacked';
     var resumeMode   = canResume ? currentMode : null;
     var sbCardActive = sbActive && !hasTopResume;
     var hcCardActive = hcActive && !hasTopResume;
@@ -474,11 +496,12 @@
       ((!unlocked && !tutorialRunning) ? buildTutorialPanel() : '') +
       // Cosmetic pickaxe skin — unlocked alongside hardcore mode as a reward
       (unlocked ? '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-steve-cb"><span>I am Steve</span></label>' : '') +
-      '</div>' +
-      // Tip pinned to the very bottom of the screen (now mentions seeing upgrades).
+      // Tip in normal flow at the bottom of the panel (mentions seeing upgrades). Kept
+      // inside .la-ms-wrap so it never overlaps the content when everything is stacked.
       '<div class="la-ms-tip">' + (fr
         ? '💡 L’icône <b>menu</b> (en haut à droite) sert aussi à mettre la partie <b>en pause</b> et à <b>voir vos améliorations</b>.'
-        : '💡 The <b>menu</b> icon (top right) also <b>pauses</b> the game and lets you <b>see your upgrades</b>.') + '</div>';
+        : '💡 The <b>menu</b> icon (top right) also <b>pauses</b> the game and lets you <b>see your upgrades</b>.') + '</div>' +
+      '</div>';
 
     container.style.position = 'relative';
     container.appendChild(menuEl);

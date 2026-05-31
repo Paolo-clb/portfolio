@@ -780,7 +780,7 @@
       // Data Highways conveyor — carries the player along an active flow corridor
       // (pure positional push; runs BEFORE the world clamp so an adverse flow can
       // genuinely shove you into a wall). On player time, so it works during TW.
-      this._applyHighwayFlow(pS60);
+      this._applyHighwayFlow(pS60, pMs);
 
       var wM = C.WORLD_HALF - C.SIZE * 1.5;
       if (p.x < -wM) { p.x = -wM; p.vx *= -0.4; }

@@ -201,8 +201,9 @@
     this._takenCurses = this._takenCurses || {};
     this._takenCurses[cid] = true;
 
-    // Shared downside: −1 shield slot (floor 1), clamping current shields.
-    this.MAX_SHIELDS = Math.max(1, this.MAX_SHIELDS - 1);
+    // Shared downside: −1 shield slot (floor 0 — a curse CAN take your last slot,
+    // leaving you with none: the next hit is then fatal). Clamp current shields.
+    this.MAX_SHIELDS = Math.max(0, this.MAX_SHIELDS - 1);
     if (this.playerShields > this.MAX_SHIELDS) this.playerShields = this.MAX_SHIELDS;
 
     if (cid === 'glassHeart')       this._scoreMult  = (this._scoreMult  || 1) * C.CURSE_SCORE_MULT;

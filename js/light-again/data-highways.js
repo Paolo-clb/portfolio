@@ -43,10 +43,15 @@
   var CHEV_SIZE     = 27;    // chevron length along the flow (px)
   var CHEV_HALF     = 16;    // chevron half-height (px)
   var SCAN_PX_S     = 760;   // a bright "scan" band sweeping the road
-  var EDGE_N        = 58;    // samples used to draw the wavy edge lines
   var EDGE_WOB_AMP  = 6;     // edge wobble amplitude (px) — the "wind" ripple
   var EDGE_WOB_FREQ = 0.019; // edge wobble spatial frequency
   var EDGE_WOB_SPD  = 3.4;   // edge wobble scroll speed
+  var BAND_N        = 36;    // samples along the corridor (band polygon + wavy edges)
+  // The corridor tapers to soft points instead of stopping with a flat cut + a
+  // deco circle — a long spindle: short pointed INTAKE upstream, longer pointed
+  // EXHAUST downstream (asymmetry reads the flow direction), wisps spraying off.
+  var NOSE_IN       = 240;   // px the upstream end tapers in over (sharper intake)
+  var NOSE_OUT      = 380;   // px the downstream end tapers out over (longer, softer exhaust)
 
   var COL_CORE = 0xeaffff;   // hot near-white core
   var COL_WHITE = 0xffffff;
@@ -63,6 +68,8 @@
     this._highwayNextDelay = C.HIGHWAY_SPAWN_MIN_DELAY;  // wait before the very first one
     this._highwayGhostT   = 0;   // throttles the player speed-trail ghosts
     this._highwayBoost    = 0;   // strongest strength the player rode this frame (FX read)
+    this._highwayInvuln   = false; // true while the player is protected by a highway
+    this._highwayInvulnT  = 0;   // ms of remaining ride-invincibility (lingers briefly after exit)
 
     // One shared persistent ADD layer, sat UNDER enemies (20) and player (30) so
     // entities ride visibly on top of the road. Destroyed with the scene.
@@ -84,11 +91,14 @@
   // Block NEW spawns (existing ones still tick + render) during: the tutorial,
   // the upgrade slow-mo / draft, the Anomaly quarantine (it confines the player,
   // so a conveyor would just fight it), and Time Stop (terrain shouldn't pop into
-  // frozen time). Bosses otherwise are FAIR GAME — a highway is great for dodging.
+  // frozen time). The Anomaly is a SPECIAL case: its whole fight suppresses
+  // highways (it confines the player), so the entire time `this._anomaly` exists
+  // is suspended — not just the barrier. The other bosses (Giga/Mirror/Snake) are
+  // FAIR GAME — a highway is great for dodging them.
   M._highwaysSpawnSuspended = function () {
     return !!(this._tutorialActive || this._upSlowMoPhase || this._bossDraftPending ||
-              this._upgradeDraftOpen || this._anomalyBarrierActive || this._anomalyIntroActive ||
-              this._twActive || !this.p || this.p.state === 'DEAD');
+              this._upgradeDraftOpen || this._anomaly || this._anomalyBarrierActive ||
+              this._anomalyIntroActive || this._twActive || !this.p || this.p.state === 'DEAD');
   };
 
   M._maybeSpawnHighway = function (dt) {
@@ -184,6 +194,13 @@
      UPDATE — spawn gate, tick each highway, cull expired, render
      ================================================================ */
   M._updateDataHighways = function (dt) {
+    // The Anomaly traps the player in its quarantine zone — any live highway is
+    // forced off the board the instant the barrier slams (rising edge). New
+    // spawns are already blocked for the whole anomaly fight by _highwaysSpawnSuspended.
+    var trapped = !!(this._anomalyBarrierActive || this._anomalyIntroActive);
+    if (trapped && !this._highwayTrappedPrev && this._highways.length) this._dismissHighwaysForAnomaly();
+    this._highwayTrappedPrev = trapped;
+
     if (!this._highwaysSpawnSuspended()) this._maybeSpawnHighway(dt);
 
     var hs = this._highways;
@@ -192,6 +209,21 @@
       if (hs[i].dead) hs.splice(i, 1);
     }
     this._renderHighways(dt);
+  };
+
+  /* The anomaly just trapped the player → blow every live highway off the field
+     with a quick scatter (the quarantine owns the arena now). */
+  M._dismissHighwaysForAnomaly = function () {
+    var cols = LA.getColors();
+    for (var i = 0; i < this._highways.length; i++) {
+      var h = this._highways[i];
+      this._spawnWaveRing(h.cx, h.cy, { maxRadius: 170, color: cols.cyan, expandTime: 0.4 });
+      this._explode(h.cx, h.cy, cols.cyanArr, 12);
+      this._explode(h.bx, h.by, [200, 255, 255], 8);
+    }
+    this._clearDataHighways(true);
+    this._highwayInvuln = false;
+    this._highwayInvulnT = 0;
   };
 
   M._tickHighway = function (h, dt) {
@@ -234,12 +266,17 @@
      Pure positional conveyor: never mutates p.vx, so entry/exit is smooth
      and the player keeps full control of their own velocity.
      ================================================================ */
-  M._applyHighwayFlow = function (pS60) {
+  M._applyHighwayFlow = function (pS60, pMs) {
+    // Ride-invincibility grace decays every frame; it's refreshed below while the
+    // player is actually in a flow band, so it lingers HIGHWAY_INVULN_GRACE ms
+    // after stepping off (a smooth protective tail, not a hard cutoff).
+    this._highwayInvulnT = Math.max(0, (this._highwayInvulnT || 0) - (pMs || 0));
+
     var hs = this._highways;
-    if (!hs || !hs.length) { this._highwayBoost = 0; return; }
-    if (this._anomalyBarrierActive) { this._highwayBoost = 0; return; }  // quarantine owns the player
+    if (!hs || !hs.length) { this._highwayBoost = 0; this._highwayInvuln = this._highwayInvulnT > 0; return; }
+    if (this._anomalyBarrierActive) { this._highwayBoost = 0; this._highwayInvuln = this._highwayInvulnT > 0; return; }  // quarantine owns the player
     var p = this.p;
-    if (!p || p.state === 'DEAD') { this._highwayBoost = 0; return; }
+    if (!p || p.state === 'DEAD') { this._highwayBoost = 0; this._highwayInvuln = false; this._highwayInvulnT = 0; return; }
 
     var accVx = 0, accVy = 0, best = 0;
     for (var i = 0; i < hs.length; i++) {
@@ -267,6 +304,12 @@
     p.x += accVx * pS60;
     p.y += accVy * pS60;
     this._highwayBoost = best;
+
+    // While meaningfully inside a flow band, you're UNTOUCHABLE (refresh the grace
+    // timer). Guard checked in player.js _damagePlayer. Threshold > the entry
+    // feather so merely grazing the very edge doesn't grant it.
+    if (best > 0.12) this._highwayInvulnT = C.HIGHWAY_INVULN_GRACE;
+    this._highwayInvuln = this._highwayInvulnT > 0;
 
     // Speed-trail: leave extra ghosts while genuinely riding fast, to sell the ×3.
     if (best > 0.45) {
@@ -317,8 +360,10 @@
      a pure positional carry on WORLD time (s60), so it freezes with the board
      during The World / hitstop. Slightly weaker than the player's carry
      (HIGHWAY_ENEMY_FLOW_MULT) so a highway still reads as YOUR escape tool.
-     Called from update() right after _updateEnemies. Projectiles are NOT swept
-     (the user kept those on rails). */
+     Near the DOWNSTREAM mouth, enemies also get a real velocity LAUNCH (forward
+     + a lateral fan) so they're spat out and scattered instead of piling up just
+     past the end of the road. Called from update() right after _updateEnemies.
+     Projectiles are NOT swept (the user kept those on rails). */
   M._applyHighwayFlowToEnemies = function (s60) {
     var hs = this._highways;
     if (!hs || !hs.length || s60 <= 0) return;
@@ -329,23 +374,56 @@
     var fs  = C.HIGHWAY_FLOW_SPEED * C.HIGHWAY_ENEMY_FLOW_MULT;
     var cap = fs * C.HIGHWAY_FLOW_CAP_MULT;
     var wLim = C.WORLD_HALF - C.SIZE;     // belt-and-suspenders edge guard (unreachable in practice)
+    var W = C.HIGHWAY_HALF_WIDTH, F = C.HIGHWAY_EDGE_FEATHER, WF = W + F;
+    var ef = C.HIGHWAY_END_FEATHER, ez = C.HIGHWAY_EXHAUST_ZONE;
+    var ejSpeed = C.HIGHWAY_EJECT_SPEED, ejSpread = C.HIGHWAY_EJECT_SPREAD;
 
     for (var e = 0; e < enemies.length; e++) {
       var en = enemies[e];
       if (en._spawnAnimT != null && en._spawnAnimT < 1) continue;  // not done materialising → leave it
-      var accx = 0, accy = 0;
+      var accx = 0, accy = 0, touched = false;
       for (var i = 0; i < hs.length; i++) {
         var h = hs[i];
-        var s = this._highwayStrength(h, en.x, en.y);
-        if (s <= 0.001) continue;
-        accx += h.dirx * fs * s;
-        accy += h.diry * fs * s;
+        if (h.lifeFactor <= 0) continue;
+        var dirx = h.dirx, diry = h.diry;
+        var rx = en.x - h.ax, ry = en.y - h.ay;
+        var t = rx * dirx + ry * diry;                 // along-axis distance from the upstream end
+        var perpS = ry * dirx - rx * diry;             // signed perpendicular
+        var perp = perpS < 0 ? -perpS : perpS;
+        if (perp > WF) continue;                       // outside the lateral band entirely
+
+        // Conveyor carry — only within the segment, smoothstepped like the player's.
+        if (t > 0 && t < h.len) {
+          var axial = t < ef ? smooth(t / ef) : (t > h.len - ef ? smooth((h.len - t) / ef) : 1);
+          var lateral = perp <= W ? 1 : smooth(1 - (perp - W) / F);
+          var s = h.lifeFactor * axial * lateral;
+          if (s > 0.001) { accx += dirx * fs * s; accy += diry * fs * s; touched = true; }
+        }
+
+        // Exhaust LAUNCH near + just past the downstream mouth (anti-stack): bring
+        // the along-flow velocity up to a target (no overshoot) so they keep moving
+        // out, plus a lateral fan so they scatter rather than queue single-file.
+        if (t > h.len - ez && t < h.len + ez * 0.5) {
+          var zoneF = smooth((t - (h.len - ez)) / ez) * h.lifeFactor;
+          if (zoneF > 0.02) {
+            var vAlong = en.vx * dirx + en.vy * diry;
+            var targetV = ejSpeed * zoneF;
+            if (vAlong < targetV) { var addF = targetV - vAlong; en.vx += dirx * addF; en.vy += diry * addF; }
+            var sgn = perpS >= 0 ? 1 : -1;
+            if (perpS === 0) sgn = (e & 1) ? 1 : -1;
+            en.vx += (-diry) * sgn * ejSpread * zoneF * s60;
+            en.vy += (dirx)  * sgn * ejSpread * zoneF * s60;
+            touched = true;
+          }
+        }
       }
-      if (accx === 0 && accy === 0) continue;
-      var mag = Math.sqrt(accx * accx + accy * accy);
-      if (mag > cap) { var k = cap / mag; accx *= k; accy *= k; }
-      en.x += accx * s60;
-      en.y += accy * s60;
+      if (!touched) continue;
+      if (accx !== 0 || accy !== 0) {
+        var mag = Math.sqrt(accx * accx + accy * accy);
+        if (mag > cap) { var k = cap / mag; accx *= k; accy *= k; }
+        en.x += accx * s60;
+        en.y += accy * s60;
+      }
       if (en.x < -wLim) en.x = -wLim; else if (en.x > wLim) en.x = wLim;
       if (en.y < -wLim) en.y = -wLim; else if (en.y > wLim) en.y = wLim;
     }
@@ -358,11 +436,25 @@
     var g = this._highwayGfx;
     if (!g) return;
     g.clear();
-    var hs = this._highways;
-    if (!hs || !hs.length) return;
-    var view = this.cameras.main.worldView;
     var cols = LA.getColors();
-    for (var i = 0; i < hs.length; i++) this._renderOneHighway(g, hs[i], view, cols);
+    var hs = this._highways;
+    if (hs && hs.length) {
+      var view = this.cameras.main.worldView;
+      for (var i = 0; i < hs.length; i++) this._renderOneHighway(g, hs[i], view, cols);
+    }
+    // ---- Ride-invincibility aura around the arrow (fades out with the grace) ----
+    if (this._highwayInvuln && this.p && this.p.state !== 'DEAD') {
+      var p = this.p, gt = this.gameTime || 0;
+      var fade = Math.min(1, (this._highwayInvulnT || 0) / C.HIGHWAY_INVULN_GRACE);
+      var pulse = 0.6 + 0.4 * Math.sin(gt * 9);
+      var rr = C.SIZE * 1.7 + 3 * pulse;
+      g.fillStyle(cols.cyan, 0.10 * fade);
+      g.fillCircle(p.x, p.y, rr * 1.18);
+      g.lineStyle(2.4, COL_WHITE, 0.5 * pulse * fade);
+      g.strokeCircle(p.x, p.y, rr);
+      g.lineStyle(1.3, cols.cyan, 0.7 * fade);
+      g.strokeCircle(p.x, p.y, rr * 0.76);
+    }
   };
 
   M._renderOneHighway = function (g, h, view, cols) {
@@ -371,13 +463,14 @@
 
     // Whole-capsule AABB cull (expanded a touch for glow).
     var W  = C.HIGHWAY_HALF_WIDTH, F = C.HIGHWAY_EDGE_FEATHER, WF = W + F;
-    var minx = Math.min(h.ax, h.bx) - WF - 40, maxx = Math.max(h.ax, h.bx) + WF + 40;
-    var miny = Math.min(h.ay, h.by) - WF - 40, maxy = Math.max(h.ay, h.by) + WF + 40;
+    var pad = WF + 40;
+    var minx = Math.min(h.ax, h.bx) - pad, maxx = Math.max(h.ax, h.bx) + pad;
+    var miny = Math.min(h.ay, h.by) - pad, maxy = Math.max(h.ay, h.by) + pad;
     if (maxx < view.x || minx > view.right || maxy < view.y || miny > view.bottom) return;
 
     var dirx = h.dirx, diry = h.diry, px = -diry, py = dirx;   // perp = (-diry, dirx)
     var ax = h.ax, ay = h.ay, len = h.len, cyan = cols.cyan;
-    var vL = view.x - 70, vR = view.right + 70, vT = view.y - 70, vB = view.bottom + 70;
+    var vL = view.x - 80, vR = view.right + 80, vT = view.y - 80, vB = view.bottom + 80;
 
     // Visible axial window: draw-in sweep from the front, evaporation retract from the back.
     var t0 = h.dissolve > 0 ? smooth(h.dissolve) * len * 0.82 : 0;
@@ -387,34 +480,55 @@
     function pt(t, lat) {
       return { x: ax + dirx * t + px * lat, y: ay + diry * t + py * lat };
     }
-    function quad(ta, tb, lat, color, alpha) {
-      if (alpha <= 0.003) return;
-      var p1 = pt(ta, -lat), p2 = pt(tb, -lat), p3 = pt(tb, lat), p4 = pt(ta, lat);
-      g.fillStyle(color, alpha);
-      g.beginPath();
-      g.moveTo(p1.x, p1.y); g.lineTo(p2.x, p2.y); g.lineTo(p3.x, p3.y); g.lineTo(p4.x, p4.y);
-      g.closePath(); g.fillPath();
-    }
     function onScreen(q) { return q.x >= vL && q.x <= vR && q.y >= vT && q.y <= vB; }
+
+    // Spindle profile: half-width tapers smoothly to ~0 at the visible ends (no
+    // flat cut). Short nose upstream, longer nose downstream → the shape itself
+    // reads which way the flow runs.
+    var niN = Math.min(NOSE_IN,  (t1 - t0) * 0.45);
+    var noN = Math.min(NOSE_OUT, (t1 - t0) * 0.45);
+    function bandHalf(t) {
+      var a = (t - t0) / niN; if (a > 1) a = 1; else if (a < 0) a = 0;
+      var b = (t1 - t) / noN; if (b > 1) b = 1; else if (b < 0) b = 0;
+      return smooth(a < b ? a : b);
+    }
 
     var A = life;                                          // base alpha
     var hot = 0.7 + 0.3 * Math.sin(h.shimmer * 3 + h.seed);
 
-    // ---- Glowing band (3 nested fills: halo → glow → core) ----
-    quad(t0, t1, WF * 1.12, cyan, 0.045 * A);
-    quad(t0, t1, WF,        cyan, 0.075 * A);
-    quad(t0, t1, W,         cyan, 0.11 * A * (0.85 + 0.15 * hot));
+    // Sample the centreline + taper once, reuse for every layer.
+    var sc = [];
+    for (var k = 0; k <= BAND_N; k++) {
+      var tk = t0 + (t1 - t0) * (k / BAND_N);
+      sc.push({ x: ax + dirx * tk, y: ay + diry * tk, h: bandHalf(tk) });
+    }
 
-    // ---- Wavy edge lines (the "wind") — soft wide pass then crisp bright pass ----
+    // ---- Glowing tapered band (3 nested spindle polygons: halo → glow → core) ----
+    function bandPoly(halfW, color, alpha) {
+      if (alpha <= 0.003) return;
+      g.fillStyle(color, alpha);
+      g.beginPath();
+      var s0 = sc[0], h0 = halfW * s0.h;
+      g.moveTo(s0.x + px * h0, s0.y + py * h0);
+      for (var a = 1; a <= BAND_N; a++) { var sa = sc[a], ha = halfW * sa.h; g.lineTo(sa.x + px * ha, sa.y + py * ha); }
+      for (var b = BAND_N; b >= 0; b--) { var sb = sc[b], hb = halfW * sb.h; g.lineTo(sb.x - px * hb, sb.y - py * hb); }
+      g.closePath(); g.fillPath();
+    }
+    bandPoly(WF * 1.12, cyan, 0.05 * A);
+    bandPoly(WF,        cyan, 0.085 * A);
+    bandPoly(W,         cyan, 0.12 * A * (0.85 + 0.15 * hot));
+
+    // ---- Wavy edge lines (the "wind") — follow the spindle, converge at the tips ----
     function drawEdge(side, width, color, alpha) {
       g.lineStyle(width, color, alpha);
       g.beginPath();
-      var started = false;
-      for (var k = 0; k <= EDGE_N; k++) {
-        var t = t0 + (t1 - t0) * (k / EDGE_N);
-        var wob = Math.sin(t * EDGE_WOB_FREQ + h.shimmer * EDGE_WOB_SPD * side + side) * EDGE_WOB_AMP;
-        var q = pt(t, side * (W + wob));
-        if (!started) { g.moveTo(q.x, q.y); started = true; } else g.lineTo(q.x, q.y);
+      for (var k2 = 0; k2 <= BAND_N; k2++) {
+        var s = sc[k2];
+        var tk2 = t0 + (t1 - t0) * (k2 / BAND_N);
+        var wob = Math.sin(tk2 * EDGE_WOB_FREQ + h.shimmer * EDGE_WOB_SPD * side + side) * EDGE_WOB_AMP;
+        var hw = (W + wob) * s.h;
+        var qx = s.x + px * side * hw, qy = s.y + py * side * hw;
+        if (k2 === 0) g.moveTo(qx, qy); else g.lineTo(qx, qy);
       }
       g.strokePath();
     }
@@ -424,20 +538,21 @@
     // ---- Scan band: a bright cross-glow sweeping along the road ----
     var st = ((h.flowPhase * SCAN_PX_S) % len + len) % len;
     if (st > t0 && st < t1) {
-      var sc = pt(st, 0);
-      if (sc.x >= vL && sc.x <= vR && sc.y >= vT && sc.y <= vB) {
-        var e1 = pt(st, W), e2 = pt(st, -W);
+      var scc = pt(st, 0);
+      if (onScreen(scc)) {
+        var hwS = W * bandHalf(st);
+        var e1 = pt(st, hwS), e2 = pt(st, -hwS);
         g.lineStyle(5, COL_WHITE, 0.20 * A);
         g.beginPath(); g.moveTo(e1.x, e1.y); g.lineTo(e2.x, e2.y); g.strokePath();
       }
     }
 
-    // ---- Flow motes — streaming streaks (the "lines of code / cyan particles") ----
+    // ---- Flow motes — streaming streaks (kept inside the spindle by the taper) ----
     for (var mi = 0; mi < h.motes.length; mi++) {
       var mo = h.motes[mi];
       var mt = mo.u * len;
       if (mt <= t0 || mt >= t1) continue;
-      var c = pt(mt, mo.lat);
+      var c = pt(mt, mo.lat * bandHalf(mt));
       if (!onScreen(c)) continue;
       var tail = { x: c.x - dirx * mo.len, y: c.y - diry * mo.len };
       var mA = A * mo.bright;
@@ -453,49 +568,41 @@
       if (ct < t0) continue;
       var cc = pt(ct, 0);
       if (!onScreen(cc)) continue;
-      // Fade chevrons near both ends so they don't pop at the mouths.
       var endFade = smooth(Math.min(ct - t0, t1 - ct) / 120);
       var travel  = 0.55 + 0.45 * Math.sin(ct * 0.02 - h.flowPhase * 6 + h.seed);
       var cA = A * endFade * travel;
       if (cA <= 0.02) continue;
-      var tip = pt(ct + CHEV_SIZE * 0.5, 0);
-      var bl  = pt(ct - CHEV_SIZE * 0.5,  CHEV_HALF);
-      var br  = pt(ct - CHEV_SIZE * 0.5, -CHEV_HALF);
+      var chf = Math.max(0.35, bandHalf(ct));
+      var tip = pt(ct + CHEV_SIZE * 0.5 * chf, 0);
+      var bl  = pt(ct - CHEV_SIZE * 0.5 * chf,  CHEV_HALF * chf);
+      var br  = pt(ct - CHEV_SIZE * 0.5 * chf, -CHEV_HALF * chf);
       g.lineStyle(4.5, cyan, 0.45 * cA);
       g.beginPath(); g.moveTo(bl.x, bl.y); g.lineTo(tip.x, tip.y); g.lineTo(br.x, br.y); g.strokePath();
       g.lineStyle(2, COL_CORE, 0.95 * cA);
       g.beginPath(); g.moveTo(bl.x, bl.y); g.lineTo(tip.x, tip.y); g.lineTo(br.x, br.y); g.strokePath();
     }
 
-    // ---- End mouths: a soft intake at A, an exhaust flare at B ----
+    // ---- Upstream INTAKE: just a soft glow at the pointed mouth ----
     if (t0 < 30) {
-      var mouthA = pt(0, 0);
-      if (onScreen(mouthA)) {
-        g.fillStyle(cyan, 0.18 * A); g.fillCircle(mouthA.x, mouthA.y, WF * 0.7);
-        g.fillStyle(COL_CORE, 0.35 * A * hot); g.fillCircle(mouthA.x, mouthA.y, W * 0.4);
-      }
-    }
-    if (t1 >= len - 2) {
-      var mouthB = pt(len, 0);
-      if (onScreen(mouthB)) {
-        g.fillStyle(COL_WHITE, 0.30 * A * hot); g.fillCircle(mouthB.x, mouthB.y, W * 0.5);
-        // a few exhaust streaks shooting off the downstream mouth
-        for (var ei = 0; ei < 4; ei++) {
-          var sp = (ei / 4 - 0.5) * W * 1.1;
-          var o  = pt(len, sp), tip2 = { x: o.x + dirx * (26 + ei * 4), y: o.y + diry * (26 + ei * 4) };
-          g.lineStyle(2, cyan, 0.5 * A * (0.5 + 0.5 * Math.sin(h.shimmer * 6 + ei)));
-          g.beginPath(); g.moveTo(o.x, o.y); g.lineTo(tip2.x, tip2.y); g.strokePath();
-        }
-      }
+      var tipA = pt(0, 0);
+      if (onScreen(tipA)) { g.fillStyle(COL_CORE, 0.30 * A * hot); g.fillCircle(tipA.x, tipA.y, 4); }
     }
 
-    // ---- Draw-in wavefront (only while forming): a bright bar racing along ----
+    // ---- Downstream EXHAUST: just a soft glow at the pointed mouth ----
+    if (t1 >= len - 2) {
+      var tipB = pt(len, 0);
+      if (onScreen(tipB)) { g.fillStyle(COL_CORE, 0.40 * A * hot); g.fillCircle(tipB.x, tipB.y, 4.5); }
+    }
+
+    // ---- Draw-in leading tip (only while forming): a bright comet head, not a bar ----
     if (h.sweep < 1) {
-      var f1 = pt(t1, WF), f2 = pt(t1, -WF), fc = pt(t1, 0);
-      g.lineStyle(4, COL_WHITE, 0.9 * A);
-      g.beginPath(); g.moveTo(f1.x, f1.y); g.lineTo(f2.x, f2.y); g.strokePath();
-      g.fillStyle(COL_WHITE, 0.6 * A); g.fillCircle(fc.x, fc.y, 11);
-      g.fillStyle(cyan, 0.3 * A); g.fillCircle(fc.x, fc.y, 22);
+      var fc = pt(t1, 0);
+      if (onScreen(fc)) {
+        g.fillStyle(cyan, 0.32 * A);   g.fillCircle(fc.x, fc.y, 20);
+        g.fillStyle(COL_WHITE, 0.85 * A); g.fillCircle(fc.x, fc.y, 9);
+        var fp = pt(t1 + 18, 0);
+        g.fillStyle(COL_CORE, 0.5 * A); g.fillCircle(fp.x, fp.y, 4);
+      }
     }
   };
 

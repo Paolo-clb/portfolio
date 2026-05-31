@@ -262,7 +262,8 @@
     this._fountRespawnQueued = false;
     this._fountBossHidden   = false;
     this._fountBossSeen     = false;
-    this._fountCooldownT    = C.CURSE_FOUNT_SPAWN_MIN_DELAY;
+    this._fountBossKills    = 0;
+    this._fountBossReq      = C.CURSE_FOUNT_BOSS_REQ_START;
     if (this._upSlowMoBanner) { this._upSlowMoBanner.destroy(); this._upSlowMoBanner = null; }
     this._tutResetPlayer();
     this.MAX_SHIELDS    = 2;

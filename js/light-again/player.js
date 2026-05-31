@@ -119,6 +119,7 @@
   M._damagePlayer = function (nx, ny) {
     var p = this.p;
     if (p.invincible) return;
+    if (this._highwayInvuln) return;  // riding a Data Highway → untouchable
     if (this._twActive) return;  // invulnerable during time stop
 
     if (this.playerShields > 0) {

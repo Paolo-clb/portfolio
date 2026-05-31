@@ -88,8 +88,12 @@
      ================================================================ */
   M._initCurseFount = function () {
     this._fount            = null;
-    this._fountCooldownT   = C.CURSE_FOUNT_SPAWN_MIN_DELAY;  // wait before the very first one
     this._fountSpawnRollT  = 0;
+    // Boss-kill gate (replaces the old time cooldown): a fountain may appear only
+    // once enough bosses have fallen since the last one was CONSUMED, and the bar
+    // rises each time (1 → 2 → 3 …) so fountains grow rarer / more spaced out.
+    this._fountBossKills   = 0;                          // bosses defeated since the last consume
+    this._fountBossReq     = C.CURSE_FOUNT_BOSS_REQ_START; // bosses needed before the next may appear
     this._fountBossSeen    = false;   // was a boss alive last tick (edge detection)
     this._fountBossHidden  = false;   // a live fountain was forced away by a boss → owe a respawn
     this._fountRespawnQueued = false; // honoured by _maybeSpawnFount once conditions clear
@@ -120,6 +124,14 @@
     if (this._fountPtrGfx)  this._fountPtrGfx.clear();
   };
 
+  /* Count a defeated boss toward the next fountain's spawn gate. Called from the
+     unified _bossDefeatSequence (every boss routes through it). Tutorial kills are
+     ignored — the real run re-inits this counter from scratch. */
+  M._noteBossDefeat = function () {
+    if (this._tutorialActive) return;
+    this._fountBossKills = (this._fountBossKills || 0) + 1;
+  };
+
   /* ================================================================
      SPAWN — natural / post-boss respawn (both unguided; only debug is guided)
      ================================================================ */
@@ -131,16 +143,20 @@
     if (this._upgradeDraftOpen || this._upSlowMoPhase || this._bossDraftPending) return;
     if (!hasUntakenCurse(this)) { this._fountRespawnQueued = false; return; }
 
-    // A boss death owes us a respawn: guaranteed, unguided, bypasses the timer.
+    // A boss death owes us a respawn (a live fountain the boss interrupted):
+    // guaranteed, unguided, bypasses the boss-kill gate — it was already earned.
     if (this._fountRespawnQueued) {
       this._fountRespawnQueued = false;
       this._spawnCurseFount({ guided: false });
       return;
     }
 
-    if (this._fountCooldownT > 0) { this._fountCooldownT -= dt * 1000; return; }
+    // Boss-kill gate: hold until enough bosses have fallen since the last fountain
+    // was consumed (the bar rises each time — see _consumeFount / _noteBossDefeat).
+    if (this._fountBossKills < this._fountBossReq) return;
 
-    // Per-second Bernoulli roll (accumulate real ms, fire once per second).
+    // Eligible — pick the exact moment with a per-second Bernoulli roll so the
+    // fountain still surfaces unannounced somewhere in the play that follows.
     this._fountSpawnRollT += dt * 1000;
     if (this._fountSpawnRollT < 1000) return;
     this._fountSpawnRollT -= 1000;
@@ -420,7 +436,12 @@
      Called from the accept/refuse UI handlers (the scene is resumed right after). */
   M._consumeFount = function (accepted) {
     var f = this._fount;
-    this._fountCooldownT = C.CURSE_FOUNT_COOLDOWN;
+    // Escalating boss-kill gate: a consumed fountain (accepted OR refused) pushes
+    // the next one further out — it needs one more boss kill than this one did
+    // (1 → 2 → 3 …). Counter resets so the wait starts from this consume.
+    this._fountBossKills  = 0;
+    this._fountBossReq    = (this._fountBossReq || C.CURSE_FOUNT_BOSS_REQ_START) + C.CURSE_FOUNT_BOSS_REQ_STEP;
+    this._fountSpawnRollT = 0;
     if (!f) return;
     f.phase = 'DISSOLVE';
     f.dissolveT = 0;
