@@ -42,6 +42,7 @@
 
   M._tryAttack = function () {
     var p = this.p;
+    if (p.state === 'DEAD') return;   // dead / mid-resurrection → input is fully frozen
     if (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING') return;
     if (p.state === 'RECOVERY') return;
     if (p.state === 'DASHING') { this._triggerDashAtk(); return; }
@@ -143,6 +144,9 @@
   M._triggerGameOver = function () {
     var p = this.p;
     if (p.state === 'DEAD') return;
+    // Cyber-Fairy extra life: if one is following, it takes the hit — dives onto
+    // the ship, nukes the screen and resurrects. The player never dies here.
+    if (this._fairyInterceptGameOver && this._fairyInterceptGameOver()) return;
     p.state = 'DEAD';
     p.invincible = true; p.invincTimer = 99999;
     this.timeScale = 0;

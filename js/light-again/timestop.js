@@ -45,6 +45,8 @@
 
     // Deferred detonation queue: { enemyRef, gfx, tweenRef }
     this._twDeferredDetonations = [];
+    // Deferred drone blasts armed during the freeze: { x, y, gfx, tweenRef }
+    this._twDeferredDroneBlasts = [];
     // Frozen reflected projectiles
     this._twFrozenProjectiles = [];
     // TW resolution tether reveal alpha (fades in _updateDashVacuumFX)
@@ -106,6 +108,7 @@
     this._twActive = true;
     this._twTimer  = C.TW_DURATION;
     this._twDeferredDetonations = [];
+    this._twDeferredDroneBlasts = [];
     this._twFrozenProjectiles = [];
     this._twPendingCount = 0;
 
@@ -456,6 +459,20 @@
       }
     }
     this._twDeferredDetonations = [];
+
+    // --- Fire deferred drone blasts armed during the freeze ---
+    // Each runs the normal allied blast at its snapshot position. Inside the open
+    // THE WORLD batch its kills are tallied with everything else; Lv3 plants its
+    // delayed explosion here too, so both go off exactly when time resumes.
+    if (this._twDeferredDroneBlasts) {
+      for (var dbi = 0; dbi < this._twDeferredDroneBlasts.length; dbi++) {
+        var db = this._twDeferredDroneBlasts[dbi];
+        if (db.gfx) db.gfx.destroy();
+        if (db.tweenRef && db.tweenRef.isPlaying) db.tweenRef.stop();
+        this._droneDetonate({ x: db.x, y: db.y }, { prominent: true });
+      }
+      this._twDeferredDroneBlasts = [];
+    }
 
     this._twResolveWaveActive = false;
     this._twResolveWaveRadius = 0;

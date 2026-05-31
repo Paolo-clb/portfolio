@@ -717,6 +717,22 @@
   var _upMarginR  = 16;
   var _upMarginB  = 16;
 
+  /* ---- Shared upgrade-icon PLACEHOLDER (HUD canvas twin of LA.ICON_PLACEHOLDER_SVG) ----
+     Real per-upgrade art is coming; until then every icon surface (draft, HUD,
+     mode-select) draws this same generic "image" frame. Centred at (cx,cy),
+     `size` px wide, stroked in `color`. Keep in sync with LA.ICON_PLACEHOLDER_SVG. */
+  M._drawIconPlaceholder = function (cx, cy, size, color, alpha) {
+    var g = this.hudGfx, s = size / 24;
+    g.lineStyle(Math.max(1.4, 2 * s), color, alpha);
+    g.strokeRoundedRect(cx - 9 * s, cy - 9 * s, 18 * s, 18 * s, 2.5 * s);  // frame  (3..21)
+    g.strokeCircle(cx - 3.5 * s, cy - 3.5 * s, 1.6 * s);                   // sun    (8.5,8.5)
+    g.beginPath();                                                        // mountain
+    g.moveTo(cx + 9 * s, cy + 3 * s);       // 21,15
+    g.lineTo(cx + 3.5 * s, cy - 2.5 * s);   // 15.5,9.5
+    g.lineTo(cx - 7 * s, cy + 8 * s);       // 5,20
+    g.strokePath();
+  };
+
   M._renderUpgradeHUD = function (cx, h, dt) {
     if (!this._upgradeLevels) return;
     var lvls = this._upgradeLevels;
@@ -815,11 +831,10 @@
       this.hudGfx.lineStyle(2, borderCol, borderA);
       this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
 
-      // Inner circle hint
-      this.hudGfx.fillStyle(borderCol, 0.22);
+      // Inner icon — shared placeholder (real per-upgrade art TBD)
       var dotCx = ix + _upIconSize / 2;
       var dotCy = iy + _upIconSize / 2;
-      this.hudGfx.fillCircle(dotCx, dotCy, 9);
+      this._drawIconPlaceholder(dotCx, dotCy, 26, borderCol, 0.9);
 
       // Progression dots below icon
       var dotsY  = iy + _upIconSize + 5;

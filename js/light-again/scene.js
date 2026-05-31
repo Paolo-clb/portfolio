@@ -53,6 +53,23 @@
       if (!LA.llGetToken()) LA.llInit(null);
 
       var cam = this.cameras.main;
+
+      // --- Screen-flash guard ------------------------------------------------
+      // cam.flash() paints the whole viewport the flash colour at full opacity
+      // on frame 0, then fades it out via the camera effect's PER-FRAME update.
+      // That update only runs while the scene is stepping — when the scene is
+      // paused (upgrade draft, game-over screen, home menu) the effect freezes
+      // at frame 0 and the screen stays a solid block of colour (e.g. the cyan
+      // "+1 shield" flash fired from a draft Skip button). Swallow any flash
+      // requested while the scene isn't actively running so those screens never
+      // go solid. Wrapping the instance method here keeps every existing
+      // cameras.main.flash(...) call site guarded without touching them.
+      var _camFlash = cam.flash;
+      cam.flash = function () {
+        if (self.scene && !self.scene.isActive()) return cam;
+        return _camFlash.apply(cam, arguments);
+      };
+
       this.pcbTile = this.add.tileSprite(0, 0, cam.width, cam.height, '_pcb');
       this.pcbTile.setOrigin(0, 0);
       this.pcbTile.setScrollFactor(0);
@@ -97,7 +114,7 @@
       // Shield orbs — start with 1 slot max (upgrades raise this to 2 or 3)
       this.playerShields = 1;
       this.MAX_SHIELDS   = 1;
-      this._shieldFloatStack = 0;
+      this._labelBands   = [];   // shared anti-overlap registry for world-space float callouts
       this._shieldAngle  = 0;
       this._shieldOrbs   = [];
       var SHIELD_ORBS_N  = 3;  // pool always 3; only MAX_SHIELDS used at runtime
@@ -390,6 +407,8 @@
       this._initGigaBruiser();
       this._initMirror();
       this._initSnake();
+      this._initDigitalTree();
+      this._initCurseFount();
       this._initTutorial();
 
       cam.setBackgroundColor(LA.getColors().bgColor);
@@ -442,6 +461,21 @@
         if (ev.code === 'KeyJ' && !ev.repeat) {
           ev.preventDefault();
           self._spawnSnake();
+        }
+        // Cheat: force-spawn The Digital Tree (random extra-life event)
+        if (ev.code === 'KeyP' && !ev.repeat) {
+          ev.preventDefault();
+          self._spawnDigitalTree();
+        }
+        // Cheat: skip straight to a following Cyber-Fairy (test the revive)
+        if (ev.code === 'KeyO' && !ev.repeat) {
+          ev.preventDefault();
+          if (!self._fairy) self._spawnFairy(self.p.x + 60, self.p.y - 60);
+        }
+        // Cheat: force-spawn The Curse Fountain (close + guided, easy to test)
+        if (ev.code === 'KeyU' && !ev.repeat) {
+          ev.preventDefault();
+          if (self._spawnCurseFount) self._spawnCurseFount({ guided: true, near: true });
         }
 
       });
@@ -532,6 +566,11 @@
         if (self._clearGigaBruiser) self._clearGigaBruiser(true);
         if (self._clearMirror)      self._clearMirror(true);
         if (self._clearSnake)       self._clearSnake(true);
+        if (self._clearDigitalTree) self._clearDigitalTree(true);
+        if (self._clearFairy)       self._clearFairy();
+        if (self._clearCurseFount)  self._clearCurseFount(true);
+        self._treeGfx = null; self._treePtrGfx = null; self._fairyGfx = null;
+        self._fountDarkGfx = null; self._fountGfx = null; self._fountObGfx = null; self._fountPtrGfx = null;
         // Tear down any tutorial overlay so it can't outlive the scene (e.g. a
         // mode switch from the home menu mid-tutorial would otherwise orphan it).
         self._tutorialActive = false;
@@ -564,7 +603,6 @@
 
     update: function (_time, delta) {
       var dt = Math.min(delta / 1000, 0.05);
-      this._shieldFloatStack = 0;
 
       // Loader warmup
       if (!this._loaderRemoved) {
@@ -665,7 +703,9 @@
 
       if (ms < 0.001 && pMs < 0.001 && !this._anomalyIntroActive) {
         this._decayGhosts(dt);
-        this._renderPlayer();
+        // While the fairy is reviving, the ship is "dead" (hidden) — don't let
+        // the hitstop frame flicker it back on; the revive owns its rendering.
+        if (!this._fairyReviving) this._renderPlayer();
         return;
       }
       // During the intro the whole world is frozen but we still want the
@@ -693,6 +733,19 @@
       var p = this.p;
 
       if (p.state === 'DEAD') {
+        // Cyber-Fairy resurrection cinematic plays while the ship is "dead":
+        // the fairy drifts to the death spot and rebuilds the arrow on real dt,
+        // with the frozen world held around it until the board-clear sweep.
+        if (this._fairyReviving) {
+          this._decayGhosts(dt);
+          this._updateFairyRevive(dt);
+          this._updateWaveRings(dt);
+          this._updateCondemnedDeathRings(dt);
+          this._updateHiveBeams(dt);
+          this._renderEnemies();
+          this._renderProjectiles(dt);
+          this._renderHUD(dt);
+        }
         return;
       }
 
@@ -832,6 +885,8 @@
       this._checkMirrorCollision();
       this._updateSnake(ms, pMs, dt);
       this._checkSnakeCollision();
+      this._updateDigitalTree(dt);
+      this._updateCurseFount(dt);
       this._updateTutorial(dt);
 
       // Star power timer countdown — uses real time so TW doesn't pause the bar
@@ -922,7 +977,11 @@
       this._updateComboFX(sDt);
       this._updateDashVacuumFX(pDt);
       this._updateDashTornados(sDt);
-      this._updateDrones(sDt);
+      // The World ONLY: drones keep flying on player time — they detach from the
+      // orbit, dive at the frozen enemies and defer their blast to resolution.
+      // Every other time-stop (hitstop, upgrade slow-mo, anomaly intro) freezes
+      // them with the world via sDt, as before.
+      this._updateDrones(this._twActive ? pDt : sDt);
       this._renderPlayer();
       this._renderEnemies();
       this._renderProjectiles(dt);  // pass raw dt for frame-rate independent decay

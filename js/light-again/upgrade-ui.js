@@ -17,6 +17,8 @@
       '@keyframes la-up-fade{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}',
       '@keyframes la-up-glow{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 24px 6px var(--la-accent-glow)}}',
       '@keyframes la-up-shine{0%{background-position:200% 0}100%{background-position:-200% 0}}',
+      // Shared upgrade-icon placeholder, draft size (see LA.ICON_PLACEHOLDER_SVG).
+      '.la-up-ph{width:40px;height:40px}',
     ].join('');
     document.head.appendChild(st);
   }
@@ -163,7 +165,10 @@
           'display:flex', 'align-items:center', 'justify-content:center',
           'font-size:1.6rem', 'color:' + st.color,
         ].join(';');
-        imgWrap.textContent = icon;
+        // Upgrades show the shared placeholder (real art TBD); curses keep their
+        // semantic ⚠ glyph. data-upgrade-img is the hook for the future real icon.
+        if (isCurse) imgWrap.textContent = icon;
+        else         imgWrap.innerHTML   = LA.iconPlaceholderSvg('la-up-ph');
         imgWrap.setAttribute('data-upgrade-img', (isCurse ? 'curse-' : '') + choice.id + (isCurse ? '' : '-' + choice.level));
         card.appendChild(imgWrap);
 
@@ -211,6 +216,7 @@
 
     var rerolls = sceneRef._rerollsAvailable || 0;
     var rerollBtn = document.createElement('button');
+    rerollBtn.className = '_la-up-foot';
     var rrEnabled = rerolls > 0;
     rerollBtn.style.cssText = [
       'flex:0 0 auto', 'padding:.45rem .9rem',
@@ -248,6 +254,7 @@
 
     // Skip → always a heal (refills a shield slot if below max)
     var skipBtn = document.createElement('button');
+    skipBtn.className = '_la-up-foot';
     skipBtn.style.cssText = [
       'flex:0 0 auto', 'padding:.45rem .9rem',
       'border:1px solid rgba(120,200,255,0.3)', 'border-radius:8px',

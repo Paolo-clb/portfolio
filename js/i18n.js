@@ -98,6 +98,7 @@ window.SITE_I18N = {
     // Light Again
     lightAgainPlay: 'Jouer à Light Again',
     lightAgainTagline: 'Jeu Canvas 2D · En développement',
+    lightAgainBtnDesc: 'Arène top-down nerveuse : dashez, parez les projectiles et faites exploser les vagues d’ennemis et les boss.',
     lightAgainHelp:      'Aide',
     lightAgainPause:     'Mettre en pause',
     lightAgainResume:    'Reprendre',
@@ -199,6 +200,9 @@ window.SITE_I18N = {
     laUpSkip:            'Passer',
     laUpSkipHint:        'soigne 1 bouclier',
     laUpPicksLeft:       'choix restants',
+    laRunLoadoutTitle:   'Tes améliorations',
+    laRunLoadoutEmpty:   'Aucune amélioration — bats un boss pour en gagner.',
+    laRunLevelShort:     'Niv.',
     laUpTheWorldName:    'The World',
     laUpTheWorldDesc1:   'Le clic molette arrête le temps et rend invincible pendant 4 secondes. (Cooldown : 30s)',
     laDelayExp:          'Explosion Retardée',
@@ -211,6 +215,17 @@ window.SITE_I18N = {
     // The Mirror (mini-boss)
     laMirrorHint:        'esquive son dash, punis son trou',
     laMirrorVuln:        'FRAPPE-LE !',
+
+    // The Digital Tree + Cyber-Fairy (extra-life event)
+    laFairyGained:       'FÉE OBTENUE !',
+    laFairyRevive:       'RÉSURRECTION !',
+
+    // The Curse Fountain (malédiction event)
+    laFountTitle:        'FONTAINE MAUDITE',
+    laFountQuestion:     'Accepter cette malédiction ?',
+    laFountAccept:       'Accepter',
+    laFountRefuse:       'Refuser',
+    laFountRefused:      'MALÉDICTION REFUSÉE',
 
     // Misc
     closeLbl: 'Fermer',
@@ -308,6 +323,7 @@ window.SITE_I18N = {
     // Light Again
     lightAgainPlay: 'Play Light Again',
     lightAgainTagline: 'Canvas 2D game · In development',
+    lightAgainBtnDesc: 'Snappy top-down arena: dash, parry projectiles and blow up waves of enemies and bosses.',
     lightAgainHelp:      'Help',
     lightAgainPause:     'Pause',
     lightAgainResume:    'Resume',
@@ -409,6 +425,9 @@ window.SITE_I18N = {
     laUpSkip:            'Skip',
     laUpSkipHint:        'heals 1 shield',
     laUpPicksLeft:       'picks left',
+    laRunLoadoutTitle:   'Your upgrades',
+    laRunLoadoutEmpty:   'No upgrades yet — defeat a boss to earn one.',
+    laRunLevelShort:     'Lv.',
     laUpTheWorldName:    'The World',
     laUpTheWorldDesc1:   'Middle-click stops time and makes you invincible for 4 seconds. (Cooldown: 30s)',
     laDelayExp:          'Delayed Explosion',
@@ -421,6 +440,17 @@ window.SITE_I18N = {
     // The Mirror (mini-boss)
     laMirrorHint:        'dodge its dash, punish the whiff',
     laMirrorVuln:        'HIT IT!',
+
+    // The Digital Tree + Cyber-Fairy (extra-life event)
+    laFairyGained:       'FAIRY ACQUIRED!',
+    laFairyRevive:       'RESURRECTION!',
+
+    // The Curse Fountain (malédiction event)
+    laFountTitle:        'CURSED FOUNTAIN',
+    laFountQuestion:     'Accept this curse?',
+    laFountAccept:       'Accept',
+    laFountRefuse:       'Refuse',
+    laFountRefused:      'CURSE REFUSED',
 
     // Misc
     closeLbl: 'Close',

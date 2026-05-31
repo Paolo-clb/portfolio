@@ -84,15 +84,26 @@
   transform: translateY(-10px);
 }
 
-.typing-game__intro-btn--out {
-  opacity: 0 !important;
-  transform: translateY(10px) !important;
+/* ---- Intro buttons (Typing Game + Light Again) ---- */
+
+/* Wrapper: lays the two buttons side by side, wrapping on narrow widths.
+   Fades out as a group on transition to the game. */
+.typing-game__intro-btns {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
-/* ---- "Jouer au Typing Game" button ---- */
+.typing-game__intro-btns--out {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
 
 .typing-game__intro-btn {
-  margin-top: 2rem;
   opacity: 0;
   transform: translateY(15px);
   transition: opacity 0.5s ease, transform 0.5s ease,
@@ -107,16 +118,11 @@
   animation: intro-btn-glow 2s ease-in-out infinite;
 }
 
-/* On short viewports where scroll-hint would overlap the intro button,
-   shift it to the right of the button; JS aligns it vertically with the button. */
-@media (max-height: 725px) {
-  .hero:has(.typing-game__intro-btn--visible) .scroll-hint {
-    left: calc(50% + 12rem);
-    top: 50%;
-    bottom: auto;
-    transform: translateY(-50%);
-  }
-}
+/* When the scroll-hint would collide with the intro buttons (short viewport or
+   long intro text pushing the buttons down), main.js measures the real geometry
+   and parks the hint just to the right of the button group, vertically centred
+   on it. No fixed-height breakpoint here — the JS owns that decision so it stays
+   correct whatever the intro text length or screen size. */
 
 @keyframes intro-btn-glow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(242, 162, 133, 0); }

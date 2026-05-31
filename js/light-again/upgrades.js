@@ -63,6 +63,8 @@
     this._upSlowMoBanner  = null;   // Phaser text object
     this._upPendingChoices = null;
     this._upSecretDraft   = false;  // true when showing The World draft
+    this._upCurseFountain = false;  // true while a Curse-Fountain accept/refuse offer is ramping
+    this._curseFountainId = null;   // the curse the fountain is currently offering
   };
 
   /* ================================================================
@@ -122,9 +124,12 @@
     return choices;
   };
 
-  /* Maybe replace one drafted slot with a "curse" card (strong buff + downside).
-     Never on the very first resolved draft; never re-offers an already-taken curse. */
+  /* Curses no longer drop from the upgrade draft — the Curse Fountain map event
+     (curse-fountain.js) is now their ONLY source. Kept as a no-op so the call
+     site in _drawUpgradeChoices stays harmless. */
   M._maybeInjectCurse = function (choices) {
+    return;
+    /* eslint-disable no-unreachable */
     if (!choices || choices.length < 2) return;              // keep ≥1 real upgrade on offer
     if ((this._draftsResolved || 0) < 1) return;             // skip the first-ever draft
     if (Math.random() >= C.UPGRADE_CURSE_CHANCE) return;
@@ -155,8 +160,7 @@
       this.playerShields++;
       this._explode(this.p.x, this.p.y, [0, 255, 255], 18);
       this._explode(this.p.x, this.p.y, [255, 255, 255], 10);
-      var stk = this._shieldFloatStack++;
-      this._floatLabel(this.p.x, this.p.y - 30 - stk * 28, '+1 SHIELD', '#00ffff', stk);
+      this._floatLabel(this.p.x, this.p.y - 30, '+1 SHIELD', '#00ffff');
       this.cameras.main.flash(180, 0, 220, 255);
     }
     this._advanceDraftPick();
@@ -297,6 +301,13 @@
       return;
     }
 
+    // Curse Fountain: a single accept/refuse curse choice (the only curse source).
+    if (this._upCurseFountain) {
+      this._upCurseFountain = false;
+      this._showCurseFountainUI(this._curseFountainId);
+      return;
+    }
+
     var choices = this._upPendingChoices || this._drawUpgradeChoices();
     this._upPendingChoices = null;
 
@@ -306,6 +317,22 @@
     }
 
     this._showUpgradeDraftUI(choices);
+  };
+
+  /* ================================================================
+     CURSE FOUNTAIN OFFER — ramp the world into a single accept/refuse curse
+     choice (reuses the upgrade slow-mo → pause → DOM-overlay machinery). The
+     overlay itself is _showCurseFountainUI (curse-fountain.js); accept/refuse
+     both route back through _consumeFount + _closeDraft.
+     ================================================================ */
+  M._beginCurseFountainOffer = function (curseId) {
+    this._upgradeDraftOpen = true;
+    this._upCurseFountain  = true;
+    this._curseFountainId  = curseId;
+    this._upSecretDraft    = false;
+    this._upSlowMoPhase    = 'rampDown';
+    this._upSlowMoTimer    = 0;
+    this._upPendingChoices = null;   // not a card draft
   };
 
   /* ================================================================

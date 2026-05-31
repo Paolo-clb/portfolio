@@ -25,8 +25,39 @@ window.createTypingGameIntro = function (deps) {
 
   // Module-internal state
   var introTextEl = null;
-  var introButtonEl = null;
+  var introBtnsEl = null; // wrapper holding the two intro buttons
   var introGen = 0; // generation counter — incremented on each showIntro call to cancel stale callbacks
+
+  /* ---- Build the two intro buttons (Typing Game + Light Again) ---- */
+
+  function buildIntroButtons() {
+    var wrap = document.createElement('div');
+    wrap.className = 'typing-game__intro-btns';
+
+    var typingBtn = document.createElement('button');
+    typingBtn.className = 'btn btn--outline typing-game__intro-btn typing-game__intro-btn--typing';
+    typingBtn.textContent = t('introBtnTyping');
+    typingBtn.addEventListener('click', function () { showIntroPopup(); });
+
+    var lightBtn = document.createElement('button');
+    lightBtn.className = 'btn btn--outline typing-game__intro-btn typing-game__intro-btn--light';
+    lightBtn.textContent = t('introBtnLight');
+    lightBtn.addEventListener('click', function () { launchLightAgain(); });
+
+    wrap.appendChild(typingBtn);
+    wrap.appendChild(lightBtn);
+    return wrap;
+  }
+
+  // Reveal both buttons (staggered) once the typewriter is done.
+  function revealIntroButtons() {
+    if (!introBtnsEl) return;
+    var btns = introBtnsEl.querySelectorAll('.typing-game__intro-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].style.transitionDelay = (i * 0.12) + 's';
+      btns[i].classList.add('typing-game__intro-btn--visible');
+    }
+  }
 
   /* ---- Show intro (entry point) ---- */
 
@@ -97,9 +128,7 @@ window.createTypingGameIntro = function (deps) {
     introTextEl.appendChild(introInner);
 
     if (!isSmartphone) {
-      introButtonEl = document.createElement('button');
-      introButtonEl.className = 'btn btn--outline typing-game__intro-btn';
-      introButtonEl.textContent = t('introBtn');
+      introBtnsEl = buildIntroButtons();
     }
 
     var chars = t('introText').split('');
@@ -193,7 +222,7 @@ window.createTypingGameIntro = function (deps) {
         }
         requestAnimationFrame(function () {
           if (gen !== introGen) return;
-          introButtonEl.classList.add('typing-game__intro-btn--visible');
+          revealIntroButtons();
         });
         return;
       }
@@ -209,15 +238,9 @@ window.createTypingGameIntro = function (deps) {
     setTimeout(function () {
       if (gen !== introGen) return; // stale generation
       container.appendChild(introTextEl);
-      if (introButtonEl) container.appendChild(introButtonEl);
+      if (introBtnsEl) container.appendChild(introBtnsEl);
       typeNext();
     }, 400);
-
-    if (introButtonEl) {
-      introButtonEl.addEventListener('click', function () {
-        showIntroPopup();
-      });
-    }
   }
 
   /* ---- Intro popup ---- */
@@ -234,6 +257,22 @@ window.createTypingGameIntro = function (deps) {
     );
   }
 
+  /* ---- Launch Light Again (second intro button) ----
+     Unlocks the home (same transition as the Typing Game button), makes the
+     home carousel default to the Light Again slide, then opens the Light Again
+     overlay on top. Selecting the slide via PersoProjects.go() also persists the
+     choice (localStorage), so closing the game or refreshing the page returns to
+     the home with Light Again already selected. */
+
+  function launchLightAgain() {
+    deps.activateGame();
+    transitionToGame();
+    if (window.PersoProjects && typeof window.PersoProjects.go === 'function') {
+      window.PersoProjects.go('light-again');
+    }
+    if (typeof window.__openLightAgain === 'function') window.__openLightAgain();
+  }
+
   /* ---- Transition from intro to game ---- */
 
   function transitionToGame() {
@@ -244,11 +283,11 @@ window.createTypingGameIntro = function (deps) {
     if (heroTitleEl) heroTitleEl.innerHTML = t('heroTitleHTML');
 
     introTextEl.classList.add('typing-game__text--intro-out');
-    introButtonEl.classList.add('typing-game__intro-btn--out');
+    if (introBtnsEl) introBtnsEl.classList.add('typing-game__intro-btns--out');
 
     setTimeout(function () {
       if (introTextEl && introTextEl.parentNode) introTextEl.remove();
-      if (introButtonEl && introButtonEl.parentNode) introButtonEl.remove();
+      if (introBtnsEl && introBtnsEl.parentNode) introBtnsEl.remove();
 
       deps.buildGameDOM();
       container.classList.add('typing-game--reveal');
@@ -284,14 +323,9 @@ window.createTypingGameIntro = function (deps) {
     introTextEl.textContent = t('introText');
     container.appendChild(introTextEl);
 
-    introButtonEl = document.createElement('button');
-    introButtonEl.className = 'btn btn--outline typing-game__intro-btn typing-game__intro-btn--visible';
-    introButtonEl.textContent = t('introBtn');
-    container.appendChild(introButtonEl);
-
-    introButtonEl.addEventListener('click', function () {
-      showIntroPopup();
-    });
+    introBtnsEl = buildIntroButtons();
+    container.appendChild(introBtnsEl);
+    revealIntroButtons();
   }
 
   /* ---- Public API ---- */

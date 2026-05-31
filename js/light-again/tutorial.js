@@ -234,6 +234,7 @@
     if (this._clearGigaBruiser) this._clearGigaBruiser(true);
     if (this._clearMirror) this._clearMirror(true);
     if (this._clearSnake) this._clearSnake(true);
+    if (this._clearCurseFount) this._clearCurseFount(true);   // also drop a live Curse Fountain
     this._anomalyBarrierActive = false;
     this._anomalyIntroActive = false;
     this._anomalyCooldownT = 0;
@@ -253,6 +254,14 @@
     // permanently kill enemy spawns for the resumed run.
     this._bossDraftPending = false;
     this._draftPicksRemaining = 0;
+    // Defuse the Curse Fountain too: a mid-ramp offer or an owed post-boss
+    // respawn must not survive a tutorial relaunch (mirrors the boss-draft defuse).
+    this._upCurseFountain   = false;
+    this._curseFountainId   = null;
+    this._fountRespawnQueued = false;
+    this._fountBossHidden   = false;
+    this._fountBossSeen     = false;
+    this._fountCooldownT    = C.CURSE_FOUNT_SPAWN_MIN_DELAY;
     if (this._upSlowMoBanner) { this._upSlowMoBanner.destroy(); this._upSlowMoBanner = null; }
     this._tutResetPlayer();
     this.MAX_SHIELDS    = 2;

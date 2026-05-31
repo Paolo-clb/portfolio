@@ -367,6 +367,69 @@
     SNAKE_WHIP_ARC:          2.5,   // angular span of the sweeping crescent blade (rad)
     SNAKE_WHIP_PLAYER_FORCE: 17,    // outward impulse flung at the player (NO damage)
     SNAKE_WHIP_ENEMY_FORCE:  14,    // outward impulse flung at caught enemies
+
+    /* ---- The Digital Tree + Cyber-Fairy (random reward event) -----------
+       A glowing circuit-board tree sprouts somewhere on the arena now and
+       then; a green guidance chevron (same look as the Anomaly's pointer)
+       leads the player to it. Touch it → a smooth, cinematic harvest that
+       births a Cyber-Fairy. The fairy physically follows the ship, and is a
+       one-shot EXTRA LIFE: if the player would die, it dives onto the arrow,
+       triggers a screen-wide NUKE (kills every enemy) and resurrects them.
+       Self-contained on this._tree + this._fairy. Only one of each at a time. */
+    TREE_SPAWN_MIN_DELAY: 28000,  // ms of play before the first tree may appear
+    TREE_SPAWN_CHANCE:    0.10,   // per-eligible-second spawn roll
+    TREE_COOLDOWN:        30000,  // ms after a tree is consumed/lost before another
+    TREE_SPAWN_DIST_MIN:  620,    // min spawn distance from the player (px)
+    TREE_SPAWN_DIST_MAX:  980,    // max spawn distance from the player (px)
+    TREE_SIZE:            96,      // trunk length (px) — overall tree scale
+    TREE_LIFETIME:        30000,   // ms the tree waits to be harvested before it withers
+    TREE_WITHER_WARN:     6000,    // ms of "withering" fade before it vanishes uncollected
+    TREE_PICKUP_R:        78,      // contact radius (player centre → tree base) that harvests
+    TREE_HARVEST_DUR:     900,     // ms of the cinematic harvest → fairy birth
+    TREE_PTR_DIST:        90,      // px the guidance chevron stands from the player
+
+    FAIRY_ORBIT_R:        120,    // px the fairy hovers around the ship (stays well clear)
+    FAIRY_ORBIT_SPEED:    0.85,   // rad/s slow drift of the hover anchor
+    // Follow is a critically-damped smooth-damp toward the hover anchor: it
+    // trails when you sprint off and glides back in with smooth acceleration AND
+    // deceleration — a fluid catch-up, never a dart and never an abrupt stop.
+    FAIRY_FOLLOW_TIME:    0.42,   // s smooth-damp time (bigger ⇒ trails more, still buttery)
+    FAIRY_MIN_DIST:       92,     // px soft floor: the hover target never sits on the ship
+    FAIRY_BOB_AMP:        12,     // px vertical bob amplitude
+    FAIRY_SAVE_IFRAMES:   2600,   // ms of invincibility granted by the resurrection
+    /* Resurrection cinematic (real-time ms): the ship "dies" with the usual
+       burst, a beat passes, then the fairy drifts slowly to the death spot and
+       rebuilds the arrow; the board clears as the arrow returns. */
+    FAIRY_REV_REACT:      480,    // ms the fairy hovers/recoils after the death burst
+    FAIRY_REV_TRAVEL:     1450,   // ms of the slow cinematic glide to the death spot
+    FAIRY_REV_REBUILD:    1150,   // ms of the arrow-rebuild animation before the board clears
+
+    /* ---- The Curse Fountain (random "malédiction" event) ----------------
+       A dark geometric obelisk wreathed in evil mist, standing in a fountain
+       basin. The ring of black mist around it SWALLOWS any enemy/projectile
+       that enters — a smooth dissolve, and NO score/combo. Step deep enough
+       in and the world slows for an accept/refuse CURSE offer: this is now the
+       ONLY source of curses (they no longer drop from the upgrade draft).
+       When a boss appears the fountain vanishes (an on-screen one dissolves on
+       camera, an off-screen one just goes), then re-spawns far from the player
+       — UNGUIDED this time — when that boss dies. A natural spawn is guided by
+       a magenta chevron (same look as the Anomaly/Tree pointer). Self-contained
+       on this._fount (mirrors digital-tree.js). One at a time. */
+    CURSE_FOUNT_SPAWN_MIN_DELAY: 24000,  // ms of play before the first fountain may appear
+    CURSE_FOUNT_SPAWN_CHANCE:    0.085,  // per-eligible-second spawn roll
+    CURSE_FOUNT_COOLDOWN:        30000,  // ms after one is consumed/lost before another
+    CURSE_FOUNT_SPAWN_DIST_MIN:  640,    // min spawn distance from the player (px)
+    CURSE_FOUNT_SPAWN_DIST_MAX:  1020,   // max spawn distance from the player (px)
+    CURSE_FOUNT_ZONE_R:          260,    // mist-zone radius (≈ a no-upgrade dash-mark detonation)
+    CURSE_FOUNT_TRIGGER_R:       100,    // step within this of the obelisk → the curse offer
+    CURSE_FOUNT_SIZE:            64,     // obelisk scale (px)
+    CURSE_FOUNT_LINGER_DUR:      1800,   // ms the mist pocket lingers + keeps absorbing after a choice
+    CURSE_FOUNT_LINGER_EXPAND:   1.35,   // peak × the mist ring swells to before it fades to nothing
+    CURSE_FOUNT_FADE_DUR:        620,    // ms of the boss-arrival dissolve (when on-screen)
+    CURSE_FOUNT_PTR_DIST:        90,     // px the guidance chevron stands from the player
+    // Min centre-to-centre distance the Digital Tree and the Curse Fountain keep
+    // from each other so the two map events never crowd (whichever spawns 2nd re-rolls).
+    MAP_FEATURE_MIN_SEP:         620,
   };
 
   /* ---- Upgrade branch definitions (all 3 levels) ---- */
@@ -432,6 +495,23 @@
   LA.SECRET_UPGRADE = {
     id: 'theWorld', maxLvl: 1,
     i18nName: 'laUpTheWorldName', i18nDesc1: 'laUpTheWorldDesc1',
+  };
+
+  /* ---- Shared upgrade-icon PLACEHOLDER (TEMPORARY) ----
+     Real per-upgrade art is coming. Until then, EVERY upgrade icon surface
+     renders this ONE placeholder so there's a single thing to swap:
+       • Draft cards    → upgrade-ui.js   (LA.iconPlaceholderSvg)
+       • Mode-select    → shell.js        (LA.iconPlaceholderSvg)
+       • In-game HUD    → rendering.js    (M._drawIconPlaceholder — canvas twin
+                                           of this same image-frame silhouette)
+     `inner` is the SVG body (a generic "image" frame); iconPlaceholderSvg wraps
+     it for the DOM. Curses (⚠) and The World (🕒) keep their own semantic glyphs. */
+  LA.ICON_PLACEHOLDER_SVG = '<rect x="3" y="3" width="18" height="18" rx="2.5"/>' +
+    '<circle cx="8.5" cy="8.5" r="1.6"/><polyline points="21 15 15.5 9.5 5 20"/>';
+  LA.iconPlaceholderSvg = function (cls) {
+    return '<svg class="la-icon-ph ' + (cls || '') + '" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ' +
+      'aria-hidden="true">' + LA.ICON_PLACEHOLDER_SVG + '</svg>';
   };
 
   /* Pre-computed squared radii (avoid sqrt in hot loops) */

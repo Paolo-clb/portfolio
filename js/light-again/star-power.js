@@ -161,9 +161,8 @@
     this.cameras.main.flash(200, 180, 20, 200);
     // Shake proportional to existing shakes (~0.008)
     this.cameras.main.shake(120, 0.008);
-    // Float label at player position — stacks with shield labels
-    var odStk = this._shieldFloatStack++;
-    this._floatLabel(this.p.x, this.p.y - 30 - odStk * 28, 'OVERDRIVE !', '#ff14c8', odStk);
+    // Float label at player position — stacks above any shield/boss callouts
+    this._floatLabel(this.p.x, this.p.y - 30, 'OVERDRIVE !', '#ff14c8');
     // Hitstop for juicy feel
     this._triggerHitstop(60);
 

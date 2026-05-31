@@ -5,7 +5,7 @@
 
 window.TYPING_GAME_I18N = {
   fr: {
-    introText: 'Bienvenue sur mon portfolio ! Je suis Paolo Colombat, développeur full stack passionné, actuellement en 2ème année de BUT Informatique. Ici vous découvrirez mes projets et mes compétences, ainsi qu\'un Typing Game. Bonne visite !',
+    introText: 'Bienvenue sur mon portfolio ! Je suis Paolo Colombat, développeur full stack passionné, actuellement en 2ème année de BUT Informatique. Ici vous découvrirez mes compétences et mes projets personnels, dont deux jeux : un Typing Game pour tester votre vitesse de frappe, et Light Again, un jeu d\'arène plus casual. Bonne visite !',
     words: 'mots',
     wpmFinal: 'Words Per Minute',
     wordsFinal: 'Mots',
@@ -57,6 +57,8 @@ window.TYPING_GAME_I18N = {
     focusHint: 'Cliquez ici pour commencer \u00e0 taper',
     loadingText: 'Chargement du site en cours\u2026',
     introBtn: 'Jouer au Typing Game',
+    introBtnTyping: 'Jouer au Typing Game',
+    introBtnLight: 'Jouer à Light Again',
     introPopupText: 'Testez votre vitesse de frappe !<br>La barre de navigation au-dessus du texte vous permet de choisir la langue, le mode et les options du jeu.',
     introPopupHint: 'Amusez-vous bien !',
     heroTitle: 'Paolo Colombat : Typing Game',
@@ -64,7 +66,7 @@ window.TYPING_GAME_I18N = {
     heroIntro: 'Paolo Colombat'
   },
   en: {
-    introText: 'Welcome to my portfolio! I\'m Paolo Colombat, a passionate full stack developer, currently in my 2nd year of a Computer Science degree. Here you\'ll discover my projects and skills, as well as a Typing Game. Enjoy your visit!',
+    introText: 'Welcome to my portfolio! I\'m Paolo Colombat, a passionate full stack developer, currently in my 2nd year of a Computer Science degree. Here you\'ll discover my skills and my personal projects, including two games: a Typing Game to test your typing speed, and Light Again, a more casual arena game. Enjoy your visit!',
     words: 'words',
     wpmFinal: 'Words Per Minute',
     wordsFinal: 'Words',
@@ -116,6 +118,8 @@ window.TYPING_GAME_I18N = {
     focusHint: 'Click here to start typing',
     loadingText: 'Loading site\u2026',
     introBtn: 'Play Typing Game',
+    introBtnTyping: 'Play Typing Game',
+    introBtnLight: 'Play Light Again',
     introPopupText: 'Test your typing speed!<br>The navigation bar above the text lets you choose the language, mode and game options.',
     introPopupHint: 'Have fun!',
     heroTitle: 'Paolo Colombat: Typing Game',

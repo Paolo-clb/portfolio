@@ -1763,8 +1763,10 @@
       if (!navbarEl) {
         var staticText = container.querySelector('.typing-game__text--intro');
         if (staticText) staticText.textContent = t('introText');
-        var introBtn = container.querySelector('.typing-game__intro-btn');
-        if (introBtn) introBtn.textContent = t('introBtn');
+        var typingBtn = container.querySelector('.typing-game__intro-btn--typing');
+        if (typingBtn) typingBtn.textContent = t('introBtnTyping');
+        var lightBtn = container.querySelector('.typing-game__intro-btn--light');
+        if (lightBtn) lightBtn.textContent = t('introBtnLight');
         if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
         return;
       }

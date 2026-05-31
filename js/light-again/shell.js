@@ -119,6 +119,149 @@
       '</div>';
   }
 
+  /* ================================================================
+     RUN LOADOUT — upgrades unlocked in the resumable run, shown under
+     the active mode card. Reads the LIVE scene (window.__laSceneRef):
+     while the menu is up the run is paused, not destroyed, so nothing
+     needs persisting. Per-level colours mirror the in-game HUD
+     (cyan Lv1 · gold Lv2 · violet Lv3). Hovering a chip reveals all
+     three levels — the ones reached are coloured, the rest greyed.
+     ================================================================ */
+  function laLevelColor(n) {
+    return n >= 3 ? '#b478ff' : (n >= 2 ? '#ffc832' : '#00ffff');
+  }
+
+  // Semantic glyphs for the NON-upgrade chips only: curse (warning) + The World
+  // (clock). Upgrades render the shared placeholder (LA.iconPlaceholderSvg) until
+  // real art lands — so there's deliberately no per-branch art here.
+  function laUpGlyphInner(id) {
+    switch (id) {
+      case 'curse':    return '<path d="M12 4l9 15H3z"/><line x1="12" y1="10" x2="12" y2="14.4"/><circle cx="12" cy="16.8" r="0.7"/>';
+      case 'theWorld': return '<circle cx="12" cy="12" r="8"/><line x1="12" y1="12" x2="12" y2="7"/><line x1="12" y1="12" x2="15.4" y2="13.5"/>';
+      default:         return '<circle cx="12" cy="12" r="7"/>';
+    }
+  }
+  function laSvg(inner) {
+    return '<svg class="la-lo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
+  }
+  // One chip icon: upgrades → shared placeholder; curse/The World → semantic glyph.
+  function laLoadoutIcon(it) {
+    return it.kind === 'up'
+      ? window.LightAgain.iconPlaceholderSvg('la-lo-svg')
+      : laSvg(laUpGlyphInner(it.glyphId));
+  }
+
+  // Build the loadout section HTML for a live scene + a wire() that hooks up
+  // the hover/focus → detail behaviour. Returns null only if there's no scene.
+  function buildLoadoutSection(sc) {
+    if (!sc) return null;
+    var LA = window.LightAgain || {};
+    var UP = LA.UPGRADES || {};
+    var CU = LA.CURSES || {};
+    var lvls = sc._upgradeLevels || {};
+    var tcz  = sc._takenCurses || {};
+    var order      = ['dashAtk', 'detonation', 'dash', 'baseAtk', 'shield', 'drone'];
+    var curseOrder = ['glassHeart', 'dashRage', 'cursedBlast'];
+
+    var items = [];   // { kind, glyphId, color, name, lvl, maxLvl, levels:[{n,txt,on,color}] }
+    var i, n;
+    for (i = 0; i < order.length; i++) {
+      var id = order[i], lvl = lvls[id] || 0;
+      if (lvl > 0 && UP[id]) {
+        var def = UP[id], max = def.maxLvl || 3, levels = [];
+        for (n = 1; n <= max; n++) {
+          var dk = n >= 3 ? def.i18nDesc3 : (n === 2 ? def.i18nDesc2 : def.i18nDesc1);
+          levels.push({ n: n, txt: t(dk), on: n <= lvl, color: laLevelColor(n) });
+        }
+        items.push({ kind: 'up', glyphId: id, color: laLevelColor(lvl), name: t(def.i18nName), lvl: lvl, maxLvl: max, levels: levels });
+      }
+    }
+    for (i = 0; i < curseOrder.length; i++) {
+      var cid = curseOrder[i];
+      if (tcz[cid] && CU[cid]) {
+        items.push({ kind: 'curse', glyphId: 'curse', color: '#ff436b', name: t(CU[cid].i18nName), lvl: 1, maxLvl: 1,
+          levels: [{ n: 1, txt: t(CU[cid].i18nDesc), on: true, color: '#ff436b' }] });
+      }
+    }
+    if (sc._twUnlocked && LA.SECRET_UPGRADE) {
+      items.push({ kind: 'world', glyphId: 'theWorld', color: '#ffc832', name: t(LA.SECRET_UPGRADE.i18nName), lvl: 1, maxLvl: 1,
+        levels: [{ n: 1, txt: t(LA.SECRET_UPGRADE.i18nDesc1), on: true, color: '#ffc832' }] });
+    }
+
+    var titleHtml = '<div class="la-lo-title">' + t('laRunLoadoutTitle') + '</div>';
+
+    if (!items.length) {
+      return {
+        html: '<div class="la-lo" id="_la-run-loadout">' + titleHtml +
+                '<div class="la-lo-empty">' + t('laRunLoadoutEmpty') + '</div></div>',
+        wire: function () {}
+      };
+    }
+
+    var chips = '', details = {}, k;
+    for (k = 0; k < items.length; k++) {
+      var it = items[k];
+
+      var pips = '';
+      if (it.maxLvl > 1) {
+        for (n = 1; n <= it.maxLvl; n++) {
+          pips += '<span class="la-lo-pip"' + (n <= it.lvl ? ' style="background:' + laLevelColor(n) + '"' : '') + '></span>';
+        }
+        pips = '<span class="la-lo-pips">' + pips + '</span>';
+      }
+      chips += '<button type="button" class="la-lo-chip" data-lo="' + k + '" ' +
+        'style="color:' + it.color + '" aria-label="' + it.name + '">' + laLoadoutIcon(it) + pips + '</button>';
+
+      var rows = '';
+      for (n = 0; n < it.levels.length; n++) {
+        var lv = it.levels[n];
+        var label = it.kind === 'up'
+          ? '<b style="color:' + (lv.on ? lv.color : '#5a6678') + '">' + t('laRunLevelShort') + ' ' + lv.n + '</b> — '
+          : '';
+        rows += '<li class="la-lo-lvl ' + (lv.on ? 'on' : 'off') + '">' +
+          '<span class="la-lo-lvl-ic" style="color:' + (lv.on ? lv.color : '#3a4250') + '">' + laLoadoutIcon(it) + '</span>' +
+          '<span class="la-lo-lvl-txt">' + label + lv.txt + '</span></li>';
+      }
+      details[k] = '<div class="la-lo-d-head" style="color:' + it.color + '">' + it.name +
+        (it.kind === 'up' ? ' · ' + t('laRunLevelShort') + ' ' + it.lvl : '') + '</div>' +
+        '<ul class="la-lo-levels">' + rows + '</ul>';
+    }
+
+    var html = '<div class="la-lo" id="_la-run-loadout">' + titleHtml +
+      '<div class="la-lo-chips">' + chips + '</div>' +
+      '<div class="la-lo-detail" id="_la-lo-detail">' + details[0] + '</div></div>';
+
+    var wire = function (root) {
+      var box = root.querySelector('#_la-run-loadout');
+      if (!box) return;
+      var detail = box.querySelector('#_la-lo-detail');
+      var chipEls = box.querySelectorAll('.la-lo-chip');
+      function show(idx) {
+        if (details[idx] == null) return;
+        detail.innerHTML = details[idx];
+        for (var z = 0; z < chipEls.length; z++) chipEls[z].classList.toggle('la-lo-chip--active', z === idx);
+      }
+      // The mode card is itself clickable (resumes the run) — clicking inside the
+      // loadout is for INSPECTING, so swallow those clicks before they bubble up.
+      box.addEventListener('click', function (e) { e.stopPropagation(); });
+      for (var q = 0; q < chipEls.length; q++) {
+        (function (el) {
+          var idx = parseInt(el.getAttribute('data-lo'), 10);
+          el.addEventListener('mouseenter', function () { show(idx); });
+          el.addEventListener('focus', function () { show(idx); });
+          // Enter/Space on a chip must not bubble to the card's "resume" handler.
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); show(idx); }
+          });
+        })(chipEls[q]);
+      }
+      show(0);
+    };
+
+    return { html: html, wire: wire };
+  }
+
   function showModeMenu(container, fromActiveGame) {
     if (menuEl) return;
     // A game-over run is DEAD — capture that BEFORE tearing the screen down (the
@@ -182,8 +325,44 @@
         '#_la-mode-select .la-ms-active-badge{position:absolute;top:.65rem;right:.65rem;z-index:2;display:flex;align-items:center;gap:.32rem;font-size:.52rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.22rem .55rem;border-radius:99px;background:rgba(143,233,192,0.1);border:1px solid rgba(143,233,192,0.32);color:#8fe9c0}' +
         '#_la-mode-select .la-ms-active-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:#8fe9c0;box-shadow:0 0 6px #8fe9c0;animation:la-ms-active-pulse 1.4s ease-in-out infinite}' +
         // Footer tip line (menu icon doubles as pause).
-        '#_la-mode-select .la-ms-tip{margin-top:1.35rem;font-size:.62rem;letter-spacing:.03em;line-height:1.55;color:#5d7f9c;opacity:.9}' +
-        '#_la-mode-select .la-ms-tip b{color:#8fb6d6;font-weight:700}';
+        '#_la-mode-select .la-ms-tip{position:absolute;left:50%;bottom:.85rem;transform:translateX(-50%);width:min(780px,92%);text-align:center;font-size:.62rem;letter-spacing:.03em;line-height:1.55;color:#5d7f9c;opacity:.9}' +
+        '#_la-mode-select .la-ms-tip b{color:#8fb6d6;font-weight:700}' +
+        // Run loadout: chips + hover→3-levels detail (lives in the resume section).
+        '#_la-mode-select .la-lo{width:100%;margin-top:.3rem;padding-top:.85rem;border-top:1px solid rgba(255,255,255,0.1);text-align:left}' +
+        '#_la-mode-select .la-lo-title{font-size:.54rem;letter-spacing:.16em;text-transform:uppercase;color:#7799bb;margin-bottom:.55rem;text-align:center}' +
+        '#_la-mode-select .la-lo-empty{font-size:.66rem;color:#6f8298;text-align:center;line-height:1.5;padding:.1rem .2rem}' +
+        '#_la-mode-select .la-lo-chips{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;margin-bottom:.55rem}' +
+        '#_la-mode-select .la-lo-chip{position:relative;width:42px;height:42px;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1.5px solid currentColor;border-radius:9px;background:rgba(8,10,28,0.55);color:#00ffff;cursor:pointer;transition:transform .14s,box-shadow .2s,background .2s}' +
+        '#_la-mode-select .la-lo-chip:hover,#_la-mode-select .la-lo-chip--active{transform:translateY(-2px);box-shadow:0 0 12px -2px currentColor;background:rgba(8,10,28,0.92)}' +
+        '#_la-mode-select .la-lo-chip .la-lo-svg{width:21px;height:21px}' +
+        '#_la-mode-select .la-lo-pips{display:flex;gap:2px}' +
+        '#_la-mode-select .la-lo-pip{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.16)}' +
+        '#_la-mode-select .la-lo-detail{min-height:78px;border-radius:9px;background:rgba(4,6,18,0.5);border:1px solid rgba(255,255,255,0.07);padding:.55rem .7rem}' +
+        '#_la-mode-select .la-lo-d-head{font-size:.72rem;font-weight:700;letter-spacing:.03em;margin-bottom:.45rem}' +
+        '#_la-mode-select .la-lo-levels{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.34rem}' +
+        '#_la-mode-select .la-lo-lvl{display:flex;align-items:flex-start;gap:.5rem}' +
+        '#_la-mode-select .la-lo-lvl-ic{flex:0 0 auto;width:17px;height:17px;display:flex;align-items:center;justify-content:center;margin-top:1px}' +
+        '#_la-mode-select .la-lo-lvl-ic .la-lo-svg{width:16px;height:16px}' +
+        '#_la-mode-select .la-lo-lvl-txt{font-size:.6rem;line-height:1.4;color:#aebccd}' +
+        '#_la-mode-select .la-lo-lvl.off{opacity:.85}' +
+        '#_la-mode-select .la-lo-lvl.off .la-lo-lvl-txt{color:#5a6678}' +
+        // "Mode actif en grand": resume section on top + "Nouvelle partie" cards below.
+        '#_la-mode-select .la-ms-newgame{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:#5d7f9c;margin:.2rem 0 .7rem}' +
+        '#_la-mode-select .la-ms-resume{width:min(640px,100%);margin:0 auto 1.7rem;padding:1.3rem 1.4rem 1.2rem;border-radius:16px;border:1px solid var(--la-accent-soft);background:var(--la-accent-faint);text-align:center}' +
+        '#_la-mode-select .la-ms-resume--hardcore{border-color:rgba(255,70,20,0.32);background:rgba(255,60,0,0.05)}' +
+        '#_la-mode-select .la-ms-resume-top{display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:1rem;flex-wrap:wrap}' +
+        '#_la-mode-select .la-ms-resume-label{font-size:.82rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase}' +
+        '#_la-mode-select .la-ms-resume .la-ms-active-badge{position:static}' +
+        '#_la-mode-select .la-ms-resume-btn{margin-top:1rem;width:100%;cursor:pointer;font-family:monospace;font-weight:800;font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;padding:.7rem 1rem;border-radius:10px;border:1.5px solid currentColor;background:rgba(255,255,255,0.04);transition:transform .15s,box-shadow .2s,background .2s}' +
+        '#_la-mode-select .la-ms-resume-btn:hover{transform:translateY(-2px);box-shadow:0 0 22px -4px currentColor;background:rgba(255,255,255,0.08)}' +
+        // Bigger placeholder icons inside the resume section (the freed-up space).
+        '#_la-mode-select .la-ms-resume .la-lo{margin-top:0;padding-top:0;border-top:none;text-align:center}' +
+        '#_la-mode-select .la-ms-resume .la-lo-title{display:none}' +
+        '#_la-mode-select .la-ms-resume .la-lo-chips{gap:.6rem;margin-bottom:.85rem}' +
+        '#_la-mode-select .la-ms-resume .la-lo-chip{width:60px;height:60px;border-radius:12px}' +
+        '#_la-mode-select .la-ms-resume .la-lo-chip .la-lo-svg{width:30px;height:30px}' +
+        '#_la-mode-select .la-ms-resume .la-lo-pip{width:5px;height:5px}' +
+        '#_la-mode-select .la-ms-resume .la-lo-detail{min-height:84px;text-align:left}';
       document.head.appendChild(ms);
     }
 
@@ -198,8 +377,7 @@
       'animation:la-go-fade-in 0.32s cubic-bezier(0.22,1,0.36,1) both',
     ].join(';');
 
-    // Which mode (if any) has a live run behind this menu — drives the card
-    // highlight + "En cours" badge so the player sees at a glance where they were.
+    // Which mode (if any) has a live run behind this menu.
     var fr = (localStorage.getItem('portfolio_lang') || 'fr') !== 'en';
     // Resumable only if we came from a LIVE run — a dead game-over run restarts fresh.
     var resumable = fromActiveGame && !wasGameOver;
@@ -207,7 +385,58 @@
     var hcActive = resumable && currentMode === 'hardcore';
     var activeBadge = '<div class="la-ms-active-badge">' + (fr ? 'En cours' : 'In progress') + '</div>';
 
-    var hcCardCls = 'la-ms-card la-ms-card--hardcore ' + (unlocked ? 'la-ms-card--enabled' : 'la-ms-card--locked') + (hcActive ? ' la-ms-card--active' : '');
+    // Live-run loadout. The scene is paused (not destroyed) while this menu is up,
+    // so we read its upgrade state directly. Skipped during the tutorial (no upgrades).
+    var loadoutSc = window.__laSceneRef;
+    var tutorialRunning = resumable && loadoutSc && !!loadoutSc._tutorialActive;
+    var loadout   = (resumable && loadoutSc && !tutorialRunning) ? buildLoadoutSection(loadoutSc) : null;
+
+    // Layout "mode actif en grand": when there's something to resume — a real run
+    // with upgrades (canResume) OR a tutorial in progress (tutorialRunning) — it gets
+    // a big RESUME section up top, and the two mode cards drop below under "Nouvelle
+    // partie" as fresh-start launchers (no resume, no active highlight: that all
+    // lives in the top section now).
+    var canResume    = !!loadout;
+    var hasTopResume = canResume || tutorialRunning;
+    var resumeMode   = canResume ? currentMode : null;
+    var sbCardActive = sbActive && !hasTopResume;
+    var hcCardActive = hcActive && !hasTopResume;
+    var resumeName   = resumeMode === 'hardcore' ? 'HARDCORE' : 'SANDBOX';
+    var resumeCol    = resumeMode === 'hardcore' ? '#ff5530' : 'var(--la-accent)';
+
+    var resumeSection = '';
+    if (canResume) {
+      resumeSection = '<div class="la-ms-resume la-ms-resume--' + resumeMode + '">' +
+        '<div class="la-ms-resume-top">' +
+          '<span class="la-ms-resume-label" style="color:' + resumeCol + '">' + tG('laModeResume') + ' · ' + resumeName + '</span>' +
+          activeBadge +
+        '</div>' +
+        loadout.html +
+        '<button type="button" id="_la-ms-resume-btn" class="la-ms-resume-btn" style="border-color:' + resumeCol + ';color:' + resumeCol + '">' + tG('laModeResume') + ' ▶</button>' +
+      '</div>';
+    } else if (tutorialRunning) {
+      // Mid-tutorial: the top section RESUMES it and shows the tutorial progress bar
+      // (no upgrades yet). The bottom tutorial banner is suppressed so progress lives
+      // in one place — up here, standing in for the loadout.
+      var LAtut  = window.LightAgain || {};
+      var tTotal = LAtut.TUTORIAL_STEP_COUNT || 10;
+      var tDone  = (typeof LAtut.laGetTutorialProgress === 'function') ? LAtut.laGetTutorialProgress() : 0;
+      tDone = Math.max(0, Math.min(tDone, tTotal));
+      var tPct = Math.round(tDone / tTotal * 100);
+      resumeSection = '<div class="la-ms-resume la-ms-resume--tutorial">' +
+        '<div class="la-ms-resume-top">' +
+          '<span class="la-ms-resume-label" style="color:var(--la-accent)">' + tG('laModeResume') + ' · ' + (fr ? 'Tutoriel' : 'Tutorial') + '</span>' +
+          activeBadge +
+        '</div>' +
+        '<div class="la-ms-tut-hint">' + (fr ? 'Tutoriel en cours — reprends là où tu en étais.' : 'Tutorial in progress — pick up where you left off.') + '</div>' +
+        '<div class="la-ms-bar la-ms-tut-bar"><span class="la-ms-bar-fill" style="width:' + tPct + '%;background:var(--la-accent)"></span></div>' +
+        '<div class="la-ms-tut-label">' + (fr ? 'Étape ' : 'Step ') + Math.min(tDone + 1, tTotal) + ' / ' + tTotal + '</div>' +
+        '<button type="button" id="_la-ms-resume-btn" class="la-ms-resume-btn" style="border-color:var(--la-accent);color:var(--la-accent)">' + tG('laModeResume') + ' ▶</button>' +
+      '</div>';
+    }
+    var newGameLabel = hasTopResume ? '<div class="la-ms-newgame">' + (fr ? 'Nouvelle partie' : 'New game') + '</div>' : '';
+
+    var hcCardCls = 'la-ms-card la-ms-card--hardcore ' + (unlocked ? 'la-ms-card--enabled' : 'la-ms-card--locked') + (hcCardActive ? ' la-ms-card--active' : '');
     var hcCol = unlocked ? '#ff5530' : '#7a4634';
     var hcCtaStyle = unlocked
       ? 'border:1.5px solid rgba(255,70,20,0.55);background:rgba(255,70,20,0.12);color:#ff5530'
@@ -217,37 +446,49 @@
       '<div class="la-ms-wrap">' +
       (fromActiveGame ? '<div class="la-ms-return">' + tG('laMenuReturnTitle') + '</div>' : '') +
       '<div class="la-ms-title">' + tG('laModeSelectTitle') + '</div>' +
+      resumeSection +
+      newGameLabel +
       '<div class="la-ms-cards">' +
 
       // SANDBOX card
-      '<div id="_la-ms-sandbox" class="la-ms-card la-ms-card--sandbox la-ms-card--enabled' + (sbActive ? ' la-ms-card--active' : '') + '" role="button" tabindex="0">' +
-        (sbActive ? activeBadge : '') +
+      '<div id="_la-ms-sandbox" class="la-ms-card la-ms-card--sandbox la-ms-card--enabled' + (sbCardActive ? ' la-ms-card--active' : '') + '" role="button" tabindex="0">' +
+        (sbCardActive ? activeBadge : '') +
         '<div class="la-ms-glyph" style="color:var(--la-accent)">\u221e</div>' +
         '<div class="la-ms-name" style="color:var(--la-accent)">SANDBOX</div>' +
         '<div class="la-ms-desc" style="color:#6f93b8">' + tG('laModeSandboxDesc') + '</div>' +
-        '<div class="la-ms-cta" style="border:1.5px solid var(--la-accent-line);background:var(--la-accent-fill);color:var(--la-accent)">' + ((resumable && currentMode === 'sandbox') ? tG('laModeResume') : tG('laGoPlay')) + '</div>' +
+        '<div class="la-ms-cta" style="border:1.5px solid var(--la-accent-line);background:var(--la-accent-fill);color:var(--la-accent)">' + ((!hasTopResume && resumable && currentMode === 'sandbox') ? tG('laModeResume') : tG('laGoPlay')) + '</div>' +
       '</div>' +
 
       // HARDCORE card
       '<div id="_la-ms-hardcore" class="' + hcCardCls + '"' + (unlocked ? ' role="button" tabindex="0"' : '') + '>' +
-        (hcActive ? activeBadge : '') +
+        (hcCardActive ? activeBadge : '') +
         '<div class="la-ms-glyph" style="color:' + hcCol + '">\u2620</div>' +
         '<div class="la-ms-name" style="color:' + hcCol + '">HARDCORE</div>' +
         '<div class="la-ms-desc" style="color:' + (unlocked ? '#a8744f' : '#6a4233') + '">' + tG('laModeHardcoreDesc') + '</div>' +
-        '<div class="la-ms-cta" style="' + hcCtaStyle + '">' + ((resumable && currentMode === 'hardcore') ? tG('laModeResume') : (unlocked ? tG('laGoPlay') : '\ud83d\udd12 ' + tG('laModeHardcoreLocked'))) + '</div>' +
+        '<div class="la-ms-cta" style="' + hcCtaStyle + '">' + ((!hasTopResume && resumable && currentMode === 'hardcore') ? tG('laModeResume') : (unlocked ? tG('laGoPlay') : '\ud83d\udd12 ' + tG('laModeHardcoreLocked'))) + '</div>' +
       '</div>' +
 
       '</div>' +
-      '<div class="la-ms-tip">' + (fr
-        ? '💡 L’icône <b>menu</b> (en haut à droite) sert aussi à mettre la partie <b>en pause</b>.'
-        : '💡 The <b>menu</b> icon (top right) also <b>pauses</b> the game during a run.') + '</div>' +
-      (unlocked ? '' : buildTutorialPanel()) +
+      // Tutorial banner stays at the BOTTOM as before — but NOT while a tutorial is
+      // actually running (then its progress lives in the top resume section instead).
+      ((!unlocked && !tutorialRunning) ? buildTutorialPanel() : '') +
       // Cosmetic pickaxe skin — unlocked alongside hardcore mode as a reward
       (unlocked ? '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-steve-cb"><span>I am Steve</span></label>' : '') +
-      '</div>';
+      '</div>' +
+      // Tip pinned to the very bottom of the screen (now mentions seeing upgrades).
+      '<div class="la-ms-tip">' + (fr
+        ? '💡 L’icône <b>menu</b> (en haut à droite) sert aussi à mettre la partie <b>en pause</b> et à <b>voir vos améliorations</b>.'
+        : '💡 The <b>menu</b> icon (top right) also <b>pauses</b> the game and lets you <b>see your upgrades</b>.') + '</div>';
 
     container.style.position = 'relative';
     container.appendChild(menuEl);
+
+    // Hook up the loadout's hover/focus → 3-levels detail (no-op if absent).
+    if (loadout) loadout.wire(menuEl);
+
+    // Big "Reprendre" button in the resume section (Option-C layout).
+    var resumeBtn = menuEl.querySelector('#_la-ms-resume-btn');
+    if (resumeBtn) resumeBtn.addEventListener('click', function () { resumeGame(); });
 
     var sbBtn = menuEl.querySelector('#_la-ms-sandbox');
     var hcBtn = menuEl.querySelector('#_la-ms-hardcore');
@@ -281,13 +522,16 @@
     }
     // Each card "Resumes" the CURRENT run when the menu was opened from that same
     // mode; otherwise it (re)starts that mode. From the launch menu it starts fresh.
+    // With the resume section present (canResume), the cards are pure "Nouvelle
+    // partie" launchers — the big Reprendre button owns resuming. Without it
+    // (e.g. a tutorial run), the matching card still resumes as before.
     function chooseSandbox() {
-      if (resumable && currentMode === 'sandbox') { resumeGame(); return; }
+      if (!hasTopResume && resumable && currentMode === 'sandbox') { resumeGame(); return; }
       dismissModeMenu();
       startWithMode(container, 'sandbox', fromActiveGame);
     }
     function chooseHardcore() {
-      if (resumable && currentMode === 'hardcore') { resumeGame(); return; }
+      if (!hasTopResume && resumable && currentMode === 'hardcore') { resumeGame(); return; }
       dismissModeMenu();
       startWithMode(container, 'hardcore', fromActiveGame);
     }
@@ -299,7 +543,8 @@
       hcBtn.addEventListener('click', chooseHardcore);
       hcBtn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseHardcore(); } });
     }
-    sbBtn.focus();
+    if (resumeBtn) resumeBtn.focus();
+    else sbBtn.focus();
   }
 
   /* ---- Cookie reader (mirrors typing-game.js getCookie) ---- */
@@ -323,10 +568,17 @@
     btnEl.setAttribute('aria-label', t('lightAgainPlay'));
     btnEl.innerHTML =
       '<div class="light-again-btn__panel" aria-hidden="true">' +
-        '<div class="light-again-btn__img-wrap"></div>' +
+        // Preview video — same gameplay clip as the home carousel slide. The
+        // themed gradient under it shows through until the clip is playing.
+        // preload="none" so the file only downloads on first hover, never on load.
+        '<div class="light-again-btn__img-wrap">' +
+          '<video class="light-again-btn__video" muted loop playsinline preload="none" aria-hidden="true">' +
+            '<source src="assets/light-again/gameplay-preview.mp4" type="video/mp4">' +
+          '</video>' +
+        '</div>' +
         '<div class="light-again-btn__details">' +
           '<strong class="light-again-btn__game-name">Light Again</strong>' +
-          '<span class="light-again-btn__tagline">' + t('lightAgainTagline') + '</span>' +
+          '<span class="light-again-btn__tagline">' + t('lightAgainBtnDesc') + '</span>' +
         '</div>' +
       '</div>' +
       '<div class="light-again-btn__tab" aria-hidden="true">' +
@@ -339,6 +591,37 @@
 
     btnEl.addEventListener('click', openLightAgain);
 
+    // ---- Preview video — plays only while the panel is unfolded ----
+    // Mirrors the home carousel: muted loop that fades in once it actually plays
+    // (the gradient placeholder shows whenever it's paused). It runs only on
+    // hover/focus, respecting the site "animations off" pref, and never while the
+    // game modal is open (the panel is collapsed + non-interactive then).
+    var laVideo  = btnEl.querySelector('.light-again-btn__video');
+    var laImgWrap = btnEl.querySelector('.light-again-btn__img-wrap');
+    if (laVideo) {
+      laVideo.muted = true; // required for programmatic autoplay
+      laVideo.addEventListener('playing', function () {
+        if (laImgWrap) laImgWrap.classList.add('light-again-btn__img-wrap--playing');
+      });
+      laVideo.addEventListener('pause', function () {
+        if (laImgWrap) laImgWrap.classList.remove('light-again-btn__img-wrap--playing');
+      });
+      var animsOff = function () { return document.documentElement.getAttribute('data-animations') === 'off'; };
+      var playPreview = function () {
+        if (animsOff() || btnEl.classList.contains('light-again-btn--modal-open')) return;
+        var p = laVideo.play();
+        if (p && p.catch) p.catch(function () { /* autoplay may reject; ignore */ });
+      };
+      var stopPreview = function () {
+        laVideo.pause();
+        try { laVideo.currentTime = 0; } catch (e) { /* ignore */ }
+      };
+      btnEl.addEventListener('mouseenter', playPreview);
+      btnEl.addEventListener('focus', playPreview);
+      btnEl.addEventListener('mouseleave', stopPreview);
+      btnEl.addEventListener('blur', stopPreview);
+    }
+
     // Fixed positioned — append directly to body
     document.body.appendChild(btnEl);
   }
@@ -347,7 +630,7 @@
     if (!btnEl) return;
     btnEl.setAttribute('aria-label', t('lightAgainPlay'));
     var tagline = btnEl.querySelector('.light-again-btn__tagline');
-    if (tagline) tagline.textContent = t('lightAgainTagline');
+    if (tagline) tagline.textContent = t('lightAgainBtnDesc');
   }
 
   function pauseIconSvg() {

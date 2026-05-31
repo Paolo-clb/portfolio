@@ -48,19 +48,65 @@
     this._checkUpgradeTrigger();
   };
 
-  M._floatLabel = function (wx, wy, label, col, stackIdx) {
-    var stagger = (stackIdx || 0) * 45;
+  /* Anti-overlap layout for WORLD-SPACE floating callouts. Reserves a vertical
+     band for a label (origin is bottom = baselineY, the band grows upward by
+     `height`) in a small live registry keyed by screen column, then returns a
+     baseline Y that clears every band still alive in that column — so several
+     callouts firing at once (e.g. a boss-kill banner + a draft-skip "+1 SHIELD")
+     stack one above another instead of printing on the same spot. Bands expire
+     after `lifeMs`; the timer rides on gameTime, which also freezes while the
+     scene is paused (draft / menu / game over), so a label spawned mid-pause
+     still stacks correctly. Different screen columns are independent, so callouts
+     far apart never shove each other. The band is recorded at spawn time (before
+     the float-up drift) — conservative, which is exactly what we want here. */
+  M._reserveLabelBand = function (worldX, baselineY, height, lifeMs) {
+    if (!this._labelBands) this._labelBands = [];
+    var now = this.gameTime || 0;
+    var live = [];
+    for (var i = 0; i < this._labelBands.length; i++) {
+      if (this._labelBands[i].until > now) live.push(this._labelBands[i]);
+    }
+    this._labelBands = live;
+
+    var col = Math.round((worldX - this.cameras.main.scrollX) / 220);
+    var MARGIN = 8;
+    var bottom = baselineY, top = baselineY - height;
+    // Push the band up until it clears every live band sharing this column.
+    var moved = true, guard = 0;
+    while (moved && guard++ < 40) {
+      moved = false;
+      for (var j = 0; j < live.length; j++) {
+        var b = live[j];
+        if (b.col !== col) continue;
+        if (bottom > b.top - MARGIN && top < b.bottom + MARGIN) {
+          var shift = bottom - (b.top - MARGIN);
+          bottom -= shift; top -= shift;
+          moved = true;
+        }
+      }
+    }
+
+    this._labelBands.push({ col: col, top: top, bottom: bottom, until: now + lifeMs / 1000 });
+    return bottom;
+  };
+
+  /* World-space callout label ("+1 SHIELD", "OVERDRIVE!", fairy pickups…). Pass
+     the anchor's BASELINE y (origin is bottom); _reserveLabelBand shifts it up as
+     needed so simultaneous labels never overlap. */
+  M._floatLabel = function (wx, anchorY, label, col) {
+    var wy = this._reserveLabelBand(wx, anchorY, 32, 850);
     var txt = this.add.text(wx, wy, label, {
       fontFamily: 'monospace', fontSize: '28px', fontStyle: 'bold', color: col,
       stroke: '#000000', strokeThickness: 2,
       shadow: { offsetX: 0, offsetY: 2, color: col, blur: 8, fill: true },
     });
-    txt.setOrigin(0.5, 1); txt.setDepth(70 + (stackIdx || 0));
+    txt.setOrigin(0.5, 1);
+    txt.setDepth(70 + ((this._floatLabelSeq = (this._floatLabelSeq || 0) + 1) % 16));
     this.tweens.add({
-      targets: txt, y: wy - 30, duration: 600, ease: 'Linear', delay: stagger,
+      targets: txt, y: wy - 30, duration: 600, ease: 'Linear',
     });
     this.tweens.add({
-      targets: txt, alpha: 0, duration: 400, ease: 'Cubic.easeIn', delay: 400 + stagger,
+      targets: txt, alpha: 0, duration: 400, ease: 'Cubic.easeIn', delay: 400,
       onComplete: function () { txt.destroy(); },
     });
   };
@@ -70,6 +116,10 @@
      so the "boss down" moment reads the same: pop-in → long hold → drift + fade
      (~2.8 s total). `x,y` is the world baseline (callers offset by boss size). */
   M._bossKillBanner = function (x, y, text, color, glowColor) {
+    // Share the world-label anti-overlap registry so a draft-skip "+1 SHIELD"
+    // (or any callout) landing while this banner is still on screen stacks above
+    // it instead of overlapping. Banner lives ~2.8 s; reserve a taller band.
+    y = this._reserveLabelBand(x, y, 46, 2850);
     var txt = this.add.text(x, y, text, {
       fontFamily: 'monospace', fontSize: '38px', fontStyle: 'bold',
       color: color, stroke: '#000000', strokeThickness: 5,
@@ -391,8 +441,7 @@
       if (prevCm < ms && newCm >= ms && this.playerShields < this.MAX_SHIELDS) {
         this.playerShields++;
         var shLabel = 'Combo X' + ms + ' : +1 SHIELD';
-        var stk = this._shieldFloatStack++;
-        this._floatLabel(this.p.x, this.p.y - 30 - stk * 28, shLabel, '#00ffff', stk);
+        this._floatLabel(this.p.x, this.p.y - 30, shLabel, '#00ffff');
         this.cameras.main.flash(180, 0, 220, 255);
       }
     }

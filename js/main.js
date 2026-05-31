@@ -1368,10 +1368,14 @@ function initCursorHalo() {
     if (e.target.closest('.light-again-modal')) {
       halo.classList.add('cursor-halo--game');
       if (e.target.closest('button')) {
-        // In upgrade overlay: only card buttons trigger hover; buttons outside the overlay (close, pause, ?) are always hoverable
+        // In upgrade overlay: only clickable buttons trigger hover — the upgrade cards and
+        // the enabled Reroll/Skip footer buttons. A disabled Reroll button stays inert.
+        // Buttons outside the overlay (close, pause, ?) are always hoverable.
         var upgradeOverlay = document.getElementById('_la-upgrade-overlay');
         var insideUpgradeOverlay = upgradeOverlay && e.target.closest('#_la-upgrade-overlay');
-        if (insideUpgradeOverlay && !e.target.closest('._la-up-card')) {
+        var clickableUpgradeBtn = e.target.closest('._la-up-card') ||
+          e.target.closest('._la-up-foot:not(:disabled)');
+        if (insideUpgradeOverlay && !clickableUpgradeBtn) {
           stopLightGameHoverPoll();
           halo.classList.remove('cursor-halo--hover');
         } else {
@@ -1382,10 +1386,12 @@ function initCursorHalo() {
         // Mode select menu (overlays the canvas): regular UI, not gameplay — use the
         // normal site halo, not the larger game ring. Enabled mode cards (role="button")
         // and the "I am Steve" toggle are clickable → show the hover halo. The locked
-        // card and empty menu areas are not.
+        // card and empty menu areas are not. The resume section's button + loadout
+        // chips live outside the cards, so they're added explicitly.
         stopLightGameHoverPoll();
         halo.classList.remove('cursor-halo--game');
-        if (e.target.closest('.la-ms-card--enabled') || e.target.closest('.la-ms-steve')) {
+        if (e.target.closest('.la-ms-card--enabled') || e.target.closest('.la-ms-steve') ||
+            e.target.closest('.la-ms-resume-btn') || e.target.closest('.la-lo-chip')) {
           halo.classList.add('cursor-halo--hover');
         } else {
           halo.classList.remove('cursor-halo--hover');
@@ -1571,22 +1577,49 @@ function initScrollHint() {
   if (!hint) return;
   const game = document.getElementById('typing-game');
   const hero = document.querySelector('section.hero');
-  const mqShortViewport = window.matchMedia('(max-height: 725px)');
 
-  // When the scroll-hint is shifted to the side (short viewport + intro btn visible),
-  // align it vertically with the center of the intro button.
+  // Keep the scroll-hint clear of the intro buttons. The intro text length (and
+  // thus how far down the buttons sit) and the viewport height both vary, so we
+  // don't trust a fixed breakpoint: we measure the hint at its natural
+  // bottom-centre spot and, only if it actually overlaps the button group,
+  // park it just to the right of the group — vertically centred on it. This is
+  // future-proof against intro-text changes and screen sizes.
   function alignWithBtn() {
+    var grp = hero && hero.querySelector('.typing-game__intro-btns');
     var btn = hero && hero.querySelector('.typing-game__intro-btn--visible');
-    if (mqShortViewport.matches && btn) {
-      var btnRect = btn.getBoundingClientRect();
-      var heroRect = hero.getBoundingClientRect();
-      var btnCenterY = btnRect.top + btnRect.height / 2 - heroRect.top;
-      hint.style.top = (btnCenterY - hint.offsetHeight / 2) + 'px';
-      hint.style.bottom = 'auto';
-    } else {
+    // No intro buttons on screen → restore the default bottom-centre position.
+    if (!grp && !btn) {
       hint.style.top = '';
       hint.style.bottom = '';
+      hint.style.left = '';
+      hint.style.transform = '';
+      return;
     }
+    var ref = grp || btn;
+    // Reset to the natural position first, then measure whether it collides.
+    hint.style.top = '';
+    hint.style.bottom = '';
+    hint.style.left = '';
+    hint.style.transform = '';
+    var refRect = ref.getBoundingClientRect();
+    var hintRect = hint.getBoundingClientRect();
+    var margin = 14; // breathing room so they never visually touch
+    var overlapX = !(refRect.right + margin <= hintRect.left || hintRect.right + margin <= refRect.left);
+    var overlapY = !(refRect.bottom + margin <= hintRect.top || hintRect.bottom + margin <= refRect.top);
+    if (!overlapX || !overlapY) return; // natural spot is clear — leave it there
+
+    // Collides → move beside the group: vertically centred, a gap to its right,
+    // clamped to stay inside the hero.
+    var heroRect = hero.getBoundingClientRect();
+    var centerY = refRect.top + refRect.height / 2 - heroRect.top;
+    hint.style.top = (centerY - hint.offsetHeight / 2) + 'px';
+    hint.style.bottom = 'auto';
+    var gap = 24;
+    var leftPx = (refRect.right - heroRect.left) + gap;
+    var maxLeft = heroRect.width - hint.offsetWidth - 8;
+    if (leftPx > maxLeft) leftPx = maxLeft;
+    hint.style.left = leftPx + 'px';
+    hint.style.transform = 'none';
   }
 
   function update() {
@@ -1605,7 +1638,6 @@ function initScrollHint() {
 
   window.addEventListener('scroll', update, { passive: true });
   window.addEventListener('resize', alignWithBtn, { passive: true });
-  mqShortViewport.addEventListener('change', alignWithBtn);
 
   if (game) {
     // Re-evaluate visibility on game state changes
