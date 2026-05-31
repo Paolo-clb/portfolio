@@ -597,10 +597,12 @@
       ['line', 18.5,5, 18.5,8], ['line', 17,6.5, 20,6.5],
       ['line', 17.3,5.3, 19.7,7.7], ['line', 17.3,7.7, 19.7,5.3],
     ],
-    // BOUCLIER — a heraldic shield with a check (protection).
+    // ORBE DE BOUCLIER — a glowing energy orb: outer halo ring + solid core, a
+    // true match for the in-game shield sprite / HUD orbs (ring:core ≈ 1:1.8,
+    // mirroring _shOrbRing 18 / _shOrbR 10 in rendering.js).
     shield: [
-      ['poly', [6,5.5, 18,5.5, 18,11.8, 12,20, 6,11.8], true],
-      ['poly', [9,12, 11.2,14.2, 15.5,9.3], false],
+      ['circle', 12,12, 9],
+      ['dot', 12,12, 5],
     ],
     // DRONES — a quadcopter: hub, four arms, four rotors (orbiting kamikazes).
     drone: [
@@ -610,10 +612,12 @@
       ['circle', 5,5, 2.6], ['circle', 19,5, 2.6],
       ['circle', 5,19, 2.6], ['circle', 19,19, 2.6],
     ],
-    // CŒUR DE VERRE — a faceted ("glass") heart, fractured by a crack.
+    // SCORE MAUDIT — a "stonks" rising zig-zag arrow (curse trades a shield slot
+    // for a big score multiplier, so the icon screams "number go up").
     glassHeart: [
-      ['poly', [12,19.5, 6.5,13, 6,9.8, 7.6,8, 10,8.2, 12,10, 14,8.2, 16.4,8, 18,9.8, 17.5,13], true],
-      ['poly', [12,10, 10.4,12.6, 12.6,14, 11,16.6], false],
+      ['poly', [3,18, 8,12.5, 11,15, 15,8, 20,4.5], false],
+      ['line', 20,4.5, 14.8,4.5],
+      ['line', 20,4.5, 20,9.7],
     ],
     // RAGE DU DASH — a lightning bolt (furious speed).
     dashRage: [
