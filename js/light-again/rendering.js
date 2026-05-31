@@ -122,6 +122,7 @@
 
   M._pTexKey = function () {
     var p = this.p;
+    if (!p) return '_ar_cyan';   // null-safe during death/restart transitions
     // Steve skin: baked pickaxe (head pre-aligned to +x, rotates like the arrow).
     // Golden pickaxe while the dash is on cooldown, diamond when it's ready —
     // mirrors the arrow's cyan→yellow. Falls back to the arrow if the PNGs failed.
@@ -146,6 +147,10 @@
 
   M._renderPlayer = function () {
     var p = this.p;
+    // Hardened against a null player: _renderPlayer is also called from the
+    // hitstop fast-path (scene.update) without re-checking p, so a death/restart
+    // landing on a hitstop frame would otherwise throw here and freeze the loop.
+    if (!p) return;
     var key = this._pTexKey();
 
     // Normal hit i-frames: flicker (suppressed during the anomaly intro so
@@ -640,13 +645,20 @@
       this._lastScore = this.score;
       this._scoreTxt.setText(this.score);
     }
-    // Score: red tint during TW, cyan otherwise
-    if (this._twActive) {
-      this._scoreTxt.setColor('#ff3333');
-      this._scoreTxt.setAlpha(0.75);
-    } else {
-      this._scoreTxt.setColor('#00ffff');
-      this._scoreTxt.setAlpha(0.95);
+    // Score: red tint during TW, cyan otherwise. Guarded behind a state cache —
+    // setColor reparses the CSS string and re-rasterises the text canvas on every
+    // call, so running it unconditionally each frame was a needless per-frame GPU
+    // texture upload. The colour only flips when TW toggles.
+    var scoreTwNow = !!this._twActive;
+    if (scoreTwNow !== this._lastScoreTw) {
+      this._lastScoreTw = scoreTwNow;
+      if (scoreTwNow) {
+        this._scoreTxt.setColor('#ff3333');
+        this._scoreTxt.setAlpha(0.75);
+      } else {
+        this._scoreTxt.setColor('#00ffff');
+        this._scoreTxt.setAlpha(0.95);
+      }
     }
 
     // Combo multiplier
@@ -733,6 +745,37 @@
     g.strokePath();
   };
 
+  /* ---- Per-upgrade art (HUD canvas twin of LA.iconSvg) ----
+     Same LA.ICONS ops (0..24 grid) as the SVG renderer, so the HUD, the draft
+     and the mode-select loadout share one silhouette. Centred at (cx,cy),
+     `size` px wide, stroked in `color`. */
+  M._drawIconOps = function (ops, cx, cy, size, color, alpha) {
+    var g = this.hudGfx, s = size / 24;
+    function X(v) { return cx + (v - 12) * s; }
+    function Y(v) { return cy + (v - 12) * s; }
+    g.lineStyle(Math.max(1.4, 2 * s), color, alpha);
+    for (var i = 0; i < ops.length; i++) {
+      var op = ops[i], t = op[0];
+      if (t === 'rrect') { g.strokeRoundedRect(X(op[1]), Y(op[2]), op[3] * s, op[4] * s, op[5] * s); }
+      else if (t === 'circle') { g.strokeCircle(X(op[1]), Y(op[2]), op[3] * s); }
+      else if (t === 'dot') { g.fillStyle(color, alpha); g.fillCircle(X(op[1]), Y(op[2]), op[3] * s); }
+      else if (t === 'line') { g.beginPath(); g.moveTo(X(op[1]), Y(op[2])); g.lineTo(X(op[3]), Y(op[4])); g.strokePath(); }
+      else if (t === 'poly') {
+        var pts = op[1];
+        g.beginPath(); g.moveTo(X(pts[0]), Y(pts[1]));
+        for (var p = 2; p < pts.length; p += 2) g.lineTo(X(pts[p]), Y(pts[p + 1]));
+        if (op[2]) g.closePath();
+        g.strokePath();
+      }
+    }
+  };
+
+  M._drawUpgradeIcon = function (id, cx, cy, size, color, alpha) {
+    var ops = LA.ICONS && (LA.ICONS[id] || LA.ICONS['default']);
+    if (ops) this._drawIconOps(ops, cx, cy, size, color, alpha);
+    else this._drawIconPlaceholder(cx, cy, size, color, alpha);
+  };
+
   M._renderUpgradeHUD = function (cx, h, dt) {
     if (!this._upgradeLevels) return;
     var lvls = this._upgradeLevels;
@@ -752,6 +795,11 @@
         this._killCounterTxt.setOrigin(1, 1);
         this._killCounterTxt.setDepth(102);
         this._killCounterTxt.setScrollFactor(0);
+        // The object is born with empty text; clear the value cache so the first
+        // setText/setColor below always fires (otherwise a stale cache from a
+        // previous run could skip it and leave the counter blank).
+        this._lastKcText = null;
+        this._lastKcColor = null;
       }
 
       var kcText, kcColor, kcRatio, kcBarA;
@@ -780,8 +828,18 @@
         this._killCounterTxt.setScale(1.0 + (this._killCounterPulse || 0) * 0.22);
         this._killCounterTxt.setAlpha(0.78 + (this._killCounterPulse || 0) * 0.22);
       }
-      this._killCounterTxt.setText(kcText);
-      this._killCounterTxt.setColor(kcColor);
+      // Guard setText/setColor behind a last-value cache: both re-rasterise the
+      // text canvas, and kcText ('☠ ' + killsLeft) only changes on a kill while
+      // kcColor only changes at a threshold — so this was re-uploading an
+      // identical texture 60×/s. setPosition/setVisible are cheap, stay every frame.
+      if (kcText !== this._lastKcText) {
+        this._lastKcText = kcText;
+        this._killCounterTxt.setText(kcText);
+      }
+      if (kcColor !== this._lastKcColor) {
+        this._lastKcColor = kcColor;
+        this._killCounterTxt.setColor(kcColor);
+      }
       this._killCounterTxt.setPosition(w - _upMarginR, iy - 34);
       this._killCounterTxt.setVisible(true);
 
@@ -834,7 +892,7 @@
       // Inner icon — shared placeholder (real per-upgrade art TBD)
       var dotCx = ix + _upIconSize / 2;
       var dotCy = iy + _upIconSize / 2;
-      this._drawIconPlaceholder(dotCx, dotCy, 26, borderCol, 0.9);
+      this._drawUpgradeIcon(id, dotCx, dotCy, 28, borderCol, 0.9);
 
       // Progression dots below icon
       var dotsY  = iy + _upIconSize + 5;
@@ -855,14 +913,8 @@
       this.hudGfx.fillRect(cix, iy, _upIconSize, _upIconSize);
       this.hudGfx.lineStyle(2, 0xc8143c, 0.80);
       this.hudGfx.strokeRect(cix, iy, _upIconSize, _upIconSize);
-      var ctx = cix + _upIconSize / 2;
-      var cty = iy + _upIconSize / 2;
-      // downward warning triangle (vs the upgrades' circle) + two skull "eyes"
-      this.hudGfx.fillStyle(0xff436b, 0.85);
-      this.hudGfx.fillTriangle(ctx - 9, cty - 7, ctx + 9, cty - 7, ctx, cty + 9);
-      this.hudGfx.fillStyle(0x1c060a, 0.95);
-      this.hudGfx.fillCircle(ctx - 3, cty - 3, 1.5);
-      this.hudGfx.fillCircle(ctx + 3, cty - 3, 1.5);
+      // Per-curse art (glassHeart / dashRage / cursedBlast), tinted curse-red.
+      this._drawUpgradeIcon(curses[ck], cix + _upIconSize / 2, iy + _upIconSize / 2, 28, 0xff436b, 0.9);
     }
   };
 
@@ -885,19 +937,19 @@
 
     if (active) {
       // --- ACTIVE: red background, vertical drain fill ---
-      this.hudGfx.fillStyle(0x1a0505, 0.95);
+      this.hudGfx.fillStyle(0x2a0a1c, 0.95);
       this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
       var twTotalMs = (this._twWaveDurationMs || 0) + C.TW_DURATION;
       var twFrac    = Math.max(0, 1.0 - (this._twTotalElapsed || 0) / twTotalMs);
       var fillH     = Math.round((_upIconSize - 2) * twFrac);
       var pA        = 0.50 + 0.22 * Math.abs(Math.sin(gt * Math.PI * 4));
-      this.hudGfx.fillStyle(0xcc1111, pA);
+      this.hudGfx.fillStyle(0xe03b97, pA);
       this.hudGfx.fillRect(ix + 1, iy + 1, _upIconSize - 2, fillH);
       if (fillH > 2) {
-        this.hudGfx.fillStyle(0xff6666, 0.90);
+        this.hudGfx.fillStyle(0xff9ad6, 0.90);
         this.hudGfx.fillRect(ix + 1, iy + fillH - 1, _upIconSize - 2, 2);
       }
-      this.hudGfx.lineStyle(2, 0xee1111, 0.70 + 0.30 * Math.abs(Math.sin(gt * Math.PI * 4)));
+      this.hudGfx.lineStyle(2, 0xff5cae, 0.70 + 0.30 * Math.abs(Math.sin(gt * Math.PI * 4)));
       this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
     } else if (onCD) {
       // --- COOLDOWN: clearly greyed out, fill rising from bottom ---
@@ -917,28 +969,27 @@
     } else {
       // --- READY: pulsing crimson fill + bright border + outer glow ---
       var rP = 0.25 + 0.18 * Math.abs(Math.sin(gt * Math.PI * 1.8));
-      this.hudGfx.fillStyle(0x0a0807, 0.92);
+      this.hudGfx.fillStyle(0x1a0610, 0.92);
       this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
-      this.hudGfx.fillStyle(0xcc1111, rP);
+      this.hudGfx.fillStyle(0xe03b97, rP);
       this.hudGfx.fillRect(ix + 1, iy + 1, _upIconSize - 2, _upIconSize - 2);
       var rBorderA = 0.70 + 0.30 * Math.abs(Math.sin(gt * Math.PI * 1.8));
-      this.hudGfx.lineStyle(3, 0xee1111, rBorderA);
+      this.hudGfx.lineStyle(3, 0xff5cae, rBorderA);
       this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
     }
 
     // "TW" label — dim on CD, pulsing on ready
     if (this._twIconTxt) {
       this._twIconTxt.setPosition(dotCx, dotCy);
-      this._twIconTxt.setAlpha(
-        active ? 0.92
-        : onCD  ? 0.22
-        : 0.62 + 0.28 * Math.abs(Math.sin(gt * Math.PI * 1.8))
-      );
+      this._twIconTxt.setAlpha(0); // hidden — replaced by the rose clock glyph below
     }
+    var twGlyphCol = onCD ? 0x8a7a86 : 0xffc4e6;
+    var twGlyphA   = onCD ? 0.32 : (active ? 0.96 : 0.82 + 0.16 * Math.abs(Math.sin(gt * Math.PI * 1.8)));
+    this._drawUpgradeIcon('theWorld', dotCx, dotCy, 30, twGlyphCol, twGlyphA);
 
     // Dot below icon — grey on CD
     var dotsY = iy + _upIconSize + 5;
-    this.hudGfx.fillStyle(onCD ? 0x444444 : 0xcc1111, ready ? 0.92 : onCD ? 0.35 : 0.70);
+    this.hudGfx.fillStyle(onCD ? 0x444444 : 0xe03b97, ready ? 0.92 : onCD ? 0.35 : 0.70);
     this.hudGfx.fillCircle(dotCx, dotsY, _upDotR);
   };
 

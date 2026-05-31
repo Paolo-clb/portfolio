@@ -546,6 +546,131 @@
       'aria-hidden="true">' + LA.ICON_PLACEHOLDER_SVG + '</svg>';
   };
 
+  /* ---- Per-upgrade icon art (one source of truth) -------------------------
+     Stylish line-art glyphs, authored on a 0..24 grid in the game's neon DA,
+     that READ as the upgrade they stand for. The SAME definitions feed all
+     three icon surfaces, so an icon is drawn once and stays in sync:
+       • Draft cards (le tirage)  → LA.iconSvg(id, cls)        — upgrade-ui.js
+       • Mode-select loadout      → LA.iconSvg(id, cls)        — shell.js
+       • In-game HUD chips        → M._drawUpgradeIcon (canvas) — rendering.js
+     Each icon is a list of primitive ops; both the SVG and the canvas renderer
+     understand exactly these five, so they produce identical shapes:
+       ['rrect', x, y, w, h, r]        rounded rect          (stroked outline)
+       ['circle', cx, cy, r]          circle                (stroked outline)
+       ['dot', cx, cy, r]             filled disc           (accent / spark)
+       ['line', x1, y1, x2, y2]       segment               (stroked)
+       ['poly', [x1,y1, x2,y2, …], closed]  polyline/polygon (stroked)
+     Colour comes from `currentColor` (DOM) / the passed colour (canvas), so the
+     per-level frame colour (cyan I · gold II · violet III) tints the glyph too. */
+  LA.ICONS = {
+    // TORPILLE — a dart/torpedo streaking up-right with speed trails (dash-attack).
+    dashAtk: [
+      ['poly', [3.5,11, 21,3.5, 13,20, 11,13], true],
+      ['line', 2.5,16, 6,14],
+      ['line', 4.5,20, 8,18],
+    ],
+    // DÉTONATION — a marked target reticle bursting at its centre.
+    detonation: [
+      ['circle', 12,12, 6],
+      ['line', 12,2.5, 12,5], ['line', 12,19, 12,21.5],
+      ['line', 2.5,12, 5,12], ['line', 19,12, 21.5,12],
+      ['dot', 12,12, 1.7],
+      ['line', 9.6,9.6, 10.9,10.9], ['line', 14.4,9.6, 13.1,10.9],
+      ['line', 9.6,14.4, 10.9,13.1], ['line', 14.4,14.4, 13.1,13.1],
+    ],
+    // DASH — three growing chevrons (»») reading as a forward burst of speed.
+    dash: [
+      ['poly', [3,8.5, 6.5,12, 3,15.5], false],
+      ['poly', [8,6.5, 13,12, 8,17.5], false],
+      ['poly', [13.5,5, 19,12, 13.5,19], false],
+    ],
+    // EXPLOSION — a round bomb with a sparking fuse (delayed blast).
+    baseAtk: [
+      ['circle', 10.5,15, 5.5],
+      ['poly', [14,11, 15.5,8, 18,7], false],
+      ['line', 18.5,5, 18.5,8], ['line', 17,6.5, 20,6.5],
+      ['line', 17.3,5.3, 19.7,7.7], ['line', 17.3,7.7, 19.7,5.3],
+    ],
+    // BOUCLIER — a heraldic shield with a check (protection).
+    shield: [
+      ['poly', [6,5.5, 18,5.5, 18,11.8, 12,20, 6,11.8], true],
+      ['poly', [9,12, 11.2,14.2, 15.5,9.3], false],
+    ],
+    // DRONES — a quadcopter: hub, four arms, four rotors (orbiting kamikazes).
+    drone: [
+      ['rrect', 9.8,9.8, 4.4,4.4, 1.3],
+      ['line', 10.4,10.4, 6.6,6.6], ['line', 13.6,10.4, 17.4,6.6],
+      ['line', 10.4,13.6, 6.6,17.4], ['line', 13.6,13.6, 17.4,17.4],
+      ['circle', 5,5, 2.6], ['circle', 19,5, 2.6],
+      ['circle', 5,19, 2.6], ['circle', 19,19, 2.6],
+    ],
+    // CŒUR DE VERRE — a faceted ("glass") heart, fractured by a crack.
+    glassHeart: [
+      ['poly', [12,19.5, 6.5,13, 6,9.8, 7.6,8, 10,8.2, 12,10, 14,8.2, 16.4,8, 18,9.8, 17.5,13], true],
+      ['poly', [12,10, 10.4,12.6, 12.6,14, 11,16.6], false],
+    ],
+    // RAGE DU DASH — a lightning bolt (furious speed).
+    dashRage: [
+      ['poly', [13,3, 5,13.5, 11.5,13.5, 10.5,21, 19,10.5, 12.5,10.5], true],
+    ],
+    // SOUFFLE MAUDIT — a skull (cursed).
+    cursedBlast: [
+      ['circle', 12,10, 5],
+      ['dot', 10,10.2, 1.2], ['dot', 14,10.2, 1.2],
+      ['poly', [9,14.5, 9,16.6, 15,16.6, 15,14.5], false],
+      ['line', 11,15, 11,16.6], ['line', 13,15, 13,16.6],
+    ],
+    // THE WORLD — a clock (time stop).
+    theWorld: [
+      ['circle', 12,12, 8],
+      ['line', 12,12, 12,7.2], ['line', 12,12, 15.6,13.6],
+      ['dot', 12,12, 1],
+    ],
+    // Generic curse fallback (warning) + generic placeholder (image frame).
+    curse: [
+      ['poly', [12,4, 21,19, 3,19], true],
+      ['line', 12,9.5, 12,14], ['dot', 12,16.6, 0.85],
+    ],
+    default: [
+      ['rrect', 3,3, 18,18, 2.5],
+      ['dot', 8.5,8.5, 1.6],
+      ['poly', [21,15, 15.5,9.5, 5,20], false],
+    ],
+  };
+
+  /* Build the inner SVG markup for an icon's ops (shared by every DOM surface). */
+  LA._iconOpsToSvg = function (ops) {
+    var out = '';
+    for (var i = 0; i < ops.length; i++) {
+      var op = ops[i], k = op[0];
+      if (k === 'rrect') {
+        out += '<rect x="' + op[1] + '" y="' + op[2] + '" width="' + op[3] +
+               '" height="' + op[4] + '" rx="' + op[5] + '"/>';
+      } else if (k === 'circle') {
+        out += '<circle cx="' + op[1] + '" cy="' + op[2] + '" r="' + op[3] + '"/>';
+      } else if (k === 'dot') {
+        out += '<circle cx="' + op[1] + '" cy="' + op[2] + '" r="' + op[3] +
+               '" fill="currentColor" stroke="none"/>';
+      } else if (k === 'line') {
+        out += '<line x1="' + op[1] + '" y1="' + op[2] + '" x2="' + op[3] + '" y2="' + op[4] + '"/>';
+      } else if (k === 'poly') {
+        var pts = op[1], s = '';
+        for (var j = 0; j < pts.length; j += 2) s += (j ? ' ' : '') + pts[j] + ',' + pts[j + 1];
+        out += op[2] ? '<polygon points="' + s + '"/>' : '<polyline points="' + s + '"/>';
+      }
+    }
+    return out;
+  };
+
+  /* One upgrade/curse/secret icon as an inline SVG. `key` is an upgrade id, a
+     curse id, 'theWorld', 'curse' (generic) or anything → 'default'. */
+  LA.iconSvg = function (key, cls) {
+    var ops = LA.ICONS[key] || LA.ICONS.default;
+    return '<svg class="' + (cls || '') + '" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ' +
+      'aria-hidden="true">' + LA._iconOpsToSvg(ops) + '</svg>';
+  };
+
   /* Pre-computed squared radii (avoid sqrt in hot loops) */
   C.SEPARATION_RADIUS_SQ    = C.SEPARATION_RADIUS * C.SEPARATION_RADIUS;
   C.SHOCKWAVE_RADIUS_SQ     = C.SHOCKWAVE_RADIUS * C.SHOCKWAVE_RADIUS;

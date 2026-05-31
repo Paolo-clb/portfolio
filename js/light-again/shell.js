@@ -16,6 +16,7 @@
   var currentMode  = null;  // 'sandbox' | 'hardcore'
   var menuEl       = null;  // mode-select DOM overlay
   var menuBtnEl    = null;  // sandbox "Menu" header button
+  var menuResumable = false; // true while the open home menu has a LIVE run to resume
 
   /* ---- i18n helper ---- */
   function t(key) {
@@ -36,6 +37,25 @@
   }
 
   /* ---- Mode select helpers ---- */
+
+  // The header button doubles as the pause / resume toggle. Icon mirrors the run
+  // state: ⏸ (two bars) while playing, ▶ while the home (mode-select) menu is open
+  // — because opening the home pauses the run.
+  function menuPauseIconSvg() {
+    return '<svg class="light-again-menu-btn__icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z"/></svg>';
+  }
+  function menuPlayIconSvg() {
+    return '<svg class="light-again-menu-btn__icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polygon points="9 6 9 18 18 12 9 6"/></svg>';
+  }
+  function updateMenuBtnIcon() {
+    if (!menuBtnEl) return;
+    var onHome = !!menuEl;  // home menu open ⇒ the run is paused ⇒ show ▶
+    menuBtnEl.innerHTML = onHome ? menuPlayIconSvg() : menuPauseIconSvg();
+    var lbl = onHome ? t('lightAgainResume') : t('lightAgainPause');
+    menuBtnEl.setAttribute('aria-label', lbl);
+    menuBtnEl.setAttribute('title', lbl);
+  }
+
   function updateMenuBtn() {
     if (!menuBtnEl) return;
     // Home button is available whenever a run is active — sandbox, hardcore, and
@@ -46,12 +66,14 @@
     // button (× | menu | ? | ⏸) instead of leaving a gap when it's hidden.
     var modal = (menuBtnEl.closest && menuBtnEl.closest('.light-again-modal')) || (overlayEl && overlayEl.querySelector('.light-again-modal'));
     if (modal) modal.classList.toggle('la-has-menu', show);
+    updateMenuBtnIcon();
   }
 
   function dismissModeMenu() {
     if (!menuEl) return;
     var el = menuEl;
     menuEl = null;
+    updateMenuBtnIcon();   // home closing ⇒ flip the toggle back to ⏸
     el.style.transition = 'opacity .22s ease';
     el.style.opacity = '0';
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 250);
@@ -146,11 +168,7 @@
       'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
   }
   // One chip icon: upgrades → shared placeholder; curse/The World → semantic glyph.
-  function laLoadoutIcon(it) {
-    return it.kind === 'up'
-      ? window.LightAgain.iconPlaceholderSvg('la-lo-svg')
-      : laSvg(laUpGlyphInner(it.glyphId));
-  }
+  function laLoadoutIcon(it) { return window.LightAgain.iconSvg(it.glyphId, 'la-lo-svg'); }
 
   // Build the loadout section HTML for a live scene + a wire() that hooks up
   // the hover/focus → detail behaviour. Returns null only if there's no scene.
@@ -180,13 +198,13 @@
     for (i = 0; i < curseOrder.length; i++) {
       var cid = curseOrder[i];
       if (tcz[cid] && CU[cid]) {
-        items.push({ kind: 'curse', glyphId: 'curse', color: '#ff436b', name: t(CU[cid].i18nName), lvl: 1, maxLvl: 1,
+        items.push({ kind: 'curse', glyphId: cid, color: '#ff436b', name: t(CU[cid].i18nName), lvl: 1, maxLvl: 1,
           levels: [{ n: 1, txt: t(CU[cid].i18nDesc), on: true, color: '#ff436b' }] });
       }
     }
     if (sc._twUnlocked && LA.SECRET_UPGRADE) {
-      items.push({ kind: 'world', glyphId: 'theWorld', color: '#ffc832', name: t(LA.SECRET_UPGRADE.i18nName), lvl: 1, maxLvl: 1,
-        levels: [{ n: 1, txt: t(LA.SECRET_UPGRADE.i18nDesc1), on: true, color: '#ffc832' }] });
+      items.push({ kind: 'world', glyphId: 'theWorld', color: '#ff5cae', name: t(LA.SECRET_UPGRADE.i18nName), lvl: 1, maxLvl: 1,
+        levels: [{ n: 1, txt: t(LA.SECRET_UPGRADE.i18nDesc1), on: true, color: '#ff5cae' }] });
     }
 
     var titleHtml = '<div class="la-lo-title">' + t('laRunLoadoutTitle') + '</div>';
@@ -220,7 +238,6 @@
           ? '<b style="color:' + (lv.on ? lv.color : '#5a6678') + '">' + t('laRunLevelShort') + ' ' + lv.n + '</b> — '
           : '';
         rows += '<li class="la-lo-lvl ' + (lv.on ? 'on' : 'off') + '">' +
-          '<span class="la-lo-lvl-ic" style="color:' + (lv.on ? lv.color : '#3a4250') + '">' + laLoadoutIcon(it) + '</span>' +
           '<span class="la-lo-lvl-txt">' + label + lv.txt + '</span></li>';
       }
       details[k] = '<div class="la-lo-d-head" style="color:' + it.color + '">' + it.name +
@@ -345,8 +362,8 @@
         '#_la-mode-select .la-lo-d-head{font-size:.72rem;font-weight:700;letter-spacing:.03em;margin-bottom:.45rem}' +
         '#_la-mode-select .la-lo-levels{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.34rem}' +
         '#_la-mode-select .la-lo-lvl{display:flex;align-items:flex-start;gap:.5rem}' +
-        '#_la-mode-select .la-lo-lvl-ic{flex:0 0 auto;width:17px;height:17px;display:flex;align-items:center;justify-content:center;margin-top:1px}' +
-        '#_la-mode-select .la-lo-lvl-ic .la-lo-svg{width:16px;height:16px}' +
+        '#_la-mode-select ' +
+        '#_la-mode-select ' +
         '#_la-mode-select .la-lo-lvl-txt{font-size:.6rem;line-height:1.4;color:#aebccd}' +
         '#_la-mode-select .la-lo-lvl.off{opacity:.85}' +
         '#_la-mode-select .la-lo-lvl.off .la-lo-lvl-txt{color:#5a6678}' +
@@ -401,6 +418,7 @@
     var fr = (localStorage.getItem('portfolio_lang') || 'fr') !== 'en';
     // Resumable only if we came from a LIVE run — a dead game-over run restarts fresh.
     var resumable = fromActiveGame && !wasGameOver;
+    menuResumable = resumable;   // the ▶ toggle resumes only when this is true
     var sbActive = resumable && currentMode === 'sandbox';
     var hcActive = resumable && currentMode === 'hardcore';
     var activeBadge = '<div class="la-ms-active-badge">' + (fr ? 'En cours' : 'In progress') + '</div>';
@@ -499,12 +517,13 @@
       // Tip in normal flow at the bottom of the panel (mentions seeing upgrades). Kept
       // inside .la-ms-wrap so it never overlaps the content when everything is stacked.
       '<div class="la-ms-tip">' + (fr
-        ? '💡 L’icône <b>menu</b> (en haut à droite) sert aussi à mettre la partie <b>en pause</b> et à <b>voir vos améliorations</b>.'
-        : '💡 The <b>menu</b> icon (top right) also <b>pauses</b> the game and lets you <b>see your upgrades</b>.') + '</div>' +
+        ? '💡 Le bouton <b>⏸ pause</b> (en haut à droite) met la partie en pause, ouvre ce menu et vos <b>améliorations</b> ; l’icône <b>▶</b> reprend la partie en cours.'
+        : '💡 The <b>⏸ pause</b> button (top right) pauses the game, opens this menu and your <b>upgrades</b>; the <b>▶</b> icon resumes the current run.') + '</div>' +
       '</div>';
 
     container.style.position = 'relative';
     container.appendChild(menuEl);
+    updateMenuBtnIcon();   // home now open ⇒ the toggle shows ▶
 
     // Hook up the loadout's hover/focus → 3-levels detail (no-op if absent).
     if (loadout) loadout.wire(menuEl);
@@ -1098,7 +1117,7 @@
       if (!isLightAgainGameOverOpen() && !userPaused && !upgradeDraftOpen && activeGame && typeof activeGame.resume === 'function') {
         activeGame.resume();
       }
-      var hb = overlayEl && overlayEl.querySelector('.light-again-help-btn:not(.light-again-pause-btn)');
+      var hb = overlayEl && overlayEl.querySelector('.light-again-help-btn:not(.light-again-pause-btn):not(.light-again-menu-btn)');
       if (hb) hb.focus();
     }
   }
@@ -1155,6 +1174,11 @@
     if (document.getElementById('_la-tutorial-confirm')) return;
     var fr = (localStorage.getItem('portfolio_lang') || 'fr') !== 'en';
 
+    // Was this reached from the paused home menu (vs. the in-run ? button)?
+    // It decides where Cancel returns to, and the home menu must be closed on
+    // launch so it can't linger (still reading "HARDCORE") behind the tutorial.
+    var fromHomeMenu = !!menuEl;
+
     // Freeze the doomed hardcore run behind the dialog.
     if (activeGame && typeof activeGame.pause === 'function') activeGame.pause();
 
@@ -1189,11 +1213,19 @@
 
     ov.querySelector('#_la-tc-cancel').addEventListener('click', function () {
       close();
-      clearPauseState();
-      if (activeGame && typeof activeGame.resume === 'function') activeGame.resume();
+      // From the paused home menu → return there (stay paused, menu still open).
+      // From the in-run ? button → resume the hardcore run we froze.
+      if (!fromHomeMenu) {
+        clearPauseState();
+        if (activeGame && typeof activeGame.resume === 'function') activeGame.resume();
+      }
     });
     ov.querySelector('#_la-tc-go').addEventListener('click', function () {
       close();
+      // Close the home menu first — otherwise it lingers behind the launching
+      // tutorial, still showing "En cours · HARDCORE" while the run restarts as
+      // Sandbox (no-op when the confirm came from the in-run ? button).
+      dismissModeMenu();
       window.__laStartTutorialOnReady = true;
       startWithMode(container, 'sandbox', true);  // ends hardcore, restarts as sandbox + tutorial
     });
@@ -1244,14 +1276,23 @@
     menuBtnEl = document.createElement('button');
     menuBtnEl.type = 'button';
     menuBtnEl.className = 'light-again-help-btn light-again-menu-btn';
-    menuBtnEl.innerHTML =
-      '<svg class="light-again-menu-btn__icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-        '<path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3L12 3z"/>' +
-      '</svg>';
-    menuBtnEl.setAttribute('aria-label', t('laMenuBtn') || 'Menu');
-    menuBtnEl.setAttribute('title', t('laMenuBtn') || 'Menu');
+    menuBtnEl.innerHTML = menuPauseIconSvg();   // starts in the playing state ⇒ ⏸
+    menuBtnEl.setAttribute('aria-label', t('lightAgainPause'));
+    menuBtnEl.setAttribute('title', t('lightAgainPause'));
     menuBtnEl.style.display = 'none';
+    // Pause / resume toggle:
+    //  • Playing (⏸) → pause the run and open the home (mode-select) menu.
+    //  • On the home menu (▶, run paused) → resume the current run if there is a
+    //    live one; if there isn't (fresh launch / dead game-over run), do nothing.
     menuBtnEl.addEventListener('click', function () {
+      if (menuEl) {
+        if (menuResumable && activeGame && typeof activeGame.resume === 'function') {
+          dismissModeMenu();
+          clearPauseState();
+          activeGame.resume();
+        }
+        return;
+      }
       if (!activeGame || !container) return;
       if (typeof activeGame.pause === 'function') activeGame.pause();
       showModeMenu(container, true);
@@ -1413,8 +1454,9 @@
     document.addEventListener('sitelangchange', function () {
       updateBtnText();
       if (overlayEl) {
-        var hb = overlayEl.querySelector('.light-again-help-btn:not(.light-again-pause-btn)');
+        var hb = overlayEl.querySelector('.light-again-help-btn:not(.light-again-pause-btn):not(.light-again-menu-btn)');
         if (hb) hb.setAttribute('aria-label', t('lightAgainHelp'));
+        updateMenuBtnIcon();   // re-localise the pause/resume toggle's label
         updatePauseBtnUi(overlayEl.querySelector('.light-again-pause-btn'));
       }
       // Close help popup on lang change — will reopen with fresh language

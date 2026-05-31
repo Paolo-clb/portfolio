@@ -683,7 +683,16 @@
   /* The revive state machine — REACT → TRAVEL → REBUILD → finish. Real dt. */
   M._updateFairyRevive = function (dt) {
     var f = this._fairy, p = this.p;
-    if (!f) return;
+    if (!f) {
+      // Safety net against a soft-lock. _fairyReviving freezes the entire game
+      // (p stays DEAD, the world is held) and is normally released only by
+      // _fairyReviveFinish. If the fairy ever disappeared mid-cinematic, the
+      // loop would return here every frame forever — a permanent frozen DEAD
+      // state with no game-over (it's intercepted). Finish the revive cleanly so
+      // the player is always handed back a live, controllable ship.
+      if (this._fairyReviving && p) this._fairyReviveFinish();
+      return;
+    }
     var dxs = this._fairyDeathX, dys = this._fairyDeathY;
     // Hard-pin the ship at the death spot for the WHOLE cinematic — the game is
     // truly frozen: the player cannot move or drift until the resurrection.

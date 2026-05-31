@@ -8,6 +8,11 @@
   var C  = LA.C;
   var M  = LA.sceneMethods;
 
+  // Hoisted comparator: stateless, so it lives once at module scope instead of
+  // being re-allocated on every frame's en.sort() call (a hot path at high
+  // enemy counts).
+  function _byX(a, b) { return a.x - b.x; }
+
   M._updateEnemies = function (dt) {
     var ms = dt * 1000, sc60 = dt * 60;
     var stDrg = Math.pow(0.92, sc60);
@@ -15,7 +20,7 @@
     var p = this.p, en = this.enemies;
 
     // Sort by x for early-exit separation: O(n log n + n·k) vs O(n²)
-    en.sort(function (a, b) { return a.x - b.x; });
+    en.sort(_byX);
 
     for (var i = 0; i < en.length; i++) {
       var a = en[i];

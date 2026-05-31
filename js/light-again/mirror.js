@@ -39,6 +39,9 @@
   var BODY_COL  = 0xff3aa0;   // hot-magenta rival (distinct from the cyan player)
   var ORB_COL   = 0xb060ff;   // violet shield orbs
   var VULN_COL  = 0xffe040;   // amber while recovering / open
+  var TW_GHOST_COL = 0xb060ff; // violet phantom during The World — recognisably the rival's own
+                               // time-stop hue (matches its burst rings), distinct from the
+                               // player's GOLD World tint and from the AMBER vulnerable look.
 
   // Colour gradient used by the dash-attack body/trail and the nova shards.
   var GRAD = [0xff3aa0, 0xc24bff, 0x7a6bff, 0x46b6ff, 0x66ffe0];
@@ -1254,7 +1257,7 @@
         if (!gh.active) continue;
         gh.alpha -= dt * 3.2;
         if (gh.alpha <= 0) { gh.active = false; gh.spr.setVisible(false); }
-        else gh.spr.setAlpha(gh.alpha * 0.5);
+        else { gh.spr.setAlpha(gh.alpha * 0.5); if (this._twActive) gh.spr.setTint(TW_GHOST_COL); }
       }
       var dashing  = dispersing || d.aPhase === 'DASH';
       var charging = d.aPhase === 'TELE';
@@ -1263,6 +1266,14 @@
       else if (charging) { col = (Math.sin(gt * Math.PI * 8) > 0) ? 0xffffff : BODY_COL; rot = d.lockAng; }
       else if (recover)  { col = (Math.sin(gt * Math.PI * 12) > 0) ? VULN_COL : 0xff8a3a;
                            sx = sy = BASE_SCL * (0.92 + 0.06 * Math.sin(gt * 22)); }
+      // The World: same violet phantom as the real rival (kept a touch more
+      // translucent so the "real one is more opaque" tell still holds). The
+      // amber RECOVER look is preserved so decoys mirror the real one's
+      // punish-window tell instead of all flattening to one colour.
+      if (this._twActive) {
+        a = (0.60 + 0.20 * Math.sin(gt * Math.PI * 3)) * (DECOY_ALPHA / 0.95);
+        if (!recover) col = TW_GHOST_COL;
+      }
       d._rotA = rot; d._sclX = sx; d._sclY = sy;
       d.spr.setPosition(d.x, d.y); d.spr.setRotation(rot); d.spr.setScale(sx, sy);
       d.spr.setAlpha(a); d.spr.setTint(col);
@@ -1316,7 +1327,7 @@
       if (!gh.active) continue;
       gh.alpha -= dt * 3.2;
       if (gh.alpha <= 0) { gh.active = false; gh.spr.setVisible(false); }
-      else gh.spr.setAlpha(gh.alpha * 0.6);
+      else { gh.spr.setAlpha(gh.alpha * 0.6); if (this._twActive) gh.spr.setTint(TW_GHOST_COL); }
     }
 
     var vuln     = mir.vulnerable && mir.state === 'RECOVER';
@@ -1344,6 +1355,15 @@
     }
     if (mir.hitT > 0 && !dashing) { bodyCol = 0xffffff; alpha = 1.0; }
     if (dodging) alpha = 0.45;   // blur-out while evading
+
+    // The World: violet phantom look while time is stopped (its own time-stop
+    // hue). Covers both the freeze-wait and its own time-stop burst. The
+    // vulnerable RECOVER look is preserved (amber + dizzy stars) so the punish
+    // window stays clearly distinct from the dodge-ready phantom states.
+    if (this._twActive) {
+      alpha = 0.60 + 0.20 * Math.sin(gt * Math.PI * 3);
+      if (!vuln) bodyCol = TW_GHOST_COL;
+    }
 
     var rotA;
     if (dashing)       rotA = mir.dashSpin;     // tournoie sur lui-même

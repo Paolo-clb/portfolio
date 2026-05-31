@@ -26,7 +26,7 @@
   /* ================================================================
      BUILD & SHOW OVERLAY
      ================================================================ */
-  // Per-level chrome. Lv2 keeps its semantic gold; Lv1 follows the theme accent;
+  // Per-level chrome. Lv2 keeps its semantic gold; Lv1 is fixed cyan;
   // Lv3 (capstone) gets a distinct bright violet so maxed picks read as special.
   function levelStyle(level) {
     if (level >= 3) return {
@@ -42,10 +42,10 @@
       color: '#ffc832', label: 'Niv. 2',
     };
     return {
-      border: 'var(--la-accent-line)', borderHi: 'var(--la-accent)',
-      glow: 'var(--la-accent-glow)', fill: 'var(--la-accent-faint)',
-      fillBadge: 'var(--la-accent-fill)', fillBadgeBorder: 'var(--la-accent-soft)',
-      color: 'var(--la-accent)', label: 'Niv. 1',
+      border: 'rgba(0,255,255,0.55)', borderHi: 'rgba(0,255,255,0.95)',
+      glow: 'rgba(0,255,255,0.14)', fill: 'rgba(0,255,255,0.05)',
+      fillBadge: 'rgba(0,255,255,0.15)', fillBadgeBorder: 'rgba(0,255,255,0.32)',
+      color: '#00ffff', label: 'Niv. 1',
     };
   }
 
@@ -167,8 +167,7 @@
         ].join(';');
         // Upgrades show the shared placeholder (real art TBD); curses keep their
         // semantic ⚠ glyph. data-upgrade-img is the hook for the future real icon.
-        if (isCurse) imgWrap.textContent = icon;
-        else         imgWrap.innerHTML   = LA.iconPlaceholderSvg('la-up-ph');
+        imgWrap.innerHTML = LA.iconSvg(choice.id, 'la-up-ph');
         imgWrap.setAttribute('data-upgrade-img', (isCurse ? 'curse-' : '') + choice.id + (isCurse ? '' : '-' + choice.level));
         card.appendChild(imgWrap);
 
@@ -347,10 +346,10 @@
     card.className = '_la-up-card';
     card.style.cssText = [
       'width:100%', 'padding:1rem .8rem .8rem',
-      'border:2px solid rgba(180,0,0,0.6)',
+      'border:2px solid rgba(220,40,140,0.6)',
       'border-radius:12px',
       'background:rgba(18,4,4,0.95)',
-      'color:#ffcccc', 'cursor:pointer',
+      'color:#ffd6ea', 'cursor:pointer',
       'font-family:monospace', 'text-align:center',
       'transition:transform .15s,box-shadow .2s,border-color .2s',
       'outline:none',
@@ -360,30 +359,30 @@
 
     card.addEventListener('mouseenter', function () {
       card.style.transform = 'translateY(-4px) scale(1.04)';
-      card.style.boxShadow = '0 0 28px 6px rgba(180,0,0,0.35)';
-      card.style.borderColor = 'rgba(220,20,20,0.95)';
+      card.style.boxShadow = '0 0 28px 6px rgba(220,40,140,0.35)';
+      card.style.borderColor = 'rgba(255,92,174,0.95)';
     });
     card.addEventListener('mouseleave', function () {
       card.style.transform = '';
       card.style.boxShadow = '';
-      card.style.borderColor = 'rgba(180,0,0,0.6)';
+      card.style.borderColor = 'rgba(220,40,140,0.6)';
     });
 
     // Icon
     var imgWrap = document.createElement('div');
     imgWrap.style.cssText = [
       'width:72px', 'height:72px', 'margin:0 auto .6rem',
-      'border:2px solid rgba(180,0,0,0.5)', 'border-radius:10px',
-      'background:rgba(180,0,0,0.08)',
+      'border:2px solid rgba(220,40,140,0.5)', 'border-radius:10px',
+      'background:rgba(220,40,140,0.08)',
       'display:flex', 'align-items:center', 'justify-content:center',
-      'font-size:2rem', 'color:#ff4444',
+      'font-size:2rem', 'color:#ff5cae',
     ].join(';');
-    imgWrap.textContent = '⏱';
+    imgWrap.innerHTML = LA.iconSvg('theWorld', 'la-up-ph');
     card.appendChild(imgWrap);
 
     // Name
     var name = document.createElement('div');
-    name.style.cssText = 'font-size:.85rem;font-weight:700;color:#ff4444;margin-bottom:.3rem;letter-spacing:.08em';
+    name.style.cssText = 'font-size:.85rem;font-weight:700;color:#ff5cae;margin-bottom:.3rem;letter-spacing:.08em';
     name.textContent = t(def.i18nName);
     card.appendChild(name);
 
@@ -393,16 +392,16 @@
       'display:inline-block',
       'font-size:.48rem', 'letter-spacing:.1em', 'text-transform:uppercase',
       'padding:.12rem .5rem', 'border-radius:4px', 'margin-bottom:.4rem',
-      'background:rgba(180,0,0,0.18)',
-      'color:#ff4444',
-      'border:1px solid rgba(180,0,0,0.45)',
+      'background:rgba(220,40,140,0.18)',
+      'color:#ff5cae',
+      'border:1px solid rgba(220,40,140,0.45)',
     ].join(';');
     badge.textContent = 'SECRET';
     card.appendChild(badge);
 
     // Description
     var desc = document.createElement('div');
-    desc.style.cssText = 'font-size:.58rem;color:#ddaaaa;line-height:1.5;margin-top:.3rem';
+    desc.style.cssText = 'font-size:.58rem;color:#e6aacb;line-height:1.5;margin-top:.3rem';
     desc.textContent = t(def.i18nDesc1);
     card.appendChild(desc);
 

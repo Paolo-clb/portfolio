@@ -585,6 +585,18 @@
         window.__laTutorialActive = false;
         var tutOv = document.getElementById('_la-tut-overlay');
         if (tutOv && tutOv.parentNode) tutOv.parentNode.removeChild(tutOv);
+        // Symmetric teardown for the upgrade / secret / curse-fountain draft
+        // overlay (they share this id). The tutorial overlay was torn down above
+        // but this one never was: a restart or mode-switch fired while a draft
+        // was open left it orphaned ON TOP of the fresh run — pointer-events:auto
+        // + z-index:55 swallow every click (a broken kill-switch), and its card
+        // listeners pin the entire dead scene in memory (a major leak). Also drop
+        // the boss-draft spawn-suppression flags so an interrupted draft can never
+        // leave natural spawns frozen on the next run.
+        var upOv = document.getElementById('_la-upgrade-overlay');
+        if (upOv && upOv.parentNode) upOv.parentNode.removeChild(upOv);
+        self._bossDraftPending = false;
+        self._upgradeDraftOpen = false;
         window.__laSceneRef = null;
         if (self._onWindowFocus) {
           window.removeEventListener('focus', self._onWindowFocus);
@@ -610,6 +622,26 @@
     },
 
     update: function (_time, delta) {
+      // Defensive guard around the whole per-frame chain. update() drives dozens
+      // of subsystems back-to-back (enemies, projectiles, collisions, bosses,
+      // curses, highways, fairy, HUD). A single unguarded null-deref in ANY of
+      // them would propagate out of Phaser's game loop and freeze the entire game
+      // permanently (the "le jeu crash parfois" symptom). Catching here turns a
+      // hard freeze into a single skipped frame — the game recovers next tick.
+      try {
+        this._updateStep(_time, delta);
+      } catch (e) {
+        this._updateErrCount = (this._updateErrCount || 0) + 1;
+        // Log the first occurrence with its full stack (that pinpoints the bug);
+        // stay silent afterwards so a recurring error can't flood the console
+        // (which would itself stall the page).
+        if (this._updateErrCount === 1 && window.console) {
+          console.error('[LightAgain] update() error caught — frame skipped to avoid a hard freeze:', e);
+        }
+      }
+    },
+
+    _updateStep: function (_time, delta) {
       var dt = Math.min(delta / 1000, 0.05);
 
       // Loader warmup

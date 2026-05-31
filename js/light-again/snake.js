@@ -76,6 +76,27 @@
     if (!s) return;
     if (s.gfx)   s.gfx.destroy();
     if (s.fxGfx) s.fxGfx.destroy();
+    // Safety sweep for live venom that would outlive the boss. The serpent
+    // renderer dies with it, so spare parried hatchlings (yours) by revealing
+    // their default shard + dropping the tag, and silently drop the rest.
+    // _killSnake already runs a richer (FX-laden) sweep before calling us, so on
+    // the death path this no-ops; it matters for the direct _clearSnake(true)
+    // callers (tutorial relaunch, shutdown) that would otherwise leave invisible
+    // but still-active venom able to keep striking the player.
+    var prj = this.projectiles;
+    if (prj) {
+      for (var pi = prj.length - 1; pi >= 0; pi--) {
+        var pr = prj[pi];
+        if (!pr.snakeSpit) continue;
+        if (pr.isReflected) {
+          if (pr.spr) { pr.spr.setVisible(true); pr.spr.setTint(0x66ffff); }
+          pr.snakeSpit = false;
+          continue;
+        }
+        this._destroyProjectile(pr);
+        prj.splice(pi, 1);
+      }
+    }
   };
 
   /* ================================================================

@@ -796,7 +796,9 @@
       'display:flex', 'align-items:center', 'justify-content:center',
       'font-size:2rem', 'color:#ff5c9c',
     ].join(';');
-    imgWrap.textContent = '⚠';   // ⚠
+    imgWrap.innerHTML = LA.iconSvg(curseId, 'la-up-ph');
+    var _fIco = imgWrap.firstChild;
+    if (_fIco && _fIco.setAttribute) { _fIco.setAttribute('width', '46'); _fIco.setAttribute('height', '46'); }
     panel.appendChild(imgWrap);
 
     // Curse name

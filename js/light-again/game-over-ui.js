@@ -15,6 +15,12 @@
     var runCombo    = Math.max(this.bestCombo || 1, this.comboMultiplier);
     var runKills    = this.totalKills || 0;
     var sceneRef    = this;
+    // Handles for the leaderboard-submit poll's self-rescheduling setTimeouts.
+    // These run on the real-time clock (not Phaser's), so without explicit
+    // cancellation they outlive a restart/Home and keep poking the (now detached)
+    // overlay DOM for up to ~4s × retries — a leak that pins the old game-over
+    // panel. dismissGameOver clears them.
+    var pollTimers  = [];
 
     var t = LA.laGoT;
     var _escHtml = LA.escHtml;
@@ -223,6 +229,8 @@
     // game-over panel). Also runs on scene shutdown (replay/restart).
     function dismissGameOver() {
       document.removeEventListener('keydown', onKey);
+      for (var pt = 0; pt < pollTimers.length; pt++) clearTimeout(pollTimers[pt]);
+      pollTimers.length = 0;
       clearGameOverHostFlag();
       var el = document.getElementById('_la-go-overlay');
       if (el && el.parentNode) el.parentNode.removeChild(el);
@@ -328,17 +336,21 @@
     }
 
     function pollLeaderboardAfterSubmit(expectedScore, submittedName, triesLeft, delayMs) {
+      // Stop the moment the screen is gone (restart/Home) — no point touching a
+      // detached overlay, and it lets the closure (and the old scene it holds) GC.
+      if (!document.getElementById('_la-go-overlay')) return;
       var exp = Number(expectedScore);
       LA.llGetTop(10, function (err2, items2) {
+        if (!document.getElementById('_la-go-overlay')) return;
         if (err2 || !items2) {
           if (triesLeft <= 1) {
             if (lastRenderedLbItems && lastRenderedLbItems.length) renderLeaderboard(lastRenderedLbItems);
             else setLbBodyHtml('<span style="font-size:.65rem;color:#775555">' + t('laGoError') + '</span>');
             return;
           }
-          setTimeout(function () {
+          pollTimers.push(setTimeout(function () {
             pollLeaderboardAfterSubmit(expectedScore, submittedName, triesLeft - 1, Math.min(Math.round(delayMs * 1.65), 4000));
-          }, delayMs);
+          }, delayMs));
           return;
         }
         var mine = null;
@@ -359,9 +371,9 @@
           renderLeaderboard(items2);
           return;
         }
-        setTimeout(function () {
+        pollTimers.push(setTimeout(function () {
           pollLeaderboardAfterSubmit(expectedScore, submittedName, triesLeft - 1, Math.min(Math.round(delayMs * 1.65), 4000));
-        }, delayMs);
+        }, delayMs));
       });
     }
 
