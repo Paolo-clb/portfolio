@@ -70,6 +70,17 @@
         return _camFlash.apply(cam, arguments);
       };
 
+      // A paused scene keeps RENDERING (only its update stops), so a flash that
+      // was still fading the instant pause hit freezes mid-fade — its leftover
+      // colour stays painted as a solid wash UNDER the transparent pause / home
+      // menu, which looks bad. Kill any in-flight flash the moment we pause so
+      // those screens stay clean. (The wrap above blocks NEW flashes while
+      // paused; this clears one that was already running.) Torn down on
+      // shutdown so the listener can't stack across scene.restart().
+      this.events.on('pause', self._onScenePause = function () {
+        if (cam.flashEffect && cam.flashEffect.isRunning) cam.flashEffect.reset();
+      });
+
       this.pcbTile = this.add.tileSprite(0, 0, cam.width, cam.height, '_pcb');
       this.pcbTile.setOrigin(0, 0);
       this.pcbTile.setScrollFactor(0);
@@ -609,6 +620,10 @@
         if (self._onScaleResize) {
           self.scale.off('resize', self._onScaleResize);
           self._onScaleResize = null;
+        }
+        if (self._onScenePause) {
+          self.events.off('pause', self._onScenePause);
+          self._onScenePause = null;
         }
         if (self._onCanvasCtxMenu && self.game && self.game.canvas) {
           self.game.canvas.removeEventListener('contextmenu', self._onCanvasCtxMenu);

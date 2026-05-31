@@ -397,6 +397,12 @@
     FAIRY_MIN_DIST:       92,     // px soft floor: the hover target never sits on the ship
     FAIRY_BOB_AMP:        12,     // px vertical bob amplitude
     FAIRY_SAVE_IFRAMES:   2600,   // ms of invincibility granted by the resurrection
+    /* Resurrection REPEL sweep: instead of nuking the board, the revive hurls
+       every enemy + projectile far away. Bosses (not in `enemies`) are spared
+       and nothing is killed. */
+    FAIRY_PUSH_FORCE:     64,     // enemy launch velocity (px/frame) — no falloff, sends them off-screen
+    FAIRY_PUSH_STUN:      800,    // ms enemies drift outward (stunned) before they resume chasing
+    FAIRY_PROJ_PUSH_SPEED: 560,   // px/s outward speed forced onto every projectile (vs PROJ_SPEED 380)
     /* Resurrection cinematic (real-time ms): the ship "dies" with the usual
        burst, a beat passes, then the fairy drifts slowly to the death spot and
        rebuilds the arrow; the board clears as the arrow returns. */

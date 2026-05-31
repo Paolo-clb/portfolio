@@ -198,13 +198,13 @@
     for (i = 0; i < curseOrder.length; i++) {
       var cid = curseOrder[i];
       if (tcz[cid] && CU[cid]) {
-        items.push({ kind: 'curse', glyphId: cid, color: '#ff436b', name: t(CU[cid].i18nName), lvl: 1, maxLvl: 1,
-          levels: [{ n: 1, txt: t(CU[cid].i18nDesc), on: true, color: '#ff436b' }] });
+        items.push({ kind: 'curse', glyphId: cid, color: '#d11e74', name: t(CU[cid].i18nName), lvl: 1, maxLvl: 1,
+          levels: [{ n: 1, txt: t(CU[cid].i18nDesc), on: true, color: '#d11e74' }] });
       }
     }
     if (sc._twUnlocked && LA.SECRET_UPGRADE) {
-      items.push({ kind: 'world', glyphId: 'theWorld', color: '#ff5cae', name: t(LA.SECRET_UPGRADE.i18nName), lvl: 1, maxLvl: 1,
-        levels: [{ n: 1, txt: t(LA.SECRET_UPGRADE.i18nDesc1), on: true, color: '#ff5cae' }] });
+      items.push({ kind: 'world', glyphId: 'theWorld', color: '#cc1111', name: t(LA.SECRET_UPGRADE.i18nName), lvl: 1, maxLvl: 1,
+        levels: [{ n: 1, txt: t(LA.SECRET_UPGRADE.i18nDesc1), on: true, color: '#cc1111' }] });
     }
 
     var titleHtml = '<div class="la-lo-title">' + t('laRunLoadoutTitle') + '</div>';
@@ -309,8 +309,8 @@
         // overflows (auto margins collapse to 0, so the top never gets clipped — the
         // classic flex centering + overflow fix).
         '#_la-mode-select .la-ms-wrap{text-align:center;width:min(780px,94%);padding:2rem 1.5rem;margin:auto}' +
-        '#_la-mode-select .la-ms-title{font-size:1rem;letter-spacing:.32em;color:var(--la-accent);text-transform:uppercase;margin-bottom:1.8rem}' +
-        '#_la-mode-select .la-ms-return{font-size:.55rem;letter-spacing:.2em;color:#445; text-transform:uppercase;margin-bottom:.5rem}' +
+        '#_la-mode-select .la-ms-title{font-size:calc(1rem * var(--la-ui-scale));letter-spacing:.32em;color:var(--la-accent);text-transform:uppercase;margin-bottom:1.8rem}' +
+        '#_la-mode-select .la-ms-return{font-size:calc(.55rem * var(--la-ui-scale));letter-spacing:.2em;color:#445; text-transform:uppercase;margin-bottom:.5rem}' +
         '#_la-mode-select .la-ms-cards{display:flex;gap:1.2rem;justify-content:center;flex-wrap:wrap}' +
         '#_la-mode-select .la-ms-card{position:relative;flex:1 1 230px;max-width:320px;min-width:200px;padding:1.7rem 1.3rem 1.5rem;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:.65rem;transition:transform .2s ease,box-shadow .25s ease,border-color .25s ease,background .25s ease}' +
         '#_la-mode-select .la-ms-card--enabled{cursor:pointer}' +
@@ -321,37 +321,42 @@
         '#_la-mode-select .la-ms-card--hardcore.la-ms-card--enabled:hover{border-color:rgba(255,80,30,0.7);box-shadow:0 0 30px rgba(255,60,0,0.22);background:rgba(255,60,0,0.07)}' +
         '#_la-mode-select .la-ms-card--locked{border-style:dashed;cursor:not-allowed}' +
         '#_la-mode-select .la-ms-glyph{font-size:2.6rem;line-height:1}' +
-        '#_la-mode-select .la-ms-name{font-size:1.4rem;font-weight:700;letter-spacing:.16em}' +
-        '#_la-mode-select .la-ms-desc{font-size:.74rem;line-height:1.65;min-height:2.6em}' +
-        '#_la-mode-select .la-ms-cta{margin-top:.4rem;padding:.55rem 1.7rem;border-radius:9px;font-size:.86rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}' +
+        '#_la-mode-select .la-ms-name{font-size:calc(1.4rem * var(--la-ui-scale));font-weight:700;letter-spacing:.16em}' +
+        '#_la-mode-select .la-ms-desc{font-size:calc(.74rem * var(--la-ui-scale));line-height:1.65;min-height:2.6em}' +
+        '#_la-mode-select .la-ms-cta{margin-top:.4rem;padding:.55rem 1.7rem;border-radius:9px;font-size:calc(.86rem * var(--la-ui-scale));font-weight:700;letter-spacing:.12em;text-transform:uppercase}' +
         '#_la-mode-select .la-ms-bar{height:.5rem;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden}' +
         '#_la-mode-select .la-ms-bar-fill{display:block;height:100%;border-radius:99px;transition:width .5s cubic-bezier(0.22,1,0.36,1)}' +
         '#_la-mode-select .la-ms-tut{margin-top:1.6rem;padding:1.2rem 1.3rem;border:1px solid var(--la-accent-soft);border-radius:12px;background:var(--la-accent-faint);text-align:center}' +
-        '#_la-mode-select .la-ms-tut-hint{font-size:.68rem;letter-spacing:.04em;color:#6f9bc0;margin-bottom:1rem;line-height:1.55}' +
+        '#_la-mode-select .la-ms-tut-hint{font-size:calc(.68rem * var(--la-ui-scale));letter-spacing:.04em;color:#6f9bc0;margin-bottom:1rem;line-height:1.55}' +
         '#_la-mode-select .la-ms-tut-bar{max-width:320px;margin:.2rem auto .7rem}' +
-        '#_la-mode-select .la-ms-tut-label{font-size:.74rem;font-weight:700;color:#9fd4e8;letter-spacing:.06em;margin-bottom:1rem}' +
+        '#_la-mode-select .la-ms-tut-label{font-size:calc(.74rem * var(--la-ui-scale));font-weight:700;color:#9fd4e8;letter-spacing:.06em;margin-bottom:1rem}' +
         '#_la-mode-select .la-ms-tut-btns{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap}' +
-        '#_la-mode-select .la-ms-tut-btn{cursor:pointer;font-family:monospace;font-weight:700;font-size:.76rem;letter-spacing:.07em;padding:.55rem 1.3rem;border-radius:9px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.18);color:#cfe0ee;transition:transform .15s,background .2s,border-color .2s}' +
+        '#_la-mode-select .la-ms-tut-btn{cursor:pointer;font-family:monospace;font-weight:700;font-size:calc(.76rem * var(--la-ui-scale));letter-spacing:.07em;padding:.55rem 1.3rem;border-radius:9px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.18);color:#cfe0ee;transition:transform .15s,background .2s,border-color .2s}' +
         '#_la-mode-select .la-ms-tut-btn:hover{transform:translateY(-2px);background:var(--la-accent-fill);border-color:var(--la-accent-line)}' +
         '#_la-mode-select .la-ms-tut-btn--primary{background:var(--la-accent-fill);border-color:var(--la-accent-line);color:var(--la-accent)}' +
-        '#_la-mode-select .la-ms-steve{display:inline-flex;align-items:center;gap:.5rem;margin-top:1.5rem;font-size:.74rem;letter-spacing:.05em;color:#8aa3c0;cursor:pointer;user-select:none;transition:color .2s}' +
+        '#_la-mode-select .la-ms-steve{display:inline-flex;align-items:center;gap:.5rem;margin-top:1.5rem;font-size:calc(.74rem * var(--la-ui-scale));letter-spacing:.05em;color:#8aa3c0;cursor:pointer;user-select:none;transition:color .2s}' +
         '#_la-mode-select .la-ms-steve:hover{color:#cfe6f5}' +
         '#_la-mode-select .la-ms-steve input{width:15px;height:15px;margin:0;accent-color:#5fe0cf;cursor:pointer}' +
+        // Options row holding the always-on "Gros texte" toggle (+ the unlock-gated
+        // "I am Steve" skin when present). The row owns the top margin so the toggles
+        // sit flush side by side regardless of how many are shown.
+        '#_la-mode-select .la-ms-opts{display:flex;gap:1.6rem;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:1.5rem}' +
+        '#_la-mode-select .la-ms-opts .la-ms-steve{margin-top:0}' +
         // Active-run highlight: a soft pulsing ring drawn via ::after so it never
         // fights the per-mode coloured hover box-shadow.
         '#_la-mode-select .la-ms-card--active::after{content:"";position:absolute;inset:-1px;border-radius:16px;pointer-events:none;border:1.5px solid rgba(143,233,192,0.45);box-shadow:0 0 22px rgba(143,233,192,0.12) inset;animation:la-ms-active-pulse 2.2s ease-in-out infinite}' +
         '@keyframes la-ms-active-pulse{0%,100%{opacity:.45}50%{opacity:.95}}' +
         // "En cours" badge pinned to the active card corner.
-        '#_la-mode-select .la-ms-active-badge{position:absolute;top:.65rem;right:.65rem;z-index:2;display:flex;align-items:center;gap:.32rem;font-size:.52rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.22rem .55rem;border-radius:99px;background:rgba(143,233,192,0.1);border:1px solid rgba(143,233,192,0.32);color:#8fe9c0}' +
+        '#_la-mode-select .la-ms-active-badge{position:absolute;top:.65rem;right:.65rem;z-index:2;display:flex;align-items:center;gap:.32rem;font-size:calc(.52rem * var(--la-ui-scale));font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.22rem .55rem;border-radius:99px;background:rgba(143,233,192,0.1);border:1px solid rgba(143,233,192,0.32);color:#8fe9c0}' +
         '#_la-mode-select .la-ms-active-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:#8fe9c0;box-shadow:0 0 6px #8fe9c0;animation:la-ms-active-pulse 1.4s ease-in-out infinite}' +
         // Footer tip line (menu icon doubles as pause). Lives in normal flow at the
         // bottom of the panel so it scrolls with the content and can never overlap it.
-        '#_la-mode-select .la-ms-tip{margin:1.5rem auto 0;max-width:560px;text-align:center;font-size:.62rem;letter-spacing:.03em;line-height:1.55;color:#5d7f9c;opacity:.9}' +
+        '#_la-mode-select .la-ms-tip{margin:1.5rem auto 0;max-width:560px;text-align:center;font-size:calc(.62rem * var(--la-ui-scale));letter-spacing:.03em;line-height:1.55;color:#5d7f9c;opacity:.9}' +
         '#_la-mode-select .la-ms-tip b{color:#8fb6d6;font-weight:700}' +
         // Run loadout: chips + hover→3-levels detail (lives in the resume section).
         '#_la-mode-select .la-lo{width:100%;margin-top:.3rem;padding-top:.85rem;border-top:1px solid rgba(255,255,255,0.1);text-align:left}' +
-        '#_la-mode-select .la-lo-title{font-size:.54rem;letter-spacing:.16em;text-transform:uppercase;color:#7799bb;margin-bottom:.55rem;text-align:center}' +
-        '#_la-mode-select .la-lo-empty{font-size:.66rem;color:#6f8298;text-align:center;line-height:1.5;padding:.1rem .2rem}' +
+        '#_la-mode-select .la-lo-title{font-size:calc(.54rem * var(--la-ui-scale));letter-spacing:.16em;text-transform:uppercase;color:#7799bb;margin-bottom:.55rem;text-align:center}' +
+        '#_la-mode-select .la-lo-empty{font-size:calc(.66rem * var(--la-ui-scale));color:#6f8298;text-align:center;line-height:1.5;padding:.1rem .2rem}' +
         '#_la-mode-select .la-lo-chips{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;margin-bottom:.55rem}' +
         '#_la-mode-select .la-lo-chip{position:relative;width:42px;height:42px;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1.5px solid currentColor;border-radius:9px;background:rgba(8,10,28,0.55);color:#00ffff;cursor:pointer;transition:transform .14s,box-shadow .2s,background .2s}' +
         '#_la-mode-select .la-lo-chip:hover,#_la-mode-select .la-lo-chip--active{transform:translateY(-2px);box-shadow:0 0 12px -2px currentColor;background:rgba(8,10,28,0.92)}' +
@@ -359,22 +364,22 @@
         '#_la-mode-select .la-lo-pips{display:flex;gap:2px}' +
         '#_la-mode-select .la-lo-pip{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.16)}' +
         '#_la-mode-select .la-lo-detail{min-height:78px;border-radius:9px;background:rgba(4,6,18,0.5);border:1px solid rgba(255,255,255,0.07);padding:.55rem .7rem}' +
-        '#_la-mode-select .la-lo-d-head{font-size:.72rem;font-weight:700;letter-spacing:.03em;margin-bottom:.45rem}' +
+        '#_la-mode-select .la-lo-d-head{font-size:calc(.72rem * var(--la-ui-scale));font-weight:700;letter-spacing:.03em;margin-bottom:.45rem}' +
         '#_la-mode-select .la-lo-levels{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.34rem}' +
         '#_la-mode-select .la-lo-lvl{display:flex;align-items:flex-start;gap:.5rem}' +
         '#_la-mode-select ' +
         '#_la-mode-select ' +
-        '#_la-mode-select .la-lo-lvl-txt{font-size:.6rem;line-height:1.4;color:#aebccd}' +
+        '#_la-mode-select .la-lo-lvl-txt{font-size:calc(.6rem * var(--la-ui-scale));line-height:1.4;color:#aebccd}' +
         '#_la-mode-select .la-lo-lvl.off{opacity:.85}' +
         '#_la-mode-select .la-lo-lvl.off .la-lo-lvl-txt{color:#5a6678}' +
         // "Mode actif en grand": resume section on top + "Nouvelle partie" cards below.
-        '#_la-mode-select .la-ms-newgame{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:#5d7f9c;margin:.2rem 0 .7rem}' +
+        '#_la-mode-select .la-ms-newgame{font-size:calc(.6rem * var(--la-ui-scale));letter-spacing:.2em;text-transform:uppercase;color:#5d7f9c;margin:.2rem 0 .7rem}' +
         '#_la-mode-select .la-ms-resume{width:min(640px,100%);margin:0 auto 1.7rem;padding:1.3rem 1.4rem 1.2rem;border-radius:16px;border:1px solid var(--la-accent-soft);background:var(--la-accent-faint);text-align:center}' +
         '#_la-mode-select .la-ms-resume--hardcore{border-color:rgba(255,70,20,0.32);background:rgba(255,60,0,0.05)}' +
         '#_la-mode-select .la-ms-resume-top{display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:1rem;flex-wrap:wrap}' +
-        '#_la-mode-select .la-ms-resume-label{font-size:.82rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase}' +
+        '#_la-mode-select .la-ms-resume-label{font-size:calc(.82rem * var(--la-ui-scale));font-weight:700;letter-spacing:.18em;text-transform:uppercase}' +
         '#_la-mode-select .la-ms-resume .la-ms-active-badge{position:static}' +
-        '#_la-mode-select .la-ms-resume-btn{margin-top:1rem;width:100%;cursor:pointer;font-family:monospace;font-weight:800;font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;padding:.7rem 1rem;border-radius:10px;border:1.5px solid currentColor;background:rgba(255,255,255,0.04);transition:transform .15s,box-shadow .2s,background .2s}' +
+        '#_la-mode-select .la-ms-resume-btn{margin-top:1rem;width:100%;cursor:pointer;font-family:monospace;font-weight:800;font-size:calc(.9rem * var(--la-ui-scale));letter-spacing:.1em;text-transform:uppercase;padding:.7rem 1rem;border-radius:10px;border:1.5px solid currentColor;background:rgba(255,255,255,0.04);transition:transform .15s,box-shadow .2s,background .2s}' +
         '#_la-mode-select .la-ms-resume-btn:hover{transform:translateY(-2px);box-shadow:0 0 22px -4px currentColor;background:rgba(255,255,255,0.08)}' +
         // Bigger placeholder icons inside the resume section (the freed-up space).
         '#_la-mode-select .la-ms-resume .la-lo{margin-top:0;padding-top:0;border-top:none;text-align:center}' +
@@ -512,8 +517,12 @@
       // Tutorial banner stays at the BOTTOM as before — but NOT while a tutorial is
       // actually running (then its progress lives in the top resume section instead).
       ((!unlocked && !tutorialRunning) ? buildTutorialPanel() : '') +
-      // Cosmetic pickaxe skin — unlocked alongside hardcore mode as a reward
-      (unlocked ? '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-steve-cb"><span>I am Steve</span></label>' : '') +
+      // Options row: "Gros texte" (accessibility — always available) plus the
+      // cosmetic pickaxe skin (unlocked alongside hardcore mode as a reward).
+      '<div class="la-ms-opts">' +
+        '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-bigtext-cb"><span>' + (fr ? 'Gros texte' : 'Large text') + '</span></label>' +
+        (unlocked ? '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-steve-cb"><span>I am Steve</span></label>' : '') +
+      '</div>' +
       // Tip in normal flow at the bottom of the panel (mentions seeing upgrades). Kept
       // inside .la-ms-wrap so it never overlaps the content when everything is stacked.
       '<div class="la-ms-tip">' + (fr
@@ -540,6 +549,21 @@
       steveCb.addEventListener('change', function () {
         window.__laSteveSkin = steveCb.checked;
         try { localStorage.setItem('la_skin_steve', steveCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
+      });
+    }
+
+    // "Gros texte": toggles the .la-big-text class on the modal, which bumps
+    // --la-ui-scale so every pop-up's calc()-based text grows at once (the menu,
+    // tutorial, draft, help reference and game-over all live inside the modal).
+    // The class is read straight off the modal so the box reflects the live
+    // state, and the change is mirrored to localStorage for the next session.
+    var laModal = container.closest('.light-again-modal') || container;
+    var bigTextCb = menuEl.querySelector('#_la-ms-bigtext-cb');
+    if (bigTextCb) {
+      bigTextCb.checked = laModal.classList.contains('la-big-text');
+      bigTextCb.addEventListener('change', function () {
+        laModal.classList.toggle('la-big-text', bigTextCb.checked);
+        try { localStorage.setItem('la_big_text', bigTextCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
       });
     }
 
@@ -1193,15 +1217,15 @@
       '<div style="text-align:center;max-width:min(420px,92%);padding:1.8rem 1.6rem;border-radius:16px;' +
         'background:rgba(8,10,24,0.96);border:1px solid rgba(255,80,30,0.4);box-shadow:0 0 40px rgba(255,60,0,0.12)">' +
         '<div style="font-size:2rem;margin-bottom:.6rem">⚠️</div>' +
-        '<div style="font-size:.95rem;font-weight:700;color:#ffb499;margin-bottom:.7rem;letter-spacing:.04em">' +
+        '<div style="font-size:calc(.95rem * var(--la-ui-scale));font-weight:700;color:#ffb499;margin-bottom:.7rem;letter-spacing:.04em">' +
           (fr ? 'Lancer le tutoriel ?' : 'Start the tutorial?') + '</div>' +
-        '<div style="font-size:.78rem;line-height:1.6;color:#c8b0a8;margin-bottom:1.4rem">' +
+        '<div style="font-size:calc(.78rem * var(--la-ui-scale));line-height:1.6;color:#c8b0a8;margin-bottom:1.4rem">' +
           (fr ? 'Cela mettra fin à ta partie <b style="color:#ff5530">Hardcore</b> en cours. Le tutoriel se déroule en <b style="color:var(--la-accent)">Sandbox</b>.'
               : 'This will end your current <b style="color:#ff5530">Hardcore</b> run. The tutorial runs in <b style="color:var(--la-accent)">Sandbox</b>.') + '</div>' +
         '<div style="display:flex;gap:.8rem;justify-content:center">' +
-          '<button id="_la-tc-cancel" type="button" style="cursor:pointer;font-family:monospace;font-weight:700;font-size:.78rem;padding:.5rem 1.2rem;border-radius:9px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);color:#cfe0ee">' +
+          '<button id="_la-tc-cancel" type="button" style="cursor:pointer;font-family:monospace;font-weight:700;font-size:calc(.78rem * var(--la-ui-scale));padding:.5rem 1.2rem;border-radius:9px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);color:#cfe0ee">' +
             (fr ? 'Annuler' : 'Cancel') + '</button>' +
-          '<button id="_la-tc-go" type="button" style="cursor:pointer;font-family:monospace;font-weight:800;font-size:.78rem;letter-spacing:.06em;padding:.5rem 1.3rem;border-radius:9px;background:var(--la-accent-fill);border:1.5px solid var(--la-accent-line);color:var(--la-accent)">' +
+          '<button id="_la-tc-go" type="button" style="cursor:pointer;font-family:monospace;font-weight:800;font-size:calc(.78rem * var(--la-ui-scale));letter-spacing:.06em;padding:.5rem 1.3rem;border-radius:9px;background:var(--la-accent-fill);border:1.5px solid var(--la-accent-line);color:var(--la-accent)">' +
             (fr ? 'Lancer le tuto ▶' : 'Start tutorial ▶') + '</button>' +
         '</div>' +
       '</div>';
@@ -1271,6 +1295,12 @@
     container.className = 'light-again-canvas'; // reuses existing CSS sizing rules
     container.style.width  = '100%';
     container.style.height = '100%';
+    // "Gros texte" accessibility setting: apply it to the modal the moment it
+    // opens so every pop-up (menu, tutorial, draft, help, game-over…) is already
+    // scaled, even if the player never opens the menu where the toggle lives.
+    try {
+      if (localStorage.getItem('la_big_text') === '1') modal.classList.add('la-big-text');
+    } catch (e) { /* ignore */ }
 
     // Sandbox "Menu" button — visible only in sandbox mode, left-side header
     menuBtnEl = document.createElement('button');

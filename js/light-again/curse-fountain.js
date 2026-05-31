@@ -783,7 +783,7 @@
 
     // Title
     var title = document.createElement('div');
-    title.style.cssText = 'font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:#ff5c9c;margin-bottom:.7rem';
+    title.style.cssText = 'font-size:calc(.62rem * var(--la-ui-scale));letter-spacing:.2em;text-transform:uppercase;color:#ff5c9c;margin-bottom:.7rem';
     title.textContent = t('laFountTitle');
     panel.appendChild(title);
 
@@ -803,7 +803,7 @@
 
     // Curse name
     var name = document.createElement('div');
-    name.style.cssText = 'font-size:.86rem;font-weight:700;color:#ff5c9c;margin-bottom:.25rem;letter-spacing:.06em';
+    name.style.cssText = 'font-size:calc(.86rem * var(--la-ui-scale));font-weight:700;color:#ff5c9c;margin-bottom:.25rem;letter-spacing:.06em';
     name.textContent = t(cdef.i18nName);
     panel.appendChild(name);
 
@@ -811,7 +811,7 @@
     var badge = document.createElement('span');
     badge.style.cssText = [
       'display:inline-block',
-      'font-size:.48rem', 'letter-spacing:.1em', 'text-transform:uppercase',
+      'font-size:calc(.48rem * var(--la-ui-scale))', 'letter-spacing:.1em', 'text-transform:uppercase',
       'padding:.12rem .5rem', 'border-radius:4px', 'margin-bottom:.5rem',
       'background:rgba(209,30,116,0.18)', 'color:#ff5c9c',
       'border:1px solid rgba(209,30,116,0.45)',
@@ -821,13 +821,13 @@
 
     // Description
     var desc = document.createElement('div');
-    desc.style.cssText = 'font-size:.58rem;color:#e0a6c4;line-height:1.5;margin:.1rem 0 .5rem';
+    desc.style.cssText = 'font-size:calc(.58rem * var(--la-ui-scale));color:#e0a6c4;line-height:1.5;margin:.1rem 0 .5rem';
     desc.textContent = t(cdef.i18nDesc);
     panel.appendChild(desc);
 
     // Question
     var ask = document.createElement('div');
-    ask.style.cssText = 'font-size:.6rem;color:#caa6d8;margin-bottom:.9rem;font-weight:700';
+    ask.style.cssText = 'font-size:calc(.6rem * var(--la-ui-scale));color:#caa6d8;margin-bottom:.9rem;font-weight:700';
     ask.textContent = t('laFountQuestion');
     panel.appendChild(ask);
 
@@ -842,7 +842,7 @@
         'flex:1 1 0', 'padding:.6rem .8rem',
         'border:1.5px solid ' + accent, 'border-radius:10px',
         'background:' + bg, 'color:#fff', 'cursor:pointer',
-        'font-family:monospace', 'font-size:.7rem', 'font-weight:700',
+        'font-family:monospace', 'font-size:calc(.7rem * var(--la-ui-scale))', 'font-weight:700',
         'letter-spacing:.06em', 'text-transform:uppercase',
         'transition:transform .14s,box-shadow .2s,border-color .2s', 'outline:none',
         'animation:la-fount-fade 0.45s cubic-bezier(0.22,1,0.36,1) both',

@@ -400,6 +400,13 @@ body.hero-in-view .light-again-btn {
    lives inside .light-again-modal, so all of them inherit these.
    ============================================================ */
 .light-again-modal {
+  /* "Gros texte" accessibility multiplier. EVERY DOM pop-up in the game lives
+     inside .light-again-modal — the menu, tutorial, game-over, hardcore-confirm,
+     the upgrade/curse/unlock draft (_la-upgrade-overlay) and the help reference
+     popup. They all multiply their rem font-sizes by this var, so toggling the
+     .la-big-text class here scales all of them at once. The HUD is drawn on the
+     Phaser <canvas> and never reads CSS, so it stays untouched. 1 = no change. */
+  --la-ui-scale: 1;
   --la-accent: #f2a285;
   --la-accent-soft: rgba(242, 162, 133, 0.30);
   --la-accent-line: rgba(242, 162, 133, 0.55);
@@ -414,6 +421,11 @@ body.hero-in-view .light-again-btn {
   --la-win-bg-strong: rgba(7, 7, 18, 0.82);
   --la-win-border: rgba(242, 162, 133, 0.20);
   --la-win-scrim: rgba(3, 3, 12, 0.58);
+}
+
+/* "Gros texte" ON — bumps the multiplier; theme overrides above don't touch it. */
+.light-again-modal.la-big-text {
+  --la-ui-scale: 1.3;
 }
 
 [data-theme="dark"] .light-again-modal {
@@ -641,7 +653,7 @@ body.hero-in-view .light-again-btn {
 /* Title */
 .light-again-help-popup__title {
   margin: 0 0 1.4rem;
-  font-size: 1.1rem;
+  font-size: calc(1.1rem * var(--la-ui-scale));
   font-weight: 700;
   color: var(--clr-primary);
   text-align: center;
@@ -658,7 +670,7 @@ body.hero-in-view .light-again-btn {
 }
 
 .light-again-help-popup__action {
-  font-size: 0.78rem;
+  font-size: calc(0.78rem * var(--la-ui-scale));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -669,7 +681,7 @@ body.hero-in-view .light-again-btn {
 }
 
 .light-again-help-popup__desc {
-  font-size: 0.82rem;
+  font-size: calc(0.82rem * var(--la-ui-scale));
   color: var(--clr-text-muted);
   margin: 0;
   line-height: 1.4;
@@ -742,7 +754,7 @@ body.hero-in-view .light-again-btn {
 }
 
 .la-help-enemy__name {
-  font-size: 0.82rem;
+  font-size: calc(0.82rem * var(--la-ui-scale));
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -750,7 +762,7 @@ body.hero-in-view .light-again-btn {
 }
 
 .la-help-enemy__desc {
-  font-size: 0.8rem;
+  font-size: calc(0.8rem * var(--la-ui-scale));
   line-height: 1.5;
   color: var(--clr-text-muted);
 }
@@ -764,7 +776,7 @@ body.hero-in-view .light-again-btn {
 
 .la-help-sec-title {
   margin: 0 0 0.45rem;
-  font-size: 0.7rem;
+  font-size: calc(0.7rem * var(--la-ui-scale));
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -773,7 +785,7 @@ body.hero-in-view .light-again-btn {
 
 .la-help-sec p {
   margin: 0 0 0.4rem;
-  font-size: 0.8rem;
+  font-size: calc(0.8rem * var(--la-ui-scale));
   line-height: 1.5;
   color: var(--clr-text-muted);
 }
@@ -782,7 +794,7 @@ body.hero-in-view .light-again-btn {
 
 .la-help-secret {
   color: #ffc832 !important;
-  font-size: 0.78rem;
+  font-size: calc(0.78rem * var(--la-ui-scale));
 }
 
 .la-help-sec strong { color: var(--clr-text); }
@@ -836,7 +848,7 @@ body.hero-in-view .light-again-btn {
   background: rgba(0, 255, 255, 0.08);
   color: #00ffff;
   font-family: monospace;
-  font-size: 0.78rem;
+  font-size: calc(0.78rem * var(--la-ui-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;

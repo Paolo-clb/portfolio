@@ -906,15 +906,18 @@
       }
     }
 
-    // Curse icons — red boxes with a warning glyph, to the LEFT of the upgrades.
+    // Curse icons — magenta boxes with a warning glyph, to the LEFT of the
+    // upgrades. The colour matches the Curse Fountain (0xd11e74 / hot-pink core
+    // 0xff66bf) so curses read as "rose magenta", clearly distinct from The
+    // World's red icon to their left.
     for (var ck = 0; ck < curses.length; ck++) {
       var cix = w - _upMarginR - (acquired.length + curses.length - ck) * (_upIconSize + _upGap) + _upGap;
-      this.hudGfx.fillStyle(0x1c060a, 0.90);
+      this.hudGfx.fillStyle(0x16061c, 0.90);
       this.hudGfx.fillRect(cix, iy, _upIconSize, _upIconSize);
-      this.hudGfx.lineStyle(2, 0xc8143c, 0.80);
+      this.hudGfx.lineStyle(2, 0xd11e74, 0.80);
       this.hudGfx.strokeRect(cix, iy, _upIconSize, _upIconSize);
-      // Per-curse art (glassHeart / dashRage / cursedBlast), tinted curse-red.
-      this._drawUpgradeIcon(curses[ck], cix + _upIconSize / 2, iy + _upIconSize / 2, 28, 0xff436b, 0.9);
+      // Per-curse art (glassHeart / dashRage / cursedBlast), tinted fountain magenta.
+      this._drawUpgradeIcon(curses[ck], cix + _upIconSize / 2, iy + _upIconSize / 2, 28, 0xff66bf, 0.9);
     }
   };
 
@@ -937,44 +940,45 @@
 
     if (active) {
       // --- ACTIVE: red background, vertical drain fill ---
-      this.hudGfx.fillStyle(0x2a0a1c, 0.95);
+      this.hudGfx.fillStyle(0x2a0a0a, 0.95);
       this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
       var twTotalMs = (this._twWaveDurationMs || 0) + C.TW_DURATION;
       var twFrac    = Math.max(0, 1.0 - (this._twTotalElapsed || 0) / twTotalMs);
       var fillH     = Math.round((_upIconSize - 2) * twFrac);
       var pA        = 0.50 + 0.22 * Math.abs(Math.sin(gt * Math.PI * 4));
-      this.hudGfx.fillStyle(0xe03b97, pA);
+      this.hudGfx.fillStyle(0xcc1111, pA);
       this.hudGfx.fillRect(ix + 1, iy + 1, _upIconSize - 2, fillH);
       if (fillH > 2) {
-        this.hudGfx.fillStyle(0xff9ad6, 0.90);
+        this.hudGfx.fillStyle(0xff6666, 0.90);
         this.hudGfx.fillRect(ix + 1, iy + fillH - 1, _upIconSize - 2, 2);
       }
-      this.hudGfx.lineStyle(2, 0xff5cae, 0.70 + 0.30 * Math.abs(Math.sin(gt * Math.PI * 4)));
+      this.hudGfx.lineStyle(2, 0xff4444, 0.70 + 0.30 * Math.abs(Math.sin(gt * Math.PI * 4)));
       this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
     } else if (onCD) {
-      // --- COOLDOWN: clearly greyed out, fill rising from bottom ---
-      this.hudGfx.fillStyle(0x0e0e0e, 0.95);
+      // --- COOLDOWN: clearly dimmed, fill rising from bottom (dim red so the
+      //     icon stays in The World's red family even while charging) ---
+      this.hudGfx.fillStyle(0x120808, 0.95);
       this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
       var cdFrac  = 1 - this._twCooldown / C.TW_COOLDOWN;
       var cdH     = Math.round((_upIconSize - 2) * cdFrac);
       var cdFillY = iy + 1 + (_upIconSize - 2) - cdH;
-      this.hudGfx.fillStyle(0x2a2a35, 0.88);
+      this.hudGfx.fillStyle(0x4a1a1a, 0.88);
       this.hudGfx.fillRect(ix + 1, cdFillY, _upIconSize - 2, cdH);
       if (cdH > 2) {
-        this.hudGfx.fillStyle(0x606080, 0.75);
+        this.hudGfx.fillStyle(0x9a4a4a, 0.75);
         this.hudGfx.fillRect(ix + 1, cdFillY, _upIconSize - 2, 2);
       }
-      this.hudGfx.lineStyle(2, 0x3a3a4a, 0.65);
+      this.hudGfx.lineStyle(2, 0x5a2a2a, 0.65);
       this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
     } else {
-      // --- READY: pulsing crimson fill + bright border + outer glow ---
+      // --- READY: pulsing red fill + bright border + outer glow ---
       var rP = 0.25 + 0.18 * Math.abs(Math.sin(gt * Math.PI * 1.8));
-      this.hudGfx.fillStyle(0x1a0610, 0.92);
+      this.hudGfx.fillStyle(0x1a0606, 0.92);
       this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
-      this.hudGfx.fillStyle(0xe03b97, rP);
+      this.hudGfx.fillStyle(0xcc1111, rP);
       this.hudGfx.fillRect(ix + 1, iy + 1, _upIconSize - 2, _upIconSize - 2);
       var rBorderA = 0.70 + 0.30 * Math.abs(Math.sin(gt * Math.PI * 1.8));
-      this.hudGfx.lineStyle(3, 0xff5cae, rBorderA);
+      this.hudGfx.lineStyle(3, 0xff4444, rBorderA);
       this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
     }
 
@@ -983,13 +987,13 @@
       this._twIconTxt.setPosition(dotCx, dotCy);
       this._twIconTxt.setAlpha(0); // hidden — replaced by the rose clock glyph below
     }
-    var twGlyphCol = onCD ? 0x8a7a86 : 0xffc4e6;
+    var twGlyphCol = onCD ? 0x8a7a7a : 0xffc4c4;
     var twGlyphA   = onCD ? 0.32 : (active ? 0.96 : 0.82 + 0.16 * Math.abs(Math.sin(gt * Math.PI * 1.8)));
     this._drawUpgradeIcon('theWorld', dotCx, dotCy, 30, twGlyphCol, twGlyphA);
 
     // Dot below icon — grey on CD
     var dotsY = iy + _upIconSize + 5;
-    this.hudGfx.fillStyle(onCD ? 0x444444 : 0xe03b97, ready ? 0.92 : onCD ? 0.35 : 0.70);
+    this.hudGfx.fillStyle(onCD ? 0x444444 : 0xe01e1e, ready ? 0.92 : onCD ? 0.35 : 0.70);
     this.hudGfx.fillCircle(dotCx, dotsY, _upDotR);
   };
 

@@ -14,10 +14,11 @@
                   into a forming Cyber-Fairy that peels off toward the ship.
      4. FAIRY   — a little cyber-féerique drone that physically follows the
                   ship (eased hover + bob + flapping wings + sparkle trail).
-     5. NUKE    — the fairy is a ONE-SHOT extra life. If the player would die,
+     5. REPEL   — the fairy is a ONE-SHOT extra life. If the player would die,
                   it intercepts the game-over, plunges onto the arrow, and
-                  detonates a screen-wide NUKE that wipes every enemy, then
-                  resurrects the ship with i-frames.
+                  unleashes a screen-wide REPEL sweep that hurls every enemy
+                  (and every projectile) far away — bosses are NOT pushed and
+                  nothing is killed — then resurrects the ship with i-frames.
 
    Self-contained on this._tree + this._fairy (plain data) and three shared,
    persistent graphics objects created in scene.create (mirrors the drone
@@ -794,16 +795,20 @@
     this._treeCooldownT = C.TREE_COOLDOWN;
     this._floatLabel(dxs, dys - 120, LA.laGoT('laFairyRevive'), '#66ffcc');
 
-    // The board clears as the arrow returns: a green nuke sweep wipes the screen
-    // (the wave is advanced by _updateClearWave now that the player is alive).
-    this._fairyNukeClear(dxs, dys);
+    // The arrow returns with a screen-wide green REPEL sweep: every enemy and
+    // projectile is hurled away (bosses spared, nothing killed) — same look as
+    // the old nuke, minus the kill.
+    this._fairyRepelSweep(dxs, dys);
   };
 
-  /* Screen-wide green clear-sweep + projectile purge (the resurrection nuke). */
-  M._fairyNukeClear = function (x, y) {
+  /* Screen-wide green REPEL sweep (the resurrection blast). Keeps the original
+     nuke's look — rings, flash, shake, hitstop — but instead of wiping the
+     board it HURLS every enemy and projectile far away from the death spot.
+     Bosses live outside `this.enemies`, so they are never touched, and nothing
+     is killed. */
+  M._fairyRepelSweep = function (x, y) {
     var cam = this.cameras.main, zoom = cam.zoom || 1;
     var reach = Math.sqrt(cam.width * cam.width + cam.height * cam.height) * 0.5 / zoom + 640;
-    this._clearWave = { active: true, t: 0, dur: 0.52, r: 0, maxR: reach };
     this._spawnWaveRing(x, y, { maxRadius: reach,        color: 0x66ffcc,   expandTime: 0.52 });
     this._spawnWaveRing(x, y, { maxRadius: reach * 0.82, color: FAIRY_GREEN, expandTime: 0.46 });
     this._spawnWaveRing(x, y, { maxRadius: reach * 0.55, color: 0xffffff,   expandTime: 0.38 });
@@ -813,12 +818,28 @@
     this._explode(x, y, [235, 255, 245], 30);
     this._triggerHitstop(90);
 
-    // Sweep hostile projectiles frozen during the cinematic.
-    for (var pi = this.projectiles.length - 1; pi >= 0; pi--) {
+    // Launch every enemy radially outward (no falloff, all tiers). Bosses are
+    // not in `enemies`, so they stay put. A long stun lets them drift clear
+    // before resuming the chase.
+    for (var ei = 0; ei < this.enemies.length; ei++) {
+      var e = this.enemies[ei];
+      var edx = e.x - x, edy = e.y - y, ed = Math.sqrt(edx * edx + edy * edy);
+      var enx = ed > 0.1 ? edx / ed : Math.cos(ei);   // varied fallback dir when dead-on the spot
+      var eny = ed > 0.1 ? edy / ed : Math.sin(ei);
+      e.vx = enx * C.FAIRY_PUSH_FORCE;
+      e.vy = eny * C.FAIRY_PUSH_FORCE;
+      e.stunTimer = C.FAIRY_PUSH_STUN;
+      this._explode(e.x, e.y, [200, 255, 230], 6);
+    }
+
+    // Redirect every projectile straight outward (kept alive, not purged).
+    for (var pi = 0; pi < this.projectiles.length; pi++) {
       var pr = this.projectiles[pi];
+      var pdx = pr.x - x, pdy = pr.y - y, pd = Math.sqrt(pdx * pdx + pdy * pdy);
+      var pang = pd > 0.1 ? Math.atan2(pdy, pdx) : Math.atan2(pr.vy, pr.vx);
+      pr.vx = Math.cos(pang) * C.FAIRY_PROJ_PUSH_SPEED;
+      pr.vy = Math.sin(pang) * C.FAIRY_PROJ_PUSH_SPEED;
       this._explode(pr.x, pr.y, [200, 255, 230], 4);
-      this._destroyProjectile(pr);
-      this.projectiles.splice(pi, 1);
     }
   };
 

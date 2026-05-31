@@ -81,7 +81,7 @@
 
     // Title
     var title = document.createElement('div');
-    title.style.cssText = 'font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:#7799bb;margin-bottom:.9rem';
+    title.style.cssText = 'font-size:calc(.7rem * var(--la-ui-scale));letter-spacing:.15em;text-transform:uppercase;color:#7799bb;margin-bottom:.9rem';
     title.textContent = t('laUpTitle');
     panel.appendChild(title);
 
@@ -89,7 +89,7 @@
     var picksLeft = sceneRef._draftPicksRemaining || 1;
     if (picksLeft > 1) {
       var picksLine = document.createElement('div');
-      picksLine.style.cssText = 'font-size:.62rem;color:var(--la-accent);margin-top:-.5rem;margin-bottom:.7rem;letter-spacing:.08em;font-weight:700';
+      picksLine.style.cssText = 'font-size:calc(.62rem * var(--la-ui-scale));color:var(--la-accent);margin-top:-.5rem;margin-bottom:.7rem;letter-spacing:.08em;font-weight:700';
       picksLine.textContent = picksLeft + ' ' + t('laUpPicksLeft');
       panel.appendChild(picksLine);
     }
@@ -173,7 +173,7 @@
 
         // Name
         var nameEl = document.createElement('div');
-        nameEl.style.cssText = 'font-size:.72rem;font-weight:700;color:' + nameCol + ';margin-bottom:.2rem';
+        nameEl.style.cssText = 'font-size:calc(.72rem * var(--la-ui-scale));font-weight:700;color:' + nameCol + ';margin-bottom:.2rem';
         nameEl.textContent = name;
         card.appendChild(nameEl);
 
@@ -181,7 +181,7 @@
         var badge = document.createElement('span');
         badge.style.cssText = [
           'display:inline-block',
-          'font-size:.5rem', 'letter-spacing:.08em', 'text-transform:uppercase',
+          'font-size:calc(.5rem * var(--la-ui-scale))', 'letter-spacing:.08em', 'text-transform:uppercase',
           'padding:.1rem .4rem', 'border-radius:4px', 'margin-bottom:.35rem',
           'background:' + st.fillBadge,
           'color:' + st.color,
@@ -192,7 +192,7 @@
 
         // Description
         var desc = document.createElement('div');
-        desc.style.cssText = 'font-size:.56rem;color:' + descCol + ';line-height:1.4;margin-top:.25rem';
+        desc.style.cssText = 'font-size:calc(.56rem * var(--la-ui-scale));color:' + descCol + ';line-height:1.4;margin-top:.25rem';
         desc.textContent = descTxt;
         card.appendChild(desc);
 
@@ -223,7 +223,7 @@
       'border-radius:8px',
       'background:' + (rrEnabled ? 'var(--la-accent-fill)' : 'rgba(40,44,60,0.5)'),
       'color:' + (rrEnabled ? 'var(--la-accent)' : '#5a6678'),
-      'font-family:monospace', 'font-size:.6rem', 'font-weight:700',
+      'font-family:monospace', 'font-size:calc(.6rem * var(--la-ui-scale))', 'font-weight:700',
       'letter-spacing:.06em', 'text-transform:uppercase',
       'cursor:' + (rrEnabled ? 'pointer' : 'not-allowed'),
       'transition:transform .12s,box-shadow .2s,border-color .2s', 'outline:none',
@@ -258,7 +258,7 @@
       'flex:0 0 auto', 'padding:.45rem .9rem',
       'border:1px solid rgba(120,200,255,0.3)', 'border-radius:8px',
       'background:rgba(0,200,255,0.08)', 'color:#7fd8ff',
-      'font-family:monospace', 'font-size:.6rem', 'font-weight:700',
+      'font-family:monospace', 'font-size:calc(.6rem * var(--la-ui-scale))', 'font-weight:700',
       'letter-spacing:.06em', 'text-transform:uppercase', 'cursor:pointer',
       'transition:transform .12s,box-shadow .2s,border-color .2s', 'outline:none',
       'display:flex', 'flex-direction:column', 'align-items:center', 'gap:1px',
@@ -270,7 +270,7 @@
     // Recomputed every pick, so the label adapts live across the boss's 3 picks.
     if (sceneRef.playerShields < sceneRef.MAX_SHIELDS) {
       var skipHint = document.createElement('span');
-      skipHint.style.cssText = 'font-size:.46rem;font-weight:400;text-transform:none;letter-spacing:0;color:#5fbfe8';
+      skipHint.style.cssText = 'font-size:calc(.46rem * var(--la-ui-scale));font-weight:400;text-transform:none;letter-spacing:0;color:#5fbfe8';
       skipHint.textContent = t('laUpSkipHint');
       skipBtn.appendChild(skipHint);
     }
@@ -337,19 +337,22 @@
 
     // Title
     var title = document.createElement('div');
-    title.style.cssText = 'font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:#ffc832;margin-bottom:.6rem';
+    title.style.cssText = 'font-size:calc(.6rem * var(--la-ui-scale));letter-spacing:.2em;text-transform:uppercase;color:#ffc832;margin-bottom:.6rem';
     title.textContent = '— SECRET UPGRADE —';
     panel.appendChild(title);
 
     // Card
     var card = document.createElement('button');
     card.className = '_la-up-card';
+    // The World's own colour is RED (matching its HUD icon + cooldown bar), so
+    // its unlock card is red — clearly distinct from the magenta curse identity.
+    // (The outer panel keeps its gold "secret upgrade" frame.)
     card.style.cssText = [
       'width:100%', 'padding:1rem .8rem .8rem',
-      'border:2px solid rgba(220,40,140,0.6)',
+      'border:2px solid rgba(204,17,17,0.6)',
       'border-radius:12px',
       'background:rgba(18,4,4,0.95)',
-      'color:#ffd6ea', 'cursor:pointer',
+      'color:#ffd6d6', 'cursor:pointer',
       'font-family:monospace', 'text-align:center',
       'transition:transform .15s,box-shadow .2s,border-color .2s',
       'outline:none',
@@ -359,30 +362,30 @@
 
     card.addEventListener('mouseenter', function () {
       card.style.transform = 'translateY(-4px) scale(1.04)';
-      card.style.boxShadow = '0 0 28px 6px rgba(220,40,140,0.35)';
-      card.style.borderColor = 'rgba(255,92,174,0.95)';
+      card.style.boxShadow = '0 0 28px 6px rgba(204,17,17,0.35)';
+      card.style.borderColor = 'rgba(255,80,80,0.95)';
     });
     card.addEventListener('mouseleave', function () {
       card.style.transform = '';
       card.style.boxShadow = '';
-      card.style.borderColor = 'rgba(220,40,140,0.6)';
+      card.style.borderColor = 'rgba(204,17,17,0.6)';
     });
 
     // Icon
     var imgWrap = document.createElement('div');
     imgWrap.style.cssText = [
       'width:72px', 'height:72px', 'margin:0 auto .6rem',
-      'border:2px solid rgba(220,40,140,0.5)', 'border-radius:10px',
-      'background:rgba(220,40,140,0.08)',
+      'border:2px solid rgba(204,17,17,0.5)', 'border-radius:10px',
+      'background:rgba(204,17,17,0.08)',
       'display:flex', 'align-items:center', 'justify-content:center',
-      'font-size:2rem', 'color:#ff5cae',
+      'font-size:2rem', 'color:#ff5c5c',
     ].join(';');
     imgWrap.innerHTML = LA.iconSvg('theWorld', 'la-up-ph');
     card.appendChild(imgWrap);
 
     // Name
     var name = document.createElement('div');
-    name.style.cssText = 'font-size:.85rem;font-weight:700;color:#ff5cae;margin-bottom:.3rem;letter-spacing:.08em';
+    name.style.cssText = 'font-size:calc(.85rem * var(--la-ui-scale));font-weight:700;color:#ff5c5c;margin-bottom:.3rem;letter-spacing:.08em';
     name.textContent = t(def.i18nName);
     card.appendChild(name);
 
@@ -390,18 +393,18 @@
     var badge = document.createElement('span');
     badge.style.cssText = [
       'display:inline-block',
-      'font-size:.48rem', 'letter-spacing:.1em', 'text-transform:uppercase',
+      'font-size:calc(.48rem * var(--la-ui-scale))', 'letter-spacing:.1em', 'text-transform:uppercase',
       'padding:.12rem .5rem', 'border-radius:4px', 'margin-bottom:.4rem',
-      'background:rgba(220,40,140,0.18)',
-      'color:#ff5cae',
-      'border:1px solid rgba(220,40,140,0.45)',
+      'background:rgba(204,17,17,0.18)',
+      'color:#ff5c5c',
+      'border:1px solid rgba(204,17,17,0.45)',
     ].join(';');
     badge.textContent = 'SECRET';
     card.appendChild(badge);
 
     // Description
     var desc = document.createElement('div');
-    desc.style.cssText = 'font-size:.58rem;color:#e6aacb;line-height:1.5;margin-top:.3rem';
+    desc.style.cssText = 'font-size:calc(.58rem * var(--la-ui-scale));color:#e6aaaa;line-height:1.5;margin-top:.3rem';
     desc.textContent = t(def.i18nDesc1);
     card.appendChild(desc);
 

@@ -64,9 +64,11 @@
     }
 
     // ----- CSS helpers -----
-    var sLbl = 'font-size:.55rem;letter-spacing:.1em;color:#7799bb;text-transform:uppercase;display:block;margin-bottom:.15rem';
-    var sVal = function (c) { return 'font-size:1.2rem;font-weight:700;color:' + c + ';text-shadow:0 0 8px ' + c + '44'; };
-    var sSection = 'font-size:.55rem;letter-spacing:.16em;color:#5577aa;text-transform:uppercase;margin:.2rem 0 .45rem;text-align:center';
+    // Font-sizes are multiplied by var(--la-ui-scale) so the "Gros texte" toggle
+    // (a .la-big-text class on the canvas container) scales this whole pop-up.
+    var sLbl = 'font-size:calc(.55rem * var(--la-ui-scale));letter-spacing:.1em;color:#7799bb;text-transform:uppercase;display:block;margin-bottom:.15rem';
+    var sVal = function (c) { return 'font-size:calc(1.2rem * var(--la-ui-scale));font-weight:700;color:' + c + ';text-shadow:0 0 8px ' + c + '44'; };
+    var sSection = 'font-size:calc(.55rem * var(--la-ui-scale));letter-spacing:.16em;color:#5577aa;text-transform:uppercase;margin:.2rem 0 .45rem;text-align:center';
     var statCol = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.12rem;min-width:0';
 
     // ----- Build overlay -----
@@ -100,7 +102,7 @@
       var valStyle = sVal(color) + ';display:inline-block';
       if (beaten) valStyle += ';animation:la-go-rec-pop .65s ' + delay + 's cubic-bezier(0.34,1.56,0.64,1) both';
       var badge = beaten
-        ? '<span style="display:block;margin-top:.1rem;font-size:.48rem;font-weight:700;letter-spacing:.08em;color:#00ff88;text-transform:uppercase;animation:la-go-badge-in .5s ' + (delay + 0.25) + 's both">★ ' + t('laGoNewBadge') + '</span>'
+        ? '<span style="display:block;margin-top:.1rem;font-size:calc(.48rem * var(--la-ui-scale));font-weight:700;letter-spacing:.08em;color:#00ff88;text-transform:uppercase;animation:la-go-badge-in .5s ' + (delay + 0.25) + 's both">★ ' + t('laGoNewBadge') + '</span>'
         : '';
       return '<div style="' + cell + '"><span style="' + sLbl + '">' + label + '</span><span style="' + valStyle + '">' + value + '</span>' + badge + '</div>';
     }
@@ -108,8 +110,8 @@
     // Row 1: this run's score — the standalone prominent headline.
     var row1 =
       '<div style="margin-bottom:.9rem;display:flex;flex-direction:column;align-items:center;gap:.1rem">' +
-        '<span style="' + sLbl + ';font-size:.6rem">' + t('laGoScore') + '</span>' +
-        '<span style="font-size:2.4rem;font-weight:800;line-height:1;color:#00ffff;text-shadow:0 0 16px #00ffff66">' + playerScore + '</span>' +
+        '<span style="' + sLbl + ';font-size:calc(.6rem * var(--la-ui-scale))">' + t('laGoScore') + '</span>' +
+        '<span style="font-size:calc(2.4rem * var(--la-ui-scale));font-weight:800;line-height:1;color:#00ffff;text-shadow:0 0 16px #00ffff66">' + playerScore + '</span>' +
       '</div>';
 
     // Row 2: the rest of this run's stats (combo + kills), clearly grouped under
@@ -138,17 +140,17 @@
 
     // Replay buttons
     var btnHtml =
-      '<div style="font-size:.55rem;letter-spacing:.12em;color:#5577aa;text-transform:uppercase;margin-bottom:.45rem">' + t('laGoReplayPrompt') + '</div>' +
+      '<div style="font-size:calc(.55rem * var(--la-ui-scale));letter-spacing:.12em;color:#5577aa;text-transform:uppercase;margin-bottom:.45rem">' + t('laGoReplayPrompt') + '</div>' +
       '<div style="display:flex;gap:.6rem;justify-content:center;margin-bottom:.4rem">' +
-        '<button id="_la-go-sandbox" style="padding:.5rem 1.3rem;border:1.5px solid var(--la-accent-line);border-radius:8px;background:var(--la-accent-fill);color:var(--la-accent);font-family:monospace;font-size:.85rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s,box-shadow .2s">' + t('laGoSandboxBtn') + '</button>' +
-        '<button id="_la-go-hardcore"' + (unlocked ? '' : ' disabled') + ' style="padding:.5rem 1.3rem;border:1.5px solid rgba(255,60,0,' + (unlocked ? '0.55' : '0.18') + ');border-radius:8px;background:rgba(255,60,0,' + (unlocked ? '0.1' : '0.04') + ');color:' + (unlocked ? '#ff4422' : '#442211') + ';font-family:monospace;font-size:.85rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:' + (unlocked ? 'pointer' : 'not-allowed') + ';transition:background .2s,box-shadow .2s">' + t('laGoHardcoreBtn') + '</button>' +
+        '<button id="_la-go-sandbox" style="padding:.5rem 1.3rem;border:1.5px solid var(--la-accent-line);border-radius:8px;background:var(--la-accent-fill);color:var(--la-accent);font-family:monospace;font-size:calc(.85rem * var(--la-ui-scale));font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s,box-shadow .2s">' + t('laGoSandboxBtn') + '</button>' +
+        '<button id="_la-go-hardcore"' + (unlocked ? '' : ' disabled') + ' style="padding:.5rem 1.3rem;border:1.5px solid rgba(255,60,0,' + (unlocked ? '0.55' : '0.18') + ');border-radius:8px;background:rgba(255,60,0,' + (unlocked ? '0.1' : '0.04') + ');color:' + (unlocked ? '#ff4422' : '#442211') + ';font-family:monospace;font-size:calc(.85rem * var(--la-ui-scale));font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:' + (unlocked ? 'pointer' : 'not-allowed') + ';transition:background .2s,box-shadow .2s">' + t('laGoHardcoreBtn') + '</button>' +
       '</div>' +
-      '<div style="font-size:.55rem;color:#556688;letter-spacing:.06em;margin-bottom:.6rem">' + t('laGoEnterHint') + '</div>';
+      '<div style="font-size:calc(.55rem * var(--la-ui-scale));color:#556688;letter-spacing:.06em;margin-bottom:.6rem">' + t('laGoEnterHint') + '</div>';
 
     // Leaderboard only in hardcore
     var lbSpinRow =
       '<div style="width:18px;height:18px;border:2px solid var(--la-accent-soft);border-top-color:var(--la-accent);border-radius:50%;animation:la-go-spin .7s linear infinite"></div>' +
-      '<span style="margin-left:.5rem;font-size:.65rem;color:#6688aa">' + t('laGoLoading') + '</span>';
+      '<span style="margin-left:.5rem;font-size:calc(.65rem * var(--la-ui-scale));color:#6688aa">' + t('laGoLoading') + '</span>';
     var lbHtml = isHardcore
       ? '<div style="' + sSection + '">' + t('laGoWorldRecord') + '</div>' +
         '<div id="_la-go-lb" style="position:relative;min-height:60px">' +
@@ -160,7 +162,7 @@
 
     // "I am Steve" pickaxe-skin toggle (game-over only shows in hardcore = unlocked)
     var steveHtml =
-      '<label id="_la-go-steve-wrap" style="display:inline-flex;align-items:center;gap:.45rem;margin:0 0 .7rem;font-size:.62rem;letter-spacing:.05em;color:#8aa3c0;cursor:pointer;user-select:none">' +
+      '<label id="_la-go-steve-wrap" style="display:inline-flex;align-items:center;gap:.45rem;margin:0 0 .7rem;font-size:calc(.62rem * var(--la-ui-scale));letter-spacing:.05em;color:#8aa3c0;cursor:pointer;user-select:none">' +
         '<input type="checkbox" id="_la-go-steve" style="width:14px;height:14px;margin:0;accent-color:#5fe0cf;cursor:pointer">' +
         '<span>I am Steve</span>' +
       '</label>';
@@ -315,7 +317,7 @@
       var body = getLbBody();
       body.style.display = 'block';
       body.style.width = '100%';
-      var html = '<table style="width:100%;border-collapse:collapse;font-size:.68rem">';
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:calc(.68rem * var(--la-ui-scale))">';
       html += '<tr style="color:#5577aa;text-transform:uppercase;letter-spacing:.08em"><td style="text-align:left;padding:.2rem .3rem">#</td><td style="text-align:left;padding:.2rem .3rem">Player</td><td style="text-align:right;padding:.2rem .3rem">Score</td></tr>';
       for (var i = 0; i < items.length; i++) {
         var it = items[i];
@@ -345,7 +347,7 @@
         if (err2 || !items2) {
           if (triesLeft <= 1) {
             if (lastRenderedLbItems && lastRenderedLbItems.length) renderLeaderboard(lastRenderedLbItems);
-            else setLbBodyHtml('<span style="font-size:.65rem;color:#775555">' + t('laGoError') + '</span>');
+            else setLbBodyHtml('<span style="font-size:calc(.65rem * var(--la-ui-scale));color:#775555">' + t('laGoError') + '</span>');
             return;
           }
           pollTimers.push(setTimeout(function () {
@@ -386,12 +388,12 @@
       form.innerHTML =
         '<input id="_la-go-name" type="text" maxlength="16" placeholder="' + _escHtml(t('laGoNamePlc')) + '" style="' +
           'padding:.35rem .6rem;border:1px solid var(--la-accent-soft);border-radius:6px;' +
-          'background:rgba(0,0,0,0.35);color:#e0e0ff;font-family:monospace;font-size:.75rem;' +
+          'background:rgba(0,0,0,0.35);color:#e0e0ff;font-family:monospace;font-size:calc(.75rem * var(--la-ui-scale));' +
           'width:120px;outline:none' +
         '">' +
         '<button id="_la-go-send" style="' +
           'padding:.35rem .8rem;border:1.5px solid var(--la-accent-line);border-radius:6px;' +
-          'background:var(--la-accent-fill);color:var(--la-accent);font-family:monospace;font-size:.72rem;' +
+          'background:var(--la-accent-fill);color:var(--la-accent);font-family:monospace;font-size:calc(.72rem * var(--la-ui-scale));' +
           'font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;' +
           'transition:background .2s' +
         '">' + t('laGoSubmit') + '</button>';
@@ -416,7 +418,7 @@
               sendBtn.textContent = t('laGoError');
               return;
             }
-            form.innerHTML = '<span style="font-size:.7rem;color:#00ff88">' + t('laGoSubmitted') + '</span>';
+            form.innerHTML = '<span style="font-size:calc(.7rem * var(--la-ui-scale));color:#00ff88">' + t('laGoSubmitted') + '</span>';
             renderLeaderboardLoading();
             pollLeaderboardAfterSubmit(playerScore, name, 8, 200);
           });
@@ -432,7 +434,7 @@
     // Fetch leaderboard
     LA.llGetTop(10, function (err, items) {
       if (err || !items) {
-        setLbBodyHtml('<span style="font-size:.65rem;color:#775555">' + t('laGoError') + '</span>');
+        setLbBodyHtml('<span style="font-size:calc(.65rem * var(--la-ui-scale));color:#775555">' + t('laGoError') + '</span>');
         return;
       }
       renderLeaderboard(items);
