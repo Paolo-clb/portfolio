@@ -1139,9 +1139,6 @@
     g.dead = true;
     var ex = g.x, ey = g.y;
 
-    // Unified mini-boss kill banner (shared timing across all four bosses).
-    this._bossKillBanner(ex, ey - C.GBR_SIZE - 18, 'GIGA BRUISER KILLED', '#ff66ff');
-
     // Big death burst — purple core with white shrapnel, red embers
     this._explode(ex, ey, [255, 80, 80],   60);
     this._explode(ex, ey, [255, 180, 255], 44);
@@ -1156,16 +1153,8 @@
 
     this._clearGigaBruiser(true);
 
-    // Share the cooldown gate with the anomaly so bosses stay rare.
-    this._anomalyCooldownT = C.ANO_COOLDOWN;
-
-    // Free upgrade, independent of the kill-count threshold (same as anomaly).
-    var self = this;
-    this.time.delayedCall(420, function () {
-      if (!self._upgradeLevels) return;
-      if (self._upgradeDraftOpen || self._upSlowMoPhase) return;
-      if (self._upgradePool && self._upgradePool.length > 0) self._beginUpgradeSlowMo();
-    });
+    // Unified aftermath: boss-coloured board-clear shockwave + score + power-up + 3-pick draft.
+    this._bossDefeatSequence(ex, ey, { label: 'GIGA BRUISER', color: '#ff66ff', glow: '#ff66ff', ringColor: 0xff66ff, expCol: [255, 150, 255] });
   };
 
   /* ================================================================

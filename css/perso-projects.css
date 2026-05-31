@@ -210,6 +210,17 @@ body.la-modal-open .hero__nav {
   object-fit: cover;
 }
 
+/* The placeholder loop fades in only once it's actually playing, so the gradient
+   placeholder shows through whenever it's paused (animations off / slide hidden). */
+.la-preview__video {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.la-preview__media--playing .la-preview__video {
+  opacity: 1;
+}
+
 /* Drifting shimmer over the placeholder */
 .la-preview__media::before {
   content: '';

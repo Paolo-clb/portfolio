@@ -247,6 +247,12 @@
     this._upSlowMoPhase = null;
     this._upSlowMoTarget = 1.0;
     this._upgradeDraftOpen = false;
+    // Also defuse a pending BOSS-defeat draft: a boss kill sets _bossDraftPending
+    // (which suppresses natural spawns) ~1.3s before the overlay exists, so the ?
+    // button can land mid-window. Without this, the flag would stay set forever and
+    // permanently kill enemy spawns for the resumed run.
+    this._bossDraftPending = false;
+    this._draftPicksRemaining = 0;
     if (this._upSlowMoBanner) { this._upSlowMoBanner.destroy(); this._upSlowMoBanner = null; }
     this._tutResetPlayer();
     this.MAX_SHIELDS    = 2;

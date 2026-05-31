@@ -38,12 +38,21 @@
       }
     }
 
-    // Dash Lv2 tornados: pull all enemies in range toward each tornado center
+    // Dash Lv2 tornados: pull all enemies in range toward each tornado center.
+    // Dash Lv3 grows the funnel radius over its life (tor.r, set in
+    // _updateDashTornados — 1-frame lag is fine). Detonation Lv3 makes the MARK
+    // contagious inside a tornado: one marked enemy infects the whole funnel
+    // (those already in AND any that wander in).
     if (this._dashTornados && this._dashTornados.length) {
+      var detoLvlT = (this._upgradeLevels && this._upgradeLevels.detonation) || 0;
+      var markSpread = detoLvlT >= 3 && !this._twActive;
       for (var ti = 0; ti < this._dashTornados.length; ti++) {
         var tor = this._dashTornados[ti];
         if (!tor.active || tor.life <= 0) continue;
-        var torRSq = C.DASH_TORNADO_RADIUS * C.DASH_TORNADO_RADIUS;
+        var torR   = tor.r || C.DASH_TORNADO_RADIUS;
+        var torRSq = torR * torR;
+        var insideMarked = false;
+        var inside = markSpread ? [] : null;
         for (var ei = 0; ei < en.length; ei++) {
           var te = en[ei];
           var tdx = tor.x - te.x, tdy = tor.y - te.y;
@@ -52,6 +61,10 @@
           var td = Math.sqrt(tdSq);
           te.vx += (tdx / td) * C.DASH_TORNADO_PULL * dt;
           te.vy += (tdy / td) * C.DASH_TORNADO_PULL * dt;
+          if (markSpread) { inside.push(te); if (te.isMarked) insideMarked = true; }
+        }
+        if (markSpread && insideMarked) {
+          for (var mk = 0; mk < inside.length; mk++) this._applyMarkToEnemy(inside[mk]);
         }
       }
     }

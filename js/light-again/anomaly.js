@@ -80,25 +80,21 @@
   };
 
   M._maybeSpawnAnomaly = function (ms) {
-    // Shared boss gate: only one mini-boss alive at a time, sharing the same
-    // cooldown / spawn-min-delay budget across all three.
-    if (this._tutorialActive) return;  // no surprise mini-bosses during the tutorial
+    // Bosses are now KILL-COUNT gated (the old time-roll is gone): a boss spawns
+    // once totalKills reaches the boss threshold. Only one boss alive at a time;
+    // none during the tutorial, mid-draft, or while the post-boss board-clear is
+    // still resolving. The HUD counter shows kills-until-next-boss.
+    if (this._tutorialActive) return;
     if (this._anomaly || this._gigaBruiser || this._mirror || this._snake) return;
     if (!this.p || this.p.state === 'DEAD') return;
-    if (this._anomalyCooldownT > 0) { this._anomalyCooldownT -= ms; return; }
-    if (this.gameTime < C.ANO_SPAWN_MIN_DELAY / 1000) return;
+    if (this._upgradeDraftOpen || this._upSlowMoPhase || this._bossDraftPending) return;
+    if (this.totalKills < (this._bossKillThreshold || Infinity)) return;
 
-    // One Bernoulli roll per accumulated second of play.
-    this._anomalySpawnRollT += ms;
-    if (this._anomalySpawnRollT < 1000) return;
-    this._anomalySpawnRollT = 0;
-    if (Math.random() < C.ANO_SPAWN_CHANCE) {
-      var which = this._drawBossFromBag();
-      if      (which === 'gigaBruiser') this._spawnGigaBruiser();
-      else if (which === 'mirror')      this._spawnMirror();
-      else if (which === 'snake')       this._spawnSnake();
-      else                              this._spawnAnomaly();
-    }
+    var which = this._drawBossFromBag();
+    if      (which === 'gigaBruiser') this._spawnGigaBruiser();
+    else if (which === 'mirror')      this._spawnMirror();
+    else if (which === 'snake')       this._spawnSnake();
+    else                              this._spawnAnomaly();
   };
 
   /* ================================================================
@@ -863,10 +859,6 @@
     a.dead = true;
     var ex = a.x, ey = a.y, R = a.R, bx = a.bx, by = a.by;
 
-    // No score and no combo for the anomaly — the reward is the free upgrade.
-    // Just a neutral flavour label (no "+points").
-    this._bossKillBanner(ex, ey - C.ANO_SIZE - 14, 'ANOMALY PURGED', '#ff66cc');
-
     // RGB death burst + barrier collapse
     this._explode(ex, ey, [255, 40, 40],  50);
     this._explode(ex, ey, [40, 255, 40],  40);
@@ -879,19 +871,10 @@
     this._triggerHitstop(C.DETONATION_HITSTOP);
 
     this._clearAnomaly(true);
+    this._anomalyBarrierActive = false;   // barrier gone (spawns stay held by _bossDraftPending)
 
-    // Barrier is gone — natural spawns resume; arm cooldown for the next one
-    this._anomalyBarrierActive = false;
-    this._anomalyCooldownT = C.ANO_COOLDOWN;
-    this.spawnTimer = 0;
-
-    // Free upgrade, independent of the kill-count threshold (which is untouched)
-    var self = this;
-    this.time.delayedCall(420, function () {
-      if (!self._upgradeLevels) return;
-      if (self._upgradeDraftOpen || self._upSlowMoPhase) return;
-      if (self._upgradePool && self._upgradePool.length > 0) self._beginUpgradeSlowMo();
-    });
+    // Unified aftermath (the board is already empty — the wave just plays for uniformity).
+    this._bossDefeatSequence(ex, ey, { label: 'ANOMALY PURGED', color: '#ff66cc', glow: '#ff66cc', ringColor: 0xff2255, expCol: [255, 80, 180] });
   };
 
   /* ================================================================

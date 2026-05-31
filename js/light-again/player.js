@@ -110,7 +110,8 @@
     p.atkTimer = C.DASH_ATK_DUR * durMult; p.atkCooldown = 0;
     p.atkDx = adx; p.atkDy = ady; p.spinAngle = 0;
     p.hasHitDuringDashAttack = false; p.dashAtkExtended = 0;
-    p.dashTimer = 0; p.dashCooldown = C.DASH_CD;
+    p._dashAtkExpSpawned = false;   // dashAtk Lv3: reset the once-per-attack delayed-exp cap
+    p.dashTimer = 0; p.dashCooldown = C.DASH_CD * (this._dashCdMult || 1);  // dashRage curse
     p.dashCoyote = false; p.dashInvinc = false;
   };
 
@@ -129,6 +130,11 @@
       this._triggerHitstop(90);
       p.invincible = true; p.invincTimer = C.IFRAMES_DUR; p.dashInvinc = false;
       if (nx !== 0 || ny !== 0) { p.vx += nx * 8; p.vy += ny * 8; }
+      // Shield Lv3: losing a shield plants a delayed explosion (retaliation).
+      // Scales with the Explosion-à-retardement (baseAtk) branch, min Lv1.
+      if (((this._upgradeLevels && this._upgradeLevels.shield) || 0) >= 3) {
+        this._spawnDelayedExplosion(p.x, p.y, Math.max(1, (this._upgradeLevels && this._upgradeLevels.baseAtk) || 0));
+      }
     } else {
       this._triggerGameOver();
     }

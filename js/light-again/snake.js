@@ -959,8 +959,6 @@
     var ex = s._lastX != null ? s._lastX : this.p.x;
     var ey = s._lastY != null ? s._lastY : this.p.y;
 
-    this._bossKillBanner(ex, ey - C.SNAKE_HEAD_SIZE - 18, 'SERPENT SLAIN', '#5dff9b', '#33ff88');
-
     this._explode(ex, ey, [120, 255, 150], 60);
     this._explode(ex, ey, [180, 255, 200], 44);
     this._explode(ex, ey, [40, 200, 100],  32);
@@ -991,16 +989,8 @@
 
     this._clearSnake(true);
 
-    // Share the boss cooldown gate so bosses stay rare.
-    this._anomalyCooldownT = C.ANO_COOLDOWN;
-
-    // Free upgrade, independent of the kill-count threshold (same as the others).
-    var self = this;
-    this.time.delayedCall(420, function () {
-      if (!self._upgradeLevels) return;
-      if (self._upgradeDraftOpen || self._upSlowMoPhase) return;
-      if (self._upgradePool && self._upgradePool.length > 0) self._beginUpgradeSlowMo();
-    });
+    // Unified aftermath: green board-clear shockwave + score + power-up + 3-pick draft.
+    this._bossDefeatSequence(ex, ey, { label: 'SERPENT SLAIN', color: '#5dff9b', glow: '#33ff88', ringColor: 0x5dff9b, expCol: [120, 255, 150] });
   };
 
   /* ================================================================

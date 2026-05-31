@@ -190,7 +190,8 @@
             if (pr.smashed) {
               var pOwnBatch = !this._twBatchWindow;
               if (pOwnBatch) this._beginBatch('PARADE', { dashAtkId: pr._dashAtkId });
-              var smashAoe = C.SHOCKWAVE_RADIUS * 1.1; // buffed vs 0.75 before, stays under nuke (×2.5)
+              var smashAoe = C.SHOCKWAVE_RADIUS * 1.1 * (this._blastMult || 1); // cursedBlast curse; stays under nuke
+
               var smashAoeSq = smashAoe * smashAoe;
               var directDmg = (e.tier === 3) ? 2 : 2;
               e.hp -= directDmg;
@@ -359,6 +360,7 @@
             this._triggerHitstop(C.DEFLECT_HEAVY_HS);
             this.cameras.main.shake(80, 0.008);
             this._explode(pr.x, pr.y, [170, 68, 255], 15);
+            this._maybeDashAtkDelayedExp(pr.x, pr.y);  // dashAtk Lv3: 1/3 → delayed explosion
           }
         }
       }

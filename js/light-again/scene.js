@@ -342,6 +342,18 @@
       this._dashTornados = [];  // dash Lv2 tornado pool
       this._dashTornadoCounter = 0;  // every 3rd dash triggers tornado
 
+      // Boss reward power-up flourish (decays in update; read by _renderPlayer)
+      this._powerUpT     = 0;
+      this._powerUpSteve = false;
+
+      // Mini kamikaze drones (6th upgrade): plain-data pool + one shared renderer
+      this._drones        = [];
+      this._droneRespawnT = 0;
+      this._droneAngSeed  = 0;
+      this._droneGfx      = this.add.graphics();
+      this._droneGfx.setDepth(24);
+      this._droneGfx.setBlendMode(Phaser.BlendModes.ADD);
+
       // Combo FX: x50+ sparks
       this._comboSparkEmitter = this.add.particles(0, 0, '_pxl', {
         speed: { min: 100, max: 320 },
@@ -488,9 +500,11 @@
             }
           }
           self._upgradePool = [];
-          // Shield upgrade side-effect: raise MAX_SHIELDS
+          // Shield upgrade side-effect: raise MAX_SHIELDS (Lv3 adds no slot → cap 3)
           var shLvl = self._upgradeLevels.shield || 0;
-          if (shLvl > 0) self.MAX_SHIELDS = 1 + shLvl;
+          if (shLvl > 0) self.MAX_SHIELDS = 1 + Math.min(shLvl, 2);
+          // Spawn the kamikaze drones immediately for the maxed drone branch
+          if (self._ensureDrones) self._ensureDrones();
         }
         // N: unlock The World only + reset cooldown
         if (ev.code === 'KeyN' && !ev.repeat) {
@@ -510,6 +524,8 @@
         self._twBgCM   = null;
         self._twGlowCM = null;
         self._twWaveGfx = null;
+        self._droneGfx = null;  // graphics destroyed with the scene; drop the stale ref
+        if (self._drones) self._drones.length = 0;
         if (self._twIconTxt) { self._twIconTxt.destroy(); self._twIconTxt = null; }
         if (self._killCounterTxt) { self._killCounterTxt.destroy(); self._killCounterTxt = null; }
         if (self._clearAnomaly)     self._clearAnomaly(true);
@@ -584,6 +600,9 @@
 
       // Upgrade slow-mo transition (runs on real dt, not scaled)
       this._updateUpgradeSlowMo(dt);
+
+      // Boss power-up flourish decays on real time (a cosmetic surge before the draft)
+      if (this._powerUpT > 0) this._powerUpT = Math.max(0, this._powerUpT - dt);
 
       if (this.hitstopTimer > 0) {
         this.hitstopTimer -= delta;
@@ -713,7 +732,7 @@
         }
         if (p.dashTimer <= 0) {
           var dashUpLvl = (this._upgradeLevels && this._upgradeLevels.dash) || 0;
-          p.state = 'MOVING'; p.dashCooldown = C.DASH_CD * (dashUpLvl >= 1 ? 0.70 : 1.0);
+          p.state = 'MOVING'; p.dashCooldown = C.DASH_CD * (dashUpLvl >= 1 ? 0.70 : 1.0) * (this._dashCdMult || 1);
           p.invincible = true; p.invincTimer = 220; p.dashInvinc = true;
           p.dashCoyote = true; // coyote window: attack within post-dash iframes → Dash-Attack
           if (dashUpLvl >= 2) {
@@ -824,7 +843,7 @@
       // Natural spawns pause while the anomaly's quarantine barrier is up, and
       // during the tutorial (which curates its own lesson environments) — except
       // the final sandbox step, where the real wheel-paced spawner is the lesson.
-      if (this.spawnTimer > -999000 && !this._anomalyBarrierActive && (!this._tutorialActive || this._tutSandboxStep)) {
+      if (this.spawnTimer > -999000 && !this._anomalyBarrierActive && !this._bossDraftPending && (!this._tutorialActive || this._tutSandboxStep)) {
         this.spawnTimer += ms;
         var _sandbox = (window.__laGameMode === 'sandbox');
         // Sandbox: steady one-by-one stream, paced live by the mouse wheel.
@@ -903,6 +922,7 @@
       this._updateComboFX(sDt);
       this._updateDashVacuumFX(pDt);
       this._updateDashTornados(sDt);
+      this._updateDrones(sDt);
       this._renderPlayer();
       this._renderEnemies();
       this._renderProjectiles(dt);  // pass raw dt for frame-rate independent decay

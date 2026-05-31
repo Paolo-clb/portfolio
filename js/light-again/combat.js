@@ -88,6 +88,96 @@
       onComplete: function () { txt.destroy(); } });
   };
 
+  /* ==========================================================================
+     BOSS DEFEAT — uniform aftermath shared by all four mini-bosses.
+     A stylish boss-coloured shockwave erupts from the boss and CLEARS the board;
+     the boss is worth BOSS_KILL_SCORE and every enemy swept by the wave is worth
+     its tier value — all multiplied by the combo HELD at the kill (but neither
+     the boss nor the clear feeds the combo, and the combo RESETS afterwards). The
+     cumulative points show in the boss kill banner. Then the arrow "powers up"
+     and the boss-reward draft (3 picks, or The World once maxed) opens. Natural
+     spawns stay suppressed until the player finishes choosing.
+     ========================================================================== */
+  M._bossDeathShockwave = function (x, y, ringColor, expCol) {
+    var cm = this.comboMultiplier || 1;
+    var total = C.BOSS_KILL_SCORE * cm;          // boss base reward ×combo
+
+    var cam   = this.cameras.main;
+    var zoom  = cam.zoom || 1;
+    var reach = Math.sqrt(cam.width * cam.width + cam.height * cam.height) * 0.5 / zoom + 480;
+    var waveSpeed = reach / 0.55;
+    this._spawnWaveRing(x, y, { maxRadius: reach,        color: ringColor, expandTime: 0.55 });
+    this._spawnWaveRing(x, y, { maxRadius: reach * 0.55, color: 0xffffff,  expandTime: 0.42 });
+
+    expCol = expCol || [255, 255, 255];
+    for (var i = this.enemies.length - 1; i >= 0; i--) {
+      var e  = this.enemies[i];
+      var bp = e.tier === 3 ? 100 : e.tier === 2 ? 30 : 10;
+      total += bp * cm;
+      this.totalKills++;
+      // Stagger the burst by distance so it reads as the wave passing through.
+      var dxe = e.x - x, dye = e.y - y;
+      var dd  = Math.sqrt(dxe * dxe + dye * dye);
+      var delay = Math.round(dd / waveSpeed * 1000);
+      (function (sc, px, py, col, ms) {
+        if (ms < 30) { sc._explode(px, py, col, 12); sc._explode(px, py, [255, 255, 255], 5); }
+        else { sc.time.delayedCall(ms, function () { if (!sc._upgradeLevels) return; sc._explode(px, py, col, 12); sc._explode(px, py, [255, 255, 255], 5); }); }
+      })(this, e.x, e.y, expCol, delay);
+      e.spr.destroy();
+      for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
+      if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
+    }
+    this.enemies.length = 0;
+
+    // Sweep enemy bullets too (spare the player's own reflected shots, like the nuke).
+    for (var pi = this.projectiles.length - 1; pi >= 0; pi--) {
+      var pr = this.projectiles[pi];
+      if (pr.isReflected) continue;
+      this._explode(pr.x, pr.y, expCol, 4);
+      this._destroyProjectile(pr);
+      this.projectiles.splice(pi, 1);
+    }
+
+    this.score += total;
+    // Big banked score, but combo is NOT incremented — and it resets now.
+    this.comboMultiplier = 1;
+    this.comboTimer = 0;
+    this._comboPulse = 0;
+    return total;
+  };
+
+  M._bossDefeatSequence = function (x, y, opts) {
+    opts = opts || {};
+    var total = this._bossDeathShockwave(x, y, opts.ringColor || 0xffffff, opts.expCol);
+
+    // Banner shows the cumulative points (boss + everything the wave cleared).
+    var label = (opts.label || 'BOSS DOWN') + '  +' + total;
+    this._bossKillBanner(x, y - 56, label, opts.color || '#ffffff', opts.glow || opts.color);
+
+    // Hold natural spawns until the draft resolves; advance the boss kill counter
+    // so kills made DURING the fight don't shorten the gap to the next boss.
+    this._bossDraftPending = true;
+    this._advanceBossThreshold();
+
+    var self = this;
+    // Beat 1 (~0.56s): the arrow surges with power once the wave has swept through.
+    this.time.delayedCall(560, function () {
+      if (!self._upgradeLevels || !self.p || self._tutorialActive) return;
+      self._playerPowerUpFx();
+    });
+    // Beat 2 (~1.32s): the reward draft (3 picks, or The World once everything is maxed).
+    this.time.delayedCall(1320, function () {
+      if (!self._upgradeLevels) return;
+      // A tutorial relaunch (? button) within this window soft-resets the draft
+      // state but can't cancel this timer — bail so we don't pop a draft over the
+      // lesson (and drop the spawn-suppression flag the tutorial defuse also clears).
+      if (self._tutorialActive) { self._bossDraftPending = false; return; }
+      if (self._upgradeDraftOpen || self._upSlowMoPhase) return;
+      self._rerollsAvailable = (self._rerollsAvailable || 0) + 1;  // boss reward: +1 reroll
+      self._beginBossUpgradeDraft();
+    });
+  };
+
   M._floatScore = function (wx, wy, pts, tier) {
     var col, sz, shCol;
     if (tier === 3) {
@@ -158,9 +248,11 @@
     var col = label === 'PARADE' ? '#aa44ff'
             : label === 'NUKE' ? '#00ffff'
             : label === 'DELAY_EXP' ? '#ff4422'
+            : label === 'DRONE' ? '#66e0ff'
             : label === 'THE WORLD' ? '#ffc832'
             : '#ffcc00';
     var displayLbl = label === 'DELAY_EXP' ? 'Delayed Explosion'
+                   : label === 'DRONE' ? 'Drone'
                    : (label === 'PARADE' && count > 1) ? 'PARADE \u00d7' + count
                    : label;
 
@@ -283,6 +375,7 @@
     var basePts = e.tier === 3 ? 100 : e.tier === 2 ? 30 : 10;
     var pts = basePts * this.comboMultiplier;
     if (ctx.reflected) pts *= 2;
+    if (this._scoreMult && this._scoreMult !== 1) pts = Math.round(pts * this._scoreMult);  // glassHeart curse
     this.score += pts;
     this.comboTimer = 2000;
     var prevCm = this.comboMultiplier;
@@ -404,6 +497,27 @@
     this._triggerHitstop(C.HITSTOP_DUR);
   };
 
+  /* Apply the detonation MARK to an enemy (cyan instability + grayed texture).
+     Shared by the dash mark (collisions.js), tornado mark-propagation (Detonation
+     Lv3, enemies.js) and the Lv3 kamikaze-drone blast (drone.js). The mark's
+     lifetime follows the Detonation branch level (Lv1+ doubles it). Does NOT
+     bump dashHitCount — that stays exclusive to the dash itself. */
+  M._applyMarkToEnemy = function (e) {
+    if (!e || e.isMarked) return;
+    var detoLvl = (this._upgradeLevels && this._upgradeLevels.detonation) || 0;
+    e.isMarked = true;
+    e.markMaxTimer = detoLvl >= 1 ? 6000 : 3000;
+    e.markTimer = e.markMaxTimer;
+    e.stunTimer = Math.max(e.stunTimer || 0, 200);
+    this._explode(e.x, e.y, [0, 255, 255], 8);
+    if (!e._twGrayed && !e._markGrayed && e.texKey && e.spr) {
+      var gk = e.texKey + '_gray';
+      e.spr.setTexture(gk);
+      for (var ti = 0; ti < e.trSpr.length; ti++) e.trSpr[ti].setTexture(gk);
+      e._markGrayed = true;
+    }
+  };
+
   M._triggerDetonation = function (markedIdx) {
     var p = this.p;
     var e = this.enemies[markedIdx];
@@ -413,7 +527,7 @@
     // Golden palette when fired at TW resolution
     var twDeto = !!this._twBatchWindow;
     var radMult  = detoLvl >= 2 ? 1.8 : 1.0;
-    var detRadius   = C.SHOCKWAVE_RADIUS * 2.5 * radMult;
+    var detRadius   = C.SHOCKWAVE_RADIUS * 2.5 * radMult * (this._blastMult || 1);  // cursedBlast curse
     var detRadiusSq = detRadius * detRadius;
     // Ring params moved here so waveSpeed is available for hit-delay timing
     // TW (gold) always takes priority over detoLvl color
@@ -524,15 +638,38 @@
      DELAYED EXPLOSION — baseAtk upgrade Lv1/Lv2
      ================================================================ */
 
+  // baseAtk branch ("Explosion à retardement"): on a basic-attack kill, roll the
+  // level-scaled chance and, on success, plant a delayed explosion that scales
+  // with the branch level (Lv3 = bigger + shorter fuse).
   M._trySpawnDelayedExplosion = function (x, y) {
     var lvl = (this._upgradeLevels && this._upgradeLevels.baseAtk) || 0;
     if (lvl === 0) return;
-    var chance = lvl >= 2 ? 0.10 : 0.05;
+    var chance = lvl >= 2 ? C.DELAY_EXP_CHANCE_L2 : C.DELAY_EXP_CHANCE_L1;
     if (Math.random() >= chance) return;
+    this._spawnDelayedExplosion(x, y, lvl);
+  };
 
+  // Dash-Attack Lv3: each impact (enemy hit OR parried projectile) has a 1-in-3
+  // chance to plant a delayed explosion — capped at ONE per dash-attack so a long
+  // chain doesn't flood the screen. p._dashAtkExpSpawned resets in _triggerDashAtk.
+  M._maybeDashAtkDelayedExp = function (x, y) {
+    if (((this._upgradeLevels && this._upgradeLevels.dashAtk) || 0) < 3) return;
+    var p = this.p;
+    if (!p || p._dashAtkExpSpawned) return;
+    if (Math.random() >= C.DASHATK_DELAY_EXP_CHANCE) return;
+    p._dashAtkExpSpawned = true;
+    var lvl = Math.max(1, (this._upgradeLevels && this._upgradeLevels.baseAtk) || 0);
+    this._spawnDelayedExplosion(x, y, lvl);
+  };
+
+  // Plant a delayed explosion at (x,y) with an explicit power level (1/2/3).
+  // Also used by Dash-Attack Lv3 (1/3 on impact) and Shield Lv3 (on shield loss),
+  // which pass Math.max(1, baseAtk level) so the baseAtk branch buffs them too.
+  M._spawnDelayedExplosion = function (x, y, lvl) {
+    lvl = lvl || 1;
     var self    = this;
-    var DELAY   = 2000;     // ms until explosion
-    var startR  = C.SHOCKWAVE_RADIUS * (lvl >= 2 ? 0.99 : 0.61);  // smaller warning ring, proportional to level
+    var DELAY   = lvl >= 3 ? C.DELAY_EXP_DELAY_L3 : C.DELAY_EXP_DELAY;     // ms until explosion
+    var startR  = C.SHOCKWAVE_RADIUS * (lvl >= 3 ? 1.25 : (lvl >= 2 ? 0.99 : 0.61));  // warning ring, ∝ level
     var gfx     = this.add.graphics();
     gfx.setDepth(55);
 
@@ -590,7 +727,9 @@
   M._triggerDelayedExplosion = function (x, y, lvl) {
     // Lv1 = same AoE as reflected-projectile smash (×1.1)
     // Lv2 = halfway between reflected (×1.1) and nuke (×2.5) = ×1.8
-    var radius   = C.SHOCKWAVE_RADIUS * (lvl >= 2 ? 1.8 : 1.1);
+    // Lv3 = bigger still (×2.3). The cursedBlast curse scales every blast further.
+    var radMult  = lvl >= 3 ? C.DELAY_EXP_RADIUS_L3 : (lvl >= 2 ? C.DELAY_EXP_RADIUS_L2 : C.DELAY_EXP_RADIUS_L1);
+    var radius   = C.SHOCKWAVE_RADIUS * radMult * (this._blastMult || 1);
     var radiusSq = radius * radius;
 
     var dOwnBatch = !this._twBatchWindow;

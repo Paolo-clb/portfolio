@@ -108,8 +108,65 @@
     STAR_TINT_ARR:     [255, 20, 200],
 
     /* ---- Upgrade system (roguelite draft) ---- */
-    UPGRADE_KILL_INTERVAL: 200,
-    UPGRADE_DRAFT_SIZE:    2,
+    UPGRADE_KILL_INTERVAL: 200,   // legacy (kept for back-compat; no longer drives upgrades)
+    UPGRADE_DRAFT_SIZE:    2,      // cards shown per pick (a boss kill grants BOSS_DRAFT_PICKS picks)
+    BOSS_DRAFT_PICKS:      3,      // picks awarded per boss kill (pick 1-of-2, three times)
+    /* ---- Boss spawning is now KILL-COUNT based (the old timer is gone) ----
+       The HUD counter shows kills-until-next-boss; bosses are the ONLY upgrade
+       source. Hardcore: the gap grows by +100 each boss (100 → 200 → 300 …).
+       Sandbox: a flat gap. The counter "pauses" while a boss is alive (DANGER). */
+    BOSS_KILL_INTERVAL:          100,    // sandbox: flat kills between bosses
+    BOSS_KILL_INTERVAL_HC_START: 100,    // hardcore: kills to the FIRST boss
+    BOSS_KILL_INTERVAL_HC_STEP:  100,    // hardcore: gap grows by this each boss
+    BOSS_KILL_SCORE:             10000,  // base points a boss awards on death (×combo)
+    UPGRADE_REROLLS_START: 1,     // rerolls the run begins with (+1 earned per boss kill)
+    UPGRADE_CURSE_CHANCE:  0.25,  // chance one draft slot becomes a curse (never on the 1st draft)
+    UPGRADE_ANTIFLOOD_W:   0.16,  // weight ×factor for a card that was offered (not picked) last draft
+    UPGRADE_W_LVL1:        1.0,   // draw weight by level — capstones are rarer
+    UPGRADE_W_LVL2:        0.6,
+    UPGRADE_W_LVL3:        0.34,
+    // Curse magnitudes (risk/reward — every curse costs −1 shield slot)
+    CURSE_SCORE_MULT:      1.8,   // glassHeart : score gain ×
+    CURSE_DASH_CD_MULT:    0.5,   // dashRage   : dash cooldown ×
+    CURSE_BLAST_MULT:      1.4,   // cursedBlast: all player-allied explosion radii ×
+
+    /* ---- Delayed explosion (Explosion à retardement = baseAtk branch) ----
+       Also spawned by Dash-Attack Lv3 (on impact, 1/3) and Shield Lv3 (on
+       shield loss). Its power scales with the baseAtk branch level (min Lv1). */
+    DELAY_EXP_CHANCE_L1:  0.10,   // baseAtk Lv1 trigger chance (doubled from the old 0.05)
+    DELAY_EXP_CHANCE_L2:  0.20,   // baseAtk Lv2+ trigger chance
+    DELAY_EXP_DELAY:      2000,   // ms fuse (Lv1/Lv2)
+    DELAY_EXP_DELAY_L3:   1100,   // ms fuse at Lv3 (faster, more aggressive)
+    DELAY_EXP_RADIUS_L1:  1.1,    // blast radius × SHOCKWAVE_RADIUS
+    DELAY_EXP_RADIUS_L2:  1.8,
+    DELAY_EXP_RADIUS_L3:  2.3,    // bigger
+    DASHATK_DELAY_EXP_CHANCE: 0.3334,  // dashAtk Lv3: 1-in-3 per impact (capped 1/dash-attack)
+
+    /* ---- Dash Lv3: tornadoes slowly GROW over their lifetime ---- */
+    DASH_TORNADO_GROW_START: 0.5,  // radius starts at this × DASH_TORNADO_RADIUS
+    DASH_TORNADO_GROW_END:   1.6,  // ...and ends at this × by the end of its life
+
+    /* ---- Mini kamikaze drones (6th upgrade) — allied guided bombs ----
+       Drones orbit the player, periodically dart at the nearest enemy and
+       detonate in a small blast. Lv1 = 1 drone, Lv2 = 2 (faster cadence),
+       Lv3 = 3 + their blast MARKS survivors (feeds the Detonation combo). */
+    DRONE_ORBIT_R:        54,     // px the drones hover around the player
+    DRONE_ORBIT_SPEED:    2.4,    // rad/s orbit angular speed
+    DRONE_SIZE:           8,      // drone half-size (px)
+    DRONE_ACQUIRE_RANGE:  460,    // max distance to acquire a dive target (px)
+    DRONE_DIVE_SPEED:     330,    // px/s base dive speed
+    DRONE_DIVE_ACCEL:     2.4,    // dive speed grows ×(1+age·this) across the dive
+    DRONE_DIVE_TURN:      7.5,    // homing turn rate while diving (rad/s)
+    DRONE_DIVE_TIMEOUT:   2200,   // ms before a diving drone self-detonates if it never connects
+    DRONE_HIT_R:          16,     // contact slack added to enemy size → detonation
+    DRONE_BLAST_R:        92,     // detonation blast radius (px) — Lv1/Lv2
+    DRONE_BLAST_R_L3:     120,    // bigger blast at Lv3
+    DRONE_BLAST_DMG:      1,      // damage per enemy in the blast (Lv1/Lv2)
+    DRONE_BLAST_DMG_L3:   2,      // Lv3 hits harder
+    DRONE_DIVE_CD_L1:     2700,   // ms a drone orbits before it may dive again (Lv1)
+    DRONE_DIVE_CD_L2:     1900,   // faster cadence at Lv2+
+    DRONE_RESPAWN_L1:     3200,   // ms to rebuild a detonated drone (Lv1)
+    DRONE_RESPAWN_L2:     2300,   // faster rebuild at Lv2+
 
     /* ---- The World (secret upgrade) ---- */
     TW_DURATION:           4000,
@@ -312,43 +369,63 @@
     SNAKE_WHIP_ENEMY_FORCE:  14,    // outward impulse flung at caught enemies
   };
 
-  /* ---- Upgrade branch definitions ---- */
+  /* ---- Upgrade branch definitions (all 3 levels) ---- */
   LA.UPGRADES = {
     dashAtk: {
       id: 'dashAtk',
-      maxLvl: 2,
+      maxLvl: 3,
       i18nName:  'laUpDashAtkName',
       i18nDesc1: 'laUpDashAtkDesc1',
       i18nDesc2: 'laUpDashAtkDesc2',
+      i18nDesc3: 'laUpDashAtkDesc3',
     },
     detonation: {
       id: 'detonation',
-      maxLvl: 2,
+      maxLvl: 3,
       i18nName:  'laUpDetonationName',
       i18nDesc1: 'laUpDetonationDesc1',
       i18nDesc2: 'laUpDetonationDesc2',
+      i18nDesc3: 'laUpDetonationDesc3',
     },
     dash: {
       id: 'dash',
-      maxLvl: 2,
+      maxLvl: 3,
       i18nName:  'laUpDashName',
       i18nDesc1: 'laUpDashDesc1',
       i18nDesc2: 'laUpDashDesc2',
+      i18nDesc3: 'laUpDashDesc3',
     },
     baseAtk: {
       id: 'baseAtk',
-      maxLvl: 2,
+      maxLvl: 3,
       i18nName:  'laUpBaseAtkName',
       i18nDesc1: 'laUpBaseAtkDesc1',
       i18nDesc2: 'laUpBaseAtkDesc2',
+      i18nDesc3: 'laUpBaseAtkDesc3',
     },
     shield: {
       id: 'shield',
-      maxLvl: 2,
+      maxLvl: 3,
       i18nName:  'laUpShieldName',
       i18nDesc1: 'laUpShieldDesc1',
       i18nDesc2: 'laUpShieldDesc2',
+      i18nDesc3: 'laUpShieldDesc3',
     },
+    drone: {
+      id: 'drone',
+      maxLvl: 3,
+      i18nName:  'laUpDroneName',
+      i18nDesc1: 'laUpDroneDesc1',
+      i18nDesc2: 'laUpDroneDesc2',
+      i18nDesc3: 'laUpDroneDesc3',
+    },
+  };
+
+  /* ---- Curse cards (risk / reward draft spice) — each costs −1 shield slot ---- */
+  LA.CURSES = {
+    glassHeart:  { id: 'glassHeart',  i18nName: 'laCurseGlassName', i18nDesc: 'laCurseGlassDesc' },
+    dashRage:    { id: 'dashRage',    i18nName: 'laCurseDashName',  i18nDesc: 'laCurseDashDesc' },
+    cursedBlast: { id: 'cursedBlast', i18nName: 'laCurseBlastName', i18nDesc: 'laCurseBlastDesc' },
   };
 
   /* ---- Secret upgrade (The World) ---- */

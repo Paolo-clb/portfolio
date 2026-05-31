@@ -1281,8 +1281,6 @@
     mir.dead = true;
     var ex = mir.x, ey = mir.y;
 
-    this._bossKillBanner(ex, ey - C.MIR_SIZE - 14, 'RIVAL DOWN', '#ff8ad0');
-
     this._explode(ex, ey, [255, 70, 180], 54);
     this._explode(ex, ey, [180, 96, 255], 36);
     this._explode(ex, ey, [255, 255, 255], 28);
@@ -1293,14 +1291,9 @@
     this._triggerHitstop(C.DETONATION_HITSTOP);
 
     this._clearMirror(true);
-    this._anomalyCooldownT = C.ANO_COOLDOWN;
 
-    var self = this;
-    this.time.delayedCall(420, function () {
-      if (!self._upgradeLevels) return;
-      if (self._upgradeDraftOpen || self._upSlowMoPhase) return;
-      if (self._upgradePool && self._upgradePool.length > 0) self._beginUpgradeSlowMo();
-    });
+    // Unified aftermath: magenta board-clear shockwave + score + power-up + 3-pick draft.
+    this._bossDefeatSequence(ex, ey, { label: 'RIVAL DOWN', color: '#ff8ad0', glow: '#ff8ad0', ringColor: BODY_COL, expCol: [255, 90, 200] });
   };
 
   /* ================================================================

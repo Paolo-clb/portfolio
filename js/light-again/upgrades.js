@@ -24,6 +24,7 @@
       dash:       0,
       baseAtk:    0,
       shield:     0,
+      drone:      0,
     };
 
     this._upgradePool = [];
@@ -34,11 +35,25 @@
       }
     }
 
-    // Hardcore mode ramps the gap: 100 → +150 → +200 → +250 (+50 each step).
-    // Sandbox keeps the flat C.UPGRADE_KILL_INTERVAL cadence.
+    // Draft agency: rerolls (start with N, +1 earned per boss kill), anti-flood
+    // memory of the last offer, and a resolved-draft counter (curses only appear
+    // from the 2nd draft onward). Curse cards add global modifiers via these knobs.
+    this._rerollsAvailable = C.UPGRADE_REROLLS_START;
+    this._lastOffered      = null;   // { "id:level": true } of the previous draft's cards
+    this._draftsResolved   = 0;
+    this._takenCurses      = {};
+    this._scoreMult        = 1;      // glassHeart curse
+    this._dashCdMult       = 1;      // dashRage curse
+    this._blastMult        = 1;      // cursedBlast curse (all player-allied explosion radii)
+
+    // Bosses are the ONLY upgrade source now; the kill counter drives BOSS spawns.
+    // Hardcore: the gap grows by +100 each boss (100 → 200 → 300 …).
+    // Sandbox: a flat gap. (See _maybeSpawnAnomaly + _advanceBossThreshold.)
     var hardcore = (window.__laGameMode === 'hardcore');
-    this._upgradeKillInterval  = hardcore ? 100 : C.UPGRADE_KILL_INTERVAL;
-    this._upgradeKillThreshold = this._upgradeKillInterval;
+    this._bossKillInterval  = hardcore ? C.BOSS_KILL_INTERVAL_HC_START : C.BOSS_KILL_INTERVAL;
+    this._bossKillThreshold = this._bossKillInterval;
+    this._bossDraftPending  = false;   // suppresses enemy spawns from boss death until the draft closes
+    this._draftPicksRemaining = 0;     // boss kill grants BOSS_DRAFT_PICKS sequential picks
     this._upgradeDraftOpen     = false;
 
     // Slow-mo transition state
@@ -51,32 +66,20 @@
   };
 
   /* ================================================================
-     CHECK TRIGGER — called after each kill / end of batch
+     CHECK TRIGGER — kept as a no-op. Upgrades no longer come from a kill
+     threshold; they're awarded ONLY by killing bosses (see _bossDefeatSequence).
+     Boss SPAWNS are now driven by the kill counter (see _maybeSpawnAnomaly), and
+     The World is offered on a boss kill once every upgrade is maxed.
      ================================================================ */
-  M._checkUpgradeTrigger = function () {
-    if (this._tutorialActive) return;  // no upgrade drafts during the tutorial
-    if (this._upgradeDraftOpen) return;
-    if (this._upSlowMoPhase) return;
-    if (this._twActive) return;  // don't trigger upgrades during time stop
+  M._checkUpgradeTrigger = function () { /* intentionally empty */ };
 
-    // Secret upgrade check: fires independently of normal pool
-    if (!this._twUnlocked && !this._twSecretOffered) {
-      if (this._checkSecretUpgrade()) {
-        this._beginSecretUpgradeDraft();
-        return;
-      }
-    }
-
-    if (this._upgradePool.length === 0) return;
-    if (this.totalKills < this._upgradeKillThreshold) return;
-
-    // Hardcore: next gap grows by +50 each draft (100, 150, 200, 250, …).
-    // Sandbox: flat cadence — interval stays at C.UPGRADE_KILL_INTERVAL.
+  /* Advance the kill counter for the NEXT boss. Called on boss death so kills
+     scored DURING a boss fight don't shorten the next gap (counter "pauses"). */
+  M._advanceBossThreshold = function () {
     if (window.__laGameMode === 'hardcore') {
-      this._upgradeKillInterval += 50;
+      this._bossKillInterval += C.BOSS_KILL_INTERVAL_HC_STEP;   // 100 → 200 → 300 …
     }
-    this._upgradeKillThreshold += this._upgradeKillInterval;
-    this._beginUpgradeSlowMo();
+    this._bossKillThreshold = this.totalKills + this._bossKillInterval;
   };
 
   /* ================================================================
@@ -86,22 +89,135 @@
     var pool = this._upgradePool;
     if (pool.length === 0) return [];
     var n = Math.min(C.UPGRADE_DRAFT_SIZE, pool.length);
-    var indices = [];
-    for (var i = 0; i < pool.length; i++) indices.push(i);
-    for (var j = 0; j < n; j++) {
-      var r = j + Math.floor(Math.random() * (indices.length - j));
-      var tmp = indices[j]; indices[j] = indices[r]; indices[r] = tmp;
+
+    // Weighted sampling WITHOUT replacement: capstones (Lv2/Lv3) are rarer, and a
+    // card offered (but not taken) in the immediately previous draft is heavily
+    // de-weighted so the player keeps seeing fresh options (anti-flood).
+    var prevOffered = this._lastOffered || {};
+    var bag = [];
+    for (var i = 0; i < pool.length; i++) {
+      var e = pool[i];
+      var w = e.level >= 3 ? C.UPGRADE_W_LVL3 : (e.level === 2 ? C.UPGRADE_W_LVL2 : C.UPGRADE_W_LVL1);
+      if (prevOffered[e.id + ':' + e.level]) w *= C.UPGRADE_ANTIFLOOD_W;
+      bag.push({ entry: e, w: w });
     }
+
     var choices = [];
-    for (var k = 0; k < n; k++) choices.push(pool[indices[k]]);
+    for (var j = 0; j < n && bag.length; j++) {
+      var total = 0;
+      for (var b = 0; b < bag.length; b++) total += bag[b].w;
+      var roll = Math.random() * total, pick = bag.length - 1;
+      for (var b2 = 0; b2 < bag.length; b2++) { roll -= bag[b2].w; if (roll <= 0) { pick = b2; break; } }
+      choices.push(bag[pick].entry);
+      bag.splice(pick, 1);
+    }
+
+    // Remember the (normal) cards we just offered for the next draft's anti-flood.
+    var offered = {};
+    for (var c = 0; c < choices.length; c++) offered[choices[c].id + ':' + choices[c].level] = true;
+    this._lastOffered = offered;
+
+    // Risk/reward: occasionally swap one slot for a curse card.
+    this._maybeInjectCurse(choices);
     return choices;
+  };
+
+  /* Maybe replace one drafted slot with a "curse" card (strong buff + downside).
+     Never on the very first resolved draft; never re-offers an already-taken curse. */
+  M._maybeInjectCurse = function (choices) {
+    if (!choices || choices.length < 2) return;              // keep ≥1 real upgrade on offer
+    if ((this._draftsResolved || 0) < 1) return;             // skip the first-ever draft
+    if (Math.random() >= C.UPGRADE_CURSE_CHANCE) return;
+    var taken = this._takenCurses || {};
+    var avail = [];
+    for (var k in LA.CURSES) {
+      if (LA.CURSES.hasOwnProperty(k) && !taken[k]) avail.push(k);
+    }
+    if (!avail.length) return;
+    var cid  = avail[Math.floor(Math.random() * avail.length)];
+    var slot = Math.floor(Math.random() * choices.length);
+    choices[slot] = { curse: true, id: cid };
+  };
+
+  /* Reroll the current draft (consumes one reroll). Returns fresh choices, or
+     null if no rerolls remain. The UI rebuilds itself with the new list. */
+  M._rerollDraft = function () {
+    if ((this._rerollsAvailable || 0) <= 0) return null;
+    this._rerollsAvailable--;
+    return this._drawUpgradeChoices();
+  };
+
+  /* Skip ONE pick → heal a shield if (and only if) below max, then move on to
+     the next pick (or close if it was the last). The UI label reflects whether a
+     heal will actually happen (it recomputes each pick). */
+  M._skipDraft = function () {
+    if (this.playerShields < this.MAX_SHIELDS) {
+      this.playerShields++;
+      this._explode(this.p.x, this.p.y, [0, 255, 255], 18);
+      this._explode(this.p.x, this.p.y, [255, 255, 255], 10);
+      var stk = this._shieldFloatStack++;
+      this._floatLabel(this.p.x, this.p.y - 30 - stk * 28, '+1 SHIELD', '#00ffff', stk);
+      this.cameras.main.flash(180, 0, 220, 255);
+    }
+    this._advanceDraftPick();
+  };
+
+  /* After a pick (upgrade taken, curse taken, or skipped): consume one pick and
+     either present a FRESH draw (scene stays paused) or close the draft. */
+  M._advanceDraftPick = function () {
+    this._draftPicksRemaining = (this._draftPicksRemaining || 1) - 1;
+    if (this._draftPicksRemaining > 0 && this._upgradePool.length > 0) {
+      var el = document.getElementById('_la-upgrade-overlay');
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      var choices = this._drawUpgradeChoices();
+      if (choices.length === 0) { this._closeDraft(); return; }
+      this._showUpgradeDraftUI(choices);
+    } else {
+      this._closeDraft();
+    }
+  };
+
+  /* Boss reward draft: BOSS_DRAFT_PICKS sequential picks. If every upgrade is
+     maxed, this is when The World is offered instead (once). */
+  M._beginBossUpgradeDraft = function () {
+    if (this._upgradePool.length === 0) {
+      if (!this._twUnlocked && !this._twSecretOffered) {
+        this._twSecretOffered = true;
+        this._beginSecretUpgradeDraft();
+      } else {
+        this._bossDraftPending = false;   // nothing left to offer → just resume
+      }
+      return;
+    }
+    this._beginUpgradeSlowMo(C.BOSS_DRAFT_PICKS);
+  };
+
+  /* Apply a curse card: every curse costs −1 shield slot, plus its own buff. */
+  M._applyCurse = function (cid) {
+    this._takenCurses = this._takenCurses || {};
+    this._takenCurses[cid] = true;
+
+    // Shared downside: −1 shield slot (floor 1), clamping current shields.
+    this.MAX_SHIELDS = Math.max(1, this.MAX_SHIELDS - 1);
+    if (this.playerShields > this.MAX_SHIELDS) this.playerShields = this.MAX_SHIELDS;
+
+    if (cid === 'glassHeart')       this._scoreMult  = (this._scoreMult  || 1) * C.CURSE_SCORE_MULT;
+    else if (cid === 'dashRage')    this._dashCdMult = (this._dashCdMult || 1) * C.CURSE_DASH_CD_MULT;
+    else if (cid === 'cursedBlast') this._blastMult  = (this._blastMult  || 1) * C.CURSE_BLAST_MULT;
+
+    // Ominous red flourish — distinct from the cyan upgrade feedback.
+    this.cameras.main.flash(240, 180, 0, 40);
+    this.cameras.main.shake(160, 0.010);
+    this._explode(this.p.x, this.p.y, [200, 0, 60], 26);
+    this._explode(this.p.x, this.p.y, [120, 0, 160], 16);
   };
 
   /* ================================================================
      SLOW-MO RAMP DOWN — called instead of instant pause
      ================================================================ */
-  M._beginUpgradeSlowMo = function () {
+  M._beginUpgradeSlowMo = function (picks) {
     this._upgradeDraftOpen = true;
+    this._draftPicksRemaining = picks || 1;
     this._upSlowMoPhase    = 'rampDown';
     this._upSlowMoTimer    = 0;
     this._upPendingChoices = this._drawUpgradeChoices();
@@ -109,30 +225,11 @@
     if (this._upPendingChoices.length === 0) {
       this._upgradeDraftOpen = false;
       this._upSlowMoPhase = null;
+      this._bossDraftPending = false;
       return;
     }
-
-    // Show "upgrade available" banner at the top, above score (y ≈ cam.height * 0.15)
-    var cam = this.cameras.main;
-    var t   = LA.laGoT;
-    var banner = this.add.text(cam.width / 2, cam.height * 0.13, t('laUpAvailable'), {
-      fontFamily: 'monospace', fontSize: '18px', fontStyle: 'bold', color: '#00ffff',
-      stroke: '#002233', strokeThickness: 3,
-    });
-    banner.setOrigin(0.5);
-    banner.setDepth(106);
-    banner.setScrollFactor(0);
-    banner.setBlendMode(Phaser.BlendModes.ADD);
-    banner.setAlpha(0);
-    this._upSlowMoBanner = banner;
-
-    // Fade in the banner
-    this.tweens.add({
-      targets: banner,
-      alpha: 1,
-      duration: 400,
-      ease: 'Cubic.easeOut',
-    });
+    // No in-game "upgrade available" banner anymore — the boss-defeat sequence
+    // (board clear + power-up animation) telegraphs the draft on its own.
   };
 
   /* ================================================================
@@ -262,10 +359,20 @@
       this._upgradePool.push({ id: id, level: lvl + 1 });
     }
 
-    // Shield upgrade: raise max capacity immediately
+    // Shield upgrade: raise max capacity immediately. Lv1 → 2, Lv2 → 3 slots;
+    // Lv3 adds NO extra slot (its value is the "explosion on shield loss"), so
+    // the slot count is capped at 3. A taken curse may have lowered MAX_SHIELDS,
+    // so re-derive it from the level and re-apply any active −1 curse penalties.
     if (id === 'shield') {
-      this.MAX_SHIELDS = 1 + lvl;  // Lv1 → 2 slots, Lv2 → 3 slots
+      var curseSlotPenalty = 0;
+      var tc = this._takenCurses || {};
+      for (var ck in tc) { if (tc.hasOwnProperty(ck) && tc[ck]) curseSlotPenalty++; }
+      this.MAX_SHIELDS = Math.max(1, (1 + Math.min(lvl, 2)) - curseSlotPenalty);
+      if (this.playerShields > this.MAX_SHIELDS) this.playerShields = this.MAX_SHIELDS;
     }
+
+    // Drone upgrade: spawn/replenish the orbiting drones up to the new level.
+    if (id === 'drone' && this._ensureDrones) this._ensureDrones();
   };
 
   /* ================================================================
@@ -273,21 +380,21 @@
      ================================================================ */
   M._closeDraft = function () {
     this._upgradeDraftOpen = false;
+    this._draftPicksRemaining = 0;
+    this._draftsResolved = (this._draftsResolved || 0) + 1;
+    // Boss death cleared the whole board, so let natural spawns resume only now —
+    // the instant the player has finished choosing and time is about to flow.
+    this._bossDraftPending = false;
 
     var el = document.getElementById('_la-upgrade-overlay');
     if (el && el.parentNode) el.parentNode.removeChild(el);
 
-    // Resume Phaser scene, then ramp up speed
+    // Resume Phaser scene, then ramp up speed. No safe-bubble push anymore: a
+    // boss kill wipes the board, so there's nothing crowding the player on resume.
     this._upSlowMoPhase = 'rampUp';
     this._upSlowMoTimer = 0;
     this._upSlowMoTarget = SLOWMO_MIN_SCALE;
     this.scene.resume();
-
-    // Just picked an upgrade — clear a safe bubble around the player (the same
-    // push the sandbox respawn uses) so the fight resumes on a clean beat
-    // instead of dropping the player straight back onto whatever was crowding
-    // them. Pushed enemies drift out in slow-mo as time ramps back up.
-    if (this.p && this.p.state !== 'DEAD') this._safeBubblePush(this.p, 340);
   };
 
 })();

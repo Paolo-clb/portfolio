@@ -24,20 +24,8 @@
         var mdx = p.x - me.x, mdy = p.y - me.y;
         var mThresh = C.DASH_MARK_RADIUS + me.size * 0.5;
         if (mdx * mdx + mdy * mdy < mThresh * mThresh) {
-          me.isMarked = true;
-          var detoLvl = (this._upgradeLevels && this._upgradeLevels.detonation) || 0;
-          me.markMaxTimer = detoLvl >= 1 ? 6000 : 3000;
-          me.markTimer = me.markMaxTimer;
-          me.stunTimer = 200;
+          this._applyMarkToEnemy(me);   // mark + cyan sparks + grayed texture
           p.dashHitCount++;
-          this._explode(me.x, me.y, [0, 255, 255], 8);
-          // Gray texture so the cyan sparks pop against a desaturated enemy
-          if (!me._twGrayed && !me._markGrayed && me.texKey && me.spr) {
-            var mgk = me.texKey + '_gray';
-            me.spr.setTexture(mgk);
-            for (var mti = 0; mti < me.trSpr.length; mti++) me.trSpr[mti].setTexture(mgk);
-            me._markGrayed = true;
-          }
         }
       }
     }
@@ -121,6 +109,7 @@
             return;
           }
           var datkDmg = (e.tier === 3) ? 2 : 1;
+          var dex2 = e.x, dey2 = e.y;
           e.hp -= datkDmg;
           if (e.hp <= 0) {
             this._killEnemy(i);
@@ -129,6 +118,7 @@
             this._explode(e.x, e.y, [255, 200, 60], 8);
             this._triggerHitstop(C.HITSTOP_DUR);
           }
+          this._maybeDashAtkDelayedExp(dex2, dey2);  // dashAtk Lv3: 1/3 → delayed explosion
           p.hasHitDuringDashAttack = true;
           if (p.dashAtkExtended < C.DASHATK_MAX_EXT) {
             var ext = Math.min(C.DASHATK_CHAIN_EXT, C.DASHATK_MAX_EXT - p.dashAtkExtended);

@@ -212,6 +212,17 @@
       );
     }
 
+    // Boss power-up surge — a brief scale + glow override that overrides the
+    // state tints above ("the arrow gets stronger"). _powerUpT is set by
+    // _playerPowerUpFx and decays in scene.update.
+    if (this._powerUpT > 0) {
+      var puPulse = Math.sin((1 - Math.max(0, this._powerUpT) / 0.62) * Math.PI);  // 0 → 1 → 0
+      this.playerSpr.setScale(baseScale * (1 + 0.9 * puPulse));
+      this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
+      this.playerSpr.setAlpha(1.0);
+      this.playerSpr.setTint(this._powerUpSteve ? 0xc8a0ff : 0x88ffff);
+    }
+
     // Star Power aura — world-space pulsing ring in dash-attack magenta
     if (this._starAuraGfx) {
       this._starAuraGfx.clear();
@@ -698,7 +709,8 @@
   };
 
   /* ---- Upgrade HUD icons — bottom-right, horizontal ---- */
-  var _upOrder    = ['dashAtk', 'detonation', 'dash', 'baseAtk', 'shield'];
+  var _upOrder    = ['dashAtk', 'detonation', 'dash', 'baseAtk', 'shield', 'drone'];
+  var _curseOrder = ['glassHeart', 'dashRage', 'cursedBlast'];
   var _upIconSize = 46;
   var _upGap      = 10;
   var _upDotR     = 2.5;
@@ -711,15 +723,10 @@
     var w    = this.cameras.main.width;
     var iy   = h - _upMarginB - _upIconSize - _upDotR * 2 - 6;
 
-    // ---- Kill counter to next upgrade (above icons, right-aligned) ----
-    if (this._upgradePool && this._upgradePool.length > 0 && !this._upgradeDraftOpen) {
-      var killsLeft = Math.max(0, this._upgradeKillThreshold - this.totalKills);
-      if (this._lastKillsLeft !== killsLeft) {
-        this._lastKillsLeft    = killsLeft;
-        this._killCounterPulse = 1.0;
-      }
-      var kDt = dt || 0.016;
-      this._killCounterPulse = Math.max(0, (this._killCounterPulse || 0) - kDt * 3.5);
+    // ---- Boss-spawn counter (kills until the next boss) / DANGER while a boss
+    //      is on the field. Bosses are the only upgrade source now. ----
+    if (!this._upgradeDraftOpen && !this._tutorialActive) {
+      var bossAlive = !!(this._anomaly || this._gigaBruiser || this._mirror || this._snake);
 
       if (!this._killCounterTxt) {
         this._killCounterTxt = this.add.text(0, 0, '', {
@@ -730,39 +737,64 @@
         this._killCounterTxt.setDepth(102);
         this._killCounterTxt.setScrollFactor(0);
       }
-      // Colour ramp is now proportional to the *current* interval (hardcore
-      // grows it each draft), not to a fixed 200-kill assumption.
-      var kcInterval = this._upgradeKillInterval || C.UPGRADE_KILL_INTERVAL;
-      var kcRatio = killsLeft / kcInterval;  // 1.0 just after a draft → 0.0 at the next one
-      var kcColor = kcRatio <= 0.10 ? '#ff7733' : kcRatio <= 0.25 ? '#ffcc44' : '#6699bb';
-      this._killCounterTxt.setText('>> ' + killsLeft + ' kills');
+
+      var kcText, kcColor, kcRatio, kcBarA;
+      if (bossAlive) {
+        // Counter is "paused" — kills during a boss fight don't count. Show DANGER.
+        var dPulse = 0.5 + 0.5 * Math.abs(Math.sin(this.gameTime * Math.PI * 3));
+        kcText  = '⚠ DANGER';
+        kcColor = '#ff3344';
+        kcRatio = 0;
+        kcBarA  = 0.45 + 0.45 * dPulse;
+        this._killCounterTxt.setScale(1.0);
+        this._killCounterTxt.setAlpha(0.7 + dPulse * 0.3);
+      } else {
+        var killsLeft = Math.max(0, (this._bossKillThreshold || 0) - this.totalKills);
+        if (this._lastKillsLeft !== killsLeft) {
+          this._lastKillsLeft    = killsLeft;
+          this._killCounterPulse = 1.0;
+        }
+        var kDt = dt || 0.016;
+        this._killCounterPulse = Math.max(0, (this._killCounterPulse || 0) - kDt * 3.5);
+        var kcInterval = this._bossKillInterval || C.BOSS_KILL_INTERVAL;
+        kcRatio = killsLeft / kcInterval;  // 1.0 just after a boss → 0.0 at the next one
+        kcColor = kcRatio <= 0.10 ? '#ff7733' : kcRatio <= 0.25 ? '#ffcc44' : '#6699bb';
+        kcText  = '☠ ' + killsLeft;   // ☠ kills-to-boss
+        kcBarA  = 0.72;
+        this._killCounterTxt.setScale(1.0 + (this._killCounterPulse || 0) * 0.22);
+        this._killCounterTxt.setAlpha(0.78 + (this._killCounterPulse || 0) * 0.22);
+      }
+      this._killCounterTxt.setText(kcText);
       this._killCounterTxt.setColor(kcColor);
-      var kcPulse = 1.0 + (this._killCounterPulse || 0) * 0.22;
-      this._killCounterTxt.setScale(kcPulse);
       this._killCounterTxt.setPosition(w - _upMarginR, iy - 34);
-      this._killCounterTxt.setAlpha(0.78 + (this._killCounterPulse || 0) * 0.22);
       this._killCounterTxt.setVisible(true);
 
       // Thin progress bar aligned to counter right edge
-      var prog = 1 - Math.min(1, kcRatio);
-      var pbW  = 100;
-      var pbX  = w - _upMarginR - pbW;
-      var pbY  = iy - 20;
-      var pbCol = kcRatio <= 0.10 ? 0xff7733 : kcRatio <= 0.25 ? 0xffcc44 : 0x3366aa;
+      var prog  = bossAlive ? 1 : 1 - Math.min(1, kcRatio);
+      var pbW   = 100;
+      var pbX   = w - _upMarginR - pbW;
+      var pbY   = iy - 20;
+      var pbCol = bossAlive ? 0xff3344 : (kcRatio <= 0.10 ? 0xff7733 : kcRatio <= 0.25 ? 0xffcc44 : 0x3366aa);
       this.hudGfx.fillStyle(pbCol, 0.10);
       this.hudGfx.fillRect(pbX, pbY, pbW, 3);
-      this.hudGfx.fillStyle(pbCol, 0.72);
+      this.hudGfx.fillStyle(pbCol, kcBarA);
       this.hudGfx.fillRect(pbX, pbY, pbW * prog, 3);
     } else if (this._killCounterTxt) {
       this._killCounterTxt.setVisible(false);
     }
 
-    // Collect acquired upgrades (preserve display order)
+    // Collect acquired upgrades + taken curses (preserve display order)
     var acquired = [];
     for (var i = 0; i < _upOrder.length; i++) {
       if (lvls[_upOrder[i]] > 0) acquired.push(_upOrder[i]);
     }
-    if (acquired.length === 0) return;
+    var curses = [];
+    var tcz = this._takenCurses || {};
+    for (var ci = 0; ci < _curseOrder.length; ci++) {
+      if (tcz[_curseOrder[ci]]) curses.push(_curseOrder[ci]);
+    }
+    this._hudIconCount = acquired.length + curses.length;  // used by _renderTheWorldIcon positioning
+    if (this._hudIconCount === 0) return;
 
     // Stack icons horizontally leftward from bottom-right corner
     for (var j = 0; j < acquired.length; j++) {
@@ -771,9 +803,9 @@
 
       var ix = w - _upMarginR - (acquired.length - j) * (_upIconSize + _upGap) + _upGap;
 
-      // Border color: cyan=Lv1, gold=Lv2
-      var borderCol = lvl >= 2 ? 0xffc832 : 0x00ffff;
-      var borderA   = lvl >= 2 ? 0.75 : 0.60;
+      // Border color: cyan=Lv1, gold=Lv2, violet=Lv3 (capstone)
+      var borderCol = lvl >= 3 ? 0xb478ff : (lvl >= 2 ? 0xffc832 : 0x00ffff);
+      var borderA   = lvl >= 3 ? 0.82 : (lvl >= 2 ? 0.75 : 0.60);
 
       // Icon background
       this.hudGfx.fillStyle(0x080a1c, 0.88);
@@ -800,6 +832,23 @@
         this.hudGfx.fillCircle(dx, dotsY, _upDotR);
       }
     }
+
+    // Curse icons — red boxes with a warning glyph, to the LEFT of the upgrades.
+    for (var ck = 0; ck < curses.length; ck++) {
+      var cix = w - _upMarginR - (acquired.length + curses.length - ck) * (_upIconSize + _upGap) + _upGap;
+      this.hudGfx.fillStyle(0x1c060a, 0.90);
+      this.hudGfx.fillRect(cix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.lineStyle(2, 0xc8143c, 0.80);
+      this.hudGfx.strokeRect(cix, iy, _upIconSize, _upIconSize);
+      var ctx = cix + _upIconSize / 2;
+      var cty = iy + _upIconSize / 2;
+      // downward warning triangle (vs the upgrades' circle) + two skull "eyes"
+      this.hudGfx.fillStyle(0xff436b, 0.85);
+      this.hudGfx.fillTriangle(ctx - 9, cty - 7, ctx + 9, cty - 7, ctx, cty + 9);
+      this.hudGfx.fillStyle(0x1c060a, 0.95);
+      this.hudGfx.fillCircle(ctx - 3, cty - 3, 1.5);
+      this.hudGfx.fillCircle(ctx + 3, cty - 3, 1.5);
+    }
   };
 
   /* ---- The World icon — tri-state: ready / active / cooldown (greyed) ---- */
@@ -807,12 +856,9 @@
     var w    = this.cameras.main.width;
     var lvls = this._upgradeLevels || {};
 
-    var normalCount = 0;
-    for (var i = 0; i < _upOrder.length; i++) {
-      if (lvls[_upOrder[i]] > 0) normalCount++;
-    }
-
-    var ix = w - _upMarginR - (normalCount + 1) * (_upIconSize + _upGap) + _upGap;
+    // Position to the left of all the upgrade + curse icons (count set by _renderUpgradeHUD).
+    var iconCount = this._hudIconCount || 0;
+    var ix = w - _upMarginR - (iconCount + 1) * (_upIconSize + _upGap) + _upGap;
     var iy = h - _upMarginB - _upIconSize - _upDotR * 2 - 6;
 
     var gt    = this.gameTime || 0;

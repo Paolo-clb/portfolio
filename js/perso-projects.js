@@ -48,6 +48,7 @@
   var current = 0;            // active project index
   var navReady = false;       // edge tabs revealed?
   var wasMobile = isMobile(); // track responsive boundary for preview rebuilds
+  var laVideo = null;         // Light Again preview <video> (placeholder loop)
 
   /* ---- Hero title (project swap) ----
      The typing game writes the hero title on its own (new round, language
@@ -109,10 +110,16 @@
     var mobile = isMobile();
     host.innerHTML =
       '<div class="la-preview__media">' +
+        // Placeholder gameplay loop — muted/looping, controlled by syncPreviewVideo()
+        // (plays only while this slide is active). Swap gameplay-preview.mp4 for the
+        // real footage later; no code change needed.
+        '<video class="la-preview__video" muted loop playsinline preload="none" aria-hidden="true">' +
+          '<source src="assets/light-again/gameplay-preview.mp4" type="video/mp4">' +
+        '</video>' +
         '<div class="la-preview__play-glyph" aria-hidden="true">' +
           '<svg viewBox="0 0 24 24"><polygon points="8 5 19 12 8 19 8 5"/></svg>' +
         '</div>' +
-        '<div class="la-preview__media-caption">' + t('laPreviewVideoSoon') + '</div>' +
+        '<div class="la-preview__media-caption">' + t('laPreviewVideoNote') + '</div>' +
       '</div>' +
       '<div class="la-preview__info">' +
         '<span class="la-preview__badge">' + t('laPreviewBadge') + '</span>' +
@@ -136,6 +143,32 @@
         media.setAttribute('aria-label', t('laPreviewPlay'));
         media.addEventListener('click', launch);
       }
+    }
+
+    // Wire the placeholder video (the element is recreated on every rebuild).
+    // It fades in once it actually plays, revealing the gradient placeholder
+    // underneath whenever it's paused (animations off, slide hidden, modal open).
+    laVideo = host.querySelector('.la-preview__video');
+    var mediaEl = host.querySelector('.la-preview__media');
+    if (laVideo && mediaEl) {
+      laVideo.muted = true; // required for programmatic autoplay
+      laVideo.addEventListener('playing', function () { mediaEl.classList.add('la-preview__media--playing'); });
+      laVideo.addEventListener('pause', function () { mediaEl.classList.remove('la-preview__media--playing'); });
+    }
+    syncPreviewVideo();
+  }
+
+  // Play the placeholder loop only while the Light Again slide is actually on
+  // screen (and animations are on, and the game modal isn't covering it).
+  function syncPreviewVideo() {
+    if (!laVideo) return;
+    var laActive = PROJECTS[current] && PROJECTS[current].type === 'light-again';
+    var canPlay = laActive && !animationsOff() && !document.body.classList.contains('la-modal-open');
+    if (canPlay) {
+      var p = laVideo.play();
+      if (p && p.catch) p.catch(function () { /* autoplay may reject; ignore */ });
+    } else if (!laVideo.paused) {
+      laVideo.pause();
     }
   }
 
@@ -262,6 +295,7 @@
     }
     updateNavTabs();
     positionNavTabs();
+    syncPreviewVideo();
   }
 
   // Restore the last-viewed project (persisted across visits). Runs after the
@@ -374,12 +408,16 @@
     // Re-open the last-viewed project (persistence across reloads)
     restoreSavedProject();
 
-    // Hide edge tabs while the fullscreen Light Again modal is open
+    // Hide edge tabs + pause the preview video while the fullscreen Light Again
+    // modal is open; pause/resume the preview when animations are toggled.
     if ('MutationObserver' in window) {
       new MutationObserver(function () {
         var open = !!document.querySelector('.light-again-overlay');
         document.body.classList.toggle('la-modal-open', open);
+        syncPreviewVideo();
       }).observe(document.body, { childList: true });
+      new MutationObserver(syncPreviewVideo)
+        .observe(document.documentElement, { attributes: true, attributeFilter: ['data-animations'] });
     }
 
     // Keep preview text + nav labels in sync with the site language

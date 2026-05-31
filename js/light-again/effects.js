@@ -577,10 +577,17 @@
     var gfx = this.add.graphics();
     gfx.setDepth(22);
     gfx.setBlendMode(Phaser.BlendModes.ADD);
+    // Dash Lv3: the funnel starts small and grows over its whole life. Without
+    // Lv3 it stays at the base radius (startR === endR).
+    var R    = C.DASH_TORNADO_RADIUS;
+    var grow = ((this._upgradeLevels && this._upgradeLevels.dash) || 0) >= 3;
+    var startR = grow ? R * C.DASH_TORNADO_GROW_START : R;
+    var endR   = grow ? R * C.DASH_TORNADO_GROW_END   : R;
     this._dashTornados.push({
       x: x, y: y,
       life: C.DASH_TORNADO_DUR, maxLife: C.DASH_TORNADO_DUR,
       gfx: gfx, rot: 0, active: true,
+      startR: startR, endR: endR, r: startR,
     });
   };
 
@@ -590,7 +597,6 @@
     var DEEP_BLUE  = 0x3344cc;
     var MID_VIOLET = 0x6633ff;
     var CORE_VIO   = 0x9966ff;
-    var R = C.DASH_TORNADO_RADIUS;
 
     for (var ti = this._dashTornados.length - 1; ti >= 0; ti--) {
       var tor = this._dashTornados[ti];
@@ -605,6 +611,11 @@
       var appear  = elapsed < 300  ? elapsed / 300  : 1.0;  // 300ms fade-in
       var fade    = tor.life  < 600 ? tor.life  / 600 : 1.0; // 600ms fade-out
       var alpha   = appear * fade;
+      // Dash Lv3 growth: radius eases from startR → endR over the full life.
+      var sR = tor.startR || C.DASH_TORNADO_RADIUS;
+      var eR = tor.endR   || C.DASH_TORNADO_RADIUS;
+      tor.r = sR + (eR - sR) * (tor.maxLife > 0 ? elapsed / tor.maxLife : 1);
+      var R = tor.r;
 
       var gfx = tor.gfx;
       gfx.clear();
@@ -653,6 +664,46 @@
       gfx.lineStyle(2, 0xffffff, corePulse * alpha * 0.25);
       gfx.strokeCircle(tor.x, tor.y, R * 0.12);
     }
+  };
+
+  /* ---------------------------------------------------------------
+     Boss reward: the arrow "powers up" (grows stronger) before the draft.
+     Sets this._powerUpT (read by _renderPlayer for a scale + glow surge) and
+     spawns a layered bloom. The "I am Steve" skin gets an enchant-themed variant.
+     --------------------------------------------------------------- */
+  M._playerPowerUpFx = function () {
+    var p = this.p;
+    if (!p) return;
+    var steve = !!window.__laSteveSkin;
+    this._powerUpT     = 0.62;     // seconds — _renderPlayer reads this for the surge
+    this._powerUpSteve = steve;
+
+    var ringMain = steve ? 0xb478ff : 0x00ffff;   // enchant violet vs cyan
+    var ringAcc  = steve ? 0x66ffb4 : 0x66ccff;
+    var ringGold = steve ? 0xffd864 : 0xffffff;
+    var coreCol  = steve ? [180, 120, 255] : [0, 255, 255];
+    var accCol   = steve ? [120, 255, 180] : [120, 200, 255];
+
+    // Layered bloom radiating from the player
+    this._spawnWaveRing(p.x, p.y, { maxRadius: 170, color: ringMain, expandTime: 0.52 });
+    this._spawnWaveRing(p.x, p.y, { maxRadius: 110, color: 0xffffff, expandTime: 0.40 });
+    this._spawnWaveRing(p.x, p.y, { maxRadius: 240, color: ringAcc,  expandTime: 0.62 });
+    this._explode(p.x, p.y, coreCol, 44);
+    this._explode(p.x, p.y, [255, 255, 255], 26);
+
+    // Afterimage bloom of the arrow itself
+    for (var i = 0; i < 5; i++) this._addGhost(p.x, p.y, 0.7 - i * 0.12, p.angle, false);
+
+    this.cameras.main.flash(220, coreCol[0], coreCol[1], coreCol[2]);
+    this.cameras.main.shake(170, 0.009);
+
+    // Secondary "power locked in" pop a beat later
+    var self = this;
+    this.time.delayedCall(300, function () {
+      if (!self.p) return;
+      self._explode(self.p.x, self.p.y, accCol, 30);
+      self._spawnWaveRing(self.p.x, self.p.y, { maxRadius: 140, color: ringGold, expandTime: 0.36 });
+    });
   };
 
 })();
