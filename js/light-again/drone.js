@@ -78,6 +78,14 @@
       }
     }
 
+    // Smart kamikaze: only ONE drone dives at a time. The others orbit and wait
+    // until the current diver has detonated — so no blast is wasted on enemies a
+    // sibling already cleared, and two drones never dive at the same target.
+    var diverActive = false;
+    for (var dq = 0; dq < this._drones.length; dq++) {
+      if (this._drones[dq].state === 'DIVE') { diverActive = true; break; }
+    }
+
     for (var i = this._drones.length - 1; i >= 0; i--) {
       var d = this._drones[i];
       d.spin += dt * 7;
@@ -90,15 +98,16 @@
         d.x += (ox - d.x) * k;
         d.y += (oy - d.y) * k;
         d.diveCD -= ms;
-        if (d.diveCD <= 0) {
+        if (d.diveCD <= 0 && !diverActive) {
           var tgt = this._droneAcquire(d.x, d.y);
           if (tgt) {
             d.state = 'DIVE'; d.diveT = 0; d.target = tgt;
             var a0 = Math.atan2(tgt.y - d.y, tgt.x - d.x);
             d.vx = Math.cos(a0) * C.DRONE_DIVE_SPEED;
             d.vy = Math.sin(a0) * C.DRONE_DIVE_SPEED;
+            diverActive = true;   // claim the single kamikaze slot for this frame
           }
-          // no target yet → keep orbiting; retries next frame (diveCD stays ≤ 0)
+          // no target (or a sibling is mid-dive) → keep orbiting; retries next frame
         }
       } else {  // DIVE
         d.diveT += ms;
@@ -135,12 +144,13 @@
     this._renderDrones();
   };
 
-  /* Small allied blast: damage + knockback (+ Lv3 mark on survivors). */
+  /* Small allied blast: damage + knockback. Lv2+ DOUBLES the radius; Lv3 also
+     plants a delayed explosion at the spot once the blast resolves. */
   M._droneDetonate = function (d) {
     var lvl = (this._upgradeLevels && this._upgradeLevels.drone) || 0;
-    var R   = (lvl >= 3 ? C.DRONE_BLAST_R_L3 : C.DRONE_BLAST_R) * (this._blastMult || 1);
+    var R   = C.DRONE_BLAST_R * (lvl >= 2 ? C.DRONE_BLAST_R_MULT_L2 : 1) * (this._blastMult || 1);
     var Rsq = R * R;
-    var dmg = lvl >= 3 ? C.DRONE_BLAST_DMG_L3 : C.DRONE_BLAST_DMG;
+    var dmg = C.DRONE_BLAST_DMG;
     var x = d.x, y = d.y;
 
     var ownBatch = !this._twBatchWindow;
@@ -160,7 +170,6 @@
         } else {
           e.stunTimer = Math.max(e.stunTimer, 220);
           this._explode(e.x, e.y, [120, 220, 255], 5);
-          if (lvl >= 3) this._applyMarkToEnemy(e);   // Lv3: survivors get marked (Detonation synergy)
         }
       }
       if (dist > 0.1) {
@@ -180,6 +189,12 @@
     this._spawnWaveRing(x, y, { maxRadius: R, color: 0x33ddff, expandTime: 0.22 });
     this.cameras.main.shake(70, 0.006);
     this._triggerHitstop(Math.round(C.HITSTOP_DUR * 0.6));
+
+    // Lv3: the kamikaze blast leaves a delayed explosion behind (scales with the
+    // Explosion-à-retardement branch, min Lv1) — a second wave a beat later.
+    if (lvl >= 3) {
+      this._spawnDelayedExplosion(x, y, Math.max(1, (this._upgradeLevels && this._upgradeLevels.baseAtk) || 0));
+    }
   };
 
   /* Draw every live drone into the shared graphics object. */

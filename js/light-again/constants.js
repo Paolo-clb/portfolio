@@ -115,7 +115,7 @@
        The HUD counter shows kills-until-next-boss; bosses are the ONLY upgrade
        source. Hardcore: the gap grows by +100 each boss (100 → 200 → 300 …).
        Sandbox: a flat gap. The counter "pauses" while a boss is alive (DANGER). */
-    BOSS_KILL_INTERVAL:          100,    // sandbox: flat kills between bosses
+    BOSS_KILL_INTERVAL:          200,    // sandbox: flat kills between bosses
     BOSS_KILL_INTERVAL_HC_START: 100,    // hardcore: kills to the FIRST boss
     BOSS_KILL_INTERVAL_HC_STEP:  100,    // hardcore: gap grows by this each boss
     BOSS_KILL_SCORE:             10000,  // base points a boss awards on death (×combo)
@@ -159,10 +159,10 @@
     DRONE_DIVE_TURN:      7.5,    // homing turn rate while diving (rad/s)
     DRONE_DIVE_TIMEOUT:   2200,   // ms before a diving drone self-detonates if it never connects
     DRONE_HIT_R:          16,     // contact slack added to enemy size → detonation
-    DRONE_BLAST_R:        92,     // detonation blast radius (px) — Lv1/Lv2
-    DRONE_BLAST_R_L3:     120,    // bigger blast at Lv3
-    DRONE_BLAST_DMG:      1,      // damage per enemy in the blast (Lv1/Lv2)
-    DRONE_BLAST_DMG_L3:   2,      // Lv3 hits harder
+    DRONE_BLAST_R:        92,     // base detonation blast radius (px) — Lv1
+    DRONE_BLAST_R_MULT_L2: 2.0,   // Lv2+: blast radius is DOUBLED
+    DRONE_BLAST_DMG:      1,      // damage per enemy in the blast (all levels)
+    // Lv3: when the drone blast finishes, a delayed explosion is planted at the spot.
     DRONE_DIVE_CD_L1:     2700,   // ms a drone orbits before it may dive again (Lv1)
     DRONE_DIVE_CD_L2:     1900,   // faster cadence at Lv2+
     DRONE_RESPAWN_L1:     3200,   // ms to rebuild a detonated drone (Lv1)
