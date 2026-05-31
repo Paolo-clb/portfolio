@@ -2,8 +2,9 @@
    Light Again — The Digital Tree + Cyber-Fairy (random "extra-life" event)
 
    A glowing circuit-board tree sprouts somewhere on the arena from time to
-   time. A green guidance chevron — the SAME logic & look as the Anomaly's
-   pointer — leads the player to it:
+   time. Natural spawns are UNGUIDED — the player must find the tree. Only the
+   debug/test shortcut (scene.js KeyP) spawns a guided one, led by a green
+   guidance chevron (the SAME logic & look as the Anomaly's pointer):
 
      1. SPAWN   — rare, gated, one tree at a time, away from the player.
      2. IDLE    — the tree breathes: branches sway, nodes pulse, data-bits
@@ -160,7 +161,8 @@
     if (Math.random() < C.TREE_SPAWN_CHANCE) this._spawnDigitalTree();
   };
 
-  M._spawnDigitalTree = function () {
+  M._spawnDigitalTree = function (opts) {
+    opts = opts || {};
     if (this._tree || this._fairy) return;
     if (!this.p || this.p.state === 'DEAD') return;
 
@@ -185,6 +187,7 @@
     this._tree = {
       x: x, y: y,
       phase: 'IDLE',
+      guided: !!opts.guided,    // only the debug/test spawn shows a guidance chevron
       nodes: nodes,
       growT: 0,                 // 0→1 sprout-in animation
       age: 0,                   // ms alive (for the wither timer)
@@ -421,11 +424,12 @@
   /* ================================================================
      GUIDANCE CHEVRON — identical logic & appearance to the Anomaly pointer
      (a green chevron standing ~90px from the ship, aimed at the tree).
+     Debug/test spawns only (t.guided); natural spawns are blind.
      ================================================================ */
   M._renderTreePointer = function () {
     var t = this._tree, p = this.p, pg = this._treePtrGfx, gt = this.gameTime;
     pg.clear();
-    if (!t || t.phase !== 'IDLE' || !p || p.state === 'DEAD') return;
+    if (!t || !t.guided || t.phase !== 'IDLE' || !p || p.state === 'DEAD') return;
 
     var pdx = t.x - p.x, pdy = t.y - p.y;
     var pdd = Math.sqrt(pdx * pdx + pdy * pdy);

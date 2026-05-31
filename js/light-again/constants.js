@@ -430,6 +430,34 @@
     // Min centre-to-centre distance the Digital Tree and the Curse Fountain keep
     // from each other so the two map events never crowd (whichever spawns 2nd re-rolls).
     MAP_FEATURE_MIN_SEP:         620,
+
+    /* ---- Data Highways (Autoroutes de Données) — mobility terrain event -----
+       Long, thin, luminous "wind/code" corridors that streak across the arena.
+       Stepping in — or, better, DASHING through — carries the player along the
+       flow like a conveyor belt at up to ~3× normal top speed. The flow is
+       FIXED (random direction): sometimes it helps you flee, sometimes it hurls
+       you into a wall — the environment becomes an unpredictable actor. Pure
+       mobility: NO score, NO damage, NO guidance arrow (found at random). A
+       capsule placement keeps every highway FULLY inside the map (never clipped
+       by the world edge). Self-contained on this._highways (a small pool). */
+    HIGHWAY_SPAWN_MIN_DELAY:     11000,  // ms of play before the first highway may appear
+    HIGHWAY_SPAWN_INTERVAL_MIN:  20000,  // ms between highways (min) — ≈ the 20–30 s the brief asked
+    HIGHWAY_SPAWN_INTERVAL_MAX:  30000,  // ms between highways (max)
+    HIGHWAY_LIFETIME:            15000,  // ms a highway lives before it evaporates
+    HIGHWAY_FADE_IN:             1000,   // ms of the "draw-in" sweep entrance (strength ramps 0→1)
+    HIGHWAY_FADE_OUT:            1300,   // ms of the evaporation (strength ramps 1→0, retracts away)
+    HIGHWAY_MAX:                 2,      // concurrent-highway pool cap (≈1 at a time with the gaps above)
+    HIGHWAY_LEN_MIN:             1800,   // min corridor length (px) — "très longs"
+    HIGHWAY_LEN_MAX:             3100,   // max corridor length (px)
+    HIGHWAY_HALF_WIDTH:          58,     // core half-width — the full-boost band (px) — "fins"
+    HIGHWAY_EDGE_FEATHER:        46,     // px past the core where the boost eases smoothly to 0
+    HIGHWAY_END_FEATHER:         150,    // px at each end where the boost eases in/out (smooth launch-off)
+    HIGHWAY_MARGIN:              130,    // px the whole capsule keeps clear of the world edge (glow room)
+    HIGHWAY_FLOW_SPEED:          14,     // px/frame conveyor carry at full strength (≈ +2× top speed → ~3× total)
+    HIGHWAY_FLOW_CAP_MULT:       1.35,   // hard cap on summed conveyor magnitude (overlap guard) × FLOW_SPEED
+    HIGHWAY_ENEMY_FLOW_MULT:     0.9,    // enemies caught in the flow are swept too, at this × the player's carry
+    HIGHWAY_SPAWN_NEAR_MIN:      160,    // the corridor passes at least this close to the player...
+    HIGHWAY_SPAWN_NEAR_MAX:      840,    // ...and at most this far, so it's discoverable without a pointer
   };
 
   /* ---- Upgrade branch definitions (all 3 levels) ---- */

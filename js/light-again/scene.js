@@ -409,6 +409,7 @@
       this._initSnake();
       this._initDigitalTree();
       this._initCurseFount();
+      this._initDataHighways();
       this._initTutorial();
 
       cam.setBackgroundColor(LA.getColors().bgColor);
@@ -462,10 +463,10 @@
           ev.preventDefault();
           self._spawnSnake();
         }
-        // Cheat: force-spawn The Digital Tree (random extra-life event)
+        // Cheat: force-spawn The Digital Tree (random extra-life event) — guided, easy to test
         if (ev.code === 'KeyP' && !ev.repeat) {
           ev.preventDefault();
-          self._spawnDigitalTree();
+          self._spawnDigitalTree({ guided: true });
         }
         // Cheat: skip straight to a following Cyber-Fairy (test the revive)
         if (ev.code === 'KeyO' && !ev.repeat) {
@@ -476,6 +477,11 @@
         if (ev.code === 'KeyU' && !ev.repeat) {
           ev.preventDefault();
           if (self._spawnCurseFount) self._spawnCurseFount({ guided: true, near: true });
+        }
+        // Cheat: force-spawn a Data Highway near the player (autoroute de données)
+        if (ev.code === 'KeyY' && !ev.repeat) {
+          ev.preventDefault();
+          if (self._spawnHighway) self._spawnHighway({});
         }
 
       });
@@ -569,8 +575,10 @@
         if (self._clearDigitalTree) self._clearDigitalTree(true);
         if (self._clearFairy)       self._clearFairy();
         if (self._clearCurseFount)  self._clearCurseFount(true);
+        if (self._clearDataHighways) self._clearDataHighways(true);
         self._treeGfx = null; self._treePtrGfx = null; self._fairyGfx = null;
         self._fountDarkGfx = null; self._fountGfx = null; self._fountObGfx = null; self._fountPtrGfx = null;
+        self._highwayGfx = null;
         // Tear down any tutorial overlay so it can't outlive the scene (e.g. a
         // mode switch from the home menu mid-tutorial would otherwise orphan it).
         self._tutorialActive = false;
@@ -769,6 +777,11 @@
       }
       p.x += p.vx * pS60; p.y += p.vy * pS60;
 
+      // Data Highways conveyor — carries the player along an active flow corridor
+      // (pure positional push; runs BEFORE the world clamp so an adverse flow can
+      // genuinely shove you into a wall). On player time, so it works during TW.
+      this._applyHighwayFlow(pS60);
+
       var wM = C.WORLD_HALF - C.SIZE * 1.5;
       if (p.x < -wM) { p.x = -wM; p.vx *= -0.4; }
       if (p.x >  wM) { p.x =  wM; p.vx *= -0.4; }
@@ -874,6 +887,7 @@
       // During the tutorial, enemies hold still until the player acts — gives
       // breathing room to read each step's tip without getting swarmed/killed.
       if (!this._tutEnemiesFrozen) this._updateEnemies(sDt);
+      this._applyHighwayFlowToEnemies(s60);   // Data Highways sweep enemies caught in the flow too
       this._updateProjectiles(sDt, pDt);
       this._checkCollisions();
       this._checkStarPickup();
@@ -887,6 +901,7 @@
       this._checkSnakeCollision();
       this._updateDigitalTree(dt);
       this._updateCurseFount(dt);
+      this._updateDataHighways(dt);
       this._updateTutorial(dt);
 
       // Star power timer countdown — uses real time so TW doesn't pause the bar

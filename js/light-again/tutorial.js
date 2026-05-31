@@ -235,6 +235,7 @@
     if (this._clearMirror) this._clearMirror(true);
     if (this._clearSnake) this._clearSnake(true);
     if (this._clearCurseFount) this._clearCurseFount(true);   // also drop a live Curse Fountain
+    if (this._clearDataHighways) this._clearDataHighways(true); // and any live Data Highway
     this._anomalyBarrierActive = false;
     this._anomalyIntroActive = false;
     this._anomalyCooldownT = 0;

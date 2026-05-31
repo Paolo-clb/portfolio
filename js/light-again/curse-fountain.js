@@ -5,9 +5,10 @@
    somewhere on the arena. It is the ONLY source of curses now (they no longer
    drop from the upgrade draft).
 
-     1. SPAWN    — rare, gated, one at a time, far from the player. A natural
-                   spawn is led by a magenta guidance chevron (same logic/look
-                   as the Anomaly/Tree pointer). A post-boss respawn is UNGUIDED.
+     1. SPAWN    — rare, gated, one at a time, far from the player. UNGUIDED:
+                   no chevron points the way (the player must find it). Only the
+                   debug/test shortcut (scene.js KeyU) spawns a guided one, with
+                   the magenta chevron, to make it easy to locate while testing.
      2. IDLE     — the obelisk breathes; a ring of black mist (≈ a no-upgrade
                    dash-mark detonation wide) roils around it and SWALLOWS any
                    enemy or projectile that enters: a smooth dissolve, NO score
@@ -120,7 +121,7 @@
   };
 
   /* ================================================================
-     SPAWN — natural (guided) or post-boss respawn (unguided)
+     SPAWN — natural / post-boss respawn (both unguided; only debug is guided)
      ================================================================ */
   M._maybeSpawnFount = function (dt) {
     if (this._tutorialActive) return;
@@ -143,7 +144,9 @@
     this._fountSpawnRollT += dt * 1000;
     if (this._fountSpawnRollT < 1000) return;
     this._fountSpawnRollT -= 1000;
-    if (Math.random() < C.CURSE_FOUNT_SPAWN_CHANCE) this._spawnCurseFount({ guided: true });
+    // Natural spawns are UNGUIDED — no chevron points the player to the fountain.
+    // (Only the debug/test shortcut spawns a guided one; see scene.js KeyU.)
+    if (Math.random() < C.CURSE_FOUNT_SPAWN_CHANCE) this._spawnCurseFount({ guided: false });
   };
 
   M._spawnCurseFount = function (opts) {
@@ -677,7 +680,8 @@
 
   /* ================================================================
      GUIDANCE CHEVRON — identical logic & look to the Anomaly/Tree pointer,
-     here in cursed magenta. Natural spawns only (post-boss respawns are blind).
+     here in cursed magenta. Debug/test spawns only (f.guided); every in-game
+     spawn — natural and post-boss respawn alike — is blind.
      ================================================================ */
   M._renderFountPointer = function () {
     var f = this._fount, p = this.p, pg = this._fountPtrGfx, gt = this.gameTime;
