@@ -116,10 +116,6 @@
         '<video class="la-preview__video" muted loop playsinline preload="none" aria-hidden="true">' +
           '<source src="assets/light-again/gameplay-preview.mp4" type="video/mp4">' +
         '</video>' +
-        '<div class="la-preview__play-glyph" aria-hidden="true">' +
-          '<svg viewBox="0 0 24 24"><polygon points="8 5 19 12 8 19 8 5"/></svg>' +
-        '</div>' +
-        '<div class="la-preview__media-caption">' + t('laPreviewVideoNote') + '</div>' +
       '</div>' +
       '<div class="la-preview__info">' +
         '<span class="la-preview__badge">' + t('laPreviewBadge') + '</span>' +

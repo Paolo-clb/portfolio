@@ -119,7 +119,6 @@ window.SITE_I18N = {
     laPreviewTechLabel:  'Technologie',
     laPreviewTech:       'Phaser 3 (WebGL / Canvas 2D) en JavaScript vanilla, intégré directement dans le portfolio — aucune étape de build.',
     laPreviewPlay:       'Jouer maintenant',
-    laPreviewVideoNote:  'Extrait temporaire',
     laPreviewDesktopOnly:'Jouable sur ordinateur',
     // Game Over screen
     laGoScore:      'Score',
@@ -344,7 +343,6 @@ window.SITE_I18N = {
     laPreviewTechLabel:  'Tech',
     laPreviewTech:       'Phaser 3 (WebGL / Canvas 2D) in vanilla JavaScript, embedded straight into the portfolio — no build step.',
     laPreviewPlay:       'Play now',
-    laPreviewVideoNote:  'Placeholder clip',
     laPreviewDesktopOnly:'Playable on desktop',
     // Game Over screen
     laGoScore:      'Score',
