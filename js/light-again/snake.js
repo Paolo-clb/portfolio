@@ -147,7 +147,7 @@
       slitherPhase: Math.random() * TAU,
       orbitSign: Math.random() < 0.5 ? -1 : 1,
       wanderAng: 0,
-      spitCD: 700 + Math.random() * 900,
+      spitCD: 700 + Math.random() * 900, spitT: 0, spitFired: false,
       whipCD: 1500 + Math.random() * 1800, whipT: 0, whipHit: false,
       whipDir: 0, whipSign: 1,
       headClink: 0, splitFlash: 0, introReveal: 0,
@@ -231,11 +231,9 @@
       this._snakeMoveWorm(w, sMs, dt);
       // Every worm spits on its OWN cadence; shorter worms fire fewer bolts, less
       // often (per-worm spitCD + length-scaled count). Global cap keeps it sane.
-      w.spitCD -= sMs;
-      if (w.spitCD <= 0) {
-        this._snakeWormSpit(w);
-        w.spitCD = this._snakeSpitCD(w.segs.length);
-      }
+      // The spit now plays through a charge windup → release recoil animation
+      // (_snakeUpdateSpit), so it telegraphs before the bolts launch from the tail.
+      this._snakeUpdateSpit(w, sMs);
       // Defensive COUP DE QUEUE — a longer worm lashes its tail when attacked,
       // repelling the player + enemies (no damage). May reshape s.worms? No — the
       // whip never splits, so iterating s.worms here stays safe.
@@ -396,15 +394,59 @@
   };
   M._snakeWormSpit = function (worm) {
     var p = this.p;
-    var n = this._snakeSpitCount(worm.segs.length);
-    var base = Math.atan2(p.y - worm.hy, p.x - worm.hx);
+    var segs = worm.segs;
+    // Bolts launch from the very TIP OF THE TAIL (last segment), not the head.
+    var tail = segs.length ? segs[segs.length - 1] : null;
+    var ox = tail ? tail.x : worm.hx;
+    var oy = tail ? tail.y : worm.hy;
+    var n = this._snakeSpitCount(segs.length);
+    var base = Math.atan2(p.y - oy, p.x - ox);
     for (var k = 0; k < n; k++) {
       var t = n > 1 ? (k / (n - 1) - 0.5) : 0;
       var ang = base + t * 2 * C.SNAKE_SPIT_SPREAD;
-      this._spawnSnakeSpit(worm.hx, worm.hy, ang);
+      this._spawnSnakeSpit(ox, oy, ang);
     }
-    this._explode(worm.hx, worm.hy, [120, 255, 150], 8);
-    this._spawnWaveRing(worm.hx, worm.hy, { maxRadius: C.SNAKE_HEAD_SIZE * 2.2, color: 0x33ff88, expandTime: 0.16 });
+    // Recoil punch: the tail tip kicks back (reuses the spawn-pop overshoot so it
+    // briefly swells + flashes white) and throws a release burst.
+    if (tail) tail._pop = Math.max(tail._pop || 0, 0.75);
+    this._explode(ox, oy, [120, 255, 150], 10);
+    this._explode(ox, oy, [255, 255, 255], 5);
+    this._spawnWaveRing(ox, oy, { maxRadius: C.SNAKE_SEG_SIZE * 2.4, color: 0x33ff88, expandTime: 0.16 });
+    this._spawnWaveRing(ox, oy, { maxRadius: C.SNAKE_SEG_SIZE * 1.3, color: 0xffffff, expandTime: 0.10 });
+    this.cameras.main.shake(40, 0.004);
+  };
+
+  /* Per-worm SPIT animation: idle (cooldown) → charge windup (a venom orb coils
+     up at the tail tip, telegraphing the volley) → release (bolts launch +
+     recoil) → recover. Mirrors the tail-whip's windup model. Driven by scaled
+     world-time, so The World / hitstop freeze the charge in place. */
+  M._snakeUpdateSpit = function (worm, sMs) {
+    if (worm.spitT > 0) {
+      worm.spitT += sMs;
+      if (!worm.spitFired && worm.spitT >= C.SNAKE_SPIT_WINDUP) {
+        worm.spitFired = true;
+        this._snakeWormSpit(worm);
+      }
+      if (worm.spitT >= C.SNAKE_SPIT_DUR) {
+        worm.spitT = 0;
+        worm.spitFired = false;
+        worm.spitCD = this._snakeSpitCD(worm.segs.length);
+      }
+      return;
+    }
+    worm.spitCD -= sMs;
+    if (worm.spitCD <= 0) this._snakeBeginSpit(worm);
+  };
+
+  /* Begin a spit: start the charge timer + a small gathering pop at the tail tip. */
+  M._snakeBeginSpit = function (worm) {
+    worm.spitT = 0.0001;
+    worm.spitFired = false;
+    var segs = worm.segs;
+    var tail = segs.length ? segs[segs.length - 1] : null;
+    var ox = tail ? tail.x : worm.hx, oy = tail ? tail.y : worm.hy;
+    this._spawnWaveRing(ox, oy, { maxRadius: C.SNAKE_SEG_SIZE * 1.5, color: 0x33ff88, expandTime: 0.18 });
+    this._explode(ox, oy, [120, 255, 150], 5);
   };
 
   /* A venom bolt rides the normal projectile system, but its PARRY is unique:
@@ -454,6 +496,14 @@
       c.smashed     = false;          // a light spray — the SPLIT itself is the payoff
       c.rotSpeed    = 24;
       c.life        = C.PROJ_LIFE;
+      // Group every hatchling's kills into the SAME "PARADE ×N" popup the rest of
+      // the parry system uses, so returning venom reads uniform with any other
+      // deflect (the kills are also ×2 via reflected:true in the projectile loop).
+      c._dashAtkId = this._currentDashAtkId || 0;
+      if (c._dashAtkId) {
+        this._paradePending = this._paradePending || {};
+        this._paradePending[c._dashAtkId] = (this._paradePending[c._dashAtkId] || 0) + 1;
+      }
       if (c.spr) c.spr.setVisible(false);   // keep the serpent skin (cyan via _renderSnakeVenom)
       if (twActive) this._twFreezeProjectile(c);
     }
@@ -623,6 +673,52 @@
     }
   };
 
+  /* Draw the spit telegraph at the tail tip: during the windup a venom orb
+     gathers + brightens just off the tail (with sparks spiralling inward), then
+     on release a white-hot muzzle flash bursts forward and fades. Oriented toward
+     the player — i.e. the direction the bolts will launch. */
+  M._renderSnakeSpit = function (w, gfx, fx) {
+    var segs = w.segs;
+    if (!segs.length) return;
+    var tail = segs[segs.length - 1];
+    var wu = C.SNAKE_SPIT_WINDUP, dur = C.SNAKE_SPIT_DUR;
+    var gt = this.gameTime, p = this.p;
+    var ang = Math.atan2(p.y - tail.y, p.x - tail.x);
+    var ca = Math.cos(ang), sa = Math.sin(ang);
+    var SS = C.SNAKE_SEG_SIZE;
+
+    if (w.spitT < wu) {
+      // CHARGE — a venom orb gathers + brightens just off the tail tip.
+      var tg = w.spitT / wu;
+      var cx = tail.x + ca * SS * (0.7 + tg * 0.7);
+      var cy = tail.y + sa * SS * (0.7 + tg * 0.7);
+      var R  = SS * (0.35 + tg * 0.95);
+      fx.fillStyle(0x33ff88, 0.22 + tg * 0.5);
+      fx.fillCircle(cx, cy, R);
+      fx.fillStyle(0xbfffd9, 0.30 + tg * 0.5);
+      fx.fillCircle(cx, cy, R * 0.55);
+      fx.fillStyle(0xffffff, tg * 0.7);
+      fx.fillCircle(cx, cy, R * 0.28);
+      // gathering sparks spiralling inward as the charge builds
+      for (var k = 0; k < 5; k++) {
+        var ka = gt * 6 + (TAU / 5) * k;
+        var rr = R * (1.9 - tg * 1.1);
+        fx.fillStyle(0x9dffc0, 0.30 + tg * 0.5);
+        fx.fillCircle(cx + Math.cos(ka) * rr, cy + Math.sin(ka) * rr, 1.6 + tg * 1.6);
+      }
+    } else {
+      // RELEASE — a white-hot muzzle flash bursts forward off the tail, fading.
+      var ts = (w.spitT - wu) / (dur - wu); if (ts > 1) ts = 1;
+      var fade = 1 - ts;
+      var mx = tail.x + ca * SS * (0.6 + ts * 1.4);
+      var my = tail.y + sa * SS * (0.6 + ts * 1.4);
+      fx.fillStyle(0xffffff, fade * 0.8);
+      fx.fillCircle(tail.x, tail.y, SS * (0.5 + ts * 0.4));
+      fx.fillStyle(0x9dffc0, fade * 0.6);
+      fx.fillCircle(mx, my, SS * (0.4 + ts * 0.9));
+    }
+  };
+
   /* ================================================================
      DAMAGE — segments take hits from every source
      ================================================================ */
@@ -692,7 +788,7 @@
           slitherPhase: Math.random() * TAU,
           orbitSign: Math.random() < 0.5 ? -1 : 1,
           wanderAng: (Math.random() - 0.5) * 1.2,
-          spitCD: 500 + Math.random() * 1100,
+          spitCD: 500 + Math.random() * 1100, spitT: 0, spitFired: false,
           whipCD: C.SNAKE_WHIP_CD * (0.6 + Math.random() * 0.6), whipT: 0,
           whipHit: false, whipDir: 0, whipSign: 1,
           headClink: 0, splitFlash: 1, introReveal: 999,
@@ -754,6 +850,54 @@
     }
   };
 
+  /* A parried HATCHLING detonates a SMALL blast on contact (enemy or segment).
+     The N hatchlings' blast AREAS sum to ONE normal (tier-2) reflected-projectile
+     smash area:  π·R² = N·π·r²  →  r = R / √N  (R = the smash radius). The blast
+     chews enemies (kills fold into the same "PARADE ×N" popup), chips nearby
+     serpent segments (throttled, sparing the directly-struck one), and pops cyan
+     "tamed" FX sized to its radius so the area reads honestly.
+       pr      — the hatchling projectile (its x/y is the blast centre).
+       hitSeg  — the segment it struck head-on (or null for an enemy hit); shielded
+                 from the splash so it isn't double-chipped. */
+  M._snakeHatchlingBurst = function (pr, hitSeg) {
+    var R = C.SHOCKWAVE_RADIUS * 1.1 * (this._blastMult || 1);   // one tier-2 reflected smash
+    var r = R / Math.sqrt(C.SNAKE_PARRY_SPLIT || 1);            // N blasts share that area
+    var r2 = r * r, x = pr.x, y = pr.y;
+
+    var ownBatch = pr._dashAtkId && !this._twBatchWindow;
+    if (ownBatch) this._beginBatch('PARADE', { dashAtkId: pr._dashAtkId });
+    for (var i = this.enemies.length - 1; i >= 0; i--) {
+      var e = this.enemies[i];
+      var dx = e.x - x, dy = e.y - y, d2 = dx * dx + dy * dy;
+      if (d2 > r2) continue;
+      if (e.tier === 3 && e.hasShield) { this._breakShield(e); continue; }
+      e.hp -= 1;
+      if (e.hp <= 0) {
+        this._killEnemy(i, { batch: ownBatch, reflected: true });
+      } else {
+        var d = Math.sqrt(d2) || 1, f = 1 - d / r;
+        e.vx += (dx / d) * C.SHOCKWAVE_FORCE * f;
+        e.vy += (dy / d) * C.SHOCKWAVE_FORCE * f;
+        e.stunTimer = Math.max(e.stunTimer || 0, 220 * f);
+      }
+    }
+    if (ownBatch) this._endBatch();
+
+    // Chip nearby serpent segments (throttled), sparing the directly-hit one.
+    if (this._snake && !this._snake.dead) {
+      if (hitSeg) hitSeg.aoeIframe = C.SNAKE_AOE_IFRAME;
+      this._damageSnakeAoe(x, y, r, C.SNAKE_AOE_DMG);
+    }
+
+    // Cyan "tamed" blast, ring drawn at the true AoE radius so the area is legible.
+    this._spawnWaveRing(x, y, { maxRadius: r,       color: 0x66ffff, expandTime: 0.18 });
+    this._spawnWaveRing(x, y, { maxRadius: r * 0.5, color: 0xffffff, expandTime: 0.12 });
+    this._explode(x, y, [120, 255, 230], 14);
+    this._explode(x, y, [255, 255, 255], 6);
+    this._triggerHitstop(C.HITSTOP_DUR);
+    this.cameras.main.shake(28, 0.003);
+  };
+
   /* Reflected projectile vs the serpent — called from the projectile loop.
      Returns true if it struck a segment (so the projectile is consumed). The
      head is intangible to projectiles (they pass through). */
@@ -785,6 +929,9 @@
     if (pr.smashed && this._snake && !this._snake.dead) {
       best.aoeIframe = C.SNAKE_AOE_IFRAME;
       this._damageSnakeAoe(pr.x, pr.y, C.SHOCKWAVE_RADIUS * 1.1, C.SNAKE_AOE_DMG);
+    } else if (!pr.smashed && this._snake && !this._snake.dead) {
+      // A parried HATCHLING detonates its small blast on the segment it struck.
+      this._snakeHatchlingBurst(pr, best);
     }
     return true;
   };
@@ -1079,6 +1226,9 @@
 
       // ── TAIL WHIP (coup de queue) crescent ──
       if (!emerging && w.whipT > 0) this._renderSnakeWhip(w, gfx, fx);
+
+      // ── VENOM SPIT charge / release telegraph at the tail tip ──
+      if (!emerging && w.spitT > 0) this._renderSnakeSpit(w, gfx, fx);
     }
 
     // Venom volleys ride as procedural writhing mini-serpents.

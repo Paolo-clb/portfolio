@@ -189,6 +189,7 @@
       vulnerable: false, didHit: false,
       hitIframe: 0,
       hitT: 0, dodgeFlashT: 0, spin: 0, dashSpin: 0,
+      hitFx: [],                // smooth directional strike-impact flourishes (plain data)
       // radial-nova projectiles + afterimages
       shots: [],
       ghosts: ghosts, ghostW: 0,
@@ -233,6 +234,7 @@
     var sc60 = pMs / 16.7;
     mir.spin       += sc60 * 0.05;
     mir.hitT        = Math.max(0, mir.hitT - dt * 3.5);
+    this._mirrorTickHitFx(mir, dt);   // strike flourishes advance on real dt (frozen by hitstop)
     mir.dodgeFlashT = Math.max(0, mir.dodgeFlashT - dt * 4);
     mir.hitIframe   = Math.max(0, mir.hitIframe - pMs);
     if (mir.dodgeCD > 0) mir.dodgeCD -= pMs;
@@ -807,7 +809,12 @@
     mir.orbs -= (amount || 1);
     mir.hitT = 1.0;
     mir.hitIframe = C.MIR_HIT_IFRAME;
+    // Stylish directional strike feedback along the knockback heading (player → rival).
+    var hp = this.p;
+    var hang = hp ? Math.atan2(mir.y - hp.y, mir.x - hp.x) : mir.angle;
+    this._mirrorHitFx(mir.x, mir.y, hang);
     this._explode(mir.x, mir.y, [180, 96, 255], 16);
+    this._explode(mir.x, mir.y, [156, 255, 255], 10);   // cyan-white sparks read as "your hit"
     this._explode(mir.x, mir.y, [255, 255, 255], 8);
     this._spawnWaveRing(mir.x, mir.y, { maxRadius: C.MIR_SIZE * 2.4, color: ORB_COL, expandTime: 0.18 });
     this._triggerHitstop(C.HITSTOP_DUR);
@@ -1194,6 +1201,8 @@
     mir.hitT = 1.0;
     mir.hitIframe = EXPOSE_IFRAME;
     var ex = mir.x, ey = mir.y;
+    var sp = this.p;
+    this._mirrorHitFx(ex, ey, sp ? Math.atan2(ey - sp.y, ex - sp.x) : mir.angle);
     this._spawnWaveRing(ex, ey, { maxRadius: C.MIR_SIZE * 4.5, color: ORB_COL, expandTime: 0.30 });
     this._spawnWaveRing(ex, ey, { maxRadius: C.MIR_SIZE * 2.6, color: 0xffffff, expandTime: 0.18 });
     this._explode(ex, ey, [180, 96, 255], 34);
@@ -1308,6 +1317,68 @@
   };
 
   /* ================================================================
+     STRIKE-IMPACT FLOURISH — a short, smooth, stylish burst at every landed
+     blow so a connected hit reads crisply: a violet shield-shock ring (the ward
+     reacting) + a white-hot core and a cyan-white spark fan flung along the
+     knockback heading. Plain data on mir.hitFx; advanced on real dt (so it
+     freezes with the body during the hitstop) and drawn on the ADD gfx layer.
+     ================================================================ */
+  M._mirrorHitFx = function (x, y, ang) {
+    var mir = this._mirror;
+    if (!mir) return;
+    if (!mir.hitFx) mir.hitFx = [];
+    if (mir.hitFx.length >= 5) mir.hitFx.shift();    // cap (cheap, never piles up)
+    mir.hitFx.push({ x: x, y: y, ang: ang, t: 0, dur: 0.38 });
+  };
+
+  M._mirrorTickHitFx = function (mir, dt) {
+    if (!mir.hitFx || !mir.hitFx.length) return;
+    for (var i = mir.hitFx.length - 1; i >= 0; i--) {
+      var h = mir.hitFx[i];
+      h.t += dt;
+      if (h.t >= h.dur) mir.hitFx.splice(i, 1);
+    }
+  };
+
+  M._renderMirrorHitFx = function (g) {
+    var mir = this._mirror;
+    if (!mir.hitFx || !mir.hitFx.length) return;
+    var S = C.MIR_SIZE;
+    for (var i = 0; i < mir.hitFx.length; i++) {
+      var h = mir.hitFx[i];
+      var t = h.t / h.dur; if (t >= 1) continue;
+      var e    = 1 - (1 - t) * (1 - t);   // easeOut — fast expand, then settle
+      var fade = (1 - t) * (1 - t);       // ease-in fade — stays bright, drops late
+      var ca = Math.cos(h.ang), sa = Math.sin(h.ang);
+
+      // 1) Shield-shock ring: a violet edge with a crisp white inner, expanding + thinning.
+      var rr = S * (0.7 + e * 2.4);
+      g.lineStyle(4 * fade + 0.5, ORB_COL, 0.85 * fade);
+      g.strokeCircle(h.x, h.y, rr);
+      g.lineStyle(1.6 * fade, 0xffffff, 0.9 * fade);
+      g.strokeCircle(h.x, h.y, rr * 0.96);
+
+      // 2) White-hot impact core punched out along the hit heading.
+      var cd = S * (0.3 + e * 1.4);
+      g.fillStyle(0xffffff, 0.9 * fade);
+      g.fillCircle(h.x + ca * cd, h.y + sa * cd, 5 * (1 - t) + 1.5);
+
+      // 3) Directional spark fan — cyan-white lines flung forward (longest mid-fan).
+      var SP = 5, spread = 0.92, base = S * 0.5, len = S * (0.8 + e * 2.6);
+      g.lineStyle(2 * fade + 0.4, 0x9cffff, 0.9 * fade);
+      for (var s = 0; s < SP; s++) {
+        var u = s / (SP - 1) - 0.5;                 // -0.5 .. 0.5
+        var a = h.ang + u * 2 * spread;
+        var l = len * (0.55 + 0.45 * Math.cos(u * Math.PI));
+        g.beginPath();
+        g.moveTo(h.x + Math.cos(a) * base,        h.y + Math.sin(a) * base);
+        g.lineTo(h.x + Math.cos(a) * (base + l),  h.y + Math.sin(a) * (base + l));
+        g.strokePath();
+      }
+    }
+  };
+
+  /* ================================================================
      RENDER
      ================================================================ */
   M._renderMirror = function (dt) {
@@ -1353,7 +1424,9 @@
       bodyCol = (Math.sin(gt * Math.PI * (6 + cp * 16)) > 0) ? 0xffffff : BODY_COL;
       scl = BASE_SCL * (1.0 + cp * 0.12); sclX = scl; sclY = scl;
     }
-    if (mir.hitT > 0 && !dashing) { bodyCol = 0xffffff; alpha = 1.0; }
+    // Smooth white hit-flash: lerp toward white by hitT (frozen at full during the
+    // hitstop, then eases back) instead of a hard binary blink.
+    if (mir.hitT > 0 && !dashing) { bodyCol = lerpCol(bodyCol, 0xffffff, Math.min(1, mir.hitT)); alpha = 1.0; }
     if (dodging) alpha = 0.45;   // blur-out while evading
 
     // The World: violet phantom look while time is stopped (its own time-stop
@@ -1364,6 +1437,12 @@
       alpha = 0.60 + 0.20 * Math.sin(gt * Math.PI * 3);
       if (!vuln) bodyCol = TW_GHOST_COL;
     }
+
+    // Smooth recoil "pop": the arrow snaps bigger on the blow then eases back as
+    // hitT decays (held through the hitstop, so the punch reads clearly). Applied
+    // after every state's scaling so it reads in any phase, and before caching the
+    // transform so seeded afterimages inherit the same pop.
+    if (mir.hitT > 0) { var pop = 1 + 0.30 * mir.hitT; sclX *= pop; sclY *= pop; }
 
     var rotA;
     if (dashing)       rotA = mir.dashSpin;     // tournoie sur lui-même
@@ -1411,6 +1490,9 @@
         g.fillCircle(sx, sy, 2.8);
       }
     }
+
+    // ---- Strike-impact flourishes (drawn on the ADD gfx layer, above the body) ----
+    this._renderMirrorHitFx(g);
 
     // ---- Shield orbs (violet) with a rotating triangular ward (enlarged) ----
     var sg = mir.shieldGfx;

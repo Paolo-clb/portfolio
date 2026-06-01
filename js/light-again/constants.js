@@ -340,6 +340,8 @@
     SNAKE_SPIT_SPREAD:   0.72,  // fan half-spread of a spit (rad)
     SNAKE_SPIT_SPEED:    300,   // venom projectile speed (px/s) — slow enough to parry
     SNAKE_SPIT_NODES:    5,     // body nodes drawn on each writhing mini-serpent bolt
+    SNAKE_SPIT_WINDUP:   240,   // ms the tail-tip charges venom (telegraph) before the bolts launch
+    SNAKE_SPIT_DUR:      460,   // ms of the full spit animation (charge windup + release recoil)
     // PARRY = SPLIT: dash-attacking a venom bolt doesn't bounce it straight back
     // (like a shooter shard) — it BURSTS into a forward fan of tamed CYAN
     // hatchling serpents that scatter into the boss + the swarm (echoes the

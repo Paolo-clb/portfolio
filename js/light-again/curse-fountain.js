@@ -70,6 +70,14 @@
     return avail[(Math.random() * avail.length) | 0];
   }
 
+  /* Every curse costs −1 shield SLOT (see _applyCurse). With 0 slots left that
+     downside floors at 0 — the player would pocket a curse's buff for free, never
+     paying the contrecoup. So the fountain stops appearing while MAX_SHIELDS is 0
+     and re-arms the instant a shield upgrade restores a slot (back above 0). */
+  function hasShieldSlot(scene) {
+    return (scene.MAX_SHIELDS || 0) > 0;
+  }
+
   /* Self-contained keyframes for the accept/refuse overlay (the upgrade-draft
      ones may not exist yet — a fountain offer can be the first overlay shown). */
   function ensureFountStyles() {
@@ -142,6 +150,11 @@
     // Mid-draft (boss reward or a fountain offer): hold — never drop a queued respawn.
     if (this._upgradeDraftOpen || this._upSlowMoPhase || this._bossDraftPending) return;
     if (!hasUntakenCurse(this)) { this._fountRespawnQueued = false; return; }
+    // No shield slot left → accepting a curse would cost nothing (its −1-slot
+    // downside floors at 0). Hold the fountain entirely. A queued post-boss
+    // respawn is PRESERVED (not dropped) and fires the moment a shield upgrade
+    // restores a slot (MAX_SHIELDS back above 0).
+    if (!hasShieldSlot(this)) return;
 
     // A boss death owes us a respawn (a live fountain the boss interrupted):
     // guaranteed, unguided, bypasses the boss-kill gate — it was already earned.

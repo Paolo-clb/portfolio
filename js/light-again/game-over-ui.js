@@ -160,17 +160,38 @@
         '</div>'
       : '';
 
-    // "I am Steve" pickaxe-skin toggle (game-over only shows in hardcore = unlocked)
-    var steveHtml =
-      '<label id="_la-go-steve-wrap" style="display:inline-flex;align-items:center;gap:.45rem;margin:0 0 .7rem;font-size:calc(.62rem * var(--la-ui-scale));letter-spacing:.05em;color:#8aa3c0;cursor:pointer;user-select:none">' +
-        '<input type="checkbox" id="_la-go-steve" style="width:14px;height:14px;margin:0;accent-color:#5fe0cf;cursor:pointer">' +
-        '<span>I am Steve</span>' +
-      '</label>';
+    // Options row: the accessibility "Gros texte" toggle plus the "I am Steve"
+    // pickaxe skin, side by side (mirrors the pause-menu .la-ms-opts layout).
+    var optLabel = 'display:inline-flex;align-items:center;gap:.45rem;margin:0;font-size:calc(.62rem * var(--la-ui-scale));letter-spacing:.05em;color:#8aa3c0;cursor:pointer;user-select:none';
+    var optsHtml =
+      '<div style="display:flex;gap:1.6rem;flex-wrap:wrap;justify-content:center;align-items:center;margin:0 0 .7rem">' +
+        '<label id="_la-go-bigtext-wrap" style="' + optLabel + '">' +
+          '<input type="checkbox" id="_la-go-bigtext" style="width:14px;height:14px;margin:0;accent-color:#5fe0cf;cursor:pointer">' +
+          '<span>' + t('laGoBigText') + '</span>' +
+        '</label>' +
+        '<label id="_la-go-steve-wrap" style="' + optLabel + '">' +
+          '<input type="checkbox" id="_la-go-steve" style="width:14px;height:14px;margin:0;accent-color:#5fe0cf;cursor:pointer">' +
+          '<span>I am Steve</span>' +
+        '</label>' +
+      '</div>';
 
     var divider = '<div style="height:1px;margin:.2rem 0 .7rem;background:linear-gradient(90deg,transparent,var(--la-accent-soft),transparent)"></div>';
 
-    panel.innerHTML = row1 + row2 + row3 + divider + btnHtml + steveHtml + lbHtml;
+    panel.innerHTML = row1 + row2 + row3 + divider + btnHtml + optsHtml + lbHtml;
     overlay.appendChild(panel);
+
+    // ----- Wire "Gros texte" toggle (same behaviour as the pause menu) -----
+    // Toggles .la-big-text on the modal so --la-ui-scale grows every pop-up at
+    // once; the state is read off the modal and mirrored to localStorage.
+    var laModal = container.closest('.light-again-modal') || container;
+    var bigTextCb = panel.querySelector('#_la-go-bigtext');
+    if (bigTextCb) {
+      bigTextCb.checked = laModal.classList.contains('la-big-text');
+      bigTextCb.addEventListener('change', function () {
+        laModal.classList.toggle('la-big-text', bigTextCb.checked);
+        try { localStorage.setItem('la_big_text', bigTextCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
+      });
+    }
 
     // ----- Wire "I am Steve" skin toggle (applies on the next replay) -----
     var steveCb = panel.querySelector('#_la-go-steve');

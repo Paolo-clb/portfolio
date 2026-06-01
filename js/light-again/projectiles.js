@@ -231,13 +231,12 @@
               var smashRingCol = pr._twPending ? 0xffc832 : 0xFF338B;
               this._spawnWaveRing(pr.x, pr.y, { maxRadius: smashAoe, color: smashRingCol, expandTime: 0.26 });
             } else {
-              e.hp -= 1;
-              if (e.hp <= 0) {
-                this._killEnemy(ei, { reflected: true });
-              } else {
-                e.stunTimer = 200;
-                this._explode(e.x, e.y, [0, 255, 255], 6);
-              }
+              // Light reflected bolt (a parried snake hatchling): DETONATE a small
+              // blast on contact (3 hatchlings' areas sum to one tier-2 reflected
+              // smash). The burst does the damage/AoE/knockback/snake-chip/FX and
+              // folds every kill into the SAME "PARADE ×N" popup (×2 score) as any
+              // other parry — uniform feedback.
+              this._snakeHatchlingBurst(pr, null);
             }
             if (pr._twPending) this._twResolvePending();
             this._destroyProjectile(pr);
