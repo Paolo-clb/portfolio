@@ -411,7 +411,10 @@
           e.spr.setScale(1.0 + (1 - flash) * 0.45);
           e.spr.setAlpha(0.95 + flash * 0.05);
         } else if (e.isCharging) {
-          var chg = 1 - e.chargeTimer / C.T2_CHARGE_DUR;
+          // Clamp to [0,1]: a shooter waiting on a saturated projectile pool can hold
+          // chargeTimer at/below 0, and an unclamped (1 - chargeTimer/DUR) would blow
+          // the scale up (the "giant shooter" bug). Defensive belt for the timer fix.
+          var chg = Math.max(0, Math.min(1, 1 - e.chargeTimer / C.T2_CHARGE_DUR));
           var slow = Math.pow(chg, 1.85);
           var csc = 1.0 + chg * 0.32;
           var g0 = 195, g1 = 72;

@@ -148,6 +148,11 @@
         if (e.isCharging) {
           e.chargeTimer -= ms;
           if (e.chargeTimer <= 0) {
+            // Hold AT "fully charged" while waiting for a free projectile slot. If
+            // the pool is saturated the shot below won't fire; without this clamp
+            // chargeTimer keeps ticking negative every frame and the charge-scale in
+            // _renderEnemies (1 - chargeTimer/DUR) runs away → the shooter balloons.
+            e.chargeTimer = 0;
             var fAng = Math.atan2(p.y - e.y, p.x - e.x);
             // Only commit the shot's feedback (recoil/flash/CD reset) if a
             // projectile actually spawned — at a saturated pool the shooter would
