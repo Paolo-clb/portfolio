@@ -268,22 +268,9 @@
       }
       this._hiveBeamW = 0;
 
-      // World-space border
-      var WH = C.WORLD_HALF;
-      var bGfx = this.add.graphics();
-      bGfx.setDepth(-5);
-      bGfx.lineStyle(28, 0x00ffff, 0.06);
-      bGfx.strokeRect(-WH, -WH, WH * 2, WH * 2);
-      bGfx.lineStyle(16, 0x00ffff, 0.12);
-      bGfx.strokeRect(-WH, -WH, WH * 2, WH * 2);
-      bGfx.lineStyle(3, 0x00ffff, 0.70);
-      bGfx.strokeRect(-WH, -WH, WH * 2, WH * 2);
-      var cS = 18;
-      var corners = [[-WH, -WH], [WH - cS, -WH], [-WH, WH - cS], [WH - cS, WH - cS]];
-      bGfx.lineStyle(2, 0x00ffff, 0.90);
-      for (var ci = 0; ci < corners.length; ci++) {
-        bGfx.strokeRect(corners[ci][0], corners[ci][1], cS, cS);
-      }
+      // World-space DISC border: darkened exterior, animated neon rim, and the
+      // pool of wall-impact flares. (See effects.js.)
+      this._buildWorldBorder();
 
       this.hudGfx = this.add.graphics();
       this.hudGfx.setScrollFactor(0);
@@ -321,6 +308,8 @@
       this._batchScore = 0;
       this._batchLabel = '';
       this._batchActive = false;
+      this._delayExpBuf = null;     // grouped "Delayed Explosion ×N" popup bucket
+      this._delayExpFxTimes = null; // sliding window throttling detonation screen FX
 
       this._scoreTxt = this.add.text(cam.width / 2, 16, '0', {
         fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold', color: '#00ffff',
@@ -428,6 +417,7 @@
       this._initCacheZone();
       this._initCore();
       this._initTutorial();
+      this._resetBossHint();
 
       cam.setBackgroundColor(LA.getColors().bgColor);
 
@@ -605,11 +595,17 @@
         if (self._clearDataHighways) self._clearDataHighways(true);
         if (self._clearCore)        self._clearCore(true);
         if (self._clearCacheZone)   self._clearCacheZone(true);
+        if (self._removeBossHintDom) self._removeBossHintDom();
         self._treeGfx = null; self._treePtrGfx = null; self._fairyGfx = null;
         self._fountDarkGfx = null; self._fountGfx = null; self._fountObGfx = null; self._fountPtrGfx = null;
         self._highwayGfx = null;
+        // World border: the mask graphics is created off the display list, so it
+        // isn't auto-destroyed on restart — release it explicitly.
+        if (self._worldDarkMaskG) { self._worldDarkMaskG.destroy(); self._worldDarkMaskG = null; }
+        self._worldDark = null; self._borderGfx = null; self._wallImpacts = null;
         self._coreGfx = null;   // graphics destroyed with the scene; drop the stale ref
         self._cacheGfx = null; self._cacheTopGfx = null; self._starPtrGfx = null;
+        self._cacheStarGhost = null; self._cacheStarFill = null; self._cacheStarMaskGfx = null;
         // Tear down any tutorial overlay so it can't outlive the scene (e.g. a
         // mode switch from the home menu mid-tutorial would otherwise orphan it).
         self._tutorialActive = false;
@@ -678,6 +674,7 @@
 
     _updateStep: function (_time, delta) {
       var dt = Math.min(delta / 1000, 0.05);
+      this._frameDt = dt;   // real (unscaled) frame seconds — read by TW slow-mo systems (tornado pull)
 
       // Loader warmup
       if (!this._loaderRemoved) {
@@ -849,11 +846,38 @@
       // genuinely shove you into a wall). On player time, so it works during TW.
       this._applyHighwayFlow(pS60, pMs);
 
-      var wM = C.WORLD_HALF - C.SIZE * 1.5;
-      if (p.x < -wM) { p.x = -wM; p.vx *= -0.4; }
-      if (p.x >  wM) { p.x =  wM; p.vx *= -0.4; }
-      if (p.y < -wM) { p.y = -wM; p.vy *= -0.4; }
-      if (p.y >  wM) { p.y =  wM; p.vy *= -0.4; }
+      if (p._wallFxCd > 0) p._wallFxCd -= pMs;
+      var wClamp = LA.clampDisc(p.x, p.y, C.SIZE * 1.5);
+      if (wClamp.hit) {
+        p.x = wClamp.x; p.y = wClamp.y;
+        var wnx = wClamp.nx, wny = wClamp.ny;            // outward wall normal
+        var wvd = p.vx * wnx + p.vy * wny;               // speed INTO the wall (>0)
+        if (wvd > 0) {
+          // Dash / attack into the rim launches you back FASTER (restitution > 1)
+          // and adds a flat inward kick; a gentle drift just springs off.
+          var aggressive = (p.state === 'DASHING' || p.state === 'DASH_ATTACKING' || p.state === 'ATTACKING');
+          var rest = aggressive ? C.WALL_REBOUND_ATTACK : C.WALL_REBOUND_BASE;
+          p.vx -= wnx * wvd * (1 + rest);
+          p.vy -= wny * wvd * (1 + rest);
+          if (aggressive) { p.vx -= wnx * C.WALL_REBOUND_KICK; p.vy -= wny * C.WALL_REBOUND_KICK; }
+          // Cap the rebound so it can never run away (inward speed = -(v·n)).
+          // Add back along the OUTWARD normal to shave the excess inward speed.
+          var back = -(p.vx * wnx + p.vy * wny);
+          if (back > C.WALL_REBOUND_MAX) {
+            var ex = back - C.WALL_REBOUND_MAX;
+            p.vx += wnx * ex; p.vy += wny * ex;
+          }
+          // Impact feedback — throttled so a wall-slide doesn't machine-gun VFX.
+          if (!(p._wallFxCd > 0)) {
+            this._spawnWallImpact(p.x, p.y, wnx, wny, aggressive ? 1.0 : 0.45);
+            if (aggressive) {
+              this.cameras.main.shake(80, 0.006);
+              this._triggerHitstop(40);
+            }
+            p._wallFxCd = C.WALL_FX_CD;
+          }
+        }
+      }
 
       // Anomaly quarantine: trap the player inside the firewall
       this._confinePlayerToBarrier();
@@ -954,7 +978,10 @@
       // During the tutorial, enemies hold still until the player acts — gives
       // breathing room to read each step's tip without getting swarmed/killed.
       if (!this._tutEnemiesFrozen) this._updateEnemies(sDt);
-      this._applyHighwayFlowToEnemies(s60);   // Data Highways sweep enemies caught in the flow too
+      // Data Highways sweep enemies caught in the flow too. During The World the
+      // world crawls at ~2%; keep the sweep as a clear SLOW-MO instead (≈0.4× a
+      // normal-time frame), so caught enemies still visibly drift along the road.
+      this._applyHighwayFlowToEnemies(this._twActive ? dt * 60 * C.HIGHWAY_TW_FLOW_SCALE : s60);
       this._updateProjectiles(sDt, pDt);
       this._checkCollisions();
       this._checkStarPickup();
@@ -966,9 +993,13 @@
       this._checkMirrorCollision();
       this._updateSnake(ms, pMs, dt);
       this._checkSnakeCollision();
+      this._updateBossHint(dt);   // sandbox: first-encounter boss weakness tooltip (real dt)
       this._updateDigitalTree(dt);
       this._updateCurseFount(dt);
-      this._updateDataHighways(dt);
+      // Highway visual/lifecycle: ease into slow-mo during The World (it normally
+      // animates on real dt, so without this it would keep flowing at full speed
+      // while everything else is frozen). Spawns are already suspended during TW.
+      this._updateDataHighways(this._twActive ? dt * C.HIGHWAY_TW_VISUAL_SCALE : dt);
       this._updateCacheZone(dt, ms);   // ms = scaled world time → the hack gauge pauses during The World / hitstop
       this._updateCore(dt, sDt);
       this._updateTutorial(dt);
@@ -1061,10 +1092,14 @@
       this._updateWaveRings(dt);
       this._updateCondemnedDeathRings(dt);
       this._updateHiveBeams(dt);
+      this._updateWorldBorder(dt);
+      this._updateWallImpacts(dt);
 
       this._updateComboFX(sDt);
       this._updateDashVacuumFX(pDt);
-      this._updateDashTornados(sDt);
+      // Tornado spin/lifecycle: a clear slow-mo during The World instead of the 2%
+      // world crawl (its enemy pull gets a matching slow-mo drift in _updateEnemies).
+      this._updateDashTornados(this._twActive ? dt * C.DASH_TORNADO_TW_SCALE : sDt);
       // The World ONLY: drones keep flying on player time — they detach from the
       // orbit, dive at the frozen enemies and defer their blast to resolution.
       // Every other time-stop (hitstop, upgrade slow-mo, anomaly intro) freezes

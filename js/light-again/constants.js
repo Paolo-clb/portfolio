@@ -7,6 +7,40 @@
   var LA = window.LightAgain = window.LightAgain || {};
   LA.sceneMethods = {};
 
+  /* ---- Circular world helpers ------------------------------------------------
+     The arena is a DISC centred on the origin. C.WORLD_HALF is its radius (px
+     from centre to wall). Every boundary check is radial; these shared helpers
+     keep that logic identical everywhere (player, enemies, bosses, projectiles,
+     map-event placement). margin = keep-in inset (entity half-size, etc.). */
+  LA.worldRadius = function () { return LA.C.WORLD_HALF; };
+
+  // Clamp a point into the disc of radius (WORLD_HALF - margin). Returns the
+  // clamped {x, y}, whether it had to move (hit), and the OUTWARD unit normal
+  // (nx, ny) at the wall — used to reflect velocity on a bounce.
+  LA.clampDisc = function (x, y, margin) {
+    var lim = LA.C.WORLD_HALF - (margin || 0);
+    if (lim < 0) lim = 0;
+    var d = Math.sqrt(x * x + y * y);
+    if (d <= lim || d === 0) return { x: x, y: y, hit: false, nx: 0, ny: 0, d: d, lim: lim };
+    var inv = 1 / d;
+    return { x: x * lim * inv, y: y * lim * inv, hit: true, nx: x * inv, ny: y * inv, d: d, lim: lim };
+  };
+
+  // True when (x, y) lies within the disc of radius (WORLD_HALF - margin).
+  LA.inDisc = function (x, y, margin) {
+    var lim = LA.C.WORLD_HALF - (margin || 0);
+    return x * x + y * y <= lim * lim;
+  };
+
+  // Uniform-random point inside the disc of radius (WORLD_HALF - margin).
+  LA.randInDisc = function (margin) {
+    var lim = LA.C.WORLD_HALF - (margin || 0);
+    if (lim < 0) lim = 0;
+    var a = Math.random() * Math.PI * 2;
+    var r = Math.sqrt(Math.random()) * lim;
+    return { x: Math.cos(a) * r, y: Math.sin(a) * r };
+  };
+
   /* ---- Game constants ---- */
   var C = LA.C = {
     ACCEL:       0.7,
@@ -79,7 +113,15 @@
     LANDING_BURST_STUN:   500,
     DASH_MARK_RADIUS:     30,
     CAM_LERP:    0.10,
-    WORLD_HALF:  4000,
+    WORLD_HALF:  2850,   // arena is a DISC: radius (px) from centre to wall (see LA.clampDisc)
+    /* ---- Wall rebound — the disc rim bounces you back (springy) ----
+       Restitution = fraction of impact speed returned. >1 means you LEAVE faster
+       than you arrived (the aggressive case for dash / attack into the wall). */
+    WALL_REBOUND_BASE:   0.78,   // normal contact (drift into the wall)
+    WALL_REBOUND_ATTACK: 1.45,   // dashing / attacking / dash-attacking into the wall
+    WALL_REBOUND_KICK:   13,     // extra inward impulse on an aggressive wall hit
+    WALL_REBOUND_MAX:    60,     // cap on rebound speed so it can never run away
+    WALL_FX_CD:          150,    // ms between wall-impact VFX bursts (anti-spam)
     PCB_TILE:    256,
     RUSHER_SPEED: 3.0,
     RUSHER_SIZE:  14,
@@ -119,6 +161,8 @@
     BOSS_KILL_INTERVAL_HC_START: 100,    // hardcore: kills to the FIRST boss
     BOSS_KILL_INTERVAL_HC_STEP:  100,    // hardcore: gap grows by this each boss
     BOSS_KILL_SCORE:             10000,  // base points a boss awards on death (×combo)
+    BOSS_HINT_DELAY_S:           40,     // sandbox: seconds fighting a FIRST-time boss before its weakness tooltip pops
+    BOSS_HINT_LIFE_S:            22,     // seconds the weakness tooltip stays on screen before auto-fading
     UPGRADE_REROLLS_START: 1,     // rerolls the run begins with (+1 earned per boss kill)
     UPGRADE_CURSE_CHANCE:  0.25,  // chance one draft slot becomes a curse (never on the 1st draft)
     UPGRADE_ANTIFLOOD_W:   0.16,  // weight ×factor for a card that was offered (not picked) last draft
@@ -141,6 +185,15 @@
     DELAY_EXP_RADIUS_L2:  1.8,
     DELAY_EXP_RADIUS_L3:  2.3,    // bigger
     DASHATK_DELAY_EXP_CHANCE: 0.3334,  // dashAtk Lv3: 1-in-3 per impact (capped 1/dash-attack)
+    // When lots of upgrades + a big crowd make detonations chain rapidly, the
+    // per-blast big-score popups and full-screen red flash become nauseating.
+    // Group nearby detonations into one "Delayed Explosion ×N" popup, and dial
+    // the screen-wide feedback (flash/shake/hitstop) down — then off.
+    DELAY_EXP_GROUP_QUIET:   700,  // ms of quiet before the grouped popup flushes
+    DELAY_EXP_GROUP_MAXLIFE: 1.5,  // s a bucket may accumulate before a forced flush
+    DELAY_EXP_FX_WINDOW:     1.1,  // s sliding window counting recent detonations
+    DELAY_EXP_FX_CALM:       2,    // ≤ this many in window → full flash+shake+hitstop
+    DELAY_EXP_FX_BUSY:       4,    // ≤ this many → gentle shake only; above → no screen FX
 
     /* ---- Dash Lv3: tornadoes slowly GROW over their lifetime ---- */
     DASH_TORNADO_GROW_START: 0.5,  // radius starts at this × DASH_TORNADO_RADIUS
@@ -461,6 +514,8 @@
     HIGHWAY_EDGE_FEATHER:        46,     // px past the core where the boost eases smoothly to 0
     HIGHWAY_END_FEATHER:         150,    // px at each end where the boost eases in/out (smooth launch-off)
     HIGHWAY_MARGIN:              130,    // px the whole capsule keeps clear of the world edge (glow room)
+    HIGHWAY_MARGIN_ZONE:         70,     // px the capsule keeps clear of the Anomaly firewall when spawned CONFINED inside the quarantine
+    HIGHWAY_ZONE_LEN_FRAC:       0.45,   // confined corridor half-length cap, as a fraction of the quarantine radius (leaves room to place it off-centre near the player)
     HIGHWAY_FLOW_SPEED:          14,     // px/frame conveyor carry at full strength (≈ +2× top speed → ~3× total)
     HIGHWAY_FLOW_CAP_MULT:       1.35,   // hard cap on summed conveyor magnitude (overlap guard) × FLOW_SPEED
     HIGHWAY_ENEMY_FLOW_MULT:     0.9,    // enemies caught in the flow are swept too, at this × the player's carry
@@ -479,7 +534,7 @@
        its centre. Self-contained on this._cache (one at a time). It does NOT boost
        bosses (they live outside this.enemies) and is mutually exclusive with the
        Curse Fountain (never overlapping — see _spawnCacheZone / _spawnCurseFount). */
-    CACHE_ZONE_R:                360,    // zone radius (px) — a sizeable arena ("un grand cercle")
+    CACHE_ZONE_R:                440,    // zone radius (px) — a big arena ("un grand cercle")
     CACHE_HACK_DUR:              15000,  // ms inside the zone to fill the gauge to 100 %
     CACHE_DECAY_MULT:            0.5,    // while OUTSIDE during a hack the gauge decays at this × the fill rate
     CACHE_ABANDON_GRACE:         4000,   // ms at 0 % + player away before a started hack powers back down to idle
@@ -494,10 +549,11 @@
     CACHE_SPAWN_MIN_DELAY:       20000,  // ms of play before the first cache zone may appear
     CACHE_SPAWN_INTERVAL_MIN:    45000,  // ms between zones (min) — a rarer, bigger event than a highway
     CACHE_SPAWN_INTERVAL_MAX:    75000,  // ms between zones (max)
-    CACHE_SPAWN_DIST_MIN:        480,    // min spawn distance from the player (px) — a deliberate walk away
+    CACHE_SPAWN_DIST_MIN:        560,    // min spawn distance from the player (px) — > zone radius so you start OUTSIDE the rim
     CACHE_SPAWN_DIST_MAX:        1040,   // max spawn distance from the player (px)
     CACHE_TINT:                  0x9b30ff,      // glitch-violet (dash-attack family)
     CACHE_TINT_ARR:              [155, 48, 255], // ...as an [r,g,b] for particle bursts
+    CACHE_COMPLETE_SCORE:        2000,          // bonus points a finished hack banks (× combo), shown as a big-score "POWER UP READY" popup
 
     /* ---- The Unstable Core (Noyau Instable) — environmental billiard weapon ---
        A big pulsing geometric sphere wrapped in a cyan containment force-field,
@@ -520,12 +576,26 @@
     CORE_RADIUS:             44,     // the geometric sphere's body radius (px)
     CORE_FIELD_RADIUS:       78,     // the containment force-field bubble radius (px)
     CORE_TRIGGER_PAD:        14,     // extra slack on (field + player half) for the dash-attack launch test
-    CORE_LAUNCH_SPEED:       21,     // px/frame billiard speed once launched (≈1260 px/s)
-    CORE_MAX_BOUNCES:        6,      // ricochets (walls + bruisers) before it detonates
-    CORE_SAFETY_LIFETIME:    7000,   // ms hard cap on a launched core (failsafe → detonate)
+    CORE_LAUNCH_SPEED:       19,     // px/frame billiard speed once launched (≈1140 px/s)
+    CORE_TW_SCALE:           0.3,    // during The World the core still drifts at this × its speed — a clear SLOW-MO (not the near-frozen 2% world crawl, not full speed)
+    CORE_TURN:               7.0,    // rad/s steering toward the next bruiser (a smart, ballistic ricochet)
+    CORE_MAX_BOUNCES:        6,      // bruiser ricochets before it detonates ("rebondisse 6 fois max")
+    CORE_SAFETY_LIFETIME:    9000,   // ms hard cap on a launched core (failsafe → detonate)
+    CORE_FIZZLE_DUR:         320,    // ms it coasts on ("avance un peu") with NO bruiser left to chain → then explodes
+    CORE_DETECT_MARGIN:      520,    // px of slack around the camera view for ACQUIRING/keeping a target — lets it chase a far
+                                     //   aimed hexagon a bit off-screen before it self-destructs for lack of bruisers
     CORE_CRUSH_PAD:          8,      // extra slack on the crush hit-test (core radius + enemy half + this)
     CORE_BRUISER_DMG:        3,      // damage a ricochet deals to an unshielded tier-3 bruiser body
     CORE_EXP_RADIUS:         300,    // final detonation blast radius (px)
+
+    /* ---- The World slow-mo for energy/terrain systems --------------------------
+       During The World the WHOLE world crawls at ~2% (it never fully freezes).
+       A few "energy" systems instead keep a graceful SLOW-MO (clearly slowed, but
+       far more alive than the 2% crawl, and always below normal speed). */
+    DASH_TORNADO_TW_SCALE:   0.4,    // tornado spin/lifecycle advance × during The World (slow-mo, not the 2% crawl)
+    DASH_TORNADO_TW_PULL:    230,    // px/s inward DRIFT a tornado pulls caught enemies during TW (positional — velocity can't integrate while frozen)
+    HIGHWAY_TW_VISUAL_SCALE: 0.4,    // highway flow/chevron animation advance × during The World
+    HIGHWAY_TW_FLOW_SCALE:   0.4,    // highway enemy-sweep strength × NORMAL during TW (≫ the 2% crawl, still < full)
   };
 
   /* ---- Upgrade branch definitions (all 3 levels) ---- */

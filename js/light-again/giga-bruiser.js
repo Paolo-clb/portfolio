@@ -65,9 +65,9 @@
     var ang     = p.angle;
     var x = p.x + Math.cos(ang) * dist;
     var y = p.y + Math.sin(ang) * dist;
-    // Clamp to the intersection of (visible rect − margin) and (world bounds),
+    // Clamp to the intersection of (visible rect − margin) and (disc arena),
     // so the arrival is always both in-frame AND reachable inside the arena.
-    var m      = C.WORLD_HALF - C.GBR_SIZE * 1.5;
+    var m      = C.WORLD_HALF;
     var margin = C.GBR_SIZE * 1.7;
     var loX = Math.max(view.x + margin, -m), hiX = Math.min(view.right  - margin, m);
     var loY = Math.max(view.y + margin, -m), hiY = Math.min(view.bottom - margin, m);
@@ -75,6 +75,7 @@
     if (loY > hiY) loY = hiY = (view.y + view.bottom) / 2;
     x = Math.min(hiX, Math.max(loX, x));
     y = Math.min(hiY, Math.max(loY, y));
+    var gc = LA.clampDisc(x, y, C.GBR_SIZE * 1.5); x = gc.x; y = gc.y;
 
     var gfx         = this.add.graphics(); gfx.setDepth(25);
     var fractureGfx = this.add.graphics(); fractureGfx.setDepth(26);
@@ -242,10 +243,8 @@
     g.x += g.vx * sc60;
     g.y += g.vy * sc60;
 
-    // Hard clamp to the world rectangle so the boss is always reachable.
-    var mw = C.WORLD_HALF - C.GBR_SIZE * 1.2;
-    if (g.x < -mw) g.x = -mw; else if (g.x > mw) g.x = mw;
-    if (g.y < -mw) g.y = -mw; else if (g.y > mw) g.y = mw;
+    // Hard clamp to the disc arena so the boss is always reachable.
+    var gwc = LA.clampDisc(g.x, g.y, C.GBR_SIZE * 1.2); g.x = gwc.x; g.y = gwc.y;
 
     // Bruiser-swarm spawner — mirrors the generator's cadence (T3_SPAWN_CD)
     // but with a deliberate two-step ritual:
@@ -393,7 +392,7 @@
     var p    = this.p;
     var view = this.cameras.main.worldView;
     var viewMin = Math.min(view.width, view.height);
-    var m      = C.WORLD_HALF - C.GBR_SIZE * 1.5;
+    var m      = C.WORLD_HALF;
     var margin = C.GBR_SIZE * 1.7;
     var loX = Math.max(view.x + margin, -m), hiX = Math.min(view.right  - margin, m);
     var loY = Math.max(view.y + margin, -m), hiY = Math.min(view.bottom - margin, m);
@@ -415,7 +414,9 @@
       if (score > fbScore) { fbScore = score; fb = { x: cx, y: cy }; }
       if (dist >= minDist && score > bestScore) { bestScore = score; best = { x: cx, y: cy }; }
     }
-    return best || fb || { x: (loX + hiX) / 2, y: (loY + hiY) / 2 };
+    var dest = best || fb || { x: (loX + hiX) / 2, y: (loY + hiY) / 2 };
+    var dgc = LA.clampDisc(dest.x, dest.y, C.GBR_SIZE * 1.5);
+    return { x: dgc.x, y: dgc.y };
   };
 
   /* Begin the blink — implode at the current spot. Destination is locked now so
@@ -670,6 +671,7 @@
     } else {
       bodyCol = (br << 16) | (bg << 8) | bb;
     }
+    if (this._twActive) bodyCol = this._twGray(bodyCol);   // The World: drain the body to grey (frozen)
 
     var gfx = g.gfx;
     gfx.clear();
@@ -836,6 +838,7 @@
       var sAlpha  = 0.55 + 0.20 * Math.sin(gt * Math.PI * 4) + g.shieldHitT * 0.5;
       var sBaseR  = R * 1.40 * sPulse;
       var sCol    = g.shieldHitT > 0 ? 0xffffff : 0x66ccff;
+      if (this._twActive) sCol = this._twGray(sCol);   // The World: grey the shield too
 
       // Triple concentric ring
       sgfx.lineStyle(2.0, 0x66ccff, sAlpha * 0.35);

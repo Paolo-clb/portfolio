@@ -113,8 +113,8 @@
     var hx = p.x + Math.cos(ang) * dist;
     var hy = p.y + Math.sin(ang) * dist;
 
-    // Keep the head in-frame AND inside the arena.
-    var m   = C.WORLD_HALF - C.SNAKE_HEAD_SIZE * 1.5;
+    // Keep the head in-frame, then inside the disc arena.
+    var m   = C.WORLD_HALF;
     var pad = C.SNAKE_HEAD_SIZE * 2;
     var loX = Math.max(view.x + pad, -m), hiX = Math.min(view.right  - pad, m);
     var loY = Math.max(view.y + pad, -m), hiY = Math.min(view.bottom - pad, m);
@@ -122,18 +122,17 @@
     if (loY > hiY) loY = hiY = (view.y + view.bottom) / 2;
     hx = Math.min(hiX, Math.max(loX, hx));
     hy = Math.min(hiY, Math.max(loY, hy));
+    var hc = LA.clampDisc(hx, hy, C.SNAKE_HEAD_SIZE * 1.5); hx = hc.x; hy = hc.y;
 
     // Body trails AWAY from the player (so the head faces them).
     var awx = hx - p.x, awy = hy - p.y, awl = Math.sqrt(awx * awx + awy * awy) || 1;
     var dx = awx / awl, dy = awy / awl;
-    var wM = C.WORLD_HALF - C.SNAKE_SEG_SIZE;
 
     var segs = [];
     for (var i = 0; i < C.SNAKE_SEG_COUNT; i++) {
       var sx = hx + dx * C.SNAKE_SPACING * (i + 1);
       var sy = hy + dy * C.SNAKE_SPACING * (i + 1);
-      if (sx < -wM) sx = -wM; else if (sx > wM) sx = wM;
-      if (sy < -wM) sy = -wM; else if (sy > wM) sy = wM;
+      var sgc = LA.clampDisc(sx, sy, C.SNAKE_SEG_SIZE); sx = sgc.x; sy = sgc.y;
       segs.push({
         x: sx, y: sy, hp: 0, maxHp: 0, angle: Math.atan2(-dy, -dx),
         hitFlash: 0, aoeIframe: 0, lastDAtkId: -1, cracks: [], _dead: false,
@@ -343,17 +342,19 @@
     worm.hx += worm.hvx * sc60;
     worm.hy += worm.hvy * sc60;
 
-    // Hard clamp to the arena so the boss is always reachable.
-    var mw = C.WORLD_HALF - C.SNAKE_HEAD_SIZE * 1.1;
-    if (worm.hx < -mw) { worm.hx = -mw; worm.hAngle = Math.PI - worm.hAngle; }
-    else if (worm.hx > mw) { worm.hx = mw; worm.hAngle = Math.PI - worm.hAngle; }
-    if (worm.hy < -mw) { worm.hy = -mw; worm.hAngle = -worm.hAngle; }
-    else if (worm.hy > mw) { worm.hy = mw; worm.hAngle = -worm.hAngle; }
+    // Hard clamp to the disc arena so the boss is always reachable; reflect the
+    // heading off the wall normal when the head drives into the rim.
+    var hwc = LA.clampDisc(worm.hx, worm.hy, C.SNAKE_HEAD_SIZE * 1.1);
+    if (hwc.hit) {
+      worm.hx = hwc.x; worm.hy = hwc.y;
+      var hdx = Math.cos(worm.hAngle), hdy = Math.sin(worm.hAngle);
+      var hdot = hdx * hwc.nx + hdy * hwc.ny;
+      if (hdot > 0) { worm.hAngle = Math.atan2(hdy - 2 * hdot * hwc.ny, hdx - 2 * hdot * hwc.nx); }
+    }
 
     // Body: distance-constraint follow (rope) → smooth slithering trail.
-    // Each node is also clamped inside the arena so a body draped past a corner
+    // Each node is also clamped inside the disc so a body draped past the rim
     // can never leave the world and become unhittable.
-    var sw = C.WORLD_HALF - C.SNAKE_SEG_SIZE;
     var prevX = worm.hx, prevY = worm.hy;
     for (var i = 0; i < worm.segs.length; i++) {
       var sg = worm.segs[i];
@@ -361,8 +362,7 @@
       var d  = Math.sqrt(dx * dx + dy * dy) || 0.0001;
       sg.x = prevX + (dx / d) * C.SNAKE_SPACING;
       sg.y = prevY + (dy / d) * C.SNAKE_SPACING;
-      if (sg.x < -sw) sg.x = -sw; else if (sg.x > sw) sg.x = sw;
-      if (sg.y < -sw) sg.y = -sw; else if (sg.y > sw) sg.y = sw;
+      var sgw = LA.clampDisc(sg.x, sg.y, C.SNAKE_SEG_SIZE); sg.x = sgw.x; sg.y = sgw.y;
       sg.angle = Math.atan2(prevY - sg.y, prevX - sg.x);
       prevX = sg.x; prevY = sg.y;
     }
@@ -1170,6 +1170,14 @@
     var gfx = s.gfx, fx = s.fxGfx, gt = this.gameTime;
     gfx.clear(); fx.clear();
     var emerging = s.spawnPhase === 'EMERGE';
+
+    // The World: drain the worm's palette toward grey (it's frozen, like the
+    // enemies). These locals shadow the module BODY_OK/BODY_HURT/HEAD_COL for this
+    // render only, so every lerpC() off them comes out grey (no-op when TW is off).
+    var BODY_OK = 0x2fe06e, BODY_HURT = 0xff2a44, HEAD_COL = 0x179a55;
+    if (this._twActive) {
+      BODY_OK = this._twGray(BODY_OK); BODY_HURT = this._twGray(BODY_HURT); HEAD_COL = this._twGray(HEAD_COL);
+    }
 
     for (var wi = 0; wi < s.worms.length; wi++) {
       var w = s.worms[wi];

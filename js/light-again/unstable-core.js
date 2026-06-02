@@ -10,22 +10,26 @@
                   a hot core pulses, instability arcs flicker, the containment
                   hex bubble shimmers. Neutral — enemies pass straight over it.
      3. LAUNCH  — DASH-ATTACK it (and ONLY a dash-attack) and the field bursts:
-                  the core fires off along the impact line like a billiard ball.
-     4. BILLIARD— it rockets across the arena, ricocheting off the WALLS and off
-                  the chunky tier-3 bruisers (counting each bounce), CRUSHING every
-                  lesser enemy it ploughs through. Bosses live outside this.enemies,
-                  so it never sees them — it IGNORES bosses entirely.
-     5. DETONATE— after CORE_MAX_BOUNCES ricochets (failsafe: CORE_SAFETY_LIFETIME)
-                  it explodes in a big blast, and the WHOLE rampage's score lands
-                  as one dedicated "NOYAU INSTABLE" big-score popup.
+                  it fires off toward the bruiser best matching your aim.
+     4. BILLIARD— it rockets BRUISER TO BRUISER, ricocheting off the chunky tier-3
+                  bruisers (a smart, steered ricochet — only ever targeting bruisers
+                  VISIBLE ON SCREEN), CRUSHING every lesser enemy it ploughs through.
+                  It does NOT bounce off the far world walls (that just flung it off
+                  screen). Bosses live outside this.enemies, so it never sees them.
+     5. DETONATE— after CORE_MAX_BOUNCES ricochets it explodes. With no on-screen
+                  bruiser left to chain to, it simply coasts a short beat (CORE_FIZZLE_DUR)
+                  and blows up where it is — it never flies off into the void. The
+                  WHOLE rampage's score lands as one "NOYAU INSTABLE" big-score popup.
 
    Self-contained on this._core (plain data) + one shared, persistent ADD
    graphics layer created in scene.create (mirrors the digital-tree / highway
    modules). The dormant lifecycle + render tick on real dt; the launched
-   movement/crush ticks on WORLD time (sDt) so it freezes with The World /
-   hitstop. Score is banked through _killEnemy's `ctx.core` path into
-   this._coreScoreAccum (kept clear of the shared batch so a mid-flight nuke
-   can't corrupt it).
+   movement/crush ride world time (sDt) normally, but during The World the core
+   DEFIES the freeze and keeps pinballing at CORE_TW_SCALE × its speed (combat.js
+   exempts its ctx.core kills from the Time-Stop deferral, so they resolve at once
+   and stay in its own tally). Score is banked through _killEnemy's `ctx.core`
+   path into this._coreScoreAccum (kept clear of the shared batch so a mid-flight
+   nuke can't corrupt it).
    ========================================================================== */
 (function () {
   'use strict';
@@ -44,6 +48,8 @@
   var WHITE    = 0xffffff;
   var FIELD    = 0x66ddff;   // containment field cyan
   var FIELDHOT = 0xccf4ff;   // field bright edge
+  var TW_GOLD  = 0xffc832;   // The World theme gold (matches the stasis wave / golden orbs)
+  var TW_GOLD2 = 0xffe06e;   // brighter gold accent
 
   /* Trace a regular n-gon path (caller strokes/fills). */
   function polyPath(g, x, y, r, n, rot) {
@@ -113,15 +119,15 @@
     if (this._core) return;
     if (!this.p || this.p.state === 'DEAD') return;
 
-    var m    = C.WORLD_HALF - C.CORE_FIELD_RADIUS - 40;
+    var inset = C.CORE_FIELD_RADIUS + 40;   // keep the WHOLE field in-bounds (disc)
     var sep2 = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
     var avoid = [this._fount, this._tree, this._cache];   // _cache is optional (may not exist)
     var x, y, tries = 0, ok;
     do {
       var ang  = Math.random() * TAU;
       var dist = C.CORE_SPAWN_DIST_MIN + Math.random() * (C.CORE_SPAWN_DIST_MAX - C.CORE_SPAWN_DIST_MIN);
-      x = Math.max(-m, Math.min(m, this.p.x + Math.cos(ang) * dist));
-      y = Math.max(-m, Math.min(m, this.p.y + Math.sin(ang) * dist));
+      var ccc = LA.clampDisc(this.p.x + Math.cos(ang) * dist, this.p.y + Math.sin(ang) * dist, inset);
+      x = ccc.x; y = ccc.y;
       ok = true;
       for (var ai = 0; ai < avoid.length; ai++) {
         var av = avoid[ai];
@@ -137,6 +143,7 @@
       spin: Math.random() * TAU, fieldSpin: Math.random() * TAU, pulse: Math.random() * TAU,
       seed: Math.random() * 1000,
       trail: [], trailT: 0,
+      target: null, hitList: [], fizzle: false, fizzleT: 0,
     };
     this._coreScoreAccum = 0;
 
@@ -181,28 +188,45 @@
     if (c.age >= C.CORE_LIFETIME) this._witherCore();
   };
 
-  /* Dash-attack connected → the field bursts and the core fires off as a billiard
-     ball along the player→core impact line (billiard physics). */
+  /* Dash-attack connected → the field bursts. The core heads for the on-screen
+     bruiser that best matches the dash heading (or, with none in view, coasts off
+     in the aim direction and fizzles out shortly — a weak short-range hit). */
   M._launchCore = function (c) {
     var p = this.p;
     var dx = c.x - p.x, dy = c.y - p.y;
     var d  = Math.sqrt(dx * dx + dy * dy);
-    var nx, ny;
-    if (d > 0.1) { nx = dx / d; ny = dy / d; }
+    var ax, ay;                                       // aim heading (player → core impact line)
+    if (d > 0.1) { ax = dx / d; ay = dy / d; }
     else {                                            // dead-on: fall back to the dash heading
-      nx = p.atkDx || Math.cos(p.angle);
-      ny = p.atkDy || Math.sin(p.angle);
-      var nl = Math.sqrt(nx * nx + ny * ny) || 1; nx /= nl; ny /= nl;
+      ax = p.atkDx || Math.cos(p.angle);
+      ay = p.atkDy || Math.sin(p.angle);
+      var al = Math.sqrt(ax * ax + ay * ay) || 1; ax /= al; ay /= al;
     }
 
     c.phase    = 'LAUNCHED';
-    c.vx       = nx * C.CORE_LAUNCH_SPEED;
-    c.vy       = ny * C.CORE_LAUNCH_SPEED;
     c.bounces  = 0;
     c.lifeMs   = 0;
     c.trail    = [];
     c.trailT   = 0;
+    c.hitList  = [];            // bruisers already struck this launch (never re-bounce them)
+    c.fizzle   = false;
+    c.fizzleT  = 0;
     this._coreScoreAccum = 0;
+
+    // Pick the first bruiser to chain to (aim-aligned, within detection range so a
+    // far hexagon a touch off-screen still counts); head straight at it. With none,
+    // coast in the aim direction and fizzle (see _tickCoreLaunched).
+    var tgt = this._corePickTarget(c, { dirX: ax, dirY: ay, margin: C.CORE_DETECT_MARGIN });
+    c.target = tgt;
+    var hx = ax, hy = ay;
+    if (tgt) {
+      var tdx = tgt.x - c.x, tdy = tgt.y - c.y, tdd = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+      hx = tdx / tdd; hy = tdy / tdd;
+    } else {
+      c.fizzle = true;
+    }
+    c.vx = hx * C.CORE_LAUNCH_SPEED;
+    c.vy = hy * C.CORE_LAUNCH_SPEED;
 
     // Count the launch as a successful dash-attack hit: no whiff punish, and the
     // ship gets its usual satisfying landing burst when the dash-attack ends.
@@ -219,11 +243,13 @@
     this._floatLabel(c.x, c.y - C.CORE_FIELD_RADIUS, 'NOYAU LIBÉRÉ', '#ff8a3c');
   };
 
-  /* LAUNCHED: spin + trail on real dt; move/bounce/crush on WORLD time. */
+  /* LAUNCHED: spin + trail on real dt; steer/move/contact on the core's own clock.
+     During The World it keeps pinballing at CORE_TW_SCALE × speed (so the world's
+     2 % crawl doesn't stall it) — its crushes resolve immediately and stay in its
+     own score (combat.js exempts ctx.core from the Time-Stop deferral). Otherwise
+     it rides world time (sDt), so a hitstop / upgrade slow-mo still slows it. */
   M._tickCoreLaunched = function (c, dt, sDt) {
-    var s60     = sDt * 60;
-    var worldMs = sDt * 1000;
-    c.spin  += dt * 6;          // spins fast in flight
+    c.spin  += dt * (this._twActive ? 1.8 : 6);   // spin also eases into slow-mo under The World
     c.pulse += dt;
 
     // Blazing motion trail (fades on real dt so it stays smooth through slow-mo).
@@ -235,39 +261,113 @@
     }
     for (var i = 0; i < c.trail.length; i++) c.trail[i].a -= dt * 2.4;
 
-    // Everything below is WORLD-time only — a launched core freezes with The World
-    // / hitstop, and (crucially) NEVER detonates while frozen, so a core crush can
-    // never run through _killEnemy's Time-Stop deferral path.
-    if (s60 <= 0.0001) return;
+    // The core's own advance this frame (seconds). It defies The World's freeze.
+    var coreDt  = this._twActive ? (dt * C.CORE_TW_SCALE) : sDt;
+    var step60  = coreDt * 60;
+    var stepMs  = coreDt * 1000;
+    if (step60 <= 0.0001) return;   // genuinely paused (hitstop / draft) → don't move or detonate
+    c.lifeMs += stepMs;
 
-    c.lifeMs += worldMs;
-    c.x += c.vx * s60;
-    c.y += c.vy * s60;
+    // ---- Steering: home toward the current bruiser target ----
+    // (Re-acquire if the target died or left the detection range; with none left
+    // to chain to, drop into the fizzle coast below.)
+    if (!c.fizzle) {
+      if (!this._coreTargetValid(c)) {
+        var sp0 = Math.sqrt(c.vx * c.vx + c.vy * c.vy) || 1;
+        c.target = this._corePickTarget(c, { dirX: c.vx / sp0, dirY: c.vy / sp0, excludeList: c.hitList, margin: C.CORE_DETECT_MARGIN });
+        if (!c.target) { c.fizzle = true; c.fizzleT = 0; }
+      }
+      if (c.target) {
+        var desired = Math.atan2(c.target.y - c.y, c.target.x - c.x);
+        var cur     = Math.atan2(c.vy, c.vx);
+        var diff    = Phaser.Math.Angle.Wrap(desired - cur);
+        var maxTurn = C.CORE_TURN * coreDt;
+        if (diff >  maxTurn) diff =  maxTurn;
+        else if (diff < -maxTurn) diff = -maxTurn;
+        var ang = cur + diff;
+        c.vx = Math.cos(ang) * C.CORE_LAUNCH_SPEED;
+        c.vy = Math.sin(ang) * C.CORE_LAUNCH_SPEED;
+      }
+    }
 
-    // ---- Wall ricochets (billiard) ----
-    var lim = C.WORLD_HALF - C.CORE_RADIUS;
-    var bounced = false;
-    if (c.x < -lim)      { c.x = -lim; c.vx =  Math.abs(c.vx); bounced = true; }
-    else if (c.x >  lim) { c.x =  lim; c.vx = -Math.abs(c.vx); bounced = true; }
-    if (c.y < -lim)      { c.y = -lim; c.vy =  Math.abs(c.vy); bounced = true; }
-    else if (c.y >  lim) { c.y =  lim; c.vy = -Math.abs(c.vy); bounced = true; }
-    if (bounced) this._coreBounce(c, false);
+    // ---- Move ----
+    c.x += c.vx * step60;
+    c.y += c.vy * step60;
 
-    // ---- Crush lesser enemies / ricochet off bruisers ----
-    this._coreCrush(c);
+    // Defensive world clamp: it never bounces off the far walls (that flung it off
+    // screen) — if it ever reaches the very edge, it just blows up there.
+    if (!LA.inDisc(c.x, c.y, C.CORE_RADIUS)) {
+      var clc = LA.clampDisc(c.x, c.y, C.CORE_RADIUS);
+      c.x = clc.x; c.y = clc.y;
+      this._detonateCore(c); return;
+    }
+
+    // ---- Contact: crush lesser enemies, ricochet off bruisers ----
+    this._coreContact(c);
 
     // ---- Flying embers ----
     if (Math.random() < 0.6) this._explode(c.x - c.vx * 0.3, c.y - c.vy * 0.3, [255, 140, 40], 3);
 
-    // ---- End of the ride ----
+    // ---- Fizzle coast: no on-screen bruiser to chain to → drift a beat, then blow ----
+    if (c.fizzle) {
+      c.fizzleT += stepMs;
+      if (c.fizzleT >= C.CORE_FIZZLE_DUR) { this._detonateCore(c); return; }
+    }
+
+    // ---- End conditions ----
     if (c.bounces >= C.CORE_MAX_BOUNCES || c.lifeMs >= C.CORE_SAFETY_LIFETIME) this._detonateCore(c);
   };
 
-  /* Crush everything the core overlaps this frame. Tier 1/2 are ploughed through
-     (killed, no deflection). Tier-3 bruisers are "solid" — the core ricochets off
-     them (counting a bounce) and chips/breaks them, billiard-style. Bosses aren't
-     in this.enemies, so they're never touched. */
-  M._coreCrush = function (c) {
+  /* Pick a tier-3 bruiser to chain to, considering only bruisers within the camera
+     view (+ opts.margin px). Two selection modes:
+       • opts.farFrom = {x,y} → the bruiser FARTHEST from that point (maximises the
+         distance the core travels — used for the bounce-to-next redirect).
+       • otherwise → the one scoring near + forward-of-(opts.dirX,opts.dirY) best
+         (used at launch and mid-flight re-acquisition).
+     opts.exclude skips the bruiser just struck. Returns null if none qualify. */
+  M._corePickTarget = function (c, opts) {
+    var enemies = this.enemies;
+    var mg = opts.margin || 0;
+    var view = this.cameras.main.worldView;
+    var vL = view.x - mg, vR = view.right + mg, vT = view.y - mg, vB = view.bottom + mg;
+    var ff = opts.farFrom || null, exclude = opts.exclude || null, exList = opts.excludeList || null;
+    var dirX = opts.dirX || 0, dirY = opts.dirY || 0;
+    var best = null, bestScore = ff ? -Infinity : Infinity;
+    for (var i = 0; i < enemies.length; i++) {
+      var e = enemies[i];
+      if (e.tier !== 3 || e === exclude) continue;
+      if (exList && exList.indexOf(e) >= 0) continue;               // hard-skip already-struck bruisers
+      if (e._spawnAnimT != null && e._spawnAnimT < 1) continue;
+      if (e.x < vL || e.x > vR || e.y < vT || e.y > vB) continue;   // outside the (margin-expanded) view
+      if (ff) {
+        var fdx = e.x - ff.x, fdy = e.y - ff.y, fd2 = fdx * fdx + fdy * fdy;
+        if (fd2 > bestScore) { bestScore = fd2; best = e; }         // farthest from the reference
+      } else {
+        var dx = e.x - c.x, dy = e.y - c.y, d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 1) continue;
+        var align = (dx / d) * dirX + (dy / d) * dirY;              // forward = +1, behind = -1
+        var score = d * (1.5 - align);                             // prefer near AND ahead
+        if (score < bestScore) { bestScore = score; best = e; }
+      }
+    }
+    return best;
+  };
+
+  /* Is the core's current target still a live bruiser within the detection range? */
+  M._coreTargetValid = function (c) {
+    var t = c.target;
+    if (!t || this.enemies.indexOf(t) < 0) return false;            // gone / crushed
+    var view = this.cameras.main.worldView, mg = C.CORE_DETECT_MARGIN;
+    if (t.x < view.x - mg || t.x > view.right + mg ||
+        t.y < view.y - mg || t.y > view.bottom + mg) return false;  // out of detection range
+    return true;
+  };
+
+  /* Contact resolution each frame. Tier 1/2 are ploughed through (crushed, no
+     deflection). A tier-3 bruiser is a billiard ball: the core chips/breaks it,
+     counts a bounce, and redirects toward the NEXT on-screen bruiser (or fizzles
+     out if there's none). Bosses aren't in this.enemies, so they're never touched. */
+  M._coreContact = function (c) {
     var enemies = this.enemies, cr = C.CORE_RADIUS;
     for (var i = enemies.length - 1; i >= 0; i--) {
       var e = enemies[i];
@@ -277,32 +377,46 @@
       if (dx * dx + dy * dy >= rr * rr) continue;
 
       if (e.tier === 3) {
+        // Already smashed this launch → plough straight past it (never double-bounce
+        // the same hexagon). The just-struck one is pushed to hitList below, so this
+        // also blocks an instant re-bounce on the very next frame.
+        if (c.hitList.indexOf(e) >= 0) continue;
         if (e.hasShield) {
           this._breakShield(e);
         } else {
           e.hp -= C.CORE_BRUISER_DMG;
-          if (e.hp <= 0) { this._killEnemy(i, { core: true }); continue; }
-          this._explode(e.x, e.y, [255, 140, 40], 10);
+          if (e.hp <= 0) this._killEnemy(i, { core: true });
+          else this._explode(e.x, e.y, [255, 140, 40], 10);
         }
-        // Billiard ricochet off the surviving bruiser, then nudge clear so the
-        // core can't re-collide with it on the very next frame.
-        var d  = Math.sqrt(dx * dx + dy * dy) || 1;
-        var Nx = -dx / d, Ny = -dy / d;                  // surface normal (bruiser → core)
-        var vdotn = c.vx * Nx + c.vy * Ny;
-        if (vdotn < 0) { c.vx -= 2 * vdotn * Nx; c.vy -= 2 * vdotn * Ny; }
-        var pen = rr - d;
-        if (pen > 0) { c.x += Nx * (pen + 2); c.y += Ny * (pen + 2); }
-        this._coreBounce(c, true);
+        c.hitList.push(e);                        // mark struck — avoid ever re-hitting it
+        this._coreBounce(c);
+
+        // Redirect toward the UN-HIT bruiser FARTHEST from the one just struck (max
+        // travel), strictly within the field of view. If none is strictly on-screen,
+        // fall back to the farthest un-hit within the wider detection range. With no
+        // un-hit bruiser left, fizzle — it won't circle back to re-smash an old one.
+        var nxt = this._corePickTarget(c, { farFrom: { x: e.x, y: e.y }, excludeList: c.hitList, margin: 0 });
+        if (!nxt) nxt = this._corePickTarget(c, { farFrom: { x: e.x, y: e.y }, excludeList: c.hitList, margin: C.CORE_DETECT_MARGIN });
+        c.target = nxt;
+        if (nxt) {
+          c.fizzle = false; c.fizzleT = 0;
+          var ndx = nxt.x - c.x, ndy = nxt.y - c.y, nd = Math.sqrt(ndx * ndx + ndy * ndy) || 1;
+          c.vx = (ndx / nd) * C.CORE_LAUNCH_SPEED;
+          c.vy = (ndy / nd) * C.CORE_LAUNCH_SPEED;
+        } else {
+          c.fizzle = true; c.fizzleT = 0;
+        }
+        return;   // one ricochet per frame
       } else {
-        this._killEnemy(i, { core: true });
+        this._killEnemy(i, { core: true });   // crush lesser enemies (plough through)
       }
     }
   };
 
   /* A ricochet: tick the counter + a punchy impact flash. */
-  M._coreBounce = function (c, offEnemy) {
+  M._coreBounce = function (c) {
     c.bounces++;
-    this._spawnWaveRing(c.x, c.y, { maxRadius: offEnemy ? 150 : 175, color: HOT, expandTime: 0.30 });
+    this._spawnWaveRing(c.x, c.y, { maxRadius: 150, color: HOT, expandTime: 0.30 });
     this._explode(c.x, c.y, [255, 170, 60],  16);
     this._explode(c.x, c.y, [255, 255, 210], 8);
     this.cameras.main.shake(90, 0.008);
@@ -453,6 +567,7 @@
 
   M._renderCoreLaunched = function (g, c) {
     var gt = this.gameTime, r = C.CORE_RADIUS;
+    var tw = this._twActive;        // The World: dress it as a graceful gold slow-mo phantom (never grayed)
 
     // ---- Blazing motion trail (oldest → newest) ----
     for (var i = 0; i < c.trail.length; i++) {
@@ -463,12 +578,43 @@
       g.fillStyle(EMBER, tr.a * 0.28); g.fillCircle(tr.x, tr.y, rr * 0.6);
     }
 
+    // ---- The World slow-mo dressing, drawn BEHIND the ball ----
+    if (tw) {
+      // Concentric golden time-dilation ripples, expanding slowly on game time.
+      for (var wi = 0; wi < 3; wi++) {
+        var wp = ((gt * 0.45) + wi / 3) % 1;             // slow 0→1 cycle
+        var wr = r * 1.15 + wp * r * 2.4;
+        var wa = (1 - wp) * 0.40;
+        g.lineStyle(2, TW_GOLD,  wa);        g.strokeCircle(c.x, c.y, wr);
+        g.lineStyle(1, TW_GOLD2, wa * 0.7);  g.strokeCircle(c.x, c.y, wr * 0.98);
+      }
+      // Golden phantom echoes strobed along the recent path (the "ralenti" stutter).
+      for (var ei = 0; ei < c.trail.length; ei += 3) {
+        var te = c.trail[ei];
+        if (te.a <= 0) continue;
+        var er = r * (0.55 + 0.40 * te.a);
+        g.fillStyle(TW_GOLD,  te.a * 0.16);  g.fillCircle(te.x, te.y, er);
+        g.lineStyle(1.5, TW_GOLD2, te.a * 0.5); g.strokeCircle(te.x, te.y, er);
+      }
+    }
+
     // ---- Raging plasma ball (no containment field — it burst on launch) ----
     var armed = c.bounces >= C.CORE_MAX_BOUNCES - 1;     // last bounce: about to detonate
-    var pulse = 0.6 + 0.4 * Math.sin(gt * (armed ? 28 : 14));
+    var pulse = 0.6 + 0.4 * Math.sin(gt * (tw ? 5 : (armed ? 28 : 14)));   // slow, breathing pulse under TW
     g.fillStyle(HOT, 0.18); g.fillCircle(c.x, c.y, r * 1.5 * (0.9 + 0.1 * pulse));
     this._drawCoreSphere(g, c.x, c.y, r, c.spin, pulse, 1);
     g.fillStyle(WHITE, 0.5 * pulse); g.fillCircle(c.x, c.y, r * 0.3 * pulse);
+
+    // ---- The World: warm gold phase-shimmer ON the body (reads as TW, not gray) ----
+    if (tw) {
+      var sh = 0.5 + 0.5 * Math.sin(gt * 3);
+      g.fillStyle(TW_GOLD, 0.12 + 0.10 * sh);       g.fillCircle(c.x, c.y, r * 0.92);
+      g.lineStyle(2.5, TW_GOLD2, 0.45 + 0.25 * sh); g.strokeCircle(c.x, c.y, r * 1.12);
+      // A lone gold mote orbiting slowly — a subtle clock-hand, sells the frozen time.
+      var oa = gt * 1.2;
+      g.fillStyle(0xffffff, 0.85);
+      g.fillCircle(c.x + Math.cos(oa) * r * 1.12, c.y + Math.sin(oa) * r * 1.12, 2.6);
+    }
 
     // ---- Remaining-bounce pips around the ball (clear feedback) ----
     var n = C.CORE_MAX_BOUNCES;
@@ -476,7 +622,7 @@
       var pa = -Math.PI / 2 + (b / n) * TAU;
       var px = c.x + Math.cos(pa) * (r + 14), py = c.y + Math.sin(pa) * (r + 14);
       var used = b < c.bounces;
-      g.fillStyle(used ? 0x442211 : HOTCORE, used ? 0.4 : 0.95);
+      g.fillStyle(used ? 0x442211 : (tw ? TW_GOLD2 : HOTCORE), used ? 0.4 : 0.95);
       g.fillCircle(px, py, 3);
     }
   };

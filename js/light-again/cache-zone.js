@@ -45,6 +45,11 @@
   var COL_CB   = 0x36e0ff;   // glitch chromatic-aberration cyan channel
   var COL_HOT  = 0xffffff;
 
+  // Ground-fill opacity (visual tuning — bump these to read the circle more/less).
+  var FILL_BASE   = 0.12;    // base disc tint, always (was barely visible at 0.06)
+  var FILL_INSIDE = 0.16;    // EXTRA tint added (eased) while you're standing inside → clear "you're in it"
+  var CORE_SCALE_DIV = 110;  // reward-sprite centre-piece scale = zoneR / this
+
   function smooth(t) { t = t < 0 ? 0 : (t > 1 ? 1 : t); return t * t * (3 - 2 * t); }
 
   /* ================================================================
@@ -61,19 +66,33 @@
     this._cacheGfx.setDepth(7);
     this._cacheGfx.setBlendMode(Phaser.BlendModes.ADD);
 
-    // Top layer (above enemies, under the player arrow) — the floating download
-    // glyph + the per-enemy rage auras, so both always read clearly.
+    // Top layer (above enemies, under the player arrow) — the loading spinner/halo
+    // + the per-enemy rage auras, so both always read clearly.
     this._cacheTopGfx = this.add.graphics();
     this._cacheTopGfx.setDepth(28);
     this._cacheTopGfx.setBlendMode(Phaser.BlendModes.ADD);
+
+    // Centre-piece: the actual reward (Overdrive star) sprite "charges" as a PIE
+    // that completes with the hack gauge. A faint full-star GHOST sits behind as
+    // the prize preview; the bright FILL star is revealed by a wedge geometry mask.
+    this._cacheStarGhost = this.add.image(0, 0, '_star');
+    this._cacheStarGhost.setDepth(28).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+    this._cacheStarFill = this.add.image(0, 0, '_star');
+    this._cacheStarFill.setDepth(28).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+    this._cacheStarMaskGfx = this.add.graphics();
+    this._cacheStarMaskGfx.setVisible(false);                 // geometry-mask source — never drawn itself
+    this._cacheStarFill.setMask(this._cacheStarMaskGfx.createGeometryMask());
   };
 
   /* Drop the live zone (graphics persist — just cleared) and lift any rage. */
   M._clearCacheZone = function (silent) {
     this._clearCacheRage();
     this._cache = null;
-    if (this._cacheGfx)    this._cacheGfx.clear();
-    if (this._cacheTopGfx) this._cacheTopGfx.clear();
+    if (this._cacheGfx)         this._cacheGfx.clear();
+    if (this._cacheTopGfx)      this._cacheTopGfx.clear();
+    if (this._cacheStarMaskGfx) this._cacheStarMaskGfx.clear();
+    if (this._cacheStarGhost)   this._cacheStarGhost.setVisible(false);
+    if (this._cacheStarFill)    this._cacheStarFill.setVisible(false);
   };
 
   /* Lift the rage from every enemy (called whenever a hack ends or the zone goes). */
@@ -116,7 +135,7 @@
     if (!this.p || this.p.state === 'DEAD') return;
 
     var R = C.CACHE_ZONE_R;
-    var m = C.WORLD_HALF - R - 40;                 // keep the WHOLE circle in-bounds
+    var inset = R + 40;                            // keep the WHOLE circle in-bounds (disc)
     // Per-feature minimum centre distance². The Curse Fountain is the HARD
     // requirement (their circles must NEVER overlap → radius-sum, floored at the
     // generic crowding gap); the Digital Tree / Unstable Core just keep the map
@@ -129,14 +148,14 @@
       [this._core,  genSep2],
     ];
 
-    var dMin = opts.near ? 360 : C.CACHE_SPAWN_DIST_MIN;
-    var dMax = opts.near ? 360 : C.CACHE_SPAWN_DIST_MAX;
+    var dMin = opts.near ? (R + 110) : C.CACHE_SPAWN_DIST_MIN;   // debug: drop it just outside the rim
+    var dMax = opts.near ? (R + 110) : C.CACHE_SPAWN_DIST_MAX;
     var x, y, tries = 0, ok = false;
     do {
       var ang  = Math.random() * TAU;
       var dist = dMin + Math.random() * (dMax - dMin);
-      x = Math.max(-m, Math.min(m, this.p.x + Math.cos(ang) * dist));
-      y = Math.max(-m, Math.min(m, this.p.y + Math.sin(ang) * dist));
+      var czc = LA.clampDisc(this.p.x + Math.cos(ang) * dist, this.p.y + Math.sin(ang) * dist, inset);
+      x = czc.x; y = czc.y;
       ok = true;
       for (var ai = 0; ai < avoid.length; ai++) {
         var av = avoid[ai][0];
@@ -155,10 +174,11 @@
       idleT: 0,           // ms spent un-entered (idle-life timeout)
       abandonT: 0,        // ms at 0 % while away (HACK → IDLE power-down)
       inside: false,      // player inside this frame (render telegraph)
+      insideGlow: 0,      // eased 0→1 "you're standing in it" fill brighten
       success: false,
       seed: Math.random() * 1000,
       swirl: Math.random() * TAU,
-      dlBob: 0,           // download-glyph animation phase
+      spin: 0,            // loading-spinner rotation phase
       glitchT: 0, glitchOx: 0, glitchOy: 0,   // chromatic-aberration jitter
       dissolveT: 0,
       motes: [], moteT: 0,
@@ -205,12 +225,15 @@
      ================================================================ */
   M._tickCacheZone = function (dt, ms) {
     var f = this._cache, p = this.p, rms = dt * 1000;
+    // The World: the cache is dormant — FREEZE its animation (the loading spinner,
+    // swirl and glitch jitter all stop) so nothing reads as "still charging".
+    var aDt = this._twActive ? 0 : dt;
     f.age   += rms;
-    f.swirl += dt;
-    f.dlBob  = (f.dlBob + dt * (f.phase === 'HACK' ? 1.7 : 0.7)) % 1;
+    f.swirl += aDt;
+    f.spin  += aDt * (f.phase === 'HACK' ? 3.2 : 1.1);   // loading spinner spins faster while hacking
 
     // Glitch chromatic-aberration offset jumps on its own little real-time timer.
-    f.glitchT -= rms;
+    f.glitchT -= (this._twActive ? 0 : rms);
     if (f.glitchT <= 0) {
       f.glitchT = 70 + Math.random() * 150;
       var gmag = f.phase === 'HACK' ? 7 : 3;
@@ -224,33 +247,40 @@
       inside = (pdx * pdx + pdy * pdy) <= f.zoneR * f.zoneR;
     }
     f.inside = inside;
+    // Ease the "inside" fill brighten so entering/leaving fades smoothly (no snap).
+    f.insideGlow += ((inside ? 1 : 0) - f.insideGlow) * Math.min(1, dt * 8);
 
     if (f.phase === 'IDLE') {
       f.idleT += rms;
       if (inside && !this._twActive) this._cacheBeginHack();
       else if (f.idleT >= C.CACHE_IDLE_LIFE) this._cacheFail();
     } else if (f.phase === 'HACK') {
-      var fillRate = ms / C.CACHE_HACK_DUR;          // scaled time → pauses in TW/hitstop
-      if (inside) {
-        f.prog = Math.min(1, f.prog + fillRate);
-        f.abandonT = 0;
-      } else {
-        f.prog = Math.max(0, f.prog - fillRate * C.CACHE_DECAY_MULT);
-        if (f.prog <= 0) {
-          f.abandonT += rms;
-          if (f.abandonT >= C.CACHE_ABANDON_GRACE) { this._cacheRevertToIdle(); return; }
+      // The World freezes the cache ENTIRELY: the gauge stops charging (no cheesing
+      // a stopped board), the drain/abandon timers pause, and NO rage is applied —
+      // the zone is dormant (it also renders grayed, with no enemy auras).
+      if (!this._twActive) {
+        var fillRate = ms / C.CACHE_HACK_DUR;
+        if (inside) {
+          f.prog = Math.min(1, f.prog + fillRate);
+          f.abandonT = 0;
+        } else {
+          f.prog = Math.max(0, f.prog - fillRate * C.CACHE_DECAY_MULT);
+          if (f.prog <= 0) {
+            f.abandonT += rms;
+            if (f.abandonT >= C.CACHE_ABANDON_GRACE) { this._cacheRevertToIdle(); return; }
+          }
         }
+        // Enrage every regular enemy standing inside (bosses live outside
+        // this.enemies, so the sweep can never reach them).
+        this._cacheApplyRage(ms);
+        if (f.prog >= 1) { this._cacheSucceed(); return; }
       }
-      // Enrage every regular enemy standing inside (bosses live outside
-      // this.enemies, so the sweep can never reach them). Frozen during The World.
-      if (!this._twActive) this._cacheApplyRage(ms);
-      if (f.prog >= 1) { this._cacheSucceed(); return; }
     } else if (f.phase === 'DISSOLVE') {
       f.dissolveT += rms;
       if (f.dissolveT >= C.CACHE_DISSOLVE_DUR) { this._clearCacheZone(true); return; }
     }
 
-    this._cacheTickMotes(dt);
+    this._cacheTickMotes(this._twActive ? 0 : dt);   // download streaks freeze too while dormant
     this._renderCacheZone(dt);
   };
 
@@ -290,7 +320,11 @@
     this.cameras.main.flash(240, 180, 40, 255);
     this.cameras.main.shake(220, 0.012);
     this._triggerHitstop(110);
-    this._floatLabel(x, y - 30, LA.laGoT('laCacheSecured'), '#ff66ff');
+    // Announce the finished charge like a big-score event (PARADE / NUKE style) so
+    // it clearly reads as "upgrade charged", banking a combo-scaled completion bonus.
+    var bonus = C.CACHE_COMPLETE_SCORE * (this.comboMultiplier || 1);
+    this.score += bonus;
+    this._floatScoreBig('CACHE', bonus);
 
     // The payoff: a mega Overdrive orb bursts into the zone centre, with a little
     // guidance chevron toward it (the player is usually already standing on it).
@@ -368,6 +402,16 @@
     var col  = C.CACHE_TINT;
     var hot  = 0.6 + 0.4 * Math.sin(gt * 3 + f.seed);
 
+    // The World: the cache is dormant (it stops charging), so drain its palette to
+    // grey like the frozen enemies. These locals shadow the module COL_* for this
+    // render only (no-op when The World isn't active).
+    var COL_RED = 0xff2a44, COL_RB = 0xff3a6a, COL_CB = 0x36e0ff, COL_HOT = 0xffffff;
+    if (this._twActive) {
+      col = this._twGray(col);
+      COL_RED = this._twGray(COL_RED); COL_RB = this._twGray(COL_RB);
+      COL_CB  = this._twGray(COL_CB);  COL_HOT = this._twGray(COL_HOT);
+    }
+
     // Alpha / radius envelope (success blooms outward + fades; timeout shrinks + fades).
     var A = 1, Rmul = 1;
     if (f.phase === 'DISSOLVE') {
@@ -379,9 +423,17 @@
     var Rr = R * Rmul;
 
     // ---- Filled disc (the region reads as a place to stand) ----
-    g.fillStyle(col, 0.06 * A * (0.7 + 0.3 * hot));
+    // Base tint is always visible; standing INSIDE adds an eased brighten + a faint
+    // white wash so it's unmistakable you're in the zone.
+    g.fillStyle(col, FILL_BASE * A * (0.7 + 0.3 * hot));
     g.fillCircle(x, y, Rr);
-    if (f.phase === 'HACK') { g.fillStyle(col, 0.05 * A); g.fillCircle(x, y, Rr * 0.6); }
+    var ig = f.insideGlow || 0;
+    if (ig > 0.01) {
+      g.fillStyle(col, FILL_INSIDE * A * ig);
+      g.fillCircle(x, y, Rr);
+      g.fillStyle(COL_HOT, 0.05 * A * ig);
+      g.fillCircle(x, y, Rr * 0.9);
+    }
 
     // ---- Glitched perimeter (chromatic aberration: red + cyan offset ghosts) ----
     var ox = f.glitchOx, oy = f.glitchOy;
@@ -435,66 +487,107 @@
       g.strokeCircle(x, y, Rr * (1.02 + 0.02 * Math.sin(gt * 6)));
     }
 
-    // ---- Download glyph (top layer, hovering above the enemies) ----
-    var iconCol = f.phase === 'HACK' ? COL_HOT : col;
-    var iconA   = A * (f.phase === 'HACK' ? (0.7 + 0.3 * Math.sin(gt * 8)) : (0.5 + 0.3 * hot));
-    this._drawDownloadGlyph(tg, x, y, 26, iconCol, iconA, f.dlBob, f.phase === 'HACK');
+    // ---- Reward-sprite centre-piece: the Overdrive star "charges" as a PIE that
+    //      completes with the gauge (ghost preview behind + a loading spinner). ----
+    this._renderCacheCore(x, y, Rr, A, f.prog, f.phase, gt, hot, f.spin);
 
-    // ---- Enemy rage auras (top layer) — only while a hack is running ----
-    if (f.phase === 'HACK') {
+    // ---- Enemy RAGE auras (top layer) — only while a live hack runs, and NEVER
+    //      during The World (the zone is dormant then). Reworked to read as a
+    //      fuming, jagged "rage corona" (flickering spikes + a hot inner glow)
+    //      rather than a clean ring, which looked like a targeting reticle. ----
+    if (f.phase === 'HACK' && !this._twActive) {
       var view = this.cameras.main.worldView;
-      var en = this.enemies, pulse = 0.55 + 0.45 * Math.abs(Math.sin(gt * Math.PI * 5));
+      var en = this.enemies;
+      var nSp = 8, nV = nSp * 2;        // spikes → 2× vertices (outer tip / inner valley)
       for (var ei = 0; ei < en.length; ei++) {
         var e = en[ei];
         if (!e._cacheRage) continue;
         if (e.x < view.x - 40 || e.x > view.right + 40 || e.y < view.y - 40 || e.y > view.bottom + 40) continue;
-        var fade = Math.min(1, (e._cacheRageT || 0) / C.CACHE_RAGE_LINGER);
-        var rr = (e.size || 14) * 1.55 + 3 * Math.sin(gt * 12 + e.x * 0.05);
-        tg.lineStyle(2, COL_RED, 0.55 * pulse * fade);
-        tg.strokeCircle(e.x, e.y, rr);
-        // four short angry spikes
-        for (var sp = 0; sp < 4; sp++) {
-          var sa = gt * 3 + sp * (Math.PI / 2);
-          var ix = e.x + Math.cos(sa) * rr, iy = e.y + Math.sin(sa) * rr;
-          tg.lineStyle(2, 0xff7733, 0.6 * pulse * fade);
+        var fade  = Math.min(1, (e._cacheRageT || 0) / C.CACHE_RAGE_LINGER);
+        var baseR = (e.size || 14) * 0.95;                          // small — hugs the body
+        var seed  = e.x * 0.07 + e.y * 0.05;                        // per-enemy phase (no lockstep pulse)
+        var beat  = 0.6 + 0.4 * Math.abs(Math.sin(gt * Math.PI * 6 + seed));
+        var rot   = gt * 2.2 + seed;
+
+        // If the enemy is ALSO dash-marked, recolour the corona to the mark's CYAN
+        // (coherent with the cyan mark flicker) so marked enemies stay readable and
+        // clearly distinct from plain RED raged ones — red used to bury the mark.
+        var marked = !!e.isMarked;
+        var glowC  = marked ? 0x36e0ff : COL_RED;
+        var tipC   = marked ? 0x9af6ff : 0xff7733;
+
+        // Fuming inner glow — very faint, just a hint of heat.
+        tg.fillStyle(glowC, 0.035 * beat * fade);
+        tg.fillCircle(e.x, e.y, baseR * (1.2 + 0.10 * beat));
+
+        // Jagged corona, two translucent layers; outer tips jitter fast/independently
+        // → a furious, unstable silhouette that hugs the body.
+        var lw, lc, lsc, la;
+        for (var layer = 0; layer < 2; layer++) {
+          if (layer === 0) { lw = 2;   lc = glowC; lsc = 1.0;  la = 0.09; }
+          else             { lw = 1.2; lc = tipC;  lsc = 0.96; la = 0.20; }
+          tg.lineStyle(lw, lc, la * beat * fade);
           tg.beginPath();
-          tg.moveTo(ix, iy);
-          tg.lineTo(e.x + Math.cos(sa) * (rr + 5), e.y + Math.sin(sa) * (rr + 5));
-          tg.strokePath();
+          for (var s = 0; s <= nV; s++) {
+            var ang = rot + (s / nV) * TAU;
+            var outer = (s % 2) === 0;
+            var fl = outer ? (0.55 + 0.85 * Math.abs(Math.sin(gt * 17 + s * 1.7 + seed))) : 0;
+            var rr = baseR * (outer ? (1.25 + 0.45 * fl) : 0.95) * lsc;
+            var px = e.x + Math.cos(ang) * rr, py = e.y + Math.sin(ang) * rr;
+            if (s === 0) tg.moveTo(px, py); else tg.lineTo(px, py);
+          }
+          tg.closePath(); tg.strokePath();
         }
       }
     }
   };
 
-  /* The classic "download" glyph: a down-arrow into an open tray. While hacking,
-     the arrow slides down on its bob phase (data pouring into the cache). */
-  M._drawDownloadGlyph = function (g, cx, cy, s, col, alpha, bob, hacking) {
-    if (alpha <= 0.01) return;
+  /* The reward (Overdrive star) sprite AS the centre-piece: a faint full-star GHOST
+     preview, with the bright star revealed by a PIE wedge geometry mask that
+     completes with the hack gauge ("un camembert qui se complète"), ringed by a
+     loading spinner. So you literally watch the bonus you're about to win fill in. */
+  M._renderCacheCore = function (cx, cy, Rr, A, prog, phase, gt, hot, spin) {
+    var ghost = this._cacheStarGhost, fill = this._cacheStarFill, mg = this._cacheStarMaskGfx;
+    if (!ghost || !fill || !mg) return;
+    var tg = this._cacheTopGfx;
 
-    // Open tray at the bottom.
-    var ty = cy + s * 0.95;
-    g.lineStyle(3, col, 0.85 * alpha);
-    g.beginPath();
-    g.moveTo(cx - s * 0.9, cy + s * 0.32);
-    g.lineTo(cx - s * 0.9, ty);
-    g.lineTo(cx + s * 0.9, ty);
-    g.lineTo(cx + s * 0.9, cy + s * 0.32);
-    g.strokePath();
+    var scale  = (Rr / CORE_SCALE_DIV) * (1 + 0.05 * Math.sin(gt * 4));   // gentle breathing
+    var halfPx = 16 * scale;                                              // _star texture is 32px → half = 16
 
-    // Arrow (stem + chevron head) — bobs downward while hacking.
-    var slide = hacking ? bob * s * 0.5 : 0;
-    var topY  = cy - s * 0.62 + slide;
-    var headY = topY + s * 0.95;
-    g.lineStyle(4, col, alpha);
-    g.beginPath(); g.moveTo(cx, topY); g.lineTo(cx, headY); g.strokePath();
-    g.beginPath();
-    g.moveTo(cx - s * 0.5, headY - s * 0.5);
-    g.lineTo(cx, headY);
-    g.lineTo(cx + s * 0.5, headY - s * 0.5);
-    g.strokePath();
+    ghost.setVisible(true).setPosition(cx, cy).setScale(scale);
+    fill.setVisible(true).setPosition(cx, cy).setScale(scale);
+    // Ghost = the prize, always faintly shown. Fill = bright, masked to the gauge.
+    ghost.setAlpha(A * (phase === 'HACK' ? (0.22 + 0.12 * hot) : (0.32 + 0.16 * hot)));
+    fill.setAlpha(A * 0.96);
+    // The World: grey the prize-preview star too (the cache is dormant); white otherwise.
+    var twTint = this._twActive ? 0x8f8f96 : 0xffffff;
+    ghost.setTint(twTint); fill.setTint(twTint);
 
-    g.fillStyle(COL_HOT, alpha);
-    g.fillCircle(cx, topY, 2.4);
+    // Pie wedge mask = prog, sweeping clockwise from the top; a full disc at ~100%.
+    var maskR = halfPx * 1.04;
+    mg.clear();
+    mg.fillStyle(0xffffff, 1);
+    if (prog >= 0.999) {
+      mg.fillCircle(cx, cy, maskR);
+    } else if (prog > 0.0008) {
+      mg.beginPath();
+      mg.moveTo(cx, cy);
+      mg.arc(cx, cy, maskR, -Math.PI / 2, -Math.PI / 2 + prog * TAU, false);
+      mg.closePath();
+      mg.fillPath();
+    }
+    // prog ~0 → empty mask → only the ghost preview shows.
+
+    // Soft halo behind the icon (readability over a busy floor) + a loading spinner.
+    // Both drain to grey during The World (dormant cache).
+    tg.fillStyle(this._twActive ? this._twGray(C.CACHE_TINT) : C.CACHE_TINT, A * 0.10);
+    tg.fillCircle(cx, cy, halfPx * 1.35);
+    var sr = halfPx * 1.2, segs = 3, gapFrac = 0.66;
+    tg.lineStyle(3, this._twActive ? this._twGray(COL_HOT) : COL_HOT, A * (0.45 + 0.3 * hot));
+    for (var s = 0; s < segs; s++) {
+      var a = spin + s * (TAU / segs);
+      tg.beginPath(); tg.arc(cx, cy, sr, a, a + (TAU / segs) * gapFrac, false); tg.strokePath();
+    }
   };
 
 })();

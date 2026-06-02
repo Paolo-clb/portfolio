@@ -8,6 +8,23 @@
   var C  = LA.C;
   var M  = LA.sceneMethods;
 
+  /* The World "frozen" tint for GRAPHICS-drawn entities (bosses, the curse fountain).
+     Sprite/Image entities desaturate via a grayscale ColorMatrix postFX; Graphics
+     objects can't take postFX in this Phaser build, so anything drawn with fillStyle/
+     lineStyle desaturates its colours through this instead. Returns `hex` unchanged
+     when The World isn't active; during TW it pulls the colour toward its luminance
+     (desaturate) and dims it — matching the grayed look the regular enemies get. */
+  M._twGray = function (hex) {
+    if (!this._twActive) return hex;
+    var r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+    var lum = r * 0.30 + g * 0.59 + b * 0.11;
+    var amt = 0.88, dim = 0.7;                       // desaturate then dim (≈ the enemy '_gray' look)
+    r = ((r + (lum - r) * amt) * dim) | 0;
+    g = ((g + (lum - g) * amt) * dim) | 0;
+    b = ((b + (lum - b) * amt) * dim) | 0;
+    return (r << 16) | (g << 8) | b;
+  };
+
   M._explode = function (x, y, color, n) {
     var tint = Phaser.Display.Color.GetColor(color[0], color[1], color[2]);
     // Pass x,y directly to explode() — never call setPosition on the shared emitters.
@@ -704,6 +721,139 @@
       self._explode(self.p.x, self.p.y, accCol, 30);
       self._spawnWaveRing(self.p.x, self.p.y, { maxRadius: 140, color: ringGold, expandTime: 0.36 });
     });
+  };
+
+  /* ==========================================================================
+     WORLD BORDER — darkened exterior, animated neon rim, wall-impact flares.
+     The arena is a DISC of radius C.WORLD_HALF (see LA.clampDisc).
+     ========================================================================== */
+
+  M._buildWorldBorder = function () {
+    var R = C.WORLD_HALF;
+
+    // --- Darken everything OUTSIDE the disc ---------------------------------
+    // A huge dark rectangle in world space, masked by an INVERTED circle so it
+    // only paints beyond the rim. The hole tracks the camera automatically
+    // (geometry masks render in world space), so panning never reveals a seam.
+    var BIG = R * 6;
+    var dark = this.add.graphics();
+    dark.setDepth(-6);                  // above the PCB background (−10), below the rim (−5)
+    dark.fillStyle(0x01040a, 0.92);     // near-black with a faint cool tint
+    dark.fillRect(-BIG, -BIG, BIG * 2, BIG * 2);
+    var holeG = this.make.graphics({ add: false });   // off display list → never self-renders
+    holeG.fillStyle(0xffffff);
+    holeG.fillCircle(0, 0, R);
+    var holeMask = holeG.createGeometryMask();
+    holeMask.invertAlpha = true;        // keep the dark fill OUTSIDE the circle
+    dark.setMask(holeMask);
+    this._worldDark = dark;
+    this._worldDarkMaskG = holeG;       // destroyed explicitly on shutdown
+
+    // --- Animated neon rim (redrawn each frame in _updateWorldBorder) -------
+    var bg = this.add.graphics();
+    bg.setDepth(-5);
+    bg.setBlendMode(Phaser.BlendModes.ADD);
+    this._borderGfx = bg;
+
+    // --- Pool of wall-impact flares (arcs that hug the rim where you hit) ---
+    this._wallImpacts = [];
+    for (var i = 0; i < 10; i++) {
+      var ig = this.add.graphics();
+      ig.setDepth(-4);
+      ig.setBlendMode(Phaser.BlendModes.ADD);
+      ig.setVisible(false);
+      this._wallImpacts.push({ gfx: ig, active: false, elapsed: 0, dur: 0.5, ang: 0, power: 1 });
+    }
+    this._wallImpactW = 0;
+
+    this._updateWorldBorder(0);         // draw an initial frame
+  };
+
+  M._updateWorldBorder = function (_dt) {
+    var g = this._borderGfx;
+    if (!g) return;
+    var R   = C.WORLD_HALF;
+    var TAU = Math.PI * 2;
+    var t   = this.gameTime || 0;
+    var col = 0x00ffff;
+    var pulse = 0.5 + 0.5 * Math.sin(t * 1.7);
+
+    g.clear();
+
+    // Soft outer halo — thick, faint, breathing
+    g.lineStyle(34, col, 0.045 + 0.035 * pulse);
+    g.strokeCircle(0, 0, R + 6);
+    g.lineStyle(16, col, 0.10 + 0.06 * pulse);
+    g.strokeCircle(0, 0, R);
+
+    // Crisp main ring
+    g.lineStyle(3, col, 0.55 + 0.30 * pulse);
+    g.strokeCircle(0, 0, R);
+
+    // Rotating dashed inner ring (tech segments)
+    var segs = 60, rot = t * 0.12, rIn = R - 14;
+    g.lineStyle(2, col, 0.45);
+    for (var s = 0; s < segs; s++) {
+      var a0 = rot + (s / segs) * TAU;
+      g.beginPath();
+      g.arc(0, 0, rIn, a0, a0 + (TAU / segs) * 0.55, false);
+      g.strokePath();
+    }
+
+    // Counter-rotating ticks + twinkling energy nodes on the rim
+    var nodes = 28, rot2 = -t * 0.07;
+    for (var n = 0; n < nodes; n++) {
+      var na = rot2 + (n / nodes) * TAU;
+      var ca = Math.cos(na), sa = Math.sin(na);
+      g.lineStyle(2, col, 0.35 + 0.40 * pulse);
+      g.beginPath();
+      g.moveTo(ca * (R - 24), sa * (R - 24));
+      g.lineTo(ca * R, sa * R);
+      g.strokePath();
+      var tw = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * 3.0 + n * 1.7));
+      g.fillStyle(0xffffff, tw * 0.85);
+      g.fillCircle(ca * R, sa * R, 2.3);
+    }
+  };
+
+  // Flare where something slams the rim. (nx,ny) = outward wall normal at (x,y);
+  // power ∈ [0,1] scales the spark count, arc width and bulge.
+  M._spawnWallImpact = function (x, y, nx, ny, power) {
+    if (!this._wallImpacts) return;
+    var e = this._wallImpacts[this._wallImpactW % this._wallImpacts.length];
+    this._wallImpactW++;
+    e.active = true; e.elapsed = 0;
+    e.dur   = 0.45 + 0.25 * power;
+    e.ang   = Math.atan2(ny, nx);       // rim angle of the contact point
+    e.power = power;
+    e.gfx.setVisible(true);
+    var col = power >= 0.9 ? [120, 240, 255] : [0, 200, 230];
+    this._explode(x, y, col, Math.round(8 + power * 22));
+    this._explode(x, y, [255, 255, 255], Math.round(3 + power * 8));
+    this._spawnWaveRing(x, y, { maxRadius: 40 + power * 70, color: 0x00ffff, expandTime: 0.26 });
+  };
+
+  M._updateWallImpacts = function (dt) {
+    if (!this._wallImpacts) return;
+    var R = C.WORLD_HALF;
+    for (var i = 0; i < this._wallImpacts.length; i++) {
+      var e = this._wallImpacts[i];
+      if (!e.active) continue;
+      e.elapsed += dt;
+      var t = e.elapsed / e.dur;
+      var g = e.gfx;
+      if (t >= 1) { e.active = false; g.clear(); g.setVisible(false); continue; }
+      var fade  = 1 - t;
+      var hw    = (0.16 + 0.55 * e.power) * (1 - 0.55 * t);   // arc half-width shrinks
+      var bulge = e.power * 30 * Math.sin(Math.PI * t);        // dips inward then back
+      g.clear();
+      // Wide cyan glow arc
+      g.lineStyle(6 + 14 * e.power * fade, 0x00ffff, fade * 0.5);
+      g.beginPath(); g.arc(0, 0, R - bulge * 0.4, e.ang - hw * 1.25, e.ang + hw * 1.25, false); g.strokePath();
+      // Bright white-hot core arc
+      g.lineStyle(2 + 5 * e.power * fade, 0xeaffff, fade * 0.95);
+      g.beginPath(); g.arc(0, 0, R, e.ang - hw, e.ang + hw, false); g.strokePath();
+    }
   };
 
 })();

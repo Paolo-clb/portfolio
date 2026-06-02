@@ -39,7 +39,7 @@
   var BODY_COL  = 0xff3aa0;   // hot-magenta rival (distinct from the cyan player)
   var ORB_COL   = 0xb060ff;   // violet shield orbs
   var VULN_COL  = 0xffe040;   // amber while recovering / open
-  var TW_GHOST_COL = 0xb060ff; // violet phantom during The World — recognisably the rival's own
+  var TW_GHOST_COL = 0x635d6a; // The World: drained violet-GREY (grayed like the frozen enemies, keeps a hint of the rival's violet)
                                // time-stop hue (matches its burst rings), distinct from the
                                // player's GOLD World tint and from the AMBER vulnerable look.
 
@@ -276,12 +276,10 @@
     else if (mir.state === 'RECOVER')   this._mirrorRecover(mir, sc60, pMs);
     else if (mir.state === 'DODGE')     this._mirrorDodge(mir, sc60, pMs);
 
-    // Integrate + world clamp
+    // Integrate + world clamp (disc)
     mir.x += mir.vx * sc60;
     mir.y += mir.vy * sc60;
-    var m = C.WORLD_HALF - C.MIR_SIZE * 1.5;
-    if (mir.x < -m) mir.x = -m; else if (mir.x > m) mir.x = m;
-    if (mir.y < -m) mir.y = -m; else if (mir.y > m) mir.y = m;
+    var mClp = LA.clampDisc(mir.x, mir.y, C.MIR_SIZE * 1.5); mir.x = mClp.x; mir.y = mClp.y;
 
     this._renderMirror(dt);
   };
@@ -307,9 +305,7 @@
     mir.spawnOX = p.x; mir.spawnOY = p.y;
     mir.x = p.x + Math.cos(mir.spawnAng) * dist * ease;
     mir.y = p.y + Math.sin(mir.spawnAng) * dist * ease;
-    var m = C.WORLD_HALF - C.MIR_SIZE * 1.5;
-    if (mir.x < -m) mir.x = -m; else if (mir.x > m) mir.x = m;
-    if (mir.y < -m) mir.y = -m; else if (mir.y > m) mir.y = m;
+    var mSpc = LA.clampDisc(mir.x, mir.y, C.MIR_SIZE * 1.5); mir.x = mSpc.x; mir.y = mSpc.y;
 
     // Face along the peel while launching, then snap to face the player.
     if (t < 0.62) {
@@ -537,7 +533,6 @@
     var sc60 = pMs / 16.7;
     var pR = C.SIZE * 0.6;
     var hitThr = C.MIR_NOVA_RADIUS + pR;          // direct clip vs the player
-    var wm = C.WORLD_HALF;
     var twActive = this._twActive;
     var drag = Math.pow(C.MIR_NOVA_DRAG, sc60);
 
@@ -570,7 +565,7 @@
       s.y += s.vy * sc60;
 
       // Off-world → gone (off-screen, no blast). Settle its PARADE bucket if parried.
-      if (s.x < -wm || s.x > wm || s.y < -wm || s.y > wm) {
+      if (!LA.inDisc(s.x, s.y, 0)) {
         mir.shots.splice(i, 1);
         if (s.reflected && s._dashAtkId && this._paradeFlushIfDone) this._paradeFlushIfDone(s._dashAtkId);
         continue;
@@ -946,9 +941,7 @@
     var mir = this._mirror;
     ent.x = mir.gFromX + Math.cos(ent.gAng) * dist * ease;
     ent.y = mir.gFromY + Math.sin(ent.gAng) * dist * ease;
-    var m = C.WORLD_HALF - C.MIR_SIZE * 1.5;
-    if (ent.x < -m) ent.x = -m; else if (ent.x > m) ent.x = m;
-    if (ent.y < -m) ent.y = -m; else if (ent.y > m) ent.y = m;
+    var eDsp = LA.clampDisc(ent.x, ent.y, C.MIR_SIZE * 1.5); ent.x = eDsp.x; ent.y = eDsp.y;
     ent.angle = Math.atan2(p.y - ent.y, p.x - ent.x);
     ent.dashSpin = (ent.dashSpin || 0) + dt * 60 * 0.6;
     this._mirrorSeedGhost(ent, isReal, 0.55, gradAt((ent.ghostW || 0) * 0.13));
@@ -1025,9 +1018,7 @@
   M._mirrorIntegrate = function (ent, sc60) {
     ent.x += ent.vx * sc60;
     ent.y += ent.vy * sc60;
-    var mm = C.WORLD_HALF - C.MIR_SIZE * 1.5;
-    if (ent.x < -mm) ent.x = -mm; else if (ent.x > mm) ent.x = mm;
-    if (ent.y < -mm) ent.y = -mm; else if (ent.y > mm) ent.y = mm;
+    var eInt = LA.clampDisc(ent.x, ent.y, C.MIR_SIZE * 1.5); ent.x = eInt.x; ent.y = eInt.y;
   };
 
   /* ---- The real rival's lunge contact vs the player (decoys never connect). ---- */

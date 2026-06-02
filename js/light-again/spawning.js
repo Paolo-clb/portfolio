@@ -8,23 +8,20 @@
   var C  = LA.C;
   var M  = LA.sceneMethods;
 
-  // Spawn point at (ang, dist) from the player, kept inside the arena.
-  // Spawns aimed past a nearby wall otherwise land out of bounds: the enemy
-  // snaps back on its first update frame, but the spawn-ring VFX already fired
-  // in the void behind the border. Mirroring the offending axis points the
-  // spawn inward while preserving the spawn distance; a final clamp covers the
-  // corner case where the player hugs a corner.
+  // Spawn point at (ang, dist) from the player, kept inside the disc arena.
+  // A spawn aimed past the rim otherwise lands out of bounds: the enemy snaps
+  // back on its first update frame, but the spawn-ring VFX already fired in the
+  // void outside the border. If the offset point is outside, flip it to the
+  // opposite side of the player (preserving spawn distance, pointing inward),
+  // then clamp to the disc as a backstop for the player hugging the wall.
   M._spawnPosNear = function (ang, dist, tier) {
     var eHalf = tier === 3 ? C.T3_SIZE : tier === 2 ? C.T2_SIZE : C.SIZE;
-    var m = C.WORLD_HALF - eHalf * 1.2;
+    var margin = eHalf * 1.2;
     var dx = Math.cos(ang) * dist;
     var dy = Math.sin(ang) * dist;
-    if (this.p.x + dx > m || this.p.x + dx < -m) dx = -dx;
-    if (this.p.y + dy > m || this.p.y + dy < -m) dy = -dy;
-    return {
-      x: Math.max(-m, Math.min(m, this.p.x + dx)),
-      y: Math.max(-m, Math.min(m, this.p.y + dy)),
-    };
+    var c = LA.clampDisc(this.p.x + dx, this.p.y + dy, margin);
+    if (c.hit) c = LA.clampDisc(this.p.x - dx, this.p.y - dy, margin);
+    return { x: c.x, y: c.y };
   };
 
   /* ---- Rarity "bag" -------------------------------------------------------

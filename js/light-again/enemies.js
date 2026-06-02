@@ -51,6 +51,12 @@
     if (this._dashTornados && this._dashTornados.length) {
       var detoLvlT = (this._upgradeLevels && this._upgradeLevels.detonation) || 0;
       var markSpread = detoLvlT >= 3 && !this._twActive;
+      // During The World the world is frozen, so a velocity nudge never integrates
+      // into motion. Drift caught enemies inward POSITIONALLY instead, at a gentle
+      // slow-mo speed (still well below the normal-time pull) so the funnel keeps
+      // visibly tugging them in while time is stopped.
+      var twActive = this._twActive;
+      var twDrift  = twActive ? C.DASH_TORNADO_TW_PULL * (this._frameDt || dt) : 0;
       for (var ti = 0; ti < this._dashTornados.length; ti++) {
         var tor = this._dashTornados[ti];
         if (!tor.active || tor.life <= 0) continue;
@@ -64,8 +70,13 @@
           var tdSq = tdx * tdx + tdy * tdy;
           if (tdSq > torRSq || tdSq < 0.01) continue;
           var td = Math.sqrt(tdSq);
-          te.vx += (tdx / td) * C.DASH_TORNADO_PULL * dt;
-          te.vy += (tdy / td) * C.DASH_TORNADO_PULL * dt;
+          if (twActive) {
+            te.x += (tdx / td) * twDrift;
+            te.y += (tdy / td) * twDrift;
+          } else {
+            te.vx += (tdx / td) * C.DASH_TORNADO_PULL * dt;
+            te.vy += (tdy / td) * C.DASH_TORNADO_PULL * dt;
+          }
           if (markSpread) { inside.push(te); if (te.isMarked) insideMarked = true; }
         }
         if (markSpread && insideMarked) {
@@ -166,9 +177,9 @@
             candidateX = candidateX * 0.35 + (p.x + Math.cos(pullAng) * nearR) * 0.65;
             candidateY = candidateY * 0.35 + (p.y + Math.sin(pullAng) * nearR) * 0.65;
           }
-          var wM3 = C.WORLD_HALF - C.T3_SIZE * 2;
-          e.targetWaypoint.x = Math.max(-wM3, Math.min(wM3, candidateX));
-          e.targetWaypoint.y = Math.max(-wM3, Math.min(wM3, candidateY));
+          var wp3 = LA.clampDisc(candidateX, candidateY, C.T3_SIZE * 2);
+          e.targetWaypoint.x = wp3.x;
+          e.targetWaypoint.y = wp3.y;
           e.waypointTimer = 3500 + Math.random() * 2000;
           if (wpD < 22) { e.vx *= 0.05; e.vy *= 0.05; }
         } else {
@@ -258,7 +269,7 @@
       }
 
       var eHalf = e.tier === 3 ? C.T3_SIZE : e.tier === 2 ? C.T2_SIZE : C.SIZE;
-      var eMargin = C.WORLD_HALF - eHalf * 1.2;
+      var eMargin = eHalf * 1.2;
       var BOUNCE = 0.55;
 
       // Anomaly quarantine FIRST: trapped enemies can't leave the firewall.
@@ -277,12 +288,14 @@
           if (bvd > 0) { e.vx -= bnx * bvd * (1 + BOUNCE); e.vy -= bny * bvd * (1 + BOUNCE); }
         }
       }
-      // World border clamp LAST — wins over barrier so enemies never leak
-      // out of the map when the firewall extends past it.
-      if (e.x < -eMargin) { e.x = -eMargin; if (e.vx < 0) e.vx = Math.abs(e.vx) * BOUNCE; }
-      if (e.x >  eMargin) { e.x =  eMargin; if (e.vx > 0) e.vx = -Math.abs(e.vx) * BOUNCE; }
-      if (e.y < -eMargin) { e.y = -eMargin; if (e.vy < 0) e.vy = Math.abs(e.vy) * BOUNCE; }
-      if (e.y >  eMargin) { e.y =  eMargin; if (e.vy > 0) e.vy = -Math.abs(e.vy) * BOUNCE; }
+      // World border clamp LAST (radial) — wins over barrier so enemies never
+      // leak out of the disc when the firewall extends past it.
+      var ec = LA.clampDisc(e.x, e.y, eMargin);
+      if (ec.hit) {
+        e.x = ec.x; e.y = ec.y;
+        var evd = e.vx * ec.nx + e.vy * ec.ny;   // velocity into the wall
+        if (evd > 0) { e.vx -= ec.nx * evd * (1 + BOUNCE); e.vy -= ec.ny * evd * (1 + BOUNCE); }
+      }
     }
   };
 

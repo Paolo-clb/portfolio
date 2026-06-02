@@ -256,6 +256,10 @@
     // permanently kill enemy spawns for the resumed run.
     this._bossDraftPending = false;
     this._draftPicksRemaining = 0;
+    // Tear down any first-encounter boss-weakness tooltip + its per-type memory so
+    // a relaunch can't leave a stale card over the lesson (and a post-tutorial run
+    // re-teaches each boss on its real first meeting).
+    if (this._resetBossHint) this._resetBossHint();
     // Defuse the Curse Fountain too: a mid-ramp offer or an owed post-boss
     // respawn must not survive a tutorial relaunch (mirrors the boss-draft defuse).
     this._upCurseFountain   = false;

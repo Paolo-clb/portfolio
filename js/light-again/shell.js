@@ -59,8 +59,11 @@
   function updateMenuBtn() {
     if (!menuBtnEl) return;
     // Home button is available whenever a run is active — sandbox, hardcore, and
-    // during the tutorial (which runs under sandbox mode).
-    var show = (currentMode === 'sandbox' || currentMode === 'hardcore');
+    // during the tutorial (which runs under sandbox mode). But once the home menu
+    // is open with nothing to resume (fresh launch / dead game-over run), the ▶
+    // would be a dead no-op — so hide it entirely rather than show an inert button.
+    var show = (currentMode === 'sandbox' || currentMode === 'hardcore') &&
+               !(menuEl && !menuResumable);
     menuBtnEl.style.display = show ? 'flex' : 'none';
     // Toggle the header layout so the other controls reflow around the menu
     // button (× | menu | ? | ⏸) instead of leaving a gap when it's hidden.
@@ -69,11 +72,18 @@
     updateMenuBtnIcon();
   }
 
-  function dismissModeMenu() {
+  // `instant`: skip the fade and rip the menu out this frame. Used when resuming
+  // a live run — the game un-pauses immediately, so a lingering fading scrim over
+  // it just gets in the way. Other dismissals (starting a new run, leaving) fade.
+  function dismissModeMenu(instant) {
     if (!menuEl) return;
     var el = menuEl;
     menuEl = null;
-    updateMenuBtnIcon();   // home closing ⇒ flip the toggle back to ⏸
+    updateMenuBtn();   // home closing ⇒ re-show the ⏸ toggle (was hidden if non-resumable)
+    if (instant) {
+      if (el.parentNode) el.parentNode.removeChild(el);
+      return;
+    }
     el.style.transition = 'opacity .22s ease';
     el.style.opacity = '0';
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 250);
@@ -532,7 +542,7 @@
 
     container.style.position = 'relative';
     container.appendChild(menuEl);
-    updateMenuBtnIcon();   // home now open ⇒ the toggle shows ▶
+    updateMenuBtn();   // home now open ⇒ show ▶, or hide it if there's nothing to resume
 
     // Hook up the loadout's hover/focus → 3-levels detail (no-op if absent).
     if (loadout) loadout.wire(menuEl);
@@ -582,7 +592,7 @@
     // resumes — even if the player had manually paused before opening the menu —
     // and clears the pause state so the button can't stay stuck on ▶.
     function resumeGame() {
-      dismissModeMenu();
+      dismissModeMenu(true);   // instant — no fading scrim over the resumed run
       clearPauseState();
       if (activeGame && typeof activeGame.resume === 'function') activeGame.resume();
     }
@@ -1168,9 +1178,18 @@
     window.__laTutorialFromHome  = !!fromHome;
     var sc = window.__laSceneRef;
 
-    // No live game yet (mode menu showing) or a finished run on screen:
-    // (re)launch a fresh sandbox session that auto-starts the tutorial.
-    if (!activeGame || !sc || isLightAgainGameOverOpen()) {
+    // Is the current run actually dead? A hardcore game-over leaves the player in
+    // the DEAD state (sandbox respawns, so it never lingers there). The game-over
+    // overlay's flag gets cleared the moment the player opens the home menu, so
+    // isLightAgainGameOverOpen() alone misses a dismissed-but-dead hardcore run —
+    // which is why the "you'll lose your Hardcore run" warning used to fire for a
+    // run that was already over. p.state survives that teardown.
+    var runDead = !!(sc && sc.p && sc.p.state === 'DEAD');
+
+    // No live game yet (mode menu showing), a finished run still on screen, or a
+    // dead run behind a dismissed game-over: (re)launch a fresh sandbox session
+    // that auto-starts the tutorial.
+    if (!activeGame || !sc || isLightAgainGameOverOpen() || runDead) {
       if (helpPopupEl) closeHelpPopup(true);
       dismissModeMenu();
       window.__laStartTutorialOnReady = true;
@@ -1317,7 +1336,7 @@
     menuBtnEl.addEventListener('click', function () {
       if (menuEl) {
         if (menuResumable && activeGame && typeof activeGame.resume === 'function') {
-          dismissModeMenu();
+          dismissModeMenu(true);   // instant — no fading scrim over the resumed run
           clearPauseState();
           activeGame.resume();
         }

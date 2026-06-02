@@ -167,7 +167,7 @@
     if (this._tree || this._fairy) return;
     if (!this.p || this.p.state === 'DEAD') return;
 
-    var m    = C.WORLD_HALF - C.TREE_SIZE * 2;
+    var inset = C.TREE_SIZE * 2;
     // Random spot far from the player AND clear of a live Curse Fountain so the
     // two map events never crowd each other (re-roll a few times, then accept).
     var avoid = this._fount, sep2 = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
@@ -175,8 +175,8 @@
     do {
       var ang  = Math.random() * TAU;
       var dist = C.TREE_SPAWN_DIST_MIN + Math.random() * (C.TREE_SPAWN_DIST_MAX - C.TREE_SPAWN_DIST_MIN);
-      x = Math.max(-m, Math.min(m, this.p.x + Math.cos(ang) * dist));
-      y = Math.max(-m, Math.min(m, this.p.y + Math.sin(ang) * dist));
+      var dtc = LA.clampDisc(this.p.x + Math.cos(ang) * dist, this.p.y + Math.sin(ang) * dist, inset);
+      x = dtc.x; y = dtc.y;
       tries++;
     } while (avoid && tries < 20 && (x - avoid.x) * (x - avoid.x) + (y - avoid.y) * (y - avoid.y) < sep2);
 

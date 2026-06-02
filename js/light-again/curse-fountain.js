@@ -186,7 +186,7 @@
 
     var dMin = opts.near ? 360 : C.CURSE_FOUNT_SPAWN_DIST_MIN;
     var dMax = opts.near ? 360 : C.CURSE_FOUNT_SPAWN_DIST_MAX;
-    var m    = C.WORLD_HALF - C.CURSE_FOUNT_ZONE_R - 40;
+    var inset = C.CURSE_FOUNT_ZONE_R + 40;   // keep the WHOLE circle in-bounds (disc)
     // Random spot far from the player AND clear of a live Digital Tree (crowding)
     // and — the HARD requirement — a live Cache Zone: a fountain must NEVER spawn
     // inside one (their circles must not overlap → radius-sum). _cache may be
@@ -201,8 +201,8 @@
     do {
       var ang  = Math.random() * TAU;
       var dist = dMin + Math.random() * (dMax - dMin);
-      x = Math.max(-m, Math.min(m, this.p.x + Math.cos(ang) * dist));
-      y = Math.max(-m, Math.min(m, this.p.y + Math.sin(ang) * dist));
+      var cfc = LA.clampDisc(this.p.x + Math.cos(ang) * dist, this.p.y + Math.sin(ang) * dist, inset);
+      x = cfc.x; y = cfc.y;
       ok = true;
       for (var ai = 0; ai < avoid.length; ai++) {
         var av = avoid[ai][0];
@@ -506,6 +506,16 @@
     dg.clear(); ng.clear(); og.clear();
     if (!f) return;
 
+    // The World: the fountain stops swallowing (it's inactive), so drain its
+    // palette toward grey — it reads as dormant, like the frozen enemies. These
+    // locals shadow the module F_* colours for this render only (no-op otherwise).
+    // Literals mirror the module consts (F_DARK/F_VIOLET/F_MAGENTA/F_CORE up top).
+    var F_DARK = 0x0b0414, F_VIOLET = 0x7a28e0, F_MAGENTA = 0xd11e74, F_CORE = 0xff66bf;
+    if (this._twActive) {
+      F_DARK = this._twGray(F_DARK); F_VIOLET = this._twGray(F_VIOLET);
+      F_MAGENTA = this._twGray(F_MAGENTA); F_CORE = this._twGray(F_CORE);
+    }
+
     var grow = smooth(f.growT);
     var surge = f.phase === 'OFFER' ? smooth(f.offerT) : 0;
     var x = f.x, y = f.y;
@@ -655,6 +665,13 @@
      rings. `dg` (dark layer) carries faceted shadow fills; `g` (ADD) the neon. */
   M._renderObelisk = function (g, dg, x, y, grow, bodyA, dissolve, surge, hot, gt) {
     var f = this._fount;
+    // The World: drain the monolith's palette toward grey too (locals shadow the
+    // module F_* for this render only — no-op when The World isn't active).
+    var F_DARK = 0x0b0414, F_VIOLET = 0x7a28e0, F_MAGENTA = 0xd11e74, F_CORE = 0xff66bf;
+    if (this._twActive) {
+      F_DARK = this._twGray(F_DARK); F_VIOLET = this._twGray(F_VIOLET);
+      F_MAGENTA = this._twGray(F_MAGENTA); F_CORE = this._twGray(F_CORE);
+    }
     var obA = bodyA * (1 - dissolve);                                   // monolith fades as it crumbles
     var H  = C.CURSE_FOUNT_SIZE * 1.7 * grow * (1 - 0.7 * dissolve);    // ...and sinks into the basin
     var hw = C.CURSE_FOUNT_SIZE * 0.34 * grow * (1 - 0.4 * dissolve);

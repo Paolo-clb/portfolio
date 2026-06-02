@@ -106,9 +106,8 @@
 
     var ang  = Math.random() * TAU;
     var dist = 820;
-    var m    = C.WORLD_HALF - C.ANO_SIZE * 2;
-    var x = Math.max(-m, Math.min(m, this.p.x + Math.cos(ang) * dist));
-    var y = Math.max(-m, Math.min(m, this.p.y + Math.sin(ang) * dist));
+    var aSp = LA.clampDisc(this.p.x + Math.cos(ang) * dist, this.p.y + Math.sin(ang) * dist, C.ANO_SIZE * 2);
+    var x = aSp.x, y = aSp.y;
 
     var self = this;
     var mk = function (depth) {
@@ -259,12 +258,10 @@
     this._renderAnomaly(dt, pMs);
   };
 
-  /* Hard clamp to the world rectangle (both phases) so the boss can never slip
-     through a border and become unkillable. */
+  /* Hard clamp to the disc arena (both phases) so the boss can never slip
+     through the border and become unkillable. */
   M._clampAnomalyToWorld = function (a) {
-    var m = C.WORLD_HALF - C.ANO_SIZE * 1.2;
-    if (a.x < -m) a.x = -m; else if (a.x > m) a.x = m;
-    if (a.y < -m) a.y = -m; else if (a.y > m) a.y = m;
+    var ac = LA.clampDisc(a.x, a.y, C.ANO_SIZE * 1.2); a.x = ac.x; a.y = ac.y;
   };
 
   /* Sample the body's position into the after-image ring buffer (~33 Hz). */
@@ -410,7 +407,6 @@
     // same diameter. Slots that fall outside the world border are skipped
     // (the player can be at a corner: half the ring is just "unused").
     var N = a.vacQueue.length;
-    var WM = C.WORLD_HALF - 28;
 
     // Hard cap so rings never grow past the barrier max — we keep the zone
     // tight, but we PRE-CALIBRATE the radial step + per-ring spacing so the
@@ -453,7 +449,7 @@
         var ang = baseAng + (s / slots) * TAU;
         var x = a.bx + Math.cos(ang) * ringR;
         var y = a.by + Math.sin(ang) * ringR;
-        if (Math.abs(x) <= WM && Math.abs(y) <= WM) validPos.push({ x: x, y: y });
+        if (LA.inDisc(x, y, 28)) validPos.push({ x: x, y: y });
       }
       if (validPos.length > 0) {
         var take = Math.min(validPos.length, N - qi);
@@ -937,6 +933,9 @@
     var rTint = solidRed ? 0xff2222 : (a._hitFlash > 0 ? 0xffffff : 0xff0000);
     var gTint = solidRed ? 0xff2222 : (a._hitFlash > 0 ? 0xffffff : 0x00ff00);
     var bTint = solidRed ? 0xff2222 : (a._hitFlash > 0 ? 0xffffff : 0x0000ff);
+    // The World: drain the RGB-split channels to grey (frozen, like the enemies);
+    // the offset sprites still overlap into a faint grey "glitch" ghost.
+    if (this._twActive) { rTint = this._twGray(rTint); gTint = this._twGray(gTint); bTint = this._twGray(bTint); }
 
     // Each channel orbits the centre on its own angle so the split shimmers.
     var rA = spin,             gA = spin + TAU / 3, bA = spin + 2 * TAU / 3;
@@ -948,6 +947,7 @@
     a.bSpr.setTint(bTint); a.bSpr.setScale(sc); a.bSpr.setAlpha(baseAlpha); a.bSpr.setRotation(spin * 1.3);
     a.coreSpr.setPosition(cx, cy);
     a.coreSpr.setScale(sc * 0.9);
+    a.coreSpr.setTint(this._twActive ? 0xb0b0b0 : 0xffffff);   // grey the white-hot core during The World
     a.coreSpr.setAlpha((solidRed ? baseAlpha : 0.5) + a._hitFlash * 0.5);
     a.coreSpr.setRotation(-spin * 1.6 + (Math.random() - 0.5) * 0.25);
 
@@ -1137,12 +1137,13 @@
       if (vdot > 0) { p.vx -= nx * vdot * 1.4; p.vy -= ny * vdot * 1.4; }
     }
     // World wins over the barrier — if the firewall extends past the map,
-    // the player can't be pushed through the world wall.
-    var wM = C.WORLD_HALF - C.SIZE * 1.5;
-    if (p.x < -wM) { p.x = -wM; if (p.vx < 0) p.vx *= -0.4; }
-    if (p.x >  wM) { p.x =  wM; if (p.vx > 0) p.vx *= -0.4; }
-    if (p.y < -wM) { p.y = -wM; if (p.vy < 0) p.vy *= -0.4; }
-    if (p.y >  wM) { p.y =  wM; if (p.vy > 0) p.vy *= -0.4; }
+    // the player can't be pushed through the disc wall.
+    var pwc = LA.clampDisc(p.x, p.y, C.SIZE * 1.5);
+    if (pwc.hit) {
+      p.x = pwc.x; p.y = pwc.y;
+      var pvd = p.vx * pwc.nx + p.vy * pwc.ny;
+      if (pvd > 0) { p.vx -= pwc.nx * pvd * 1.4; p.vy -= pwc.ny * pvd * 1.4; }
+    }
   };
 
 })();

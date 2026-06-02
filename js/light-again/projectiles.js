@@ -156,7 +156,7 @@
       }
 
       // OOB / expired
-      if (pr.life <= 0 || Math.abs(pr.x) > C.WORLD_HALF || Math.abs(pr.y) > C.WORLD_HALF) {
+      if (pr.life <= 0 || !LA.inDisc(pr.x, pr.y, 0)) {
         if (pr._twPending) this._twResolvePending();
         this._destroyProjectile(pr);
         this.projectiles.splice(i, 1);

@@ -287,6 +287,30 @@
       return;
     }
 
+    // DELAY_EXP: with many upgrades + a crowd, detonations chain several times a
+    // second. Instead of one popup per blast (spam), accumulate them into a single
+    // "Delayed Explosion ×N" popup. The bucket flushes after a short quiet gap, or
+    // is force-flushed if it has been accumulating too long (never-ending chain).
+    // The recursive render call below carries { count } and bypasses this branch.
+    if (label === 'DELAY_EXP' && !(_extra && _extra.count)) {
+      var db = this._delayExpBuf;
+      if (!db) db = this._delayExpBuf = { n: 0, pts: 0, startT: this.gameTime, timeoutEvt: null };
+      db.n++;
+      db.pts += pts;
+      var selfD = this;
+      var flushDelayExp = function () {
+        var b = selfD._delayExpBuf;
+        if (!b) return;
+        selfD._delayExpBuf = null;
+        if (b.timeoutEvt) b.timeoutEvt.remove(false);
+        selfD._floatScoreBig('DELAY_EXP', b.pts, { count: b.n });
+      };
+      if (db.timeoutEvt) db.timeoutEvt.remove(false);
+      if (this.gameTime - db.startT >= C.DELAY_EXP_GROUP_MAXLIFE) { flushDelayExp(); return; }
+      db.timeoutEvt = this.time.delayedCall(C.DELAY_EXP_GROUP_QUIET, flushDelayExp);
+      return;
+    }
+
     var cam = this.cameras.main;
     var sx = cam.width / 2;
 
@@ -302,11 +326,13 @@
             : label === 'DELAY_EXP' ? '#ff4422'
             : label === 'DRONE' ? '#66e0ff'
             : label === 'NOYAU' ? '#ff8a3c'
+            : label === 'CACHE' ? '#ff66ff'
             : label === 'THE WORLD' ? '#ffc832'
             : '#ffcc00';
-    var displayLbl = label === 'DELAY_EXP' ? 'Delayed Explosion'
+    var displayLbl = label === 'DELAY_EXP' ? (count > 1 ? 'Delayed Explosion ×' + count : 'Delayed Explosion')
                    : label === 'DRONE' ? 'Drone'
                    : label === 'NOYAU' ? 'NOYAU INSTABLE'
+                   : label === 'CACHE' ? LA.laGoT('laCacheSecured')
                    : (label === 'PARADE' && count > 1) ? 'PARADE \u00d7' + count
                    : label;
 
@@ -407,8 +433,11 @@
     ctx = ctx || {};
 
     // Time Stop: defer kill — enemy is condemned but stays in place
-    // NO score, combo, or floating text during TW — tallied at resolution
-    if (this._twActive && !ctx._twResolving) {
+    // NO score, combo, or floating text during TW — tallied at resolution.
+    // EXCEPTION: the Unstable Core keeps pinballing through frozen time (see
+    // unstable-core.js), so its crushes resolve immediately and stay in its OWN
+    // score (the core branch below wins over any batch flag set during TW).
+    if (this._twActive && !ctx._twResolving && !ctx.core) {
       this._twDeferKill(idx);
       return;
     }
@@ -830,13 +859,33 @@
     // Delayed explosions chip serpent segments too — same throttled AoE.
     if (this._snake && !this._snake.dead) this._damageSnakeAoe(x, y, radius, C.SNAKE_AOE_DMG);
 
-    // Visuals — ring matches the warning circle's red color
+    // Visuals — ring matches the warning circle's red color. The local burst +
+    // wave ring always play (they're centered on the blast, not screen-wide).
     this._explode(x, y, [255, 34, 34], 45);
     this._explode(x, y, [255, 255, 255], 20);
     this._spawnWaveRing(x, y, { maxRadius: radius, color: 0xff2222, expandTime: 0.28 });
-    this.cameras.main.flash(160, 255, 34, 34, false);
-    this.cameras.main.shake(140, 0.010);
-    this._triggerHitstop(Math.round(C.DETONATION_HITSTOP * 0.7));
+
+    // Screen-wide feedback (flash/shake/hitstop) is throttled: with many upgrades
+    // + a big crowd, detonations chain several times a second and the full-screen
+    // red flash + repeated hitstop become nauseating. Count detonations in a short
+    // sliding window and dial the screen FX down as the storm intensifies.
+    var nowFx = this.gameTime;
+    if (!this._delayExpFxTimes) this._delayExpFxTimes = [];
+    var fxTimes = this._delayExpFxTimes;
+    fxTimes.push(nowFx);
+    while (fxTimes.length && nowFx - fxTimes[0] > C.DELAY_EXP_FX_WINDOW) fxTimes.shift();
+    var dense = fxTimes.length;  // detonations in the window, including this one
+
+    if (dense <= C.DELAY_EXP_FX_CALM) {
+      // Calm: full feedback.
+      this.cameras.main.flash(160, 255, 34, 34, false);
+      this.cameras.main.shake(140, 0.010);
+      this._triggerHitstop(Math.round(C.DETONATION_HITSTOP * 0.7));
+    } else if (dense <= C.DELAY_EXP_FX_BUSY) {
+      // Busy: drop the flash, keep a gentle shake, no hitstop (avoid stutter).
+      this.cameras.main.shake(90, 0.005);
+    }
+    // Storm (dense > DELAY_EXP_FX_BUSY): no screen-wide FX at all.
   };
 
 })();

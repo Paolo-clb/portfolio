@@ -86,19 +86,18 @@
   };
 
   /* ================================================================
-     SPAWN GATE — paced, never during curated / confined states
+     SPAWN GATE — paced, never during curated / fully-frozen states
      ================================================================ */
   // Block NEW spawns (existing ones still tick + render) during: the tutorial,
-  // the upgrade slow-mo / draft, the Anomaly quarantine (it confines the player,
-  // so a conveyor would just fight it), and Time Stop (terrain shouldn't pop into
-  // frozen time). The Anomaly is a SPECIAL case: its whole fight suppresses
-  // highways (it confines the player), so the entire time `this._anomaly` exists
-  // is suspended — not just the barrier. The other bosses (Giga/Mirror/Snake) are
-  // FAIR GAME — a highway is great for dodging them.
+  // the upgrade slow-mo / draft, the Anomaly INTRO cinematic (player + world are
+  // frozen — terrain shouldn't pop into a frozen frame), and Time Stop. The
+  // Anomaly BARRIER fight is now FAIR GAME: highways still pace in, but spawn
+  // CONFINED inside the quarantine circle (see _spawnHighway) as an in-zone dodge
+  // tool. Giga/Mirror/Snake are fair game too — a highway helps you dodge them.
   M._highwaysSpawnSuspended = function () {
     return !!(this._tutorialActive || this._upSlowMoPhase || this._bossDraftPending ||
-              this._upgradeDraftOpen || this._anomaly || this._anomalyBarrierActive ||
-              this._anomalyIntroActive || this._twActive || !this.p || this.p.state === 'DEAD');
+              this._upgradeDraftOpen || this._anomalyIntroActive ||
+              this._twActive || !this.p || this.p.state === 'DEAD');
   };
 
   M._maybeSpawnHighway = function (dt) {
@@ -111,10 +110,10 @@
     this._spawnHighway({});
   };
 
-  /* Place a highway as a capsule fully inside the map. The corridor centreline
-     stays within [-B, B]² where B = WORLD_HALF - margin - (halfWidth+feather);
-     since the band only ever reaches (halfWidth+feather) off the centreline, the
-     ENTIRE capsule (glow included) is guaranteed in-bounds — never edge-clipped.
+  /* Place a highway as a capsule fully inside the disc map. The corridor centre
+     is kept within a radius (Rk - half) of the origin, where Rk = WORLD_HALF -
+     margin - (halfWidth+feather); since every capsule point is within `half` of
+     the centre, the ENTIRE capsule (glow included) is guaranteed in-bounds.
      Biased so the road passes near the player (discoverable without a pointer). */
   M._spawnHighway = function (opts) {
     opts = opts || {};
@@ -123,35 +122,56 @@
     var p = this.p;
 
     var W  = C.HIGHWAY_HALF_WIDTH + C.HIGHWAY_EDGE_FEATHER;
-    var B  = C.WORLD_HALF - C.HIGHWAY_MARGIN - W;               // centreline keep-in box half-size
+
+    // Keep-in disc for the corridor. Normally that's the whole arena. But while
+    // the Anomaly firewall is up the player is confined, so we fit the WHOLE
+    // capsule inside the QUARANTINE circle instead (centre a.bx,a.by, radius a.R)
+    // — a real in-zone dodge tool that never crosses the barrier. The keep-in
+    // maths are identical (every capsule point lies within `half`+W of the
+    // centreline centre); only the origin + radius change.
+    var confined = !!(this._anomalyBarrierActive && this._anomaly);
+    var az = confined ? this._anomaly : null;
+    var ox = 0, oy = 0, Rk;
+    if (confined) {
+      ox = az.bx; oy = az.by;
+      Rk = az.R - C.HIGHWAY_MARGIN_ZONE - W;
+    } else {
+      Rk = C.WORLD_HALF - C.HIGHWAY_MARGIN - W;
+    }
+    if (Rk < 40) Rk = 40;   // degenerate-zone guard (still produce a short stub)
 
     var ang  = Math.random() * TAU;
     var dirx = Math.cos(ang), diry = Math.sin(ang);
     var len  = C.HIGHWAY_LEN_MIN + Math.random() * (C.HIGHWAY_LEN_MAX - C.HIGHWAY_LEN_MIN);
     var half = len / 2;
 
-    // Shrink length if a near-axis-aligned corridor's half-extent can't fit the
-    // box on either axis (won't trigger at default lengths, but keep it robust).
-    var exX = Math.abs(dirx) * half, exY = Math.abs(diry) * half;
-    if (exX > B) { half *= B / exX; }
-    if (exY > B) { half *= B / exY; }
-    exX = Math.abs(dirx) * half; exY = Math.abs(diry) * half;
+    // In a quarantine, cap the corridor well under the zone diameter so it can be
+    // placed OFF-centre (near the player) instead of being forced dead-centre.
+    if (confined && half > az.R * C.HIGHWAY_ZONE_LEN_FRAC) half = az.R * C.HIGHWAY_ZONE_LEN_FRAC;
+    // Shrink a corridor too long to leave the centre any room inside the keep-in disc.
+    if (half > Rk * 0.96) { half = Rk * 0.96; }
     len = half * 2;
+    var limR = Math.max(0, Rk - half);   // keep-in radius for the centreline centre
 
     // Target a near-point a short way from the player, then slide it somewhere
     // along the corridor's length so the player doesn't always land mid-road.
+    // (Confined, the centre clamp below caps how far it can sit from the zone
+    // centre, so the near-point is reined in to that same budget.)
     var nAng  = Math.random() * TAU;
-    var nDist = C.HIGHWAY_SPAWN_NEAR_MIN + Math.random() * (C.HIGHWAY_SPAWN_NEAR_MAX - C.HIGHWAY_SPAWN_NEAR_MIN);
+    var nearMax = confined ? Math.min(C.HIGHWAY_SPAWN_NEAR_MAX, limR) : C.HIGHWAY_SPAWN_NEAR_MAX;
+    var nearMin = Math.min(C.HIGHWAY_SPAWN_NEAR_MIN, nearMax);
+    var nDist = nearMin + Math.random() * (nearMax - nearMin);
     var nearX = p.x + Math.cos(nAng) * nDist;
     var nearY = p.y + Math.sin(nAng) * nDist;
     var alongOff = (Math.random() - 0.5) * 1.2 * half;   // ∈ [-0.6, 0.6]·half (bias to the boostable middle)
     var cx = nearX - dirx * alongOff;
     var cy = nearY - diry * alongOff;
 
-    // Clamp the centre so the whole capsule stays inside the map.
-    var limX = Math.max(0, B - exX), limY = Math.max(0, B - exY);
-    cx = clamp(cx, -limX, limX);
-    cy = clamp(cy, -limY, limY);
+    // Clamp the centre to the keep-in disc so the whole capsule stays inside the
+    // map (or, while confined, inside the quarantine circle around ox,oy).
+    var rcx = cx - ox, rcy = cy - oy;
+    var cd = Math.sqrt(rcx * rcx + rcy * rcy);
+    if (cd > limR && cd > 0) { var cs = limR / cd; cx = ox + rcx * cs; cy = oy + rcy * cs; }
 
     var ax = cx - dirx * half, ay = cy - diry * half;   // upstream end
     var bx = cx + dirx * half, by = cy + diry * half;   // downstream end
@@ -194,9 +214,11 @@
      UPDATE — spawn gate, tick each highway, cull expired, render
      ================================================================ */
   M._updateDataHighways = function (dt) {
-    // The Anomaly traps the player in its quarantine zone — any live highway is
-    // forced off the board the instant the barrier slams (rising edge). New
-    // spawns are already blocked for the whole anomaly fight by _highwaysSpawnSuspended.
+    // The barrier slam wipes any FULL-MAP highway streaking across the arena (it
+    // would cross the firewall) — a one-shot scatter on the rising edge. Fresh
+    // CONFINED highways then pace in DURING the fight, placed wholly inside the
+    // quarantine by _spawnHighway. Edge-only: spawns made later in the same fight
+    // (already confined) are NOT re-dismissed.
     var trapped = !!(this._anomalyBarrierActive || this._anomalyIntroActive);
     if (trapped && !this._highwayTrappedPrev && this._highways.length) this._dismissHighwaysForAnomaly();
     this._highwayTrappedPrev = trapped;
@@ -274,7 +296,10 @@
 
     var hs = this._highways;
     if (!hs || !hs.length) { this._highwayBoost = 0; this._highwayInvuln = this._highwayInvulnT > 0; return; }
-    if (this._anomalyBarrierActive) { this._highwayBoost = 0; this._highwayInvuln = this._highwayInvulnT > 0; return; }  // quarantine owns the player
+    // NB: during the Anomaly BARRIER the conveyor stays ON — the only live roads
+    // there are CONFINED inside the quarantine, so the carry never fights the
+    // player's confinement (and the ride-invuln helps you dodge the lasers). The
+    // INTRO never reaches here (scene.js freezes + early-returns before movement).
     var p = this.p;
     if (!p || p.state === 'DEAD') { this._highwayBoost = 0; this._highwayInvuln = false; this._highwayInvulnT = 0; return; }
 
@@ -367,13 +392,20 @@
   M._applyHighwayFlowToEnemies = function (s60) {
     var hs = this._highways;
     if (!hs || !hs.length || s60 <= 0) return;
-    if (this._anomalyBarrierActive) return;   // don't fight the quarantine's confinement
     var enemies = this.enemies;
     if (!enemies || !enemies.length) return;
 
+    // While the Anomaly firewall is up, the trapped crowd must stay INSIDE the
+    // quarantine — clamp swept enemies to the barrier and skip the exhaust LAUNCH
+    // (a velocity kick could fling a sub-enemy out of the zone, and the shield
+    // only drops once every trapped enemy is dead → an escapee would soft-lock it).
+    var confined = !!(this._anomalyBarrierActive && this._anomaly);
+    var az = confined ? this._anomaly : null;
+    var bLim = confined ? (az.R - C.SIZE) : 0;
+
     var fs  = C.HIGHWAY_FLOW_SPEED * C.HIGHWAY_ENEMY_FLOW_MULT;
     var cap = fs * C.HIGHWAY_FLOW_CAP_MULT;
-    var wLim = C.WORLD_HALF - C.SIZE;     // belt-and-suspenders edge guard (unreachable in practice)
+    var wLimMargin = C.SIZE;              // belt-and-suspenders edge guard (unreachable in practice)
     var W = C.HIGHWAY_HALF_WIDTH, F = C.HIGHWAY_EDGE_FEATHER, WF = W + F;
     var ef = C.HIGHWAY_END_FEATHER, ez = C.HIGHWAY_EXHAUST_ZONE;
     var ejSpeed = C.HIGHWAY_EJECT_SPEED, ejSpread = C.HIGHWAY_EJECT_SPREAD;
@@ -403,7 +435,8 @@
         // Exhaust LAUNCH near + just past the downstream mouth (anti-stack): bring
         // the along-flow velocity up to a target (no overshoot) so they keep moving
         // out, plus a lateral fan so they scatter rather than queue single-file.
-        if (t > h.len - ez && t < h.len + ez * 0.5) {
+        // Disabled while confined (a kick could escape the quarantine — see above).
+        if (!confined && t > h.len - ez && t < h.len + ez * 0.5) {
           var zoneF = smooth((t - (h.len - ez)) / ez) * h.lifeFactor;
           if (zoneF > 0.02) {
             var vAlong = en.vx * dirx + en.vy * diry;
@@ -424,8 +457,13 @@
         en.x += accx * s60;
         en.y += accy * s60;
       }
-      if (en.x < -wLim) en.x = -wLim; else if (en.x > wLim) en.x = wLim;
-      if (en.y < -wLim) en.y = -wLim; else if (en.y > wLim) en.y = wLim;
+      var enc = LA.clampDisc(en.x, en.y, wLimMargin); en.x = enc.x; en.y = enc.y;
+      // Keep swept enemies inside the firewall (see confined note above).
+      if (confined) {
+        var bdx = en.x - az.bx, bdy = en.y - az.by;
+        var bd = Math.sqrt(bdx * bdx + bdy * bdy);
+        if (bd > bLim && bd > 0) { var bk = bLim / bd; en.x = az.bx + bdx * bk; en.y = az.by + bdy * bk; }
+      }
     }
   };
 

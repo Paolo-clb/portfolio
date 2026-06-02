@@ -227,8 +227,8 @@ window.SITE_I18N = {
     laFountRefused:      'MALÉDICTION REFUSÉE',
 
     // The Cache Zone (risk/reward King-of-the-Hill event)
-    laCacheHack:         'PIRATAGE…',
-    laCacheSecured:      'DONNÉES SIPHONNÉES !',
+    laCacheHack:         'CHARGEMENT…',
+    laCacheSecured:      'POWER-UP PRÊT',
 
     // Misc
     closeLbl: 'Fermer',
@@ -455,8 +455,8 @@ window.SITE_I18N = {
     laFountRefused:      'CURSE REFUSED',
 
     // The Cache Zone (risk/reward King-of-the-Hill event)
-    laCacheHack:         'HACKING…',
-    laCacheSecured:      'DATA SIPHONED!',
+    laCacheHack:         'CHARGING…',
+    laCacheSecured:      'POWER UP READY',
 
     // Misc
     closeLbl: 'Close',
