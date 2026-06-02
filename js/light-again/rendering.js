@@ -593,7 +593,11 @@
 
     // ---- Star Power timer bar ----
     if (showBars && this.isStarPowered) {
-      var starF  = this._starPowerTimer / C.STAR_DUR;
+      // Bar is relative to the biggest charge held this session (_starPowerMax) so a
+      // long Cache-Zone Overdrive fills it without overflowing, and an accumulating
+      // pickup extends it; clamp for safety. Falls back to STAR_DUR if unset.
+      var starMax = this._starPowerMax || C.STAR_DUR;
+      var starF  = Math.max(0, Math.min(1, this._starPowerTimer / starMax));
       var starY  = h - 48;
       var starA  = this._starPowerWarning
         ? (0.45 + 0.55 * Math.abs(Math.sin(gt * Math.PI * 6)))

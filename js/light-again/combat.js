@@ -301,10 +301,12 @@
             : label === 'NUKE' ? '#00ffff'
             : label === 'DELAY_EXP' ? '#ff4422'
             : label === 'DRONE' ? '#66e0ff'
+            : label === 'NOYAU' ? '#ff8a3c'
             : label === 'THE WORLD' ? '#ffc832'
             : '#ffcc00';
     var displayLbl = label === 'DELAY_EXP' ? 'Delayed Explosion'
                    : label === 'DRONE' ? 'Drone'
+                   : label === 'NOYAU' ? 'NOYAU INSTABLE'
                    : (label === 'PARADE' && count > 1) ? 'PARADE \u00d7' + count
                    : label;
 
@@ -448,7 +450,14 @@
       }
     }
 
-    if (ctx.batch) {
+    if (ctx.core) {
+      // Unstable Core crush: bank the points into the core's OWN running tally
+      // (flushed as a single "NOYAU INSTABLE" big-score popup when it detonates).
+      // Kept separate from the shared batch so a nuke fired mid-flight can't
+      // corrupt the accumulation. The combo still climbs (these are real kills,
+      // exactly like the nuke's), feeding the multiplier into each pts above.
+      this._coreScoreAccum = (this._coreScoreAccum || 0) + pts;
+    } else if (ctx.batch) {
       this._batchScore += pts;
     } else {
       this._floatScore(ex, ey, pts, killTier);
@@ -456,6 +465,12 @@
 
     if (ctx.condemned) {
       // Condemned-mark death: VFX handled by TW resolve clustering pass — skip individual ring here
+    } else if (ctx.core) {
+      // Crushed by the Unstable Core — a compact orange-hot burst. The core's own
+      // blazing trail + bounce flashes carry the spectacle, so a full red death
+      // explosion per kill would just be visual noise as it ploughs a whole lane.
+      this._explode(ex, ey, [255, 140, 40], 16);
+      this._explode(ex, ey, [255, 240, 200], 8);
     } else {
       var cnt = Math.round(30 + (e.size / C.RUSHER_SIZE) * 20);
       cnt = Math.min(cnt, 50);
@@ -469,7 +484,10 @@
     if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
     this.enemies.splice(idx, 1);
 
-    if (!ctx.condemned) {
+    if (!ctx.condemned && !ctx.core) {
+      // Core crush skips the per-kill hitstop + shake + shockwave: a hitstop sets
+      // timeScale to 0, which would freeze the world-time core mid-flight and make
+      // it stutter; the core owns its own juice (bounce flashes, detonation).
       this._triggerHitstop(C.HITSTOP_DUR);
       this.cameras.main.shake(60, 0.005);
 

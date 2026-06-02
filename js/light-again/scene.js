@@ -403,13 +403,17 @@
       this.isStarPowered = false;
       this._starPowerTimer = 0;
       this._starPowerWarning = false;
-      this._starWarnCall = null;
-      this._starEndCall = null;
+      this._starPowerMax = 0;   // HUD-bar reference = biggest charge held this session (variable durations + accumulation)
 
       this._starAuraGfx = this.add.graphics();
       this._starAuraGfx.setDepth(27);
       this._starAuraGfx.setBlendMode(Phaser.BlendModes.ADD);
       this._starAuraGfx.setVisible(false);
+
+      // Guidance chevron toward the Cache-Zone Overdrive reward orb (drawn by star-power.js).
+      this._starPtrGfx = this.add.graphics();
+      this._starPtrGfx.setDepth(66);
+      this._starPtrGfx.setBlendMode(Phaser.BlendModes.ADD);
 
       // Upgrade system (roguelite draft)
       this._initUpgrades();
@@ -421,6 +425,8 @@
       this._initDigitalTree();
       this._initCurseFount();
       this._initDataHighways();
+      this._initCacheZone();
+      this._initCore();
       this._initTutorial();
 
       cam.setBackgroundColor(LA.getColors().bgColor);
@@ -493,6 +499,16 @@
         if (ev.code === 'KeyY' && !ev.repeat) {
           ev.preventDefault();
           if (self._spawnHighway) self._spawnHighway({});
+        }
+        // Cheat: force-spawn the Unstable Core near the player (noyau instable)
+        if (ev.code === 'KeyC' && !ev.repeat) {
+          ev.preventDefault();
+          if (self._spawnCore) self._spawnCore({});
+        }
+        // Cheat: force-spawn a Cache Zone near the player (zone de cache — KotH)
+        if (ev.code === 'KeyB' && !ev.repeat) {
+          ev.preventDefault();
+          if (self._spawnCacheZone) self._spawnCacheZone({ near: true });
         }
 
       });
@@ -587,9 +603,13 @@
         if (self._clearFairy)       self._clearFairy();
         if (self._clearCurseFount)  self._clearCurseFount(true);
         if (self._clearDataHighways) self._clearDataHighways(true);
+        if (self._clearCore)        self._clearCore(true);
+        if (self._clearCacheZone)   self._clearCacheZone(true);
         self._treeGfx = null; self._treePtrGfx = null; self._fairyGfx = null;
         self._fountDarkGfx = null; self._fountGfx = null; self._fountObGfx = null; self._fountPtrGfx = null;
         self._highwayGfx = null;
+        self._coreGfx = null;   // graphics destroyed with the scene; drop the stale ref
+        self._cacheGfx = null; self._cacheTopGfx = null; self._starPtrGfx = null;
         // Tear down any tutorial overlay so it can't outlive the scene (e.g. a
         // mode switch from the home menu mid-tutorial would otherwise orphan it).
         self._tutorialActive = false;
@@ -949,12 +969,18 @@
       this._updateDigitalTree(dt);
       this._updateCurseFount(dt);
       this._updateDataHighways(dt);
+      this._updateCacheZone(dt, ms);   // ms = scaled world time → the hack gauge pauses during The World / hitstop
+      this._updateCore(dt, sDt);
       this._updateTutorial(dt);
 
-      // Star power timer countdown — uses real time so TW doesn't pause the bar
+      // Overdrive countdown — drives the HUD bar, the low-time blink AND the end,
+      // all off the one timer (so they stay in sync and a pickup can ADD time
+      // mid-Overdrive instead of resetting; see _activateStarPower). Player time,
+      // so The World doesn't pause the bar.
       if (this.isStarPowered) {
         this._starPowerTimer -= pMs;
-        if (this._starPowerTimer < 0) this._starPowerTimer = 0;
+        if (!this._starPowerWarning && this._starPowerTimer <= C.STAR_WARN_REMAIN) this._starPowerWarning = true;
+        if (this._starPowerTimer <= 0) { this._starPowerTimer = 0; this._deactivateStarPower(); }
       }
 
       // Natural spawns pause while the anomaly's quarantine barrier is up, and

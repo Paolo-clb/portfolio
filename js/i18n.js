@@ -226,6 +226,10 @@ window.SITE_I18N = {
     laFountRefuse:       'Refuser',
     laFountRefused:      'MALÉDICTION REFUSÉE',
 
+    // The Cache Zone (risk/reward King-of-the-Hill event)
+    laCacheHack:         'PIRATAGE…',
+    laCacheSecured:      'DONNÉES SIPHONNÉES !',
+
     // Misc
     closeLbl: 'Fermer',
   },
@@ -449,6 +453,10 @@ window.SITE_I18N = {
     laFountAccept:       'Accept',
     laFountRefuse:       'Refuse',
     laFountRefused:      'CURSE REFUSED',
+
+    // The Cache Zone (risk/reward King-of-the-Hill event)
+    laCacheHack:         'HACKING…',
+    laCacheSecured:      'DATA SIPHONED!',
 
     // Misc
     closeLbl: 'Close',

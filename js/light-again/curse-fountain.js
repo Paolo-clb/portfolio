@@ -187,17 +187,42 @@
     var dMin = opts.near ? 360 : C.CURSE_FOUNT_SPAWN_DIST_MIN;
     var dMax = opts.near ? 360 : C.CURSE_FOUNT_SPAWN_DIST_MAX;
     var m    = C.WORLD_HALF - C.CURSE_FOUNT_ZONE_R - 40;
-    // Random spot far from the player AND clear of a live Digital Tree, so the
-    // two map events never crowd each other (re-roll a few times, then accept).
-    var avoid = this._tree, sep2 = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
-    var x, y, tries = 0;
+    // Random spot far from the player AND clear of a live Digital Tree (crowding)
+    // and — the HARD requirement — a live Cache Zone: a fountain must NEVER spawn
+    // inside one (their circles must not overlap → radius-sum). _cache may be
+    // absent (a parallel feature) → guarded. Re-roll a few times, then accept.
+    var genSep2  = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
+    var cacheSep = Math.max(C.MAP_FEATURE_MIN_SEP, C.CURSE_FOUNT_ZONE_R + (C.CACHE_ZONE_R || 0));
+    var avoid = [
+      [this._tree,  genSep2],
+      [this._cache, cacheSep * cacheSep],
+    ];
+    var x, y, tries = 0, ok;
     do {
       var ang  = Math.random() * TAU;
       var dist = dMin + Math.random() * (dMax - dMin);
       x = Math.max(-m, Math.min(m, this.p.x + Math.cos(ang) * dist));
       y = Math.max(-m, Math.min(m, this.p.y + Math.sin(ang) * dist));
+      ok = true;
+      for (var ai = 0; ai < avoid.length; ai++) {
+        var av = avoid[ai][0];
+        if (av && (x - av.x) * (x - av.x) + (y - av.y) * (y - av.y) < avoid[ai][1]) { ok = false; break; }
+      }
       tries++;
-    } while (avoid && tries < 20 && (x - avoid.x) * (x - avoid.x) + (y - avoid.y) * (y - avoid.y) < sep2);
+    } while (!ok && tries < 20);
+
+    // Unlike the Cache Zone (which just skips a blocked cycle), a fountain may owe
+    // a queued post-boss respawn we mustn't drop — so if the accepted spot still
+    // sits inside a live Cache Zone, push it radially out to the exclusion boundary.
+    // This makes the "never overlap a Cache Zone" rule deterministic, not just likely.
+    if (this._cache) {
+      var ddx = x - this._cache.x, ddy = y - this._cache.y, dd2 = ddx * ddx + ddy * ddy;
+      if (dd2 < cacheSep * cacheSep) {
+        var dd = Math.sqrt(dd2) || 1;
+        x = Math.max(-m, Math.min(m, this._cache.x + (ddx / dd) * cacheSep));
+        y = Math.max(-m, Math.min(m, this._cache.y + (ddy / dd) * cacheSep));
+      }
+    }
 
     this._fount = {
       x: x, y: y,

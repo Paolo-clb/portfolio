@@ -126,8 +126,8 @@
         }
         e.x += e.vx * sc60; e.y += e.vy * sc60;
 
-        // Firing logic
-        e.fireCD -= ms;
+        // Firing logic (Cache-Zone rage → fires faster)
+        e.fireCD -= e._cacheRage ? ms * C.CACHE_RAGE_T2_FIRE : ms;
         if (e.fireCD <= 0 && !e.isCharging) {
           e.isCharging = true; e.chargeTimer = C.T2_CHARGE_DUR;
         }
@@ -185,7 +185,7 @@
         // Spawner logic. When the anomaly's firewall is up the generator may
         // STILL spawn — but only INSIDE the zone (positions clamped to the
         // barrier disc so nothing leaks out).
-        e.spawnCD -= ms;
+        e.spawnCD -= e._cacheRage ? ms * C.CACHE_RAGE_T3_SPAWN : ms;   // Cache-Zone rage → spawns more
         // Tutorial: keep the Bruiser lesson clean — suppress its minion swarms.
         if (this._tutorialActive && e.spawnCD <= 0) {
           e.spawnCD = C.T3_SPAWN_CD;
@@ -245,12 +245,13 @@
           }
         }
       } else {
-        // Tier 1: rush toward player
+        // Tier 1: rush toward player (Cache-Zone rage → faster)
         var dx = p.x - e.x, dy = p.y - e.y;
         var d = Math.sqrt(dx * dx + dy * dy);
         if (d > 0.1) {
           if (!this._twActive) e.angle = Math.atan2(dy, dx);
-          var ax = (dx / d) * e.speed, ay = (dy / d) * e.speed;
+          var spd1 = e._cacheRage ? e.speed * C.CACHE_RAGE_T1_SPEED : e.speed;
+          var ax = (dx / d) * spd1, ay = (dy / d) * spd1;
           e.vx += (ax - e.vx) * stK; e.vy += (ay - e.vy) * stK;
         }
         e.x += e.vx * sc60; e.y += e.vy * sc60;

@@ -236,6 +236,7 @@
     if (this._clearSnake) this._clearSnake(true);
     if (this._clearCurseFount) this._clearCurseFount(true);   // also drop a live Curse Fountain
     if (this._clearDataHighways) this._clearDataHighways(true); // and any live Data Highway
+    if (this._clearCacheZone) this._clearCacheZone(true);     // and any live Cache Zone (also lifts enemy rage)
     this._anomalyBarrierActive = false;
     this._anomalyIntroActive = false;
     this._anomalyCooldownT = 0;
@@ -298,7 +299,7 @@
     p.recoveryTimer = 0; p.recoveryWhiff = false;
     p.hasHitDuringDashAttack = false; p.dashAtkExtended = 0;
     p.invincible = true; p.invincTimer = 1500; p.dashInvinc = false; p.dashCoyote = false;
-    this.isStarPowered = false; this._starPowerTimer = 0; this._starPowerWarning = false;
+    this.isStarPowered = false; this._starPowerTimer = 0; this._starPowerWarning = false; this._starPowerMax = 0;
     if (this.playerSpr) this.playerSpr.setVisible(true);
     var cam = this.cameras && this.cameras.main;
     if (cam) { cam.scrollX = p.x - cam.width / 2; cam.scrollY = p.y - cam.height / 2; }

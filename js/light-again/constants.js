@@ -101,8 +101,8 @@
     T3_SPAWN_CD:       3500,
     T3_SHIELD_RADIUS:  42,
 
-    STAR_DUR:          5000,
-    STAR_WARN:         4000,
+    STAR_DUR:          5000,    // default Overdrive duration (a normal star pickup)
+    STAR_WARN_REMAIN:  1000,    // ms of Overdrive left at which the HUD bar starts blinking
     STAR_DETO_THRESH:  50,
     STAR_TINT:         0xff14c8,
     STAR_TINT_ARR:     [255, 20, 200],
@@ -470,6 +470,62 @@
     HIGHWAY_EJECT_SPREAD:        3.6,    // px/frame lateral fan added at the mouth so they scatter, not single-file
     HIGHWAY_SPAWN_NEAR_MIN:      160,    // the corridor passes at least this close to the player...
     HIGHWAY_SPAWN_NEAR_MAX:      840,    // ...and at most this far, so it's discoverable without a pointer
+
+    /* ---- Cache Zone (Zone de Cache) — risk/reward King-of-the-Hill event ------
+       A big glitchy violet circle with a download glyph at its heart. Step in and
+       a 15 s data-heist gauge starts filling — but every regular enemy inside goes
+       into a RAGE (rushers faster, shooters fire faster, generators spawn more).
+       Hold the hill to 100 % and the zone detonates a huge 20 s OVERDRIVE bonus in
+       its centre. Self-contained on this._cache (one at a time). It does NOT boost
+       bosses (they live outside this.enemies) and is mutually exclusive with the
+       Curse Fountain (never overlapping — see _spawnCacheZone / _spawnCurseFount). */
+    CACHE_ZONE_R:                360,    // zone radius (px) — a sizeable arena ("un grand cercle")
+    CACHE_HACK_DUR:              15000,  // ms inside the zone to fill the gauge to 100 %
+    CACHE_DECAY_MULT:            0.5,    // while OUTSIDE during a hack the gauge decays at this × the fill rate
+    CACHE_ABANDON_GRACE:         4000,   // ms at 0 % + player away before a started hack powers back down to idle
+    CACHE_IDLE_LIFE:             30000,  // ms an un-entered zone sits before it quietly dissolves
+    CACHE_OVERDRIVE_DUR:         20000,  // ms of Overdrive the reward orb grants (the big payoff)
+    CACHE_RAGE_T1_SPEED:         1.7,    // rushers (T1) move this × faster while enraged in the zone
+    CACHE_RAGE_T2_FIRE:          1.9,    // shooters (T2) tick their fire cooldown this × faster while enraged
+    CACHE_RAGE_T3_SPAWN:         2.0,    // generators (T3) tick their spawn cooldown this × faster while enraged
+    CACHE_RAGE_LINGER:           250,    // ms the rage (+ its visual) lingers after an enemy leaves the zone
+    CACHE_DISSOLVE_DUR:          1000,   // ms of the success/timeout dissolve-out
+    CACHE_FADE_DUR:              600,    // ms of the boss-arrival (Anomaly) dissolve
+    CACHE_SPAWN_MIN_DELAY:       20000,  // ms of play before the first cache zone may appear
+    CACHE_SPAWN_INTERVAL_MIN:    45000,  // ms between zones (min) — a rarer, bigger event than a highway
+    CACHE_SPAWN_INTERVAL_MAX:    75000,  // ms between zones (max)
+    CACHE_SPAWN_DIST_MIN:        480,    // min spawn distance from the player (px) — a deliberate walk away
+    CACHE_SPAWN_DIST_MAX:        1040,   // max spawn distance from the player (px)
+    CACHE_TINT:                  0x9b30ff,      // glitch-violet (dash-attack family)
+    CACHE_TINT_ARR:              [155, 48, 255], // ...as an [r,g,b] for particle bursts
+
+    /* ---- The Unstable Core (Noyau Instable) — environmental billiard weapon ---
+       A big pulsing geometric sphere wrapped in a cyan containment force-field,
+       sitting NEUTRAL in the arena. DASH-ATTACK it and the field bursts: the core
+       rockets off like a billiard ball, ricocheting off the arena walls AND off
+       the chunky tier-3 bruisers, CRUSHING every lesser enemy it ploughs through.
+       After CORE_MAX_BOUNCES ricochets it detonates in a big blast. Every kill it
+       racks up is banked into its OWN big-score popup ("NOYAU INSTABLE"). NO
+       guidance arrow (found at random) and it utterly IGNORES bosses — they live
+       outside this.enemies, so the crush/bounce loops never touch them.
+       Self-contained on this._core (plain data) + one shared ADD graphics layer. */
+    CORE_SPAWN_MIN_DELAY:    16000,  // ms of play before the first core may appear
+    CORE_SPAWN_INTERVAL_MIN: 24000,  // ms between cores (min)
+    CORE_SPAWN_INTERVAL_MAX: 40000,  // ms between cores (max)
+    CORE_MAX:                1,      // one core at a time
+    CORE_LIFETIME:           24000,  // ms a dormant core waits to be used before it destabilises away
+    CORE_WITHER_WARN:        5000,   // ms of unstable "about to blow" strobe before an unused core vanishes
+    CORE_SPAWN_DIST_MIN:     480,    // min spawn distance from the player (px)
+    CORE_SPAWN_DIST_MAX:     900,    // max spawn distance from the player (px)
+    CORE_RADIUS:             44,     // the geometric sphere's body radius (px)
+    CORE_FIELD_RADIUS:       78,     // the containment force-field bubble radius (px)
+    CORE_TRIGGER_PAD:        14,     // extra slack on (field + player half) for the dash-attack launch test
+    CORE_LAUNCH_SPEED:       21,     // px/frame billiard speed once launched (≈1260 px/s)
+    CORE_MAX_BOUNCES:        6,      // ricochets (walls + bruisers) before it detonates
+    CORE_SAFETY_LIFETIME:    7000,   // ms hard cap on a launched core (failsafe → detonate)
+    CORE_CRUSH_PAD:          8,      // extra slack on the crush hit-test (core radius + enemy half + this)
+    CORE_BRUISER_DMG:        3,      // damage a ricochet deals to an unshielded tier-3 bruiser body
+    CORE_EXP_RADIUS:         300,    // final detonation blast radius (px)
   };
 
   /* ---- Upgrade branch definitions (all 3 levels) ---- */
