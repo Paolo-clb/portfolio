@@ -539,6 +539,39 @@
 
     var x = c.x, y = c.y, fr = C.CORE_FIELD_RADIUS;
 
+    // ---- Ground confinement decal (drawn FIRST, under the bubble) ----
+    // Anchors the floating core to the floor and flags its trigger zone:
+    // a slow warm pulse + a rotating dashed cyan "hazard" ring + cardinal
+    // danger chevrons. Pure marking — no gameplay, just reads as a hazard pad.
+    var hr0 = fr * 1.1;                                   // hazard ring sits just outside the field
+    // Faint hot glow that breathes with the existing pulse → "something warm is contained here".
+    g.fillStyle(HOT, 0.05 * A * pulse); g.fillCircle(x, y, hr0 * 0.92);
+    // Dashed cyan ring, traced as short arc segments so it reads as a marked-off zone.
+    var dashN = 28;                                       // 28 dashes around the ring
+    var dashF = 0.6;                                      // each dash spans 60% of its slot
+    for (var d = 0; d < dashN; d++) {
+      var da0 = c.fieldSpin + (d / dashN) * TAU;          // share fieldSpin so it co-rotates with the bubble
+      var da1 = da0 + (dashF / dashN) * TAU;
+      g.lineStyle(2, FIELD, 0.18 * A);
+      g.beginPath();
+      g.moveTo(x + Math.cos(da0) * hr0, y + Math.sin(da0) * hr0);
+      g.lineTo(x + Math.cos(da1) * hr0, y + Math.sin(da1) * hr0);
+      g.strokePath();
+    }
+    // Four radial "danger" chevrons at the cardinal points (also rotating with the field).
+    for (var ch = 0; ch < 4; ch++) {
+      var ca  = c.fieldSpin + (ch / 4) * TAU;
+      var cax = Math.cos(ca), cay = Math.sin(ca);         // outward direction
+      var pax = -cay, pay = cax;                          // perpendicular (chevron half-width)
+      var cTip = hr0 + 9, cBase = hr0 - 3, cW = 6;        // small inward-pointing arrow
+      g.lineStyle(2, FIELDHOT, 0.22 * A * pulse);
+      g.beginPath();
+      g.moveTo(x + cax * cBase + pax * cW, y + cay * cBase + pay * cW);
+      g.lineTo(x + cax * cTip,             y + cay * cTip);
+      g.lineTo(x + cax * cBase - pax * cW, y + cay * cBase - pay * cW);
+      g.strokePath();
+    }
+
     // ---- Containment force-field bubble (rotating cyan hex) ----
     g.fillStyle(FIELD, 0.05 * A); g.fillCircle(x, y, fr);
     g.lineStyle(2, FIELD, 0.35 * A * pulse); polyPath(g, x, y, fr, 6, c.fieldSpin); g.strokePath();

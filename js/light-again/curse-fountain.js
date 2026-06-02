@@ -549,11 +549,22 @@
     if (bodyA <= 0.001) return;
     var hot = 0.6 + 0.4 * Math.sin(gt * 3 + f.seed);   // shared pulse
 
-    // ---------- DARK MIST POOL (normal blend, layered radial dark) ----------
-    var steps = 6;
+    // ---------- DARK MIST POOL (normal blend, smooth radial dark) ----------
+    // Why: the pool used to be 6 concentric fills at a CONSTANT alpha, so each
+    // ring edge jumped the coverage by a fixed step -> hard banding anneaux.
+    // Fix: keep the same dark tint but draw many more, thinner rings (outer ->
+    // inner) with a per-ring alpha shaped by a smooth curve. Because normal
+    // blending accumulates layer-over-layer, the inner radii are crossed by far
+    // more rings than the rim, so opacity climbs smoothly from a transparent
+    // edge to a dense centre — a true radial fondu, no visible circles.
+    var steps = 22;
     for (var s = steps; s >= 1; s--) {
-      var rr = R * (s / steps);
-      dg.fillStyle(F_DARK, 0.16 * bodyA);
+      var t = s / steps;                 // 1 at the rim, ->0 toward the centre
+      var rr = R * t;
+      // Faint per-ring alpha, denser toward the middle (1 - t weighting) and
+      // softened by smoothstep so the cumulative falloff has no kink at the rim.
+      var ringA = 0.05 * bodyA * smooth(1 - t * 0.85);
+      dg.fillStyle(F_DARK, ringA);
       dg.fillCircle(x, y, rr);
     }
     // Dark drifting puffs near the rim give the pool a roiling, smoky body.

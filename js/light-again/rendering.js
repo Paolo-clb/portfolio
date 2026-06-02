@@ -8,6 +8,13 @@
   var C  = LA.C;
   var M  = LA.sceneMethods;
 
+  // Channel-lerp two 0xRRGGBB colours (t in 0..1) — used for tier-tinted enemy trails.
+  function _lerpHex(a, b, t) {
+    var ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+    var br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+    return ((((ar + (br - ar) * t) | 0) << 16) | (((ag + (bg - ag) * t) | 0) << 8) | ((ab + (bb - ab) * t) | 0));
+  }
+
   M._genTextures = function () {
     var theme = document.documentElement.getAttribute('data-theme') || 'light';
     this._texTheme = theme;
@@ -93,6 +100,7 @@
     LA.buildGrayscaleVariant(tm, '_shooter', '_shooter_gray');
     LA.buildGrayscaleVariant(tm, '_bruiser', '_bruiser_gray');
     LA.buildProjTex(tm, '_proj');
+    LA.buildSparkTex(tm, '_spark');   // soft radial-gradient particle for the ADD emitters
     LA.buildPCBTex(tm, '_pcb', c);
     LA.buildStarTex(tm, '_star');
     LA.buildAnomalyTex(tm, '_anomaly');
@@ -105,6 +113,7 @@
     LA.resetColorCache();
     this._genTextures();
     this.cameras.main.setBackgroundColor(LA.getColors().bgColor);
+    if (this.pcbDeep) this.pcbDeep.setTexture('_pcb');
     if (this.pcbTile) this.pcbTile.setTexture('_pcb');
     if (this.pcbGlow)  this.pcbGlow.setTexture('_pcbGlow');
     this._drawVignette();
@@ -231,6 +240,22 @@
       this.playerSpr.setTint(this._powerUpSteve ? 0xc8a0ff : 0x88ffff);
     }
 
+    // Reactive bloom (created in scene.create): brighter in dash / dash-attack and
+    // as the combo climbs; colour follows the state when the FX supports it.
+    if (this._playerGlow) {
+      var gloCol, gloStr;
+      if (this._twActive)                                  { gloCol = 0xffc832; gloStr = 5; }
+      else if (p.state === 'DASH_ATTACKING')               { gloCol = 0xff66ff; gloStr = 7; }
+      else if (p.invincible && p.dashInvinc)               { gloCol = 0x66ffff; gloStr = 6; }
+      else if (p.state === 'RECOVERY' && p.recoveryWhiff)  { gloCol = 0x8899aa; gloStr = 1; }
+      else {
+        gloCol = p.dashAvailable ? 0x9fefff : 0xffd060;
+        gloStr = 2 + Math.min(4, (cm - 1) / 12) + 0.6 * Math.sin(this.gameTime * Math.PI * 4);
+      }
+      this._playerGlow.outerStrength = Math.max(0, gloStr);
+      this._playerGlow.color = gloCol;
+    }
+
     // Star Power aura — world-space pulsing ring in dash-attack magenta
     if (this._starAuraGfx) {
       this._starAuraGfx.clear();
@@ -265,9 +290,10 @@
       sl.spr.setTexture(key);
       sl.spr.setPosition(sl.x, sl.y);
       sl.spr.setRotation(sl.angle);
-      var trAlpha = (hi + 1) / (this._trN + 1) * (p.invincible && p.dashInvinc ? 0.55 : 0.35);
-      sl.spr.setAlpha(trAlpha);
-      sl.spr.setScale(baseScale * ((hi + 1) / (this._trN + 1) * 0.5 + 0.5));
+      var trFrac = (hi + 1) / (this._trN + 1);
+      sl.spr.setAlpha(trFrac * trFrac * (p.invincible && p.dashInvinc ? 0.6 : 0.4));  // eased fade → liquid trail
+      var trSc = baseScale * (trFrac * 0.55 + 0.45);
+      sl.spr.setScale(trSc * (1 + 0.18 * trFrac), trSc);  // stretch along facing = motion smear
       if (this._twActive) {
         // Golden phantom after-images during time stop — uniform across skins.
         sl.spr.setBlendMode(Phaser.BlendModes.ADD);
@@ -289,7 +315,9 @@
         sl.spr.setBlendMode(Phaser.BlendModes.NORMAL);
       } else {
         sl.spr.setBlendMode(Phaser.BlendModes.ADD);
-        sl.spr.clearTint();
+        // Warm the basic trail from deep blue (old) → live colour (recent) so even
+        // the resting cyan/yellow arrow leaves a graded comet, not flat clones.
+        sl.spr.setTint(_lerpHex(0x0a2a4a, p.dashAvailable ? 0x00ffff : 0xffcc33, trFrac));
       }
       sl.spr.setVisible(true);
     }
@@ -334,7 +362,7 @@
           var t3tint = e.hp >= 2 ? 0x5c0099 : 0x8b0000;
           e.spr.setTint(t3tint);
           e.spr.setAlpha(1.0);
-          e.spr.setScale(1.0);
+          e.spr.setScale(1.0 + 0.035 * Math.sin(gt * Math.PI * 2.2 + i * 0.7));  // heavy, slow idle
         }
 
         // Shield ring
@@ -395,13 +423,13 @@
           e.spr.setAlpha(0.62 + chg * 0.38);
         } else {
           e.spr.setTint(0xffaa22);
-          e.spr.setScale(1.0);
+          e.spr.setScale(1.0 + 0.045 * Math.sin(gt * Math.PI * 4 + i * 0.7));  // turret idle pulse
           e.spr.setAlpha(1.0);
         }
       } else {
         e.spr.clearTint();
         e.spr.setAlpha(1.0);
-        e.spr.setScale(1.0);
+        e.spr.setScale(1.0 + 0.06 * Math.sin(gt * Math.PI * 7 + i * 0.7));  // fast "galloping" rusher idle
       }
 
       // Spawn animation: scale up + fade in (natural waves only)
@@ -422,7 +450,14 @@
         ts.setRotation(tr.angle);
         ts.setAlpha((ti + 1) / (e._tn + 1) * 0.30);
         if (e.isMarked) ts.setTint(0x00ffff);
-        else ts.clearTint();
+        else {
+          // Comet tail: per-tier tint fading dark (old) → vivid (recent), so motion
+          // and threat read at a glance instead of a flat grey after-image.
+          var trFrac = (ti + 1) / (e._tn + 1);
+          ts.setTint(e.tier === 3 ? _lerpHex(0x2a0033, 0x9b30e0, trFrac)
+                   : e.tier === 2 ? _lerpHex(0x3a1a00, 0xffaa22, trFrac)
+                   :                 _lerpHex(0x3a0010, 0xff3344, trFrac));
+        }
         ts.setVisible(true);
       }
     }
@@ -555,6 +590,16 @@
 
     this.hudGfx.clear();
 
+    // ---- Glassy HUD backplates (behind the text) — keep the monospace counters
+    //      legible over the busy PCB / camera flashes, matching the DOM pop-ups. ----
+    this.hudGfx.fillStyle(0x06091a, 0.40);
+    this.hudGfx.fillRoundedRect(4, 3, 92, 74, 8);
+    this.hudGfx.lineStyle(1, c.cyan, 0.16);
+    this.hudGfx.strokeRoundedRect(4, 3, 92, 74, 8);
+    var scPlateH = this.comboMultiplier > 1 ? 74 : 38;
+    this.hudGfx.fillStyle(0x06091a, 0.30);
+    this.hudGfx.fillRoundedRect(cx - 62, 8, 124, scPlateH, 9);
+
     // ---- Directional motion-blur vignette during dash ----
     this._dashBlurAlpha = this._dashBlurAlpha || 0;
     var isDashing = p.state === 'DASHING';
@@ -589,14 +634,14 @@
       var dashF = p.state === 'DASHING' ? 0 : Math.max(0, Math.min(1, 1 - p.dashCooldown / dashCdMax));
       var dashY = h - 34;
       this.hudGfx.fillStyle(c.cyan, 0.10);
-      this.hudGfx.fillRect(barX, dashY, BAR_W, BAR_H);
+      this.hudGfx.fillRoundedRect(barX, dashY, BAR_W, BAR_H, BAR_H / 2);
       this.hudGfx.lineStyle(1, c.cyan, 0.22);
-      this.hudGfx.strokeRect(barX, dashY, BAR_W, BAR_H);
+      this.hudGfx.strokeRoundedRect(barX, dashY, BAR_W, BAR_H, BAR_H / 2);
       if (dashF > 0) {
         this.hudGfx.fillStyle(c.cyan, 0.88);
-        this.hudGfx.fillRect(barX, dashY, BAR_W * dashF, BAR_H);
+        this.hudGfx.fillRoundedRect(barX, dashY, Math.max(BAR_H, BAR_W * dashF), BAR_H, BAR_H / 2);
         this.hudGfx.fillStyle(0xffffff, 0.60);
-        this.hudGfx.fillRect(barX + BAR_W * dashF - 2, dashY, 2, BAR_H);
+        this.hudGfx.fillCircle(barX + BAR_W * dashF, dashY + BAR_H / 2, BAR_H * 0.5);
       }
     }
 
@@ -612,14 +657,14 @@
         ? (0.45 + 0.55 * Math.abs(Math.sin(gt * Math.PI * 6)))
         : 0.92;
       this.hudGfx.fillStyle(C.STAR_TINT, 0.10);
-      this.hudGfx.fillRect(barX, starY, BAR_W, BAR_H);
+      this.hudGfx.fillRoundedRect(barX, starY, BAR_W, BAR_H, BAR_H / 2);
       this.hudGfx.lineStyle(1, C.STAR_TINT, 0.22);
-      this.hudGfx.strokeRect(barX, starY, BAR_W, BAR_H);
-      this.hudGfx.fillStyle(C.STAR_TINT, starA);
-      this.hudGfx.fillRect(barX, starY, BAR_W * starF, BAR_H);
+      this.hudGfx.strokeRoundedRect(barX, starY, BAR_W, BAR_H, BAR_H / 2);
       if (starF > 0.01) {
+        this.hudGfx.fillStyle(C.STAR_TINT, starA);
+        this.hudGfx.fillRoundedRect(barX, starY, Math.max(BAR_H, BAR_W * starF), BAR_H, BAR_H / 2);
         this.hudGfx.fillStyle(0xffffff, 0.55);
-        this.hudGfx.fillRect(barX + BAR_W * starF - 2, starY, 2, BAR_H);
+        this.hudGfx.fillCircle(barX + BAR_W * starF, starY + BAR_H / 2, BAR_H * 0.5);
       }
     }
 
@@ -631,23 +676,23 @@
         var twF       = Math.max(0, 1.0 - (this._twTotalElapsed || 0) / twTotalMs);
         var twPulseA  = 0.72 + 0.28 * Math.abs(Math.sin(gt * Math.PI * 4));
         this.hudGfx.fillStyle(0xcc1111, 0.14);
-        this.hudGfx.fillRect(barX, twY, BAR_W, BAR_H);
+        this.hudGfx.fillRoundedRect(barX, twY, BAR_W, BAR_H, BAR_H / 2);
         this.hudGfx.lineStyle(1, 0xcc1111, 0.35);
-        this.hudGfx.strokeRect(barX, twY, BAR_W, BAR_H);
-        this.hudGfx.fillStyle(0xdd1111, twPulseA);
-        this.hudGfx.fillRect(barX, twY, BAR_W * twF, BAR_H);
+        this.hudGfx.strokeRoundedRect(barX, twY, BAR_W, BAR_H, BAR_H / 2);
         if (twF > 0.01) {
+          this.hudGfx.fillStyle(0xdd1111, twPulseA);
+          this.hudGfx.fillRoundedRect(barX, twY, Math.max(BAR_H, BAR_W * twF), BAR_H, BAR_H / 2);
           this.hudGfx.fillStyle(0xff6666, 0.90);
-          this.hudGfx.fillRect(barX + BAR_W * twF - 2, twY, 2, BAR_H);
+          this.hudGfx.fillCircle(barX + BAR_W * twF, twY + BAR_H / 2, BAR_H * 0.5);
         }
       } else if (this._twCooldown <= 0) {
         var twReadyA = 0.55 + 0.35 * Math.abs(Math.sin(gt * Math.PI * 1.8));
         this.hudGfx.fillStyle(0xcc1111, twReadyA * 0.22);
-        this.hudGfx.fillRect(barX - 2, twY - 1, BAR_W + 4, BAR_H + 2);
+        this.hudGfx.fillRoundedRect(barX - 2, twY - 1, BAR_W + 4, BAR_H + 2, (BAR_H + 2) / 2);
         this.hudGfx.fillStyle(0xdd1111, twReadyA);
-        this.hudGfx.fillRect(barX, twY, BAR_W, BAR_H);
+        this.hudGfx.fillRoundedRect(barX, twY, BAR_W, BAR_H, BAR_H / 2);
         this.hudGfx.lineStyle(1, 0xff4444, twReadyA * 0.80);
-        this.hudGfx.strokeRect(barX, twY, BAR_W, BAR_H);
+        this.hudGfx.strokeRoundedRect(barX, twY, BAR_W, BAR_H, BAR_H / 2);
       }
     }
 
@@ -898,13 +943,17 @@
       var borderCol = lvl >= 3 ? 0xb478ff : (lvl >= 2 ? 0xffc832 : 0x00ffff);
       var borderA   = lvl >= 3 ? 0.82 : (lvl >= 2 ? 0.75 : 0.60);
 
-      // Icon background
+      // Icon background — rounded, glassy (coherent with the draft cards' radius)
       this.hudGfx.fillStyle(0x080a1c, 0.88);
-      this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.fillRoundedRect(ix, iy, _upIconSize, _upIconSize, 9);
 
-      // Border (2px)
+      // Faux additive outer glow (stronger for Lv2/Lv3 via borderA) + crisp border
+      this.hudGfx.lineStyle(5, borderCol, borderA * 0.12);
+      this.hudGfx.strokeRoundedRect(ix - 1, iy - 1, _upIconSize + 2, _upIconSize + 2, 10);
+      this.hudGfx.lineStyle(3, borderCol, borderA * 0.20);
+      this.hudGfx.strokeRoundedRect(ix, iy, _upIconSize, _upIconSize, 9);
       this.hudGfx.lineStyle(2, borderCol, borderA);
-      this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.strokeRoundedRect(ix, iy, _upIconSize, _upIconSize, 9);
 
       // Inner icon — shared placeholder (real per-upgrade art TBD)
       var dotCx = ix + _upIconSize / 2;
@@ -930,9 +979,11 @@
     for (var ck = 0; ck < curses.length; ck++) {
       var cix = w - _upMarginR - (acquired.length + curses.length - ck) * (_upIconSize + _upGap) + _upGap;
       this.hudGfx.fillStyle(0x16061c, 0.90);
-      this.hudGfx.fillRect(cix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.fillRoundedRect(cix, iy, _upIconSize, _upIconSize, 9);
+      this.hudGfx.lineStyle(4, 0xd11e74, 0.16);
+      this.hudGfx.strokeRoundedRect(cix, iy, _upIconSize, _upIconSize, 9);
       this.hudGfx.lineStyle(2, 0xd11e74, 0.80);
-      this.hudGfx.strokeRect(cix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.strokeRoundedRect(cix, iy, _upIconSize, _upIconSize, 9);
       // Per-curse art (glassHeart / dashRage / cursedBlast), tinted fountain magenta.
       this._drawUpgradeIcon(curses[ck], cix + _upIconSize / 2, iy + _upIconSize / 2, 28, 0xff66bf, 0.9);
     }
@@ -958,7 +1009,7 @@
     if (active) {
       // --- ACTIVE: red background, vertical drain fill ---
       this.hudGfx.fillStyle(0x2a0a0a, 0.95);
-      this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.fillRoundedRect(ix, iy, _upIconSize, _upIconSize, 9);
       var twTotalMs = (this._twWaveDurationMs || 0) + C.TW_DURATION;
       var twFrac    = Math.max(0, 1.0 - (this._twTotalElapsed || 0) / twTotalMs);
       var fillH     = Math.round((_upIconSize - 2) * twFrac);
@@ -970,12 +1021,12 @@
         this.hudGfx.fillRect(ix + 1, iy + fillH - 1, _upIconSize - 2, 2);
       }
       this.hudGfx.lineStyle(2, 0xff4444, 0.70 + 0.30 * Math.abs(Math.sin(gt * Math.PI * 4)));
-      this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.strokeRoundedRect(ix, iy, _upIconSize, _upIconSize, 9);
     } else if (onCD) {
       // --- COOLDOWN: clearly dimmed, fill rising from bottom (dim red so the
       //     icon stays in The World's red family even while charging) ---
       this.hudGfx.fillStyle(0x120808, 0.95);
-      this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.fillRoundedRect(ix, iy, _upIconSize, _upIconSize, 9);
       var cdFrac  = 1 - this._twCooldown / C.TW_COOLDOWN;
       var cdH     = Math.round((_upIconSize - 2) * cdFrac);
       var cdFillY = iy + 1 + (_upIconSize - 2) - cdH;
@@ -986,17 +1037,17 @@
         this.hudGfx.fillRect(ix + 1, cdFillY, _upIconSize - 2, 2);
       }
       this.hudGfx.lineStyle(2, 0x5a2a2a, 0.65);
-      this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.strokeRoundedRect(ix, iy, _upIconSize, _upIconSize, 9);
     } else {
       // --- READY: pulsing red fill + bright border + outer glow ---
       var rP = 0.25 + 0.18 * Math.abs(Math.sin(gt * Math.PI * 1.8));
       this.hudGfx.fillStyle(0x1a0606, 0.92);
-      this.hudGfx.fillRect(ix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.fillRoundedRect(ix, iy, _upIconSize, _upIconSize, 9);
       this.hudGfx.fillStyle(0xcc1111, rP);
       this.hudGfx.fillRect(ix + 1, iy + 1, _upIconSize - 2, _upIconSize - 2);
       var rBorderA = 0.70 + 0.30 * Math.abs(Math.sin(gt * Math.PI * 1.8));
       this.hudGfx.lineStyle(3, 0xff4444, rBorderA);
-      this.hudGfx.strokeRect(ix, iy, _upIconSize, _upIconSize);
+      this.hudGfx.strokeRoundedRect(ix, iy, _upIconSize, _upIconSize, 9);
     }
 
     // "TW" label — dim on CD, pulsing on ready
@@ -1055,13 +1106,17 @@
       var ox = orbStartX + si * _shOrbGap;
 
       if (active) {
-        // Outer glow ring — correct 1:1.8 ratio
+        // Soft glow disc under the ring + outer glow ring (1:1.8 ratio)
+        this.hudGfx.fillStyle(c.cyan, 0.07);
+        this.hudGfx.fillCircle(ox, orbCy, _shOrbRing);
         this.hudGfx.lineStyle(7, c.cyan, 0.30);
         this.hudGfx.strokeCircle(ox, orbCy, _shOrbRing);
 
-        // Solid filled core
+        // Solid filled core + specular highlight (gives the orb volume)
         this.hudGfx.fillStyle(c.cyan, 0.95);
         this.hudGfx.fillCircle(ox, orbCy, _shOrbR);
+        this.hudGfx.fillStyle(0xffffff, 0.55);
+        this.hudGfx.fillCircle(ox - _shOrbR * 0.35, orbCy - _shOrbR * 0.35, _shOrbR * 0.4);
 
         // Connector to previous active orb
         if (si > 0 && (si - 1) < curS) {

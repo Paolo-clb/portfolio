@@ -17,8 +17,10 @@
       '@keyframes la-up-fade{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}',
       '@keyframes la-up-glow{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 24px 6px var(--la-accent-glow)}}',
       '@keyframes la-up-shine{0%{background-position:200% 0}100%{background-position:-200% 0}}',
-      // Shared upgrade-icon placeholder, draft size (see LA.ICON_PLACEHOLDER_SVG).
-      '.la-up-ph{width:40px;height:40px}',
+      '@keyframes la-up-icon-pulse{0%,100%{filter:drop-shadow(0 0 4px currentColor)}50%{filter:drop-shadow(0 0 9px currentColor)}}',
+      // Shared upgrade-icon placeholder, draft size — now lit with a gently pulsing
+      // glow so the icon well stops being the card's dead spot.
+      '.la-up-ph{width:40px;height:40px;filter:drop-shadow(0 0 5px currentColor);animation:la-up-icon-pulse 2.4s ease-in-out infinite}',
     ].join('');
     document.head.appendChild(st);
   }
@@ -161,7 +163,9 @@
         imgWrap.style.cssText = [
           'width:64px', 'height:64px', 'margin:0 auto .5rem',
           'border:1.5px solid ' + st.border, 'border-radius:8px',
-          'background:' + st.fill,
+          // Radial tint + inset glow give the well depth instead of a flat slab.
+          'background:radial-gradient(circle at 50% 35%, ' + st.color + '22, transparent 70%), ' + st.fill,
+          'box-shadow:inset 0 0 14px ' + st.glow,
           'display:flex', 'align-items:center', 'justify-content:center',
           'font-size:1.6rem', 'color:' + st.color,
         ].join(';');
@@ -376,7 +380,8 @@
     imgWrap.style.cssText = [
       'width:72px', 'height:72px', 'margin:0 auto .6rem',
       'border:2px solid rgba(204,17,17,0.5)', 'border-radius:10px',
-      'background:rgba(204,17,17,0.08)',
+      'background:radial-gradient(circle at 50% 35%, rgba(255,92,92,0.18), transparent 70%), rgba(204,17,17,0.08)',
+      'box-shadow:inset 0 0 16px rgba(204,17,17,0.45)',
       'display:flex', 'align-items:center', 'justify-content:center',
       'font-size:2rem', 'color:#ff5c5c',
     ].join(';');

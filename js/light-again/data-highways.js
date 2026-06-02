@@ -76,6 +76,14 @@
     this._highwayGfx = this.add.graphics();
     this._highwayGfx.setDepth(8);
     this._highwayGfx.setBlendMode(Phaser.BlendModes.ADD);
+
+    // GROUND ANCHOR — a separate NORMAL (non-ADD) layer just ABOVE the PCB
+    // (depth -9) and just BELOW the ADD band (8). A dark, slightly-wider pass on
+    // it carves a "rainure" into the PCB so the road reads as engraved into the
+    // board, not floating over it. Own layer because the blend mode is a
+    // per-object setting — it can't differ from the ADD band on a shared object.
+    this._highwayGrooveGfx = this.add.graphics();
+    this._highwayGrooveGfx.setDepth(7.6);
   };
 
   /* Drop every live highway (the graphics object persists — just cleared). */
@@ -83,6 +91,7 @@
     if (this._highways) this._highways.length = 0;
     this._highwayBoost = 0;
     if (this._highwayGfx) this._highwayGfx.clear();
+    if (this._highwayGrooveGfx) this._highwayGrooveGfx.clear();
   };
 
   /* ================================================================
@@ -474,11 +483,14 @@
     var g = this._highwayGfx;
     if (!g) return;
     g.clear();
+    // Groove layer is cleared in lockstep with the ADD band so they never desync.
+    var gg = this._highwayGrooveGfx;
+    if (gg) gg.clear();
     var cols = LA.getColors();
     var hs = this._highways;
     if (hs && hs.length) {
       var view = this.cameras.main.worldView;
-      for (var i = 0; i < hs.length; i++) this._renderOneHighway(g, hs[i], view, cols);
+      for (var i = 0; i < hs.length; i++) this._renderOneHighway(g, hs[i], view, cols, gg);
     }
     // ---- Ride-invincibility aura around the arrow (fades out with the grace) ----
     if (this._highwayInvuln && this.p && this.p.state !== 'DEAD') {
@@ -495,7 +507,7 @@
     }
   };
 
-  M._renderOneHighway = function (g, h, view, cols) {
+  M._renderOneHighway = function (g, h, view, cols, gg) {
     var life = h.lifeFactor;
     if (life <= 0.004) return;
 
@@ -541,20 +553,58 @@
       sc.push({ x: ax + dirx * tk, y: ay + diry * tk, h: bandHalf(tk) });
     }
 
-    // ---- Glowing tapered band (3 nested spindle polygons: halo → glow → core) ----
-    function bandPoly(halfW, color, alpha) {
+    // Reusable spindle filler (target gfx + width mult on the per-sample taper).
+    // Used both for the dark groove (NORMAL layer) and the glow band (ADD layer).
+    function spindle(gfx, halfW, color, alpha) {
       if (alpha <= 0.003) return;
-      g.fillStyle(color, alpha);
-      g.beginPath();
+      gfx.fillStyle(color, alpha);
+      gfx.beginPath();
       var s0 = sc[0], h0 = halfW * s0.h;
-      g.moveTo(s0.x + px * h0, s0.y + py * h0);
-      for (var a = 1; a <= BAND_N; a++) { var sa = sc[a], ha = halfW * sa.h; g.lineTo(sa.x + px * ha, sa.y + py * ha); }
-      for (var b = BAND_N; b >= 0; b--) { var sb = sc[b], hb = halfW * sb.h; g.lineTo(sb.x - px * hb, sb.y - py * hb); }
-      g.closePath(); g.fillPath();
+      gfx.moveTo(s0.x + px * h0, s0.y + py * h0);
+      for (var a = 1; a <= BAND_N; a++) { var sa = sc[a], ha = halfW * sa.h; gfx.lineTo(sa.x + px * ha, sa.y + py * ha); }
+      for (var b = BAND_N; b >= 0; b--) { var sb = sc[b], hb = halfW * sb.h; gfx.lineTo(sb.x - px * hb, sb.y - py * hb); }
+      gfx.closePath(); gfx.fillPath();
     }
+
+    // ---- GROUND ANCHOR: dark NORMAL groove a touch WIDER than the band, on a
+    // lower-depth non-ADD layer, so the road looks engraved INTO the PCB (a
+    // shadowed channel) rather than floating on top. Two soft passes (wide rim +
+    // inner pit) fade with life so it appears/retracts with the road. ----
+    if (gg) {
+      spindle(gg, WF * 1.30, 0x000000, 0.10 * A);   // wide soft rim of the channel
+      spindle(gg, WF * 1.05, 0x040810, 0.18 * A);   // inner pit — slightly cool-black
+    }
+
+    // ---- Glowing tapered band (3 nested spindle polygons: halo → glow → core) ----
+    function bandPoly(halfW, color, alpha) { spindle(g, halfW, color, alpha); }
     bandPoly(WF * 1.12, cyan, 0.05 * A);
     bandPoly(WF,        cyan, 0.085 * A);
     bandPoly(W,         cyan, 0.12 * A * (0.85 + 0.15 * hot));
+
+    // ---- AXIAL GRADIENT: an extra ADD overlay whose alpha ramps from the
+    // upstream INTAKE (sourd) to the downstream EXHAUST (chaud), reinforcing the
+    // sense of flow already carried by the chevrons. Built as a strip of quads
+    // along the existing samples so each segment can carry its own alpha — cheap
+    // (BAND_N quads, reusing sc[]). Purely additive: it warms the exit, it never
+    // darkens or alters the band already drawn. ----
+    for (var ag = 0; ag < BAND_N; ag++) {
+      var s1 = sc[ag], s2 = sc[ag + 1];
+      // f: 0 at intake → 1 at exhaust (along the visible window).
+      var f0 = ag / BAND_N, f1 = (ag + 1) / BAND_N;
+      // Bias to the back half so the head stays restrained and the tail glows hot.
+      var aA = (0.018 + 0.085 * smooth(f0)) * A * (0.85 + 0.15 * hot);
+      var aB = (0.018 + 0.085 * smooth(f1)) * A * (0.85 + 0.15 * hot);
+      var avg = (aA + aB) * 0.5;
+      if (avg <= 0.004) continue;
+      var w1 = W * 0.92 * s1.h, w2 = W * 0.92 * s2.h;
+      g.fillStyle(COL_CORE, avg);
+      g.beginPath();
+      g.moveTo(s1.x + px * w1, s1.y + py * w1);
+      g.lineTo(s2.x + px * w2, s2.y + py * w2);
+      g.lineTo(s2.x - px * w2, s2.y - py * w2);
+      g.lineTo(s1.x - px * w1, s1.y - py * w1);
+      g.closePath(); g.fillPath();
+    }
 
     // ---- Wavy edge lines (the "wind") — follow the spindle, converge at the tips ----
     function drawEdge(side, width, color, alpha) {
@@ -572,6 +622,29 @@
     }
     drawEdge(1,  6, cyan, 0.10 * A); drawEdge(1,  2, COL_CORE, 0.75 * A * hot);
     drawEdge(-1, 6, cyan, 0.10 * A); drawEdge(-1, 2, COL_CORE, 0.75 * A * hot);
+
+    // ---- Speed lines: a few SHORT, STATIC streaks parallel to the band for grain
+    // (etched into the lane, not moving — the motes already carry the motion). Seeded
+    // off h.seed so each road keeps the same set; very low alpha so it never saturates. ----
+    var SL_N = 7;
+    g.lineStyle(1, cyan, 0.06 * A);
+    for (var sl = 0; sl < SL_N; sl++) {
+      // Pseudo-random but stable placement along/across the lane from the seed.
+      var r1 = (Math.sin(h.seed * 12.9898 + sl * 78.233) * 43758.5453);
+      r1 = r1 - Math.floor(r1);
+      var r2 = (Math.sin(h.seed * 39.346 + sl * 11.135) * 24634.6345);
+      r2 = r2 - Math.floor(r2);
+      var slt = t0 + (t1 - t0) * (0.06 + 0.88 * r1);   // keep clear of the pointed tips
+      if (slt <= t0 || slt >= t1) continue;
+      var slhalf = bandHalf(slt);
+      if (slhalf <= 0.05) continue;
+      var slen = 18 + 30 * r2;                          // short streaks
+      var slat = (r2 * 2 - 1) * W * 0.72 * slhalf;      // offset across the lane, inside the taper
+      var sA = pt(slt, slat);
+      if (!onScreen(sA)) continue;
+      var sB = pt(slt + slen, slat);
+      g.beginPath(); g.moveTo(sA.x, sA.y); g.lineTo(sB.x, sB.y); g.strokePath();
+    }
 
     // ---- Scan band: a bright cross-glow sweeping along the road ----
     var st = ((h.flowPhase * SCAN_PX_S) % len + len) % len;

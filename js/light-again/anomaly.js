@@ -1010,6 +1010,12 @@
       var ex = ox + Math.cos(L.ang) * len;
       var ey = oy + Math.sin(L.ang) * len;
       if (L.t < L.warn) {
+        // Danger band: a translucent strip at the REAL beam width that swells as
+        // the shot nears, so the player reads where (and how wide) the deadly bolt
+        // lands — the old 1.4px tracer was easy to miss on the busy PCB.
+        var warnP = L.t / L.warn;
+        lg.lineStyle(C.ANO_LASER_WIDTH * 2.2, 0xff0033, 0.05 + 0.13 * warnP);
+        lg.beginPath(); lg.moveTo(ox, oy); lg.lineTo(ex, ey); lg.strokePath();
         // Telegraph — thin harmless tracer, pulsing, with a running scan dot
         var wa = 0.35 + 0.45 * Math.abs(Math.sin(gt * 30));
         lg.lineStyle(1.4, 0xff3366, wa);

@@ -79,9 +79,37 @@
       bg.addColorStop(1,    'rgb(0,200,255)');    // tip  = cyan
       g2.fillStyle = bg;
     } else {
-      g2.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+      // Directional volume: darker tail → full colour → near-white hot tip, so the
+      // arrow reads as a lit dart with a clear facing instead of a flat fill.
+      var tipR = (r + (255 - r) * 0.6) | 0, tipG = (g + (255 - g) * 0.6) | 0, tipB = (b + (255 - b) * 0.6) | 0;
+      var tlR = (r * 0.5) | 0, tlG = (g * 0.5) | 0, tlB = (b * 0.5) | 0;
+      var bgr = g2.createLinearGradient(ox - s * 0.6, oy, ox + s, oy);
+      bgr.addColorStop(0,   'rgb(' + tlR + ',' + tlG + ',' + tlB + ')');
+      bgr.addColorStop(0.5, 'rgb(' + r + ',' + g + ',' + b + ')');
+      bgr.addColorStop(1,   'rgb(' + tipR + ',' + tipG + ',' + tipB + ')');
+      g2.fillStyle = bgr;
     }
     g2.fill();
+
+    if (!isDashAtk) {
+      // Neon edge lip + a small specular flash near the tip (additive) — gives the
+      // most-seen sprite (the resting cyan/yellow arrow) a crisp lit rim.
+      g2.save();
+      g2.globalCompositeOperation = 'lighter';
+      g2.lineJoin = 'round';
+      g2.lineWidth = 1.4;
+      g2.strokeStyle = 'rgba(255,255,255,0.7)';
+      _drawArrowPath(g2, ox, oy, s);
+      g2.stroke();
+      g2.beginPath();
+      g2.moveTo(ox + s * 0.82, oy);
+      g2.lineTo(ox + s * 0.05, oy - s * 0.16);
+      g2.lineTo(ox + s * 0.05, oy + s * 0.16);
+      g2.closePath();
+      g2.fillStyle = 'rgba(255,255,255,0.28)';
+      g2.fill();
+      g2.restore();
+    }
 
     tm.addCanvas(key, oc);
   };
@@ -117,8 +145,25 @@
     g2.lineTo(ox - size * 0.5, oy - size * 0.18);
     g2.lineTo(ox - size * 0.5, oy + size * 0.18);
     g2.closePath();
-    g2.fillStyle = '#FF0044';
+    // Directional volume: dark garnet tail → body red → hot near-white tip, so the
+    // charge direction (the tip) reads at a glance instead of a flat triangle.
+    var rg = g2.createLinearGradient(ox - size * 0.5, oy, ox + size, oy);
+    rg.addColorStop(0,    '#7a0020');
+    rg.addColorStop(0.55, '#ff2347');
+    rg.addColorStop(1,    '#ffd6dd');
+    g2.fillStyle = rg;
     g2.fill();
+
+    // Bright crest along the leading top edge (additive lit rim).
+    g2.save();
+    g2.globalCompositeOperation = 'lighter';
+    g2.lineWidth = 1; g2.lineJoin = 'round';
+    g2.strokeStyle = 'rgba(255,150,170,0.65)';
+    g2.beginPath();
+    g2.moveTo(ox - size * 0.5, oy - size * 0.18);
+    g2.lineTo(ox + size, oy);
+    g2.stroke();
+    g2.restore();
 
     tm.addCanvas(key, oc);
   };
@@ -146,7 +191,21 @@
     g2.moveTo(ox + s * 0.75, oy); g2.lineTo(ox, oy - s * 0.5);
     g2.lineTo(ox - s * 0.75, oy); g2.lineTo(ox, oy + s * 0.5);
     g2.closePath();
-    g2.fillStyle = '#FFaa22'; g2.fill();
+    // Radial "turret lens": white-hot core → orange → dark rim (volume).
+    var srg = g2.createRadialGradient(ox, oy, 0, ox, oy, s * 0.8);
+    srg.addColorStop(0,    '#fff2cc');
+    srg.addColorStop(0.45, '#ffb030');
+    srg.addColorStop(1,    '#6a3300');
+    g2.fillStyle = srg; g2.fill();
+
+    // Thin bright rim around the lens.
+    g2.save(); g2.globalCompositeOperation = 'lighter';
+    g2.lineWidth = 1; g2.lineJoin = 'round';
+    g2.strokeStyle = 'rgba(255,210,120,0.7)';
+    g2.beginPath();
+    g2.moveTo(ox + s * 0.75, oy); g2.lineTo(ox, oy - s * 0.5);
+    g2.lineTo(ox - s * 0.75, oy); g2.lineTo(ox, oy + s * 0.5);
+    g2.closePath(); g2.stroke(); g2.restore();
 
     tm.addCanvas(key, oc);
   };
@@ -371,22 +430,33 @@
       if (hi2 === 0) g2.moveTo(hx2, hy2); else g2.lineTo(hx2, hy2);
     }
     g2.closePath();
-    g2.fillStyle = '#6a0dad';
+    // Radial body gradient (bright violet core → deep magenta-violet rim) for volume.
+    var hrg = g2.createRadialGradient(ox, oy, 0, ox, oy, r);
+    hrg.addColorStop(0, '#9b30e0');
+    hrg.addColorStop(1, '#4a007a');
+    g2.fillStyle = hrg;
     g2.fill();
 
-    g2.beginPath();
-    var ri = r * 0.55;
-    for (var hi3 = 0; hi3 < 6; hi3++) {
-      var ha3 = Math.PI / 3 * hi3 - Math.PI / 6;
-      var hx3 = ox + Math.cos(ha3) * ri;
-      var hy3 = oy + Math.sin(ha3) * ri;
-      if (hi3 === 0) g2.moveTo(hx3, hy3); else g2.lineTo(hx3, hy3);
+    // Recursive inner hex "nest" rings + a glowing core — reads as a generator/hive
+    // (this enemy's whole job is to spawn minions), not a blank polygon.
+    g2.save();
+    g2.globalCompositeOperation = 'lighter';
+    for (var nring = 0; nring < 2; nring++) {
+      var rr = r * (0.62 - nring * 0.24);
+      g2.beginPath();
+      for (var hn = 0; hn < 6; hn++) {
+        var na = Math.PI / 3 * hn - Math.PI / 6;
+        var nx = ox + Math.cos(na) * rr, ny = oy + Math.sin(na) * rr;
+        if (hn === 0) g2.moveTo(nx, ny); else g2.lineTo(nx, ny);
+      }
+      g2.closePath();
+      g2.lineWidth = 1.2;
+      g2.strokeStyle = 'rgba(200,110,255,' + (0.5 - nring * 0.16) + ')';
+      g2.stroke();
     }
-    g2.closePath();
-    g2.fillStyle = '#ffffff';
-    g2.globalAlpha = 0.25;
-    g2.fill();
-    g2.globalAlpha = 1;
+    g2.fillStyle = 'rgba(232,202,255,0.55)';
+    g2.beginPath(); g2.arc(ox, oy, r * 0.16, 0, Math.PI * 2); g2.fill();
+    g2.restore();
 
     tm.addCanvas(key, oc);
   };
@@ -514,6 +584,26 @@
     var g2 = oc.getContext('2d');
     g2.fillStyle = '#ffffff';
     g2.fillRect(0, 0, 8, 8);
+    tm.addCanvas(key, oc);
+  };
+
+  /* Soft round particle: a radial-gradient disc (bright core → transparent rim).
+     Drop-in for the flat '_pxl' square in the ADD-blend emitters, so every burst
+     reads as a glowing neon spark instead of a hard pixel. 16px keeps roughly the
+     old on-screen footprint (≈ same scale) while adding a soft glowing halo. */
+  LA.buildSparkTex = function (tm, key) {
+    if (tm.exists(key)) return;
+    var S = 16, oc = document.createElement('canvas');
+    oc.width = S; oc.height = S;
+    var g2 = oc.getContext('2d');
+    var cx = S / 2;
+    var grad = g2.createRadialGradient(cx, cx, 0, cx, cx, cx);
+    grad.addColorStop(0,    'rgba(255,255,255,1)');
+    grad.addColorStop(0.30, 'rgba(255,255,255,0.85)');
+    grad.addColorStop(0.6,  'rgba(255,255,255,0.28)');
+    grad.addColorStop(1,    'rgba(255,255,255,0)');
+    g2.fillStyle = grad;
+    g2.fillRect(0, 0, S, S);
     tm.addCanvas(key, oc);
   };
 

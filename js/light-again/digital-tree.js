@@ -271,7 +271,8 @@
         t.bitT = 0;
         var bn = t.nodes[(Math.random() * t.nodes.length) | 0];
         t.bits.push({ x: bn.tipX || t.x, y: bn.tipY || t.canopyY, vy: -18 - Math.random() * 22,
-                      vx: (Math.random() - 0.5) * 12, life: 1, size: 1 + Math.random() * 2 });
+                      vx: (Math.random() - 0.5) * 12, life: 1, size: 1 + Math.random() * 2,
+                      swayPh: Math.random() * TAU });   // phase for a gentle render-only lateral drift
       }
 
       // Harvest on contact with ANY part of the tree (trunk, limbs or canopy).
@@ -349,6 +350,22 @@
     var lenScale = grow * (1 - 0.55 * smooth(harv));
     var bodyAlpha = wither * (1 - 0.85 * smooth(harv));
 
+    // ---- Contact shadow (grounds the tree so it doesn't read as "pasted on") ----
+    // A flattened dark ellipse on the floor under the base, NORMAL-blended (ADD
+    // can't darken). It grows with the sprout (grow) and roughly matches the
+    // canopy footprint. Drawn FIRST, before any glow, so light layers over it.
+    g.setBlendMode(Phaser.BlendModes.NORMAL);
+    g.fillStyle(0x000000, 0.22 * grow * wither);
+    g.fillEllipse(t.x, t.y + 6, C.TREE_SIZE * 1.05 * grow, 16 * grow);
+    g.setBlendMode(Phaser.BlendModes.ADD);
+
+    // ---- Canopy bloom (fuses the separate fruit orbs into one luminous crown) ----
+    // A big, very faint green disc centred on last frame's canopy centroid. The
+    // one-frame lag on canopyX/Y is invisible at this opacity; harv fades it as
+    // the fruit spirals away during the harvest collapse.
+    g.fillStyle(TREE_GREEN, 0.06 * grow * wither * (1 - smooth(harv)));
+    g.fillCircle(t.canopyX, t.canopyY, C.TREE_SIZE * grow);
+
     // ---- Base rift glow (a slit of light the tree stands in) ----
     var riftPulse = 0.5 + 0.5 * Math.sin(gt * 3);
     g.fillStyle(TREE_GREEN, 0.10 * grow * wither);
@@ -411,10 +428,14 @@
     t.canopyY = leafN ? leafTipY / leafN : (t.y - C.TREE_SIZE * grow);
 
     // ---- Data-bits drifting up ----
+    // Render-only lateral curve: a sin sway around the bit's true x so motes
+    // weave upward instead of rising dead-straight (logic/position untouched).
     for (var bi = 0; bi < t.bits.length; bi++) {
       var b = t.bits[bi];
+      var bsway = Math.sin(gt * 2.4 + (b.swayPh || 0)) * 5 * (b.life < 0 ? 0 : b.life);
+      var bdx = b.x + bsway;
       g.fillStyle(TREE_FRUIT, Math.max(0, b.life) * 0.7 * wither);
-      g.fillRect(b.x - b.size / 2, b.y - b.size / 2, b.size, b.size);
+      g.fillRect(bdx - b.size / 2, b.y - b.size / 2, b.size, b.size);
     }
 
     // ---- HARVEST: a forming fairy "seed" swells at the canopy ----

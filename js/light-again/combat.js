@@ -747,7 +747,13 @@
       }
     }
 
-    this._spawnWaveRing(p.x, p.y, { maxRadius: 55, color: 0x00ffff, expandTime: 0.14 });
+    // Punchy landing: a tight white-hot ring + a wider soft ring + a spark burst,
+    // so the hard stop at the end of a dash-attack "weighs" something (it used to
+    // be a single thin 55px hoop, at odds with the dash's heavy motion-blur).
+    this._spawnWaveRing(p.x, p.y, { maxRadius: 55,  color: 0x00ffff, expandTime: 0.14 });
+    this._spawnWaveRing(p.x, p.y, { maxRadius: 104, color: 0x66ccff, expandTime: 0.24 });
+    this._explode(p.x, p.y, [120, 230, 255], 16);
+    this._explode(p.x, p.y, [255, 255, 255], 8);
 
     p.invincible = true; p.invincTimer = 250; p.dashInvinc = true;
   };

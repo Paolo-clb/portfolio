@@ -1197,6 +1197,9 @@
         var pop = sg._pop || 0;
         if (pop > 0) { pop = Math.max(0, pop - dt * 6); sg._pop = pop; }
         baseR *= 1 + pop * 0.55;
+        // Travelling "muscle" wave down the body — the worm visibly contracts as
+        // it slithers instead of being a rigid string of identical balls.
+        baseR *= 1 + 0.06 * Math.sin(gt * 5 - i * 0.6);
         var col = lerpC(BODY_OK, BODY_HURT, dmg);
         if (sg.hitFlash > 0) col = lerpC(col, 0xffffff, sg.hitFlash);
         if (pop > 0) col = lerpC(col, 0xffffff, pop * 0.8);
@@ -1210,10 +1213,19 @@
         gfx.fillCircle(sg.x, sg.y, baseR);
         gfx.lineStyle(2, 0x0b3a22, 0.85);
         gfx.strokeCircle(sg.x, sg.y, baseR);
-        // belly highlight (offset toward the inside of the curve)
-        gfx.fillStyle(0xffffff, 0.10);
-        gfx.fillCircle(sg.x - Math.cos(sg.angle) * baseR * 0.3,
-                       sg.y - Math.sin(sg.angle) * baseR * 0.3, baseR * 0.34);
+        // Fixed-light sphere shading: a bright lobe up-left + a shadow lobe
+        // down-right give each node real volume (a scale, not a flat disc).
+        gfx.fillStyle(0xffffff, 0.16);
+        gfx.fillCircle(sg.x - baseR * 0.32, sg.y - baseR * 0.32, baseR * 0.40);
+        gfx.fillStyle(0x06281a, 0.22);
+        gfx.fillCircle(sg.x + baseR * 0.30, sg.y + baseR * 0.30, baseR * 0.46);
+        // Dorsal scale ridge every other node (an "écaille" repeating down the back).
+        if (i % 2 === 0) {
+          gfx.lineStyle(1.4, 0x1a4d30, 0.5);
+          gfx.beginPath();
+          gfx.arc(sg.x, sg.y, baseR * 0.66, sg.angle - 1.2, sg.angle + 1.2);
+          gfx.strokePath();
+        }
 
         // persistent damage cracks
         for (var ck = 0; ck < sg.cracks.length; ck++) {

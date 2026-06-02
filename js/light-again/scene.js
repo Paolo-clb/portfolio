@@ -81,6 +81,16 @@
         if (cam.flashEffect && cam.flashEffect.isRunning) cam.flashEffect.reset();
       });
 
+      // Deep parallax layer: the SAME circuit, larger + darker + scrolling slower,
+      // so panning reveals layered depth instead of one flat repeating tile.
+      this.pcbDeep = this.add.tileSprite(0, 0, cam.width, cam.height, '_pcb');
+      this.pcbDeep.setOrigin(0, 0);
+      this.pcbDeep.setScrollFactor(0);
+      this.pcbDeep.setDepth(-11);
+      this.pcbDeep.setTileScale(1.7);
+      this.pcbDeep.setTint(0x21364f);
+      this.pcbDeep.setAlpha(0.55);
+
       this.pcbTile = this.add.tileSprite(0, 0, cam.width, cam.height, '_pcb');
       this.pcbTile.setOrigin(0, 0);
       this.pcbTile.setScrollFactor(0);
@@ -105,6 +115,7 @@
         self._drawVignette();
         // Background tiles cover the viewport — resize them here instead of every frame
         var rcam = self.cameras.main;
+        if (self.pcbDeep) self.pcbDeep.setSize(rcam.width, rcam.height);
         if (self.pcbTile) self.pcbTile.setSize(rcam.width, rcam.height);
         if (self.pcbGlow) self.pcbGlow.setSize(rcam.width, rcam.height);
       });
@@ -151,6 +162,11 @@
       this.playerSpr = this.add.image(0, 0, '_ar_cyan');
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
       this.playerSpr.setDepth(30);
+      // Reactive bloom on the arrow itself — _renderPlayer drives its strength +
+      // colour by state and combo. preFX is WebGL-only, so guard it.
+      if (this.playerSpr.preFX) {
+        this._playerGlow = this.playerSpr.preFX.addGlow(0x9fefff, 2, 0, false, 0.1, 10);
+      }
 
       this.TRAIL_CAP = 6;
       this.TRAIL_DIST_SQ = 9;
@@ -196,7 +212,7 @@
 
       LA.buildPixelTex(this.textures, '_pxl');
 
-      this._emitter = this.add.particles(0, 0, '_pxl', {
+      this._emitter = this.add.particles(0, 0, '_spark', {
         speed: { min: 60, max: 520 },
         lifespan: { min: 250, max: 800 },
         scale: { start: 0.9, end: 0 },
@@ -208,7 +224,7 @@
       });
       this._emitter.setDepth(40);
 
-      this._emitter2 = this.add.particles(0, 0, '_pxl', {
+      this._emitter2 = this.add.particles(0, 0, '_spark', {
         speed: { min: 20, max: 180 },
         lifespan: { min: 400, max: 1000 },
         scale: { start: 0.4, end: 0 },
@@ -271,6 +287,7 @@
       // World-space DISC border: darkened exterior, animated neon rim, and the
       // pool of wall-impact flares. (See effects.js.)
       this._buildWorldBorder();
+      this._buildAmbientMotes();   // slow drifting "data motes" so the floor lives between events
 
       this.hudGfx = this.add.graphics();
       this.hudGfx.setScrollFactor(0);
@@ -279,18 +296,21 @@
       // Top-left HUD stack: FPS, then live enemy count + survival time below it.
       this.fpsTxt = this.add.text(8, 6, '', {
         fontFamily: 'monospace', fontSize: '15px', fontStyle: 'bold', color: '#00ff88',
+        stroke: '#000814', strokeThickness: 3,
       });
       this.fpsTxt.setScrollFactor(0);
       this.fpsTxt.setDepth(101);
 
       this._enemyCountTxt = this.add.text(8, 27, '', {
         fontFamily: 'monospace', fontSize: '18px', fontStyle: 'bold', color: '#3a78a0',
+        stroke: '#000814', strokeThickness: 3,
       });
       this._enemyCountTxt.setScrollFactor(0);
       this._enemyCountTxt.setDepth(101);
 
       this._timeTxt = this.add.text(8, 53, '', {
         fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#3a78a0',
+        stroke: '#000814', strokeThickness: 3,
       });
       this._timeTxt.setScrollFactor(0);
       this._timeTxt.setDepth(101);
@@ -327,6 +347,7 @@
       this._scoreTxt.setDepth(102);
       this._scoreTxt.setBlendMode(Phaser.BlendModes.ADD);
       this._scoreTxt.setAlpha(0.95);
+      this._scoreTxt.setShadow(0, 0, '#00ffff', 12, false, true);  // neon halo (baked once)
 
       this._comboTxt = this.add.text(cam.width / 2, 48, '', {
         fontFamily: 'monospace', fontSize: '22px', fontStyle: 'bold', color: '#ffcc00',
@@ -339,7 +360,7 @@
       this._comboTxt.setAlpha(0);
 
       // Combo FX: x10+ trail emitter
-      this._comboTrailEmitter = this.add.particles(0, 0, '_pxl', {
+      this._comboTrailEmitter = this.add.particles(0, 0, '_spark', {
         speed: { min: 20, max: 80 },
         lifespan: { min: 200, max: 500 },
         scale: { start: 0.55, end: 0 },
@@ -379,7 +400,7 @@
       this._droneGfx.setBlendMode(Phaser.BlendModes.ADD);
 
       // Combo FX: x50+ sparks
-      this._comboSparkEmitter = this.add.particles(0, 0, '_pxl', {
+      this._comboSparkEmitter = this.add.particles(0, 0, '_spark', {
         speed: { min: 100, max: 320 },
         lifespan: { min: 100, max: 300 },
         scale: { start: 0.65, end: 0 },
@@ -586,6 +607,7 @@
         self._vignetteSprite = null;
         self._chromaFX = null;
         self._bloomFX = null;
+        self._playerGlow = null;   // destroyed with playerSpr; drop the stale ref
         self._shieldLabelTxt = null;
         self._twDesatPipeline = null;
         self._twBgCM   = null;
@@ -613,6 +635,7 @@
         // isn't auto-destroyed on restart — release it explicitly.
         if (self._worldDarkMaskG) { self._worldDarkMaskG.destroy(); self._worldDarkMaskG = null; }
         self._worldDark = null; self._borderGfx = null; self._wallImpacts = null;
+        self._motesGfx = null; self._motes = null;
         self._coreGfx = null;   // graphics destroyed with the scene; drop the stale ref
         self._cacheGfx = null; self._cacheTopGfx = null; self._starPtrGfx = null;
         self._cacheStarGhost = null; self._cacheStarFill = null; self._cacheStarMaskGfx = null;
@@ -1063,15 +1086,21 @@
 
       this.pcbTile.tilePositionX = cam.scrollX;
       this.pcbTile.tilePositionY = cam.scrollY;
+      if (this.pcbDeep) {   // slower scroll → parallax depth between circuit layers
+        this.pcbDeep.tilePositionX = cam.scrollX * 0.55;
+        this.pcbDeep.tilePositionY = cam.scrollY * 0.55;
+      }
 
-      // --- Glow pulse (bioluminescence) ---
+      // --- Glow pulse (bioluminescence) — also brightens with the combo so the
+      //     whole circuit "electrifies" as you chain kills. ---
       var t = this.gameTime;
-      // Floor at 0.06 so glow never fully disappears — max ~0.34
+      var glowBoost = 1 + Math.min(0.6, (this.comboMultiplier - 1) / 40);
+      // Floor at 0.06 so glow never fully disappears — max ~0.34 (×boost at high combo)
       var glowAlpha = Math.max(0.06,
         0.22 + 0.16 * Math.sin(t * 0.40) +   // main ~15.7s period
         0.06 * Math.sin(t * 1.05) +           // secondary ~6s period
         0.03 * Math.sin(t * 2.30)             // micro variation ~2.7s
-      ) * 0.72;
+      ) * 0.72 * glowBoost;
       this.pcbGlow.setAlpha(glowAlpha);
       this.pcbGlow.tilePositionX = cam.scrollX;
       this.pcbGlow.tilePositionY = cam.scrollY;
@@ -1107,6 +1136,7 @@
       this._updateCondemnedDeathRings(dt);
       this._updateHiveBeams(dt);
       this._updateWorldBorder(dt);
+      this._updateMotes(dt);
       this._updateWallImpacts(dt);
 
       this._updateComboFX(sDt);

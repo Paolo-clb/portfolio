@@ -435,6 +435,57 @@
       g.fillCircle(x, y, Rr * 0.9);
     }
 
+    // ---- "Server floor": scanlines + faint data blocks, clipped to the disc ----
+    // Reads the circle as a hack / disk-surface (not just a flat violet plate). Drawn
+    // here so it sits ABOVE the base tint but UNDER every existing element (perimeter,
+    // dashed ring, motes, gauge, glyph). Lines are clipped to the circle analytically
+    // via the chord half-width sqrt(R²-dy²) — no mask object, cheap per-line.
+    var hacking = (f.phase === 'HACK');
+    // Lines crawl DOWN; faster (and a hint brighter) while a hack is live. gameTime
+    // drives the offset so the scroll pauses with The World like the rest of the FX.
+    var scanGap   = 12;
+    var scanSpeed = hacking ? 46 : 16;                 // px/s downward drift
+    var scanA     = (hacking ? 0.055 : 0.04) * A;      // very low — ambience, never busy
+    var scanOff   = (gt * scanSpeed) % scanGap;        // wrap within one line spacing
+    // Seeded white-hot "read head" lines while hacking (disk-read flicker): pick 2-3
+    // line indices from f.seed + a slow time step so they jump around occasionally.
+    var hotStep   = hacking ? Math.floor(gt * 6) : -1; // ~6 jumps/s
+    var hotA      = 0.16 * A;
+    var topY = y - Rr, botY = y + Rr;
+    for (var ly = topY - scanOff; ly <= botY; ly += scanGap) {
+      var dyl = ly - y;
+      var inner = Rr * Rr - dyl * dyl;
+      if (inner <= 1) continue;                        // line misses / barely grazes the disc
+      var halfW = Math.sqrt(inner);
+      // Hot read-head test: a couple of pseudo-random lines per hot step go white.
+      var isHot = false;
+      if (hacking) {
+        var li = Math.round((ly - topY) / scanGap);
+        // cheap deterministic hash → fract → only ~2-3 of the ~73 lines light up
+        var h = ((li * 73.13 + f.seed + hotStep * 17.7) * 0.61803398875) % 1;
+        if (h < 0) h += 1;
+        isHot = h < 0.04;
+      }
+      if (isHot) g.fillStyle(COL_HOT, hotA);
+      else       g.fillStyle(col,     scanA);
+      g.fillRect(x - halfW, ly - 0.5, halfW * 2, isHot ? 1.5 : 1);
+    }
+
+    // Faint seeded "data blocks" — a sparse grid of small squares that rarely blink,
+    // so the floor feels like live storage. Fixed positions (seeded), no motion.
+    var nBlk = 10;
+    for (var bi = 0; bi < nBlk; bi++) {
+      // Deterministic per-block placement (golden-ratio scatter) inside the disc.
+      var ba = (bi * 2.39996323 + f.seed * 0.013) % TAU;       // ~golden-angle around
+      var bd = Rr * (0.18 + ((bi * 0.6180339887 + f.seed * 0.07) % 1) * 0.74);
+      var bX = x + Math.cos(ba) * bd, bY = y + Math.sin(ba) * bd;
+      // Rare per-block blink: a slow seeded phase crosses a small threshold.
+      var blink = (Math.sin(gt * (0.7 + (bi % 3) * 0.35) + f.seed + bi * 1.7) * 0.5 + 0.5);
+      var bA = (0.03 + 0.07 * (blink > 0.86 ? 1 : 0)) * A;     // mostly dim, occasionally pops
+      g.fillStyle(col, bA);
+      g.fillRect(bX - 5, bY - 5, 10, 10);
+    }
+
     // ---- Glitched perimeter (chromatic aberration: red + cyan offset ghosts) ----
     var ox = f.glitchOx, oy = f.glitchOy;
     g.lineStyle(2.5, COL_RB, 0.5 * A); g.strokeCircle(x + ox, y + oy, Rr);

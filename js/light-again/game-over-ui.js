@@ -111,7 +111,7 @@
     var row1 =
       '<div style="margin-bottom:.9rem;display:flex;flex-direction:column;align-items:center;gap:.1rem">' +
         '<span style="' + sLbl + ';font-size:calc(.6rem * var(--la-ui-scale))">' + t('laGoScore') + '</span>' +
-        '<span style="font-size:calc(2.4rem * var(--la-ui-scale));font-weight:800;line-height:1;color:#00ffff;text-shadow:0 0 16px #00ffff66">' + playerScore + '</span>' +
+        '<span id="_la-go-score-val" style="font-size:calc(2.4rem * var(--la-ui-scale));font-weight:800;line-height:1;color:#00ffff;text-shadow:0 0 16px #00ffff66;display:inline-block">0</span>' +
       '</div>';
 
     // Row 2: the rest of this run's stats (combo + kills), clearly grouped under
@@ -265,6 +265,26 @@
     container.style.position = 'relative';
     container.dataset.laGameover = '1';
     container.appendChild(overlay);
+
+    // Animate the headline score: count 0 → final (ease-out) then a small pop, so
+    // the most important number on the screen finally has the juice the records do.
+    (function () {
+      var el = document.getElementById('_la-go-score-val');
+      if (!el || !playerScore) { if (el) el.textContent = playerScore; return; }
+      var dur = 620, t0 = null;
+      function step(ts) {
+        if (!document.getElementById('_la-go-overlay')) return;   // bail if dismissed
+        if (t0 === null) t0 = ts;
+        var k = Math.min(1, (ts - t0) / dur);
+        el.textContent = Math.round(playerScore * (1 - Math.pow(1 - k, 3)));
+        if (k < 1) requestAnimationFrame(step);
+        else { el.textContent = playerScore; el.style.animation = 'la-go-rec-pop .4s cubic-bezier(0.34,1.56,0.64,1)'; }
+      }
+      requestAnimationFrame(step);
+    })();
+    // A new personal-best score turns the panel's pulsing glow GREEN (success) —
+    // celebrates a record run differently from an ordinary one.
+    if (isNewScore) panel.style.setProperty('--la-accent-glow', 'rgba(0,255,136,0.5)');
 
     // Default keyboard focus on the "replay hardcore" choice (submit form will steal
     // focus to the name input later if the score qualifies for the leaderboard)

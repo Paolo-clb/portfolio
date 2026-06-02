@@ -318,9 +318,10 @@
       var coreCol = diving ? 0xffaa33 : 0x66e0ff;
       var glowCol = diving ? 0xff7722 : 0x33ccff;
 
-      // Glow
-      gfx.fillStyle(glowCol, 0.22);
-      gfx.fillCircle(d.x, d.y, sz * 1.8);
+      // Layered glow — fades out softly instead of a hard flat disc.
+      gfx.fillStyle(glowCol, 0.06); gfx.fillCircle(d.x, d.y, sz * 2.4);
+      gfx.fillStyle(glowCol, 0.12); gfx.fillCircle(d.x, d.y, sz * 1.7);
+      gfx.fillStyle(glowCol, 0.20); gfx.fillCircle(d.x, d.y, sz * 1.1);
 
       // Spinning diamond body
       var c = Math.cos(d.spin), s = Math.sin(d.spin);
@@ -334,17 +335,38 @@
       }
       gfx.closePath(); gfx.fillPath();
 
-      // White-hot center
-      gfx.fillStyle(0xffffff, 0.9);
-      gfx.fillCircle(d.x, d.y, sz * 0.32);
+      // Inner facet — a lit half-scale diamond for a sense of material/bevel.
+      gfx.fillStyle(0xffffff, 0.30);
+      gfx.beginPath();
+      for (var v2 = 0; v2 < verts.length; v2++) {
+        var fx = (verts[v2][0] * 0.5) * c - (verts[v2][1] * 0.5) * s;
+        var fy = (verts[v2][0] * 0.5) * s + (verts[v2][1] * 0.5) * c;
+        if (v2 === 0) gfx.moveTo(d.x + fx, d.y + fy);
+        else          gfx.lineTo(d.x + fx, d.y + fy);
+      }
+      gfx.closePath(); gfx.fillPath();
 
-      // Diving: short exhaust streak behind the warhead
+      // White-hot center (pulses with spin)
+      var corePulse = 0.7 + 0.3 * Math.abs(Math.sin(d.spin * 2));
+      gfx.fillStyle(0xffffff, 0.9);
+      gfx.fillCircle(d.x, d.y, sz * (0.26 + 0.10 * corePulse));
+
+      // Diving: a conical propulsion flame (hot core → orange tongues) + sparks.
       if (diving) {
         var vmag = Math.sqrt(d.vx * d.vx + d.vy * d.vy) || 1;
-        var tx = d.x - (d.vx / vmag) * sz * 1.7;
-        var ty = d.y - (d.vy / vmag) * sz * 1.7;
-        gfx.lineStyle(2, 0xffcc66, 0.7);
-        gfx.beginPath(); gfx.moveTo(d.x, d.y); gfx.lineTo(tx, ty); gfx.strokePath();
+        var bx = -(d.vx / vmag), by = -(d.vy / vmag);     // backward unit
+        var perpx = -by, perpy = bx;
+        for (var fl = 0; fl < 3; fl++) {
+          var len = sz * (1.3 + fl * 0.85);
+          var wob = (fl % 2 === 0 ? 1 : -1) * sz * 0.16 * (fl + 1);
+          var ex = d.x + bx * len + perpx * wob, ey = d.y + by * len + perpy * wob;
+          gfx.lineStyle(3 - fl, fl === 0 ? 0xfff0c0 : 0xff8822, 0.7 - fl * 0.2);
+          gfx.beginPath(); gfx.moveTo(d.x, d.y); gfx.lineTo(ex, ey); gfx.strokePath();
+        }
+        if (this._emitter2 && Math.random() < 0.5) {
+          this._emitter2.setParticleTint(0xffaa33);
+          this._emitter2.explode(1, d.x + bx * sz * 1.5, d.y + by * sz * 1.5);
+        }
       }
     }
   };

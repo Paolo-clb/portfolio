@@ -203,7 +203,8 @@
 
       var a;
       if (t < expT) {
-        ring.r = ring.maxRadius * (t / expT);
+        var u = t / expT;
+        ring.r = ring.maxRadius * (1 - (1 - u) * (1 - u) * (1 - u));  // easeOutCubic → snappy burst then settle
         a = 1.0;
       } else {
         ring.r = ring.maxRadius;
@@ -217,6 +218,12 @@
       var col   = ring.color || 0x00ffff;
 
       ring.gfx.clear();
+      // Pressure wash: a faint filled disc under big rings while expanding, so the
+      // shock reads as a front of force, not a hollow wire hoop.
+      if (ring.maxRadius > 70 && t < expT) {
+        ring.gfx.fillStyle(col, a * 0.07 * (1.0 - t / expT));
+        ring.gfx.fillCircle(ring.x, ring.y, ring.r);
+      }
       // Wide outer glow
       ring.gfx.lineStyle(lw * 2.8, col, a * 0.18);
       ring.gfx.strokeCircle(ring.x, ring.y, ring.r * 1.08);
@@ -520,6 +527,20 @@
     gfx.lineStyle(2.5, DASH_COL, 0.50 + 0.25 * Math.sin(gt * Math.PI * 7));
     gfx.strokeCircle(p.x, p.y, C.SIZE * 1.8);
 
+    // Convergent intake streaks sweeping R → inner (visualises the pull itself,
+    // which the old flat field never showed).
+    var nStreak = 12;
+    for (var vsi = 0; vsi < nStreak; vsi++) {
+      var vang  = (vsi / nStreak) * Math.PI * 2 + gt * 0.6;
+      var sweep = ((gt * 1.5 + vsi / nStreak) % 1.0);     // 0 outer → 1 inner
+      var r1 = R * (1 - sweep * 0.62), r0 = r1 + R * 0.16;
+      gfx.lineStyle(2, DASH_COL, 0.12 + 0.5 * (1 - sweep));
+      gfx.beginPath();
+      gfx.moveTo(p.x + Math.cos(vang) * r0, p.y + Math.sin(vang) * r0);
+      gfx.lineTo(p.x + Math.cos(vang) * r1, p.y + Math.sin(vang) * r1);
+      gfx.strokePath();
+    }
+
     /* ------------------------------------------------------------------
        Deflection tether: beam from player to projectiles reflected during
        THIS dash-attack only. No distance cap during TW (just reflected
@@ -637,9 +658,12 @@
       var gfx = tor.gfx;
       gfx.clear();
 
-      // Faint fill
-      gfx.fillStyle(DEEP_BLUE, 0.06 * alpha);
-      gfx.fillCircle(tor.x, tor.y, R);
+      // Faux-3D well: stacked discs darkening toward the centre → a funnel mouth
+      // instead of one flat tint.
+      for (var wi = 0; wi < 4; wi++) {
+        gfx.fillStyle(wi < 2 ? DEEP_BLUE : MID_VIOLET, (0.045 + wi * 0.045) * alpha);
+        gfx.fillCircle(tor.x, tor.y, R * (1 - wi * 0.22));
+      }
 
       // Outer boundary ring
       gfx.lineStyle(1.5, DEEP_BLUE, 0.22 * alpha);
@@ -671,6 +695,20 @@
         gfx.lineStyle(2.5, CORE_VIO, 0.65 * alpha);
         gfx.beginPath();
         gfx.arc(tor.x, tor.y, R * 0.35, c0, c0 + 0.50);
+        gfx.strokePath();
+      }
+
+      // Spiral intake arms (log spiral) — the visible "suck" toward the eye.
+      for (var spi = 0; spi < 3; spi++) {
+        var arm = tor.rot * 1.2 + (Math.PI * 2 / 3) * spi;
+        gfx.lineStyle(2, CORE_VIO, 0.5 * alpha);
+        gfx.beginPath();
+        var sFirst = true;
+        for (var sr = R * 0.14; sr <= R; sr += R * 0.12) {
+          var sang = arm + (sr / R) * 3.0;   // angle grows with radius → spiral
+          var spx = tor.x + Math.cos(sang) * sr, spy = tor.y + Math.sin(sang) * sr;
+          if (sFirst) { gfx.moveTo(spx, spy); sFirst = false; } else gfx.lineTo(spx, spy);
+        }
         gfx.strokePath();
       }
 
@@ -728,6 +766,49 @@
      The arena is a DISC of radius C.WORLD_HALF (see LA.clampDisc).
      ========================================================================== */
 
+  /* Ambient "data motes": a small pool of slow-drifting neon specks so the floor
+     breathes between events. Drawn in world space (one shared ADD graphics) and
+     toroidally wrapped within the camera view, confined to the arena disc. They
+     speed up + brighten with the combo (the arena "electrifies"). */
+  M._buildAmbientMotes = function () {
+    this._motesGfx = this.add.graphics();
+    this._motesGfx.setDepth(-8.5);
+    this._motesGfx.setBlendMode(Phaser.BlendModes.ADD);
+    this._motes = [];
+    for (var i = 0; i < 30; i++) {
+      this._motes.push({
+        x: (Math.random() - 0.5) * 1500,
+        y: (Math.random() - 0.5) * 1000,
+        r: 0.8 + Math.random() * 1.6,
+        spd: 8 + Math.random() * 22,
+        sway: Math.random() * Math.PI * 2,
+        seed: Math.random() * Math.PI * 2,
+      });
+    }
+  };
+
+  M._updateMotes = function (dt) {
+    var g = this._motesGfx;
+    if (!g || !this._motes) return;
+    var cam = this.cameras.main;
+    var vL = cam.scrollX, vT = cam.scrollY, vW = cam.width, vH = cam.height, mg = 40;
+    var col = LA.getColors().pcbVia || 0x66ccff;
+    var boost = 1 + Math.min(0.8, (this.comboMultiplier - 1) / 30);
+    g.clear();
+    for (var i = 0; i < this._motes.length; i++) {
+      var p = this._motes[i];
+      p.y -= p.spd * dt * boost;
+      p.sway += dt * 0.6;
+      p.x += Math.sin(p.sway) * 0.4;
+      if (p.y < vT - mg) { p.y = vT + vH + mg; p.x = vL + Math.random() * vW; }
+      if (p.x < vL - mg) p.x = vL + vW + mg; else if (p.x > vL + vW + mg) p.x = vL - mg;
+      if (!LA.inDisc(p.x, p.y, 0)) continue;   // never paint past the arena rim
+      var a = (0.12 + 0.18 * (0.5 + 0.5 * Math.sin(this.gameTime * 1.4 + p.seed))) * boost;
+      g.fillStyle(col, Math.min(0.5, a));
+      g.fillCircle(p.x, p.y, p.r);
+    }
+  };
+
   M._buildWorldBorder = function () {
     var R = C.WORLD_HALF;
 
@@ -775,7 +856,7 @@
     var R   = C.WORLD_HALF;
     var TAU = Math.PI * 2;
     var t   = this.gameTime || 0;
-    var col = 0x00ffff;
+    var col = LA.getColors().cyan || 0x00ffff;   // theme-aware rim (matches the PCB palette)
     var pulse = 0.5 + 0.5 * Math.sin(t * 1.7);
 
     g.clear();
