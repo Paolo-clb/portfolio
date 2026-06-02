@@ -223,7 +223,7 @@
       var PROJ_TRAIL_PER = 12;
       this._PROJ_TRAIL_PER = PROJ_TRAIL_PER;
       this._projTrailPool = [];
-      for (var pti = 0; pti < C.MAX_PROJECTILES * PROJ_TRAIL_PER; pti++) {
+      for (var pti = 0; pti < C.MAX_PROJECTILES * (PROJ_TRAIL_PER + 2); pti++) {
         var pts = this.add.image(0, 0, '_proj');
         pts.setBlendMode(Phaser.BlendModes.ADD);
         pts.setDepth(21);
@@ -310,6 +310,13 @@
       this._batchActive = false;
       this._delayExpBuf = null;     // grouped "Delayed Explosion ×N" popup bucket
       this._delayExpFxTimes = null; // sliding window throttling detonation screen FX
+      // These float-score / parade buckets are lazily (re)created in combat.js, but
+      // scene.restart() reuses this instance: stale arrays would hold Text refs that
+      // Phaser already destroyed on shutdown (truthy → treated as live slots →
+      // bogus evictions + destroy() on dead objects). Reset them with the run.
+      this._bigScoreSlots = null;   // float "+score LABEL!" popup slots
+      this._paradeBufs    = null;   // per-dash-attack PARADE accumulation buckets
+      this._paradePending = null;   // per-dash-attack in-flight reflected-shot counts
 
       this._scoreTxt = this.add.text(cam.width / 2, 16, '0', {
         fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold', color: '#00ffff',
@@ -536,8 +543,11 @@
         if (p.state === 'RECOVERY') return false;
         return true;
       };
-      // Clear stuck keys on scene resume (upgrade draft / manual pause)
-      this.events.on('resume', function () {
+      // Clear stuck keys on scene resume (upgrade draft / manual pause).
+      // this.events survives scene.restart() (see the 'pause' twin above), so keep
+      // a ref and tear it down on shutdown — otherwise a fresh handler stacks every
+      // restart (unbounded growth + N redundant self._keys={} per resume).
+      this.events.on('resume', self._onSceneResume = function () {
         self._keys = {};
       });
 
@@ -640,6 +650,10 @@
         if (self._onScenePause) {
           self.events.off('pause', self._onScenePause);
           self._onScenePause = null;
+        }
+        if (self._onSceneResume) {
+          self.events.off('resume', self._onSceneResume);
+          self._onSceneResume = null;
         }
         if (self._onCanvasCtxMenu && self.game && self.game.canvas) {
           self.game.canvas.removeEventListener('contextmenu', self._onCanvasCtxMenu);

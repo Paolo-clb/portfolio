@@ -168,17 +168,30 @@
     if (!this.p || this.p.state === 'DEAD') return;
 
     var inset = C.TREE_SIZE * 2;
-    // Random spot far from the player AND clear of a live Curse Fountain so the
-    // two map events never crowd each other (re-roll a few times, then accept).
-    var avoid = this._fount, sep2 = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
-    var x, y, tries = 0;
+    // Random spot far from the player AND clear of a live Curse Fountain AND a live
+    // Cache Zone (the cache enrages enemies inside — an overlapping tree reads
+    // wrong; _spawnCacheZone already avoids the tree in the other direction). The
+    // cache uses a radius-sum separation; both may be absent → guarded. Re-roll a
+    // few times, then accept. Mirrors _spawnCurseFount's avoid-list pattern.
+    var sep2 = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
+    var cacheSep = Math.max(C.MAP_FEATURE_MIN_SEP, C.TREE_SIZE + (C.CACHE_ZONE_R || 0));
+    var avoid = [
+      [this._fount, sep2],
+      [this._cache, cacheSep * cacheSep],
+    ];
+    var x, y, tries = 0, ok;
     do {
       var ang  = Math.random() * TAU;
       var dist = C.TREE_SPAWN_DIST_MIN + Math.random() * (C.TREE_SPAWN_DIST_MAX - C.TREE_SPAWN_DIST_MIN);
       var dtc = LA.clampDisc(this.p.x + Math.cos(ang) * dist, this.p.y + Math.sin(ang) * dist, inset);
       x = dtc.x; y = dtc.y;
+      ok = true;
+      for (var ai = 0; ai < avoid.length; ai++) {
+        var av = avoid[ai][0];
+        if (av && (x - av.x) * (x - av.x) + (y - av.y) * (y - av.y) < avoid[ai][1]) { ok = false; break; }
+      }
       tries++;
-    } while (avoid && tries < 20 && (x - avoid.x) * (x - avoid.x) + (y - avoid.y) * (y - avoid.y) < sep2);
+    } while (!ok && tries < 20);
 
     var nodes = _genBranches();
     // Seed every tip at the base so _treeTouched (which runs before the first
@@ -677,7 +690,7 @@
     f.rev = 'REACT'; f.revT = 0;
     f.revFromX = f.x; f.revFromY = f.y;
 
-    this._triggerHitstop(240);     // mini "temps d'arrêt"
+    this._triggerHitstop(120);     // mini "temps d'arrêt" (_triggerHitstop caps at DETONATION_HITSTOP=120 anyway)
     return true;
   };
 

@@ -39,9 +39,9 @@
   var BODY_COL  = 0xff3aa0;   // hot-magenta rival (distinct from the cyan player)
   var ORB_COL   = 0xb060ff;   // violet shield orbs
   var VULN_COL  = 0xffe040;   // amber while recovering / open
-  var TW_GHOST_COL = 0x635d6a; // The World: drained violet-GREY (grayed like the frozen enemies, keeps a hint of the rival's violet)
-                               // time-stop hue (matches its burst rings), distinct from the
-                               // player's GOLD World tint and from the AMBER vulnerable look.
+  // (No "drained grey" World tint: the rival is NOT frozen by The World — it keeps
+  //  dueling on player time — so greying it read as a lie. It keeps its violet
+  //  identity during TW; only a subtle translucency pulse marks the time-stop.)
 
   // Colour gradient used by the dash-attack body/trail and the nova shards.
   var GRAD = [0xff3aa0, 0xc24bff, 0x7a6bff, 0x46b6ff, 0x66ffe0];
@@ -244,6 +244,12 @@
     this._updateMirrorShots(mir, p, pMs);
 
     // --- Decoy gambit takes over the whole duel until the last shield breaks ---
+    // NB: during the gambit the rival + decoys run on PLAYER time and are never
+    // frozen by The World — so we deliberately skip the FREEZE/twBurst riposte
+    // below (there's nothing to "freeze and release"). We only refresh twWas so
+    // the World edge reads correctly once the gambit ends. (Known cosmetic caveat:
+    // _renderMirror still greys gambit entities during TW even though they keep
+    // acting — a future polish could skip the grey tint while in gambit.)
     if (mir.gambit) {
       mir.twWas = !!this._twActive;     // keep the World edge fresh for when it ends
       this._mirrorUpdateGambit(mir, p, sc60, pMs, dt);
@@ -1257,7 +1263,7 @@
         if (!gh.active) continue;
         gh.alpha -= dt * 3.2;
         if (gh.alpha <= 0) { gh.active = false; gh.spr.setVisible(false); }
-        else { gh.spr.setAlpha(gh.alpha * 0.5); if (this._twActive) gh.spr.setTint(TW_GHOST_COL); }
+        else { gh.spr.setAlpha(gh.alpha * 0.5); }
       }
       var dashing  = dispersing || d.aPhase === 'DASH';
       var charging = d.aPhase === 'TELE';
@@ -1266,13 +1272,11 @@
       else if (charging) { col = (Math.sin(gt * Math.PI * 8) > 0) ? 0xffffff : BODY_COL; rot = d.lockAng; }
       else if (recover)  { col = (Math.sin(gt * Math.PI * 12) > 0) ? VULN_COL : 0xff8a3a;
                            sx = sy = BASE_SCL * (0.92 + 0.06 * Math.sin(gt * 22)); }
-      // The World: same violet phantom as the real rival (kept a touch more
-      // translucent so the "real one is more opaque" tell still holds). The
-      // amber RECOVER look is preserved so decoys mirror the real one's
-      // punish-window tell instead of all flattening to one colour.
+      // The World: decoys aren't frozen by it (they keep dueling on player time),
+      // so they KEEP their normal rival colours — only a subtle translucency pulse
+      // marks the time-stop. No grey "drained" tint (it read as falsely frozen).
       if (this._twActive) {
         a = (0.60 + 0.20 * Math.sin(gt * Math.PI * 3)) * (DECOY_ALPHA / 0.95);
-        if (!recover) col = TW_GHOST_COL;
       }
       d._rotA = rot; d._sclX = sx; d._sclY = sy;
       d.spr.setPosition(d.x, d.y); d.spr.setRotation(rot); d.spr.setScale(sx, sy);
@@ -1389,7 +1393,7 @@
       if (!gh.active) continue;
       gh.alpha -= dt * 3.2;
       if (gh.alpha <= 0) { gh.active = false; gh.spr.setVisible(false); }
-      else { gh.spr.setAlpha(gh.alpha * 0.6); if (this._twActive) gh.spr.setTint(TW_GHOST_COL); }
+      else { gh.spr.setAlpha(gh.alpha * 0.6); }
     }
 
     var vuln     = mir.vulnerable && mir.state === 'RECOVER';
@@ -1420,13 +1424,11 @@
     if (mir.hitT > 0 && !dashing) { bodyCol = lerpCol(bodyCol, 0xffffff, Math.min(1, mir.hitT)); alpha = 1.0; }
     if (dodging) alpha = 0.45;   // blur-out while evading
 
-    // The World: violet phantom look while time is stopped (its own time-stop
-    // hue). Covers both the freeze-wait and its own time-stop burst. The
-    // vulnerable RECOVER look is preserved (amber + dizzy stars) so the punish
-    // window stays clearly distinct from the dodge-ready phantom states.
+    // The World: the rival isn't really stopped by it (it keeps acting on player
+    // time / fires its own time-stop burst), so it KEEPS its normal violet colours
+    // — only a subtle translucency pulse marks the time-stop. No grey "drained" tint.
     if (this._twActive) {
       alpha = 0.60 + 0.20 * Math.sin(gt * Math.PI * 3);
-      if (!vuln) bodyCol = TW_GHOST_COL;
     }
 
     // Smooth recoil "pop": the arrow snaps bigger on the blow then eases back as

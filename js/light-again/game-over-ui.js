@@ -454,6 +454,11 @@
 
     // Fetch leaderboard
     LA.llGetTop(10, function (err, items) {
+      // If the player left the game-over screen (Replay/Home destroys the overlay)
+      // before this fetch resolved, bail: mutating the detached DOM is pointless and
+      // the closure would otherwise pin the old scene until resolution. Mirrors the
+      // guards in pollLeaderboardAfterSubmit.
+      if (!document.getElementById('_la-go-overlay')) return;
       if (err || !items) {
         setLbBodyHtml('<span style="font-size:calc(.65rem * var(--la-ui-scale));color:#775555">' + t('laGoError') + '</span>');
         return;

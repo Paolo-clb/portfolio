@@ -315,6 +315,7 @@
     if (this.enemies) {
       for (i = this.enemies.length - 1; i >= 0; i--) {
         var e = this.enemies[i];
+        e._dead = true;   // keep the removal invariant (homing projectiles test _dead)
         if (e.spr) e.spr.destroy();
         if (e.trSpr) for (t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
         if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
@@ -536,7 +537,7 @@
         quest: fr ? 'Ramasse l’étoile et pulvérise 3 ennemis' : 'Grab the star and smash 3 enemies',
         keys:  fr ? ['Clic gauche  (survolté)'] : ['Left click  (overdriven)'],
         desc:  fr
-          ? 'Au contract de l’<span class="c-star">étoile bonus</span> : ton attaque devient un <span class="c-datk">dash-attaque spammable</span>. Fonce dans le tas !'
+          ? 'Au contact de l’<span class="c-star">étoile bonus</span> : ton attaque devient un <span class="c-datk">dash-attaque spammable</span>. Fonce dans le tas !'
           : 'The <span class="c-star">bonus star</span> overdrives you : your attack becomes a <span class="c-datk">spammable dash-attack</span>. Go wild!',
         setup: function () {
           self._tutSpawnRing(1, 8, 300);

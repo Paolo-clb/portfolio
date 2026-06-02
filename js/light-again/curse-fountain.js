@@ -218,9 +218,15 @@
     if (this._cache) {
       var ddx = x - this._cache.x, ddy = y - this._cache.y, dd2 = ddx * ddx + ddy * ddy;
       if (dd2 < cacheSep * cacheSep) {
-        var dd = Math.sqrt(dd2) || 1;
-        x = Math.max(-m, Math.min(m, this._cache.x + (ddx / dd) * cacheSep));
-        y = Math.max(-m, Math.min(m, this._cache.y + (ddy / dd) * cacheSep));
+        var dd = Math.sqrt(dd2);
+        if (dd < 0.0001) {            // accepted spot sits dead-centre on the cache — push any radial
+          var rda = Math.random() * TAU;
+          ddx = Math.cos(rda); ddy = Math.sin(rda); dd = 1;
+        }
+        // The world is a DISC: clamp the pushed-out point back in-bounds with the
+        // same inset as the spawn (a square [-m,m] clamp would leak past the rim).
+        var pc = LA.clampDisc(this._cache.x + (ddx / dd) * cacheSep, this._cache.y + (ddy / dd) * cacheSep, inset);
+        x = pc.x; y = pc.y;
       }
     }
 
@@ -350,6 +356,7 @@
         e.spr.destroy();
         for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
         if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
+        e._dead = true;   // keep the removal invariant (homing projectiles test _dead)
         this.enemies.splice(i, 1);
       }
     }

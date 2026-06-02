@@ -224,11 +224,10 @@
     /* ---- The World (secret upgrade) ---- */
     TW_DURATION:           4000,
     TW_COOLDOWN:           30000,
-    TW_SECRET_KILL_DELAY:  500,
 
     /* ---- The Anomaly (rare "glitch" mini-boss / quarantine event) ----
        An unstable RGB-split entity that wanders the arena, then slams a
-       circular "firewall" around the player, vacuums nearby enemies inside,
+       circular "firewall" around the player, vacuums the WHOLE board inside,
        halts natural spawns, and fires telegraphed lasers. Invulnerable
        (static shield) until every trapped enemy is dead; then it panics and
        can be killed, dropping a free upgrade. Shared by both game modes. */
@@ -237,7 +236,7 @@
     ANO_BARRIER_RADIUS:  520,    // base quarantine zone radius (px), at ANO_MIN_TRAPPED
     ANO_BARRIER_PER_ENEMY: 6,    // +radius per trapped enemy beyond the minimum (small)
     ANO_BARRIER_MAX:     1000,    // hard cap on the quarantine radius (px) — kept tight
-    ANO_VACUUM_RADIUS:   1100,   // enemies within this get sucked inside on slam
+    ANO_VACUUM_RADIUS:   1100,   // ONLY sizes the barrier-radius floor (counts enemies within this); the slam sweeps the WHOLE board, not just this radius
     ANO_MIN_TRAPPED:     9,      // floor of trapped sub-fifres (boss spawns extras)
     ANO_LASER_CD:        2400,   // ms between laser volleys (while shielded)
     ANO_LASER_WARN:      520,    // telegraph duration — harmless thin line (ms)

@@ -63,7 +63,10 @@
         var torR   = tor.r || C.DASH_TORNADO_RADIUS;
         var torRSq = torR * torR;
         var insideMarked = false;
-        var inside = markSpread ? [] : null;
+        // Reuse one scratch array (reset via length=0) instead of allocating per
+        // tornado per frame — keeps GC quiet in this hot loop, like the rest of the file.
+        var inside = null;
+        if (markSpread) { inside = this._tornadoInside || (this._tornadoInside = []); inside.length = 0; }
         for (var ei = 0; ei < en.length; ei++) {
           var te = en[ei];
           var tdx = tor.x - te.x, tdy = tor.y - te.y;
@@ -146,12 +149,16 @@
           e.chargeTimer -= ms;
           if (e.chargeTimer <= 0) {
             var fAng = Math.atan2(p.y - e.y, p.x - e.x);
-            this._spawnProjectile(e.x, e.y, fAng, C.PROJ_SPEED, e);
-            e.vx -= Math.cos(fAng) * C.T2_RECOIL;
-            e.vy -= Math.sin(fAng) * C.T2_RECOIL;
-            e.isCharging = false;
-            e.fireFlashTimer = 180;
-            e.fireCD = C.T2_FIRE_CD * (0.8 + Math.random() * 0.4);
+            // Only commit the shot's feedback (recoil/flash/CD reset) if a
+            // projectile actually spawned — at a saturated pool the shooter would
+            // otherwise recoil + flash without firing (a misleading "phantom shot").
+            if (this._spawnProjectile(e.x, e.y, fAng, C.PROJ_SPEED, e)) {
+              e.vx -= Math.cos(fAng) * C.T2_RECOIL;
+              e.vy -= Math.sin(fAng) * C.T2_RECOIL;
+              e.isCharging = false;
+              e.fireFlashTimer = 180;
+              e.fireCD = C.T2_FIRE_CD * (0.8 + Math.random() * 0.4);
+            }
           }
         }
       } else if (e.tier === 3) {
@@ -225,14 +232,18 @@
               return { x: bx2 + (dx / d) * lim, y: by2 + (dy / d) * lim };
             };
             if (e.spawnCycle % 3 === 0) {
-              var sx2 = e.x + (Math.random() - 0.5) * 40;
-              var sy2 = e.y + (Math.random() - 0.5) * 40;
-              var cp = clampHive(sx2, sy2); sx2 = cp.x; sy2 = cp.y;
-              this._spawnShooterAt(sx2, sy2);
-              hiveDid = true;
-              this._hiveSpawnBeam(e.x, e.y, sx2, sy2);
-              this._explode(sx2, sy2, [187, 0, 255], 14);
-              this._explode(sx2, sy2, [255, 150, 255], 7);
+              // Mirror the rushers' per-spawn cap check below: hiveSlots>0 already
+              // guarantees room for this single shooter, but stay consistent/safe.
+              if (this.enemies.length < C.MAX_ENEMIES) {
+                var sx2 = e.x + (Math.random() - 0.5) * 40;
+                var sy2 = e.y + (Math.random() - 0.5) * 40;
+                var cp = clampHive(sx2, sy2); sx2 = cp.x; sy2 = cp.y;
+                this._spawnShooterAt(sx2, sy2);
+                hiveDid = true;
+                this._hiveSpawnBeam(e.x, e.y, sx2, sy2);
+                this._explode(sx2, sy2, [187, 0, 255], 14);
+                this._explode(sx2, sy2, [255, 150, 255], 7);
+              }
             } else {
               for (var sw = 0; sw < 3; sw++) {
                 if (this.enemies.length >= C.MAX_ENEMIES) break;

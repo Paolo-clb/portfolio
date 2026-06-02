@@ -45,7 +45,7 @@
     mirror: {
       col: '#ff8ad0', glyph: '◆',
       nameFr: 'Le Miroir',           nameEn: 'The Mirror',
-      descFr: "Il <b>esquive</b> presque tout. Il n'est vulnérable qu'à la <b class='c-key'>fin de son propre dash</b> (surtout s'il rate : longue récupération). Provoque son attaque, esquive, puis punis. Tu peux aussi <b>parer ses projectilesA</b> en dash-attaque.",
+      descFr: "Il <b>esquive</b> presque tout. Il n'est vulnérable qu'à la <b class='c-key'>fin de son propre dash</b> (surtout s'il rate : longue récupération). Provoque son attaque, esquive, puis punis. Tu peux aussi <b>parer ses projectiles</b> en dash-attaque.",
       descEn: "It <b>dodges</b> almost everything. It's only open at the <b class='c-key'>end of its own dash</b> (especially on a whiff: long recovery). Bait its attack, dodge, then punish. You can also <b>parry its shards</b> with a dash-attack.",
     },
     snake: {

@@ -8,13 +8,6 @@
 
   /* ---- Hardcore unlock progress ---- */
 
-  LA.laGetUnlockProgress = function () {
-    try {
-      var p = JSON.parse(localStorage.getItem('la_kill_progress') || '{}');
-      return { t1: p.t1 || 0, t2: p.t2 || 0, t3: p.t3 || 0 };
-    } catch (e) { return { t1: 0, t2: 0, t3: 0 }; }
-  };
-
   LA.laIsHardcoreUnlocked = function () {
     // Hardcore mode + the "I am Steve" skin unlock ONLY by FINISHING the tutorial.
     return LA.laIsTutorialDone();
@@ -43,16 +36,6 @@
 
   LA.laSetTutorialProgress = function (n) {
     try { localStorage.setItem('la_tutorial_progress', String(Math.max(0, n | 0))); } catch (e) { /* ignore */ }
-  };
-
-  LA.laAddKillProgress = function (tier) {
-    try {
-      var p = JSON.parse(localStorage.getItem('la_kill_progress') || '{}');
-      if (tier === 1) p.t1 = (p.t1 || 0) + 1;
-      else if (tier === 2) p.t2 = (p.t2 || 0) + 1;
-      else if (tier === 3) p.t3 = (p.t3 || 0) + 1;
-      localStorage.setItem('la_kill_progress', JSON.stringify(p));
-    } catch (e) { /* ignore */ }
   };
 
   /* ---- HTML escaping ---- */

@@ -324,18 +324,18 @@
          distance the core travels — used for the bounce-to-next redirect).
        • otherwise → the one scoring near + forward-of-(opts.dirX,opts.dirY) best
          (used at launch and mid-flight re-acquisition).
-     opts.exclude skips the bruiser just struck. Returns null if none qualify. */
+     opts.excludeList hard-skips already-struck bruisers. Returns null if none qualify. */
   M._corePickTarget = function (c, opts) {
     var enemies = this.enemies;
     var mg = opts.margin || 0;
     var view = this.cameras.main.worldView;
     var vL = view.x - mg, vR = view.right + mg, vT = view.y - mg, vB = view.bottom + mg;
-    var ff = opts.farFrom || null, exclude = opts.exclude || null, exList = opts.excludeList || null;
+    var ff = opts.farFrom || null, exList = opts.excludeList || null;
     var dirX = opts.dirX || 0, dirY = opts.dirY || 0;
     var best = null, bestScore = ff ? -Infinity : Infinity;
     for (var i = 0; i < enemies.length; i++) {
       var e = enemies[i];
-      if (e.tier !== 3 || e === exclude) continue;
+      if (e.tier !== 3) continue;
       if (exList && exList.indexOf(e) >= 0) continue;               // hard-skip already-struck bruisers
       if (e._spawnAnimT != null && e._spawnAnimT < 1) continue;
       if (e.x < vL || e.x > vR || e.y < vT || e.y > vB) continue;   // outside the (margin-expanded) view

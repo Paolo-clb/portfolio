@@ -31,6 +31,29 @@
     this.timeScale = 0;
   };
 
+  /* Push every non-T3 enemy within `radius` of (cx,cy) outward, with linear
+     falloff + a proportional stun. Shared by the per-kill knockback (_killEnemy)
+     and the SINGLE central blast fired once by a detonation / delayed explosion
+     (instead of one O(n) repulsion pass per killed enemy → O(kills×enemies)). */
+  M._applyShockwave = function (cx, cy, radius, force, stun) {
+    var rSq = radius * radius;
+    for (var k = 0; k < this.enemies.length; k++) {
+      var o = this.enemies[k];
+      if (o.tier === 3) continue;
+      var sdx = o.x - cx, sdy = o.y - cy;
+      var sdSq = sdx * sdx + sdy * sdy;
+      if (sdSq < rSq) {
+        var sd = Math.sqrt(sdSq);
+        var f  = 1.0 - sd / radius;
+        var nx = sd > 0.1 ? sdx / sd : Math.random() - 0.5;
+        var ny = sd > 0.1 ? sdy / sd : Math.random() - 0.5;
+        o.vx += nx * force * f;
+        o.vy += ny * force * f;
+        o.stunTimer = stun * f;
+      }
+    }
+  };
+
   M._beginBatch = function (label, extra) {
     this._batchScore  = 0;
     this._batchLabel  = label;
@@ -162,6 +185,7 @@
     expCol = expCol || [255, 255, 255];
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var e  = this.enemies[i];
+      e._dead = true;   // keep the removal invariant (homing projectiles test _dead)
       var bp = e.tier === 3 ? 100 : e.tier === 2 ? 30 : 10;
       total += bp * cm;
       this.totalKills++;
@@ -220,6 +244,11 @@
     // Beat 2 (~1.32s): the reward draft (3 picks, or The World once everything is maxed).
     this.time.delayedCall(1320, function () {
       if (!self._upgradeLevels) return;
+      // If the player DIED in the ~1.3s window after the boss kill, this timer
+      // still fires — and nothing else cancels it. Without this guard the reward
+      // draft pops a pause + overlay ON TOP of the game-over screen. Bail (and
+      // release the spawn-suppression flag), symmetric to the tutorial guard.
+      if (!self.p || self.p.state === 'DEAD') { self._bossDraftPending = false; return; }
       // A tutorial relaunch (? button) within this window soft-resets the draft
       // state but can't cancel this timer — bail so we don't pop a draft over the
       // lesson (and drop the spawn-suppression flag the tutorial defuse also clears).
@@ -451,9 +480,6 @@
     var killTier = e.tier;
 
     this.totalKills++;
-    // Track cumulative kill progress for hardcore unlock
-    var LA = window.LightAgain;
-    if (LA && typeof LA.laAddKillProgress === 'function') LA.laAddKillProgress(killTier);
     if (!this._batchActive) this._checkUpgradeTrigger();
     var basePts = e.tier === 3 ? 100 : e.tier === 2 ? 30 : 10;
     var pts = basePts * this.comboMultiplier;
@@ -511,30 +537,18 @@
     e.spr.destroy();
     for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
     if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
+    e._dead = true;   // mark removed → homing projectiles test this O(1) (vs an O(n) indexOf)
     this.enemies.splice(idx, 1);
 
-    if (!ctx.condemned && !ctx.core) {
-      // Core crush skips the per-kill hitstop + shake + shockwave: a hitstop sets
-      // timeScale to 0, which would freeze the world-time core mid-flight and make
-      // it stutter; the core owns its own juice (bounce flashes, detonation).
+    // Per-kill knockback + screen juice. Skipped for:
+    //  • condemned (TW) kills  — resolve as a batch with their own end FX;
+    //  • core crushes          — a hitstop (timeScale 0) would stutter the world-time core;
+    //  • batch kills (detonation / delayed-explosion) — they fire ONE central
+    //    shockwave after their kill loop instead of N here (O(kills×enemies) → O(n)).
+    if (!ctx.condemned && !ctx.core && !ctx.batch) {
       this._triggerHitstop(C.HITSTOP_DUR);
       this.cameras.main.shake(60, 0.005);
-
-      for (var k = 0; k < this.enemies.length; k++) {
-        var o = this.enemies[k];
-        if (o.tier === 3) continue;
-        var sdx = o.x - ex, sdy = o.y - ey;
-        var sdSq = sdx * sdx + sdy * sdy;
-        if (sdSq < C.SHOCKWAVE_RADIUS_SQ) {
-          var sd = Math.sqrt(sdSq);
-          var f = 1.0 - sd / C.SHOCKWAVE_RADIUS;
-          var nx = sd > 0.1 ? sdx / sd : Math.random() - 0.5;
-          var ny = sd > 0.1 ? sdy / sd : Math.random() - 0.5;
-          o.vx += nx * C.SHOCKWAVE_FORCE * f;
-          o.vy += ny * C.SHOCKWAVE_FORCE * f;
-          o.stunTimer = C.SHOCKWAVE_STUN * f;
-        }
-      }
+      this._applyShockwave(ex, ey, C.SHOCKWAVE_RADIUS, C.SHOCKWAVE_FORCE, C.SHOCKWAVE_STUN);
     }
   };
 
@@ -564,6 +578,7 @@
     e.spr.destroy();
     for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
     if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
+    e._dead = true;   // keep the removal invariant (homing projectiles test _dead)
     this.enemies.splice(idx, 1);
   };
 
@@ -663,6 +678,11 @@
       }
     }
     if (ownBatch) this._endBatch();
+
+    // One central shockwave replaces the per-kill ones (now skipped for batch
+    // kills): push surviving T1/T2 outward from the blast in a single O(n) pass,
+    // keeping the "everything blown outward" feel without O(kills×enemies).
+    this._applyShockwave(ex, ey, detRadius, C.SHOCKWAVE_FORCE, C.SHOCKWAVE_STUN);
 
     // The nuke also chips any serpent segments in range — throttled so the
     // frequent storm of nukes only nibbles the worm instead of vaporising it.
@@ -855,6 +875,10 @@
     }
 
     if (dOwnBatch) this._endBatch();
+
+    // One central shockwave (the per-kill ones are skipped for batch kills):
+    // survivors get a single clean push outward from the blast, not O(kills×enemies).
+    this._applyShockwave(x, y, radius, C.SHOCKWAVE_FORCE, C.SHOCKWAVE_STUN);
 
     // Delayed explosions chip serpent segments too — same throttled AoE.
     if (this._snake && !this._snake.dead) this._damageSnakeAoe(x, y, radius, C.SNAKE_AOE_DMG);

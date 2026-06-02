@@ -137,9 +137,11 @@
 
     // ── CINEMATIC ENTRANCE ───────────────────────────────────────────────
     // Materialise in view on REAL dt (smooth, constant pace, unaffected by
-    // hitstop / slow-mo / The World). The boss is intangible while forming.
+    // hitstop / slow-mo). The boss is intangible while forming. FROZEN during
+    // The World, though: like everything else it pauses, so a freshly-summoned
+    // boss can't finish arriving (and become tangible) while time is stopped.
     if (g.spawnPhase === 'ARRIVING') {
-      this._gigaBruiserTickArrival(g, p, dt);
+      if (!this._twActive) this._gigaBruiserTickArrival(g, p, dt);
       this._renderGigaBruiser(dt);
       return;
     }
@@ -147,9 +149,11 @@
     // ── BLINK / TELEPORT ─────────────────────────────────────────────────
     // Same deal as the arrival: drives on REAL dt for a smooth constant pace
     // and the boss is intangible (and frozen-in-place logic-wise) while it
-    // implodes out and re-materialises far away.
+    // implodes out and re-materialises far away. FROZEN during The World so the
+    // boss can't relocate across the stopped arena (the blink is also blocked
+    // from STARTING during TW in _breakGigaShield).
     if (g.telePhase) {
-      this._gigaBruiserTickTeleport(g, p, dt);
+      if (!this._twActive) this._gigaBruiserTickTeleport(g, p, dt);
       this._renderGigaBruiser(dt);
       return;
     }
@@ -1126,9 +1130,11 @@
     // …and it may BLINK AWAY: implode here, re-materialise far across the
     // player's view. The shield stays down — the player keeps the exposed
     // window they earned, they just have to chase the boss down. Skipped if
-    // it's still arriving, already mid-blink, or busy with a shockwave.
+    // it's still arriving, already mid-blink, busy with a shockwave, or during
+    // The World (the freeze must not let the boss escape across the stopped
+    // arena — that would undo the advantage the player paid for).
     if (!g.telePhase && !g.shockwavePhase && g.spawnPhase !== 'ARRIVING'
-        && Math.random() < C.GBR_TELE_CHANCE) {
+        && !this._twActive && Math.random() < C.GBR_TELE_CHANCE) {
       this._beginGigaTeleport();
     }
   };

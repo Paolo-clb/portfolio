@@ -21,8 +21,6 @@
     this._twActive         = false;
     this._twTimer          = 0;
     this._twCooldown       = 0;
-    this._twSecretTracking = false;
-    this._twSecretKillsBase = 0;
     this._twSecretOffered  = false;
     this._twDesatPipeline  = null;
 
@@ -67,33 +65,6 @@
     this._twIconTxt.setDepth(101);
     this._twIconTxt.setScrollFactor(0);
     this._twIconTxt.setAlpha(0);
-  };
-
-  /* ================================================================
-     CHECK SECRET TRIGGER
-     ================================================================ */
-  M._checkSecretUpgrade = function () {
-    if (this._twUnlocked || this._twSecretOffered) return false;
-
-    if (!this._twSecretTracking) {
-      var lvls = this._upgradeLevels;
-      var defs = LA.UPGRADES;
-      var allMaxed = true;
-      for (var k in defs) {
-        if (defs.hasOwnProperty(k)) {
-          if ((lvls[k] || 0) < defs[k].maxLvl) { allMaxed = false; break; }
-        }
-      }
-      if (!allMaxed) return false;
-      this._twSecretTracking = true;
-      this._twSecretKillsBase = this.totalKills;
-    }
-
-    var killsSince = this.totalKills - this._twSecretKillsBase;
-    if (killsSince < C.TW_SECRET_KILL_DELAY) return false;
-
-    this._twSecretOffered = true;
-    return true;
   };
 
   /* ================================================================
@@ -359,7 +330,10 @@
         fpr._twPending = true;
         fpr.vx = fpr._twSavedVx || 0;
         fpr.vy = fpr._twSavedVy || 0;
-        fpr.life = Math.max(fpr.life, C.PROJ_LIFE * 0.5);
+        // Freeze stamped life=99999, so Math.max(life, ...) would KEEP 99999 →
+        // a near-immortal projectile (and a broken homing accel ramp, which reads
+        // 1 - life/PROJ_LIFE). Assign the intended post-release life directly.
+        fpr.life = C.PROJ_LIFE * 0.5;
         fpr._twTetherActive = true;  // show tether in resolution reveal
         hadFrozenReflected = true;
         this._twPendingCount++;
@@ -371,8 +345,8 @@
 
     // Set timing: if pending projectiles exist, wait for them; otherwise short grace
     if (this._twPendingCount > 0) {
-      this._twBatchGrace     = 30;   // 30ms grace after last projectile resolves
-      this._twBatchMaxTimeout = 3000;  // absolute max 2.5s safety cap
+      this._twBatchGrace     = 30;   // initial floor only — _twResolvePending resets it to 250ms as each projectile resolves
+      this._twBatchMaxTimeout = 3000;  // absolute max 3s safety cap
     } else {
       this._twBatchGrace     = 150;   // short delay for condemned-only kills
       this._twBatchMaxTimeout = 1000;

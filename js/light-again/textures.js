@@ -413,7 +413,7 @@
 
     // Exception pour le T2 (les losanges jaunes)
     // Remplacer 'enemy_t2' par la vraie clé de ton sprite jaune
-    if (srcKey.includes('_shooter')) { 
+    if (srcKey.indexOf('_shooter') !== -1) {
       desat = 0.98;       // Presque 100% gris pour tuer le jaune
       brightness = 0.65;  // On baisse drastiquement la luminosité (-35%)
     }

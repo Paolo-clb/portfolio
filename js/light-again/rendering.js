@@ -159,6 +159,9 @@
         && Math.floor(this.gameTime * 12.5) % 2 === 0) {
       this.playerSpr.setVisible(false);
       for (var i = 0; i < this.TRAIL_CAP; i++) this._trail[i].spr.setVisible(false);
+      // This early-return is BEFORE the Star Power aura redraw below; clear it here
+      // too, else the aura freezes/desyncs during the hit i-frame flicker.
+      if (this._starAuraGfx) this._starAuraGfx.clear();
       return;
     }
 
@@ -307,6 +310,12 @@
         e.spr.setTint(twTint);
         e.spr.setAlpha(0.5 + twPulse * 0.45);
         e.spr.setScale(1.0 + twPulse * 0.12);
+
+        // A shielded T3 can be marked → condemned with its shield STILL up (the
+        // mark-detonation ignores the shield). The tier-3 block below — the only
+        // place that clears/redraws e.shieldGfx — is skipped by this `continue`,
+        // so its cyan ring would otherwise stay frozen on the now-crimson sprite.
+        if (e.shieldGfx) e.shieldGfx.clear();
 
         for (var t = 0; t < this.ENEMY_TRAIL_N; t++) e.trSpr[t].setVisible(false);
         continue;
@@ -861,12 +870,16 @@
       this._killCounterTxt.setVisible(false);
     }
 
-    // Collect acquired upgrades + taken curses (preserve display order)
-    var acquired = [];
+    // Collect acquired upgrades + taken curses (preserve display order). Reuse
+    // instance arrays (reset via length=0) instead of allocating two arrays each
+    // frame — the contents only change at a draft / curse pickup.
+    var acquired = this._hudAcquired || (this._hudAcquired = []);
+    acquired.length = 0;
     for (var i = 0; i < _upOrder.length; i++) {
       if (lvls[_upOrder[i]] > 0) acquired.push(_upOrder[i]);
     }
-    var curses = [];
+    var curses = this._hudCurses || (this._hudCurses = []);
+    curses.length = 0;
     var tcz = this._takenCurses || {};
     for (var ci = 0; ci < _curseOrder.length; ci++) {
       if (tcz[_curseOrder[ci]]) curses.push(_curseOrder[ci]);

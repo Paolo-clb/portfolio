@@ -4,8 +4,8 @@
    A data-moshed RGB-split entity that breaks the rules of the game:
      1. WANDER  — glitch-teleports around the arena, harmless, drifting toward
                   the player until it gets close.
-     2. BARRIER — slams a circular "firewall" around the player, vacuums every
-                  nearby enemy inside, halts natural spawns, and fires
+     2. BARRIER — slams a circular "firewall" around the player, vacuums the
+                  WHOLE board inside, halts natural spawns, and fires
                   telegraphed lasers while protected by an impenetrable shield.
                   The shield only drops once every trapped enemy is dead; then
                   it panics (blinking red, defenceless) and can be killed.
@@ -206,8 +206,15 @@
       return;
     }
 
-    // Frozen during The World / hitstop / slow-mo (sMs ≈ 0): render only.
-    if (this._twActive || sMs < 0.001) { this._renderAnomaly(dt, pMs); return; }
+    // The World: keep the hit-flash decaying on REAL dt so a white flash can't
+    // freeze "stuck" on the boss for up to 4s — matches the Giga Bruiser's TW path.
+    // A plain hitstop (sMs ≈ 0, no TW) still freezes it, symmetric with the Giga.
+    if (this._twActive) {
+      a._hitFlash   = Math.max(0, a._hitFlash   - dt * 4);
+      a._shieldHitT = Math.max(0, a._shieldHitT - dt * 3);
+      this._renderAnomaly(dt, pMs); return;
+    }
+    if (sMs < 0.001) { this._renderAnomaly(dt, pMs); return; }
 
     a._hitFlash    = Math.max(0, a._hitFlash    - dt * 4);
     a._shieldHitT  = Math.max(0, a._shieldHitT  - dt * 3);
@@ -468,7 +475,11 @@
     // Final barrier radius: contain every ring (+ margin), with the hard cap.
     a.R = Math.min(C.ANO_BARRIER_MAX, Math.max(minBarrierR, outerUsedR + 90));
 
-    a.vacTotal   = N;
+    // Count what actually landed in rings — slots outside the disc (player pinned
+    // at the rim) can be skipped, so the raw queue length N would over-report.
+    var placed = 0;
+    for (var rci = 0; rci < rings.length; rci++) placed += rings[rci].items.length;
+    a.vacTotal   = placed;
     a.vacRings   = rings;
     a.vacRingIdx = 0;
     a.vacNextT   = 0;     // first ring fires the moment VACUUM begins

@@ -112,7 +112,12 @@
     p.atkDx = adx; p.atkDy = ady; p.spinAngle = 0;
     p.hasHitDuringDashAttack = false; p.dashAtkExtended = 0;
     p._dashAtkExpSpawned = false;   // dashAtk Lv3: reset the once-per-attack delayed-exp cap
-    p.dashTimer = 0; p.dashCooldown = C.DASH_CD * (this._dashCdMult || 1);  // dashRage curse
+    // Dash Lv1 cuts the cooldown by 30% — apply it here too. A normal dash does
+    // (scene.js), but omitting it after a dash-attack silently dropped the bonus
+    // AND desynced the HUD gauge (which divides by the 0.70-scaled max).
+    var dashUpLvl = (this._upgradeLevels && this._upgradeLevels.dash) || 0;
+    p.dashTimer = 0;
+    p.dashCooldown = C.DASH_CD * (dashUpLvl >= 1 ? 0.70 : 1.0) * (this._dashCdMult || 1);  // Dash Lv1 + dashRage curse
     p.dashCoyote = false; p.dashInvinc = false;
   };
 

@@ -8,8 +8,11 @@
   var C  = LA.C;
   var M  = LA.sceneMethods;
 
+  // Returns true if a projectile was actually created, false if the pool is at
+  // C.MAX_PROJECTILES. Callers (e.g. the T2 shooter) gate their recoil/flash/CD
+  // feedback on this so a saturated pool never produces a "phantom shot".
   M._spawnProjectile = function (ex, ey, angle, spd, shooter) {
-    if (this.projectiles.length >= C.MAX_PROJECTILES) return;
+    if (this.projectiles.length >= C.MAX_PROJECTILES) return false;
     var spr = this.add.image(ex, ey, '_proj');
     spr.setBlendMode(Phaser.BlendModes.ADD);
     spr.setDepth(22);
@@ -21,6 +24,7 @@
       rotSpeed: 8,
       trailSlots: [],
     });
+    return true;
   };
 
   M._destroyProjectile = function (pr) {
@@ -78,7 +82,7 @@
           htx = p.x; hty = p.y;
           hturn = C.ANO_PROJ_TURN; hspd = C.ANO_PROJ_SPEED * accelMul;
         } else {
-          if (pr.homeTarget && this.enemies.indexOf(pr.homeTarget) === -1) pr.homeTarget = null;
+          if (pr.homeTarget && pr.homeTarget._dead) pr.homeTarget = null;   // O(1): _dead is set by every enemy-removal path
           if (!pr.homeTarget) {
             // Build the exclusion set of enemies already locked by sibling shots
             var ex2 = [];

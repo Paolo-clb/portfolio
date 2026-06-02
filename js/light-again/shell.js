@@ -129,7 +129,7 @@
   function buildTutorialPanel() {
     var fr = (localStorage.getItem('portfolio_lang') || 'fr') !== 'en';
     var LA = window.LightAgain;
-    var total = (LA && LA.TUTORIAL_STEP_COUNT) || 10;
+    var total = (LA && LA.TUTORIAL_STEP_COUNT) || 11;
     var done = (LA && typeof LA.laGetTutorialProgress === 'function') ? LA.laGetTutorialProgress() : 0;
     done = Math.max(0, Math.min(done, total));
     var started = done > 0;
@@ -302,9 +302,14 @@
     // Pickaxe skin is a reward for unlocking hardcore — force off if still locked.
     window.__laSteveSkin = unlocked && (localStorage.getItem('la_skin_steve') === '1');
 
-    if (!document.getElementById('_la-go-styles')) {
+    // NB: distinct id from game-over-ui.js's '_la-go-styles'. The two share the
+    // la-go-fade-in/glow/spin keyframes, but game-over-ui ALSO defines the
+    // beaten-record animations (rec-pop/rec-glow/badge-in). showModeMenu runs
+    // first (on every modal open), so injecting under the same id used to preempt
+    // game-over's fuller sheet and silently kill the record-celebration anims.
+    if (!document.getElementById('_la-ms-go-styles')) {
       var st = document.createElement('style');
-      st.id = '_la-go-styles';
+      st.id = '_la-ms-go-styles';
       st.textContent =
         '@keyframes la-go-fade-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}' +
         '@keyframes la-go-glow{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 22px 4px var(--la-accent-glow)}}' +
@@ -474,7 +479,7 @@
       // (no upgrades yet). The bottom tutorial banner is suppressed so progress lives
       // in one place — up here, standing in for the loadout.
       var LAtut  = window.LightAgain || {};
-      var tTotal = LAtut.TUTORIAL_STEP_COUNT || 10;
+      var tTotal = LAtut.TUTORIAL_STEP_COUNT || 11;
       var tDone  = (typeof LAtut.laGetTutorialProgress === 'function') ? LAtut.laGetTutorialProgress() : 0;
       tDone = Math.max(0, Math.min(tDone, tTotal));
       var tPct = Math.round(tDone / tTotal * 100);

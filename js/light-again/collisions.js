@@ -28,6 +28,10 @@
           p.dashHitCount++;
         }
       }
+      // Nothing below is reachable while DASHING (isAtk/isDAtk false → vuln false),
+      // so skip the whole main collision pass: it would run a distSq per enemy and
+      // a sqrt for any in range, all dead work. The marking pass above is the job.
+      return;
     }
 
     for (var i = this.enemies.length - 1; i >= 0; i--) {
