@@ -18,6 +18,17 @@
   var menuBtnEl    = null;  // sandbox "Menu" header button
   var menuResumable = false; // true while the open home menu has a LIVE run to resume
 
+  /* ---- Gamepad menu navigation (see the section near openLightAgain) ---- */
+  var padRafId     = null;  // requestAnimationFrame handle for the menu-poll loop
+  var homeToggleFn = null;  // set in openLightAgain — Home/Start ⇒ pause/resume toggle
+  var padFirst     = true;  // skip the first poll so a button held at open can't fire
+  var padNavEl     = null;  // element the gamepad currently has "focused"
+  var padNavOv     = null;  // overlay that focus belongs to (re-acquire when it changes)
+  var padDir       = 0;     // latched nav direction (-1 up/left · 0 · +1 down/right)
+  var padRepeatAt  = 0;     // timestamp the held-direction repeat is allowed to fire
+  var padPrev2     = { home: false, start: false, a: false, b: false,
+                       up: false, down: false, left: false, right: false };
+
   /* ---- i18n helper ---- */
   function t(key) {
     return (typeof window.__siteT === 'function' ? window.__siteT(key) : null) || key;
@@ -549,8 +560,8 @@
       // Controller support note — the game is fully playable with a gamepad
       // (twin-stick). Branch a controller in and the sticks/triggers take over.
       '<div class="la-ms-tip la-ms-tip--pad">' + (fr
-        ? '🎮 <b>Manette</b> compatible : <b>stick gauche</b> = déplacement · <b>stick droit</b> = visée · <b>gâchette droite</b> = attaque torpille · <b>gâchette gauche</b> = dash · <b>une des deux gâchettes hautes</b> = The World.'
-        : '🎮 <b>Controller</b> supported: <b>left stick</b> = move · <b>right stick</b> = aim · <b>right trigger</b> = torpedo attack · <b>left trigger</b> = dash · <b>either bumper</b> = The World.') + '</div>' +
+        ? '🎮 <b>Manette</b> compatible : <b>stick gauche</b> = déplacement · <b>stick droit</b> = visée · <b>gâchette droite</b> = attaque torpille · <b>gâchette gauche</b> = dash · <b>une des deux gâchettes hautes</b> = The World.<br>Dans les menus : <b>croix dir. / stick</b> = naviguer · <b>A</b> = valider · <b>B</b> = retour · <b>Home</b> ou <b>Start</b> = pause / reprendre (comme l’icône ⏸/▶).'
+        : '🎮 <b>Controller</b> supported: <b>left stick</b> = move · <b>right stick</b> = aim · <b>right trigger</b> = torpedo attack · <b>left trigger</b> = dash · <b>either bumper</b> = The World.<br>In menus: <b>D-pad / stick</b> = navigate · <b>A</b> = select · <b>B</b> = back · <b>Home</b> or <b>Start</b> = pause / resume (like the ⏸/▶ icon).') + '</div>' +
       '</div>';
 
     container.style.position = 'relative';
@@ -915,8 +926,8 @@
         label:    isFr ? '\ud83c\udfae Manette' : '\ud83c\udfae Controller',
         color:    '#a78bff',
         descHtml: isFr
-          ? '<b>Stick gauche</b> = d\u00e9placement \u00b7 <b>stick droit</b> = vis\u00e9e (sinon la fl\u00e8che suit le d\u00e9placement) \u00b7 <span style="color:#ff1e3c">g\u00e2chette droite</span> = <span style="color:#ff1e3c">attaque torpille</span> \u00b7 <span style="color:#00ffff">g\u00e2chette gauche</span> = <span class="la-help-dash">dash</span> \u00b7 <b>une des deux petites g\u00e2chettes hautes</b> = The World.'
-          : '<b>Left stick</b> = move \u00b7 <b>right stick</b> = aim (otherwise the arrow follows your movement) \u00b7 <span style="color:#ff1e3c">right trigger</span> = <span style="color:#ff1e3c">torpedo attack</span> \u00b7 <span style="color:#00ffff">left trigger</span> = <span class="la-help-dash">dash</span> \u00b7 <b>either small bumper</b> = The World.',
+          ? '<b>Stick gauche</b> = d\u00e9placement \u00b7 <b>stick droit</b> = vis\u00e9e (sinon la fl\u00e8che suit le d\u00e9placement) \u00b7 <span style="color:#ff1e3c">g\u00e2chette droite</span> = <span style="color:#ff1e3c">attaque torpille</span> \u00b7 <span style="color:#00ffff">g\u00e2chette gauche</span> = <span class="la-help-dash">dash</span> \u00b7 <b>une des deux petites g\u00e2chettes hautes</b> = The World.<br><b>Menus</b> : croix dir. / stick = naviguer \u00b7 <b>A</b> = valider \u00b7 <b>B</b> = retour \u00b7 <b>Home</b> ou <b>Start</b> = pause / reprendre.'
+          : '<b>Left stick</b> = move \u00b7 <b>right stick</b> = aim (otherwise the arrow follows your movement) \u00b7 <span style="color:#ff1e3c">right trigger</span> = <span style="color:#ff1e3c">torpedo attack</span> \u00b7 <span style="color:#00ffff">left trigger</span> = <span class="la-help-dash">dash</span> \u00b7 <b>either small bumper</b> = The World.<br><b>Menus</b>: D-pad / stick = navigate \u00b7 <b>A</b> = select \u00b7 <b>B</b> = back \u00b7 <b>Home</b> or <b>Start</b> = pause / resume.',
       },
     ];
 
@@ -1297,6 +1308,217 @@
   }
 
   /* ================================================================
+     GAMEPAD — menu navigation + Home/Start pause toggle
+     ----------------------------------------------------------------
+     A requestAnimationFrame loop runs the whole time the modal is open
+     (the in-scene gamepad poll stops the moment the scene is paused, so
+     it can't drive the menus). This loop:
+       • toggles the home (pause) menu on the Guide/Home (16) OR Start (9)
+         button — exactly like clicking the ⏸/▶ header icon;
+       • when ANY DOM overlay is up (home menu, upgrade draft, game over,
+         help, tutorial confirm/complete) moves focus with the D-pad / left
+         stick, activates the focused control with A (0), and goes back with
+         B (1).
+     gamepad.js suppresses gameplay input while an overlay is open, so the
+     scene poll and this navigator never fight over the same buttons.
+     ================================================================ */
+
+  // Prefer a W3C "standard"-mapping pad; otherwise the first connected one
+  // (mirrors the selection in gamepad.js so both read the same device).
+  function padGetActive() {
+    var pads = (navigator.getGamepads && navigator.getGamepads()) || [];
+    var i, first = null;
+    for (i = 0; i < pads.length; i++) {
+      if (pads[i] && pads[i].connected) {
+        if (pads[i].mapping === 'standard') return pads[i];
+        if (!first) first = pads[i];
+      }
+    }
+    return first;
+  }
+
+  // The overlay the gamepad should navigate right now, topmost first.
+  function padNavOverlay() {
+    if (!overlayEl) return null;
+    return document.getElementById('_la-tutorial-confirm') ||
+           (helpPopupEl || null) ||
+           document.getElementById('_la-upgrade-overlay') ||
+           document.getElementById('_la-go-overlay') ||
+           document.getElementById('_la-mode-select') ||
+           document.querySelector('.la-tut-complete') ||
+           null;
+  }
+
+  // Visible, enabled, actionable controls inside an overlay, in DOM order.
+  // The loadout chips are inspect-only (they swallow their own clicks), so
+  // they're skipped to keep navigation on the meaningful actions.
+  function padFocusables(ov) {
+    var all = ov.querySelectorAll('button, [role="button"], input:not([type="hidden"]), a[href]');
+    var out = [];
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      if (el.disabled) continue;
+      if (el.classList && el.classList.contains('la-lo-chip')) continue;
+      if (el.offsetParent === null && el.getClientRects().length === 0) continue;
+      var cs = window.getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+      out.push(el);
+    }
+    return out;
+  }
+
+  function padSetFocus(el) {
+    if (padNavEl && padNavEl !== el) padNavEl.classList.remove('la-gp-focus');
+    padNavEl = el || null;
+    if (padNavEl) {
+      padNavEl.classList.add('la-gp-focus');
+      try { padNavEl.focus({ preventScroll: false }); }
+      catch (e) { try { padNavEl.focus(); } catch (e2) { /* ignore */ } }
+    }
+  }
+
+  function padClearFocus() {
+    if (padNavEl) padNavEl.classList.remove('la-gp-focus');
+    padNavEl = null; padNavOv = null; padDir = 0;
+  }
+
+  // B / Circle — the "back / cancel" affordance, where one sensibly exists.
+  function padNavBack(ov) {
+    if (ov.id === '_la-tutorial-confirm') {
+      var c = ov.querySelector('#_la-tc-cancel'); if (c) c.click();
+    } else if (helpPopupEl && ov === helpPopupEl) {
+      closeHelpPopup(false);
+    } else if (ov.id === '_la-mode-select') {
+      // Same as the ▶ icon: resume the run behind the home menu, if any.
+      if (menuResumable && typeof homeToggleFn === 'function') homeToggleFn();
+    }
+    // upgrade draft / game over / tutorial-complete: a choice is required, no back.
+  }
+
+  function padHandleNav(ov, st) {
+    var items = padFocusables(ov);
+    if (!items.length) { padNavOv = ov; return; }
+
+    // (Re)acquire focus when the overlay changed or the focused item vanished
+    // (e.g. the help popup swapped pages, or a draft reroll rebuilt the cards).
+    if (ov !== padNavOv || items.indexOf(padNavEl) < 0) {
+      padNavOv = ov;
+      var start = -1, ae = document.activeElement;
+      if (ae) start = items.indexOf(ae);
+      padSetFocus(items[start >= 0 ? start : 0]);
+      padDir = 0;
+    }
+
+    // Direction from the D-pad OR the left stick, edge-triggered with a
+    // hold-to-repeat so a held stick scrolls steadily instead of flying past.
+    var dir = 0;
+    if (st.down || st.right || st.ly > 0.55 || st.lx > 0.55) dir = 1;
+    else if (st.up || st.left || st.ly < -0.55 || st.lx < -0.55) dir = -1;
+
+    var now = (window.performance && performance.now) ? performance.now() : Date.now();
+    var move = false;
+    if (dir !== 0) {
+      if (dir !== padDir) { move = true; padRepeatAt = now + 420; }       // first press
+      else if (now >= padRepeatAt) { move = true; padRepeatAt = now + 130; } // hold-repeat
+    }
+    padDir = dir;
+
+    if (move) {
+      var idx = items.indexOf(padNavEl);
+      if (idx < 0) idx = 0;
+      idx = (idx + dir + items.length) % items.length;
+      padSetFocus(items[idx]);
+    }
+
+    // A / Cross → activate the focused control; B / Circle → back.
+    if (st.a && !padPrev2.a) {
+      var target = (padNavEl && items.indexOf(padNavEl) >= 0) ? padNavEl : items[0];
+      if (target) target.click();
+    } else if (st.b && !padPrev2.b) {
+      padNavBack(ov);
+    }
+  }
+
+  function padPoll() {
+    padRafId = requestAnimationFrame(padPoll);
+    if (!overlayEl) return;
+
+    var gp = padGetActive();
+    if (!gp) {
+      padPrev2.home = padPrev2.start = padPrev2.a = padPrev2.b = false;
+      padPrev2.up = padPrev2.down = padPrev2.left = padPrev2.right = false;
+      padDir = 0;
+      if (!padNavOverlay()) padClearFocus();
+      return;
+    }
+
+    var btns = gp.buttons || [], ax = gp.axes || [];
+    function pr(i) { var b = btns[i]; return !!b && (b.pressed || b.value > 0.5); }
+    var home = pr(16), start = pr(9), a = pr(0), b = pr(1);
+    var up = pr(12), down = pr(13), left = pr(14), right = pr(15);
+    var lx = ax[0] || 0, ly = ax[1] || 0;
+
+    // Skip the very first poll so a button still held from opening the game
+    // (or just plugging in) doesn't count as a fresh press.
+    if (padFirst) {
+      padFirst = false;
+      padPrev2.home = home; padPrev2.start = start; padPrev2.a = a; padPrev2.b = b;
+      padPrev2.up = up; padPrev2.down = down; padPrev2.left = left; padPrev2.right = right;
+      return;
+    }
+
+    var ov = padNavOverlay();
+
+    // Home / Start → toggle the pause (home) menu, exactly like the ⏸/▶ icon.
+    // Ignored while a DIFFERENT blocking overlay owns the screen (draft, game
+    // over, help, tutorial confirm/complete) — those run their own flow.
+    if ((home && !padPrev2.home) || (start && !padPrev2.start)) {
+      var blocked = ov && ov.id !== '_la-mode-select';
+      if (!blocked && typeof homeToggleFn === 'function') {
+        homeToggleFn();
+        // State just changed (menu opened or run resumed) — record this frame's
+        // buttons and skip navigation so the toggle press isn't double-read.
+        padPrev2.home = home; padPrev2.start = start; padPrev2.a = a; padPrev2.b = b;
+        padPrev2.up = up; padPrev2.down = down; padPrev2.left = left; padPrev2.right = right;
+        padDir = 0;
+        return;
+      }
+    }
+
+    if (ov) padHandleNav(ov, { a: a, b: b, up: up, down: down, left: left, right: right, lx: lx, ly: ly });
+    else padClearFocus();
+
+    padPrev2.home = home; padPrev2.start = start; padPrev2.a = a; padPrev2.b = b;
+    padPrev2.up = up; padPrev2.down = down; padPrev2.left = left; padPrev2.right = right;
+  }
+
+  // Bright, theme-aware focus ring so controller users can see where they are.
+  function ensurePadStyles() {
+    if (document.getElementById('_la-gp-styles')) return;
+    var st = document.createElement('style');
+    st.id = '_la-gp-styles';
+    st.textContent =
+      '.la-gp-focus{outline:3px solid var(--la-accent,#00ffff)!important;outline-offset:3px!important;' +
+      'box-shadow:0 0 16px 3px var(--la-accent-glow,rgba(0,255,255,0.5))!important}';
+    document.head.appendChild(st);
+  }
+
+  function startPadLoop() {
+    if (padRafId != null) return;
+    ensurePadStyles();
+    padFirst = true; padDir = 0; padNavOv = null; padNavEl = null;
+    padPrev2.home = padPrev2.start = padPrev2.a = padPrev2.b = false;
+    padPrev2.up = padPrev2.down = padPrev2.left = padPrev2.right = false;
+    padRafId = requestAnimationFrame(padPoll);
+  }
+
+  function stopPadLoop() {
+    if (padRafId != null) { cancelAnimationFrame(padRafId); padRafId = null; }
+    padClearFocus();
+    homeToggleFn = null;
+  }
+
+  /* ================================================================
      MODAL — open
      ================================================================ */
 
@@ -1353,7 +1575,9 @@
     //  • Playing (⏸) → pause the run and open the home (mode-select) menu.
     //  • On the home menu (▶, run paused) → resume the current run if there is a
     //    live one; if there isn't (fresh launch / dead game-over run), do nothing.
-    menuBtnEl.addEventListener('click', function () {
+    // Factored into homeToggleFn so the gamepad Home/Start button can fire the
+    // exact same behaviour (see padPoll).
+    homeToggleFn = function () {
       if (menuEl) {
         if (menuResumable && activeGame && typeof activeGame.resume === 'function') {
           dismissModeMenu(true);   // instant — no fading scrim over the resumed run
@@ -1365,7 +1589,8 @@
       if (!activeGame || !container) return;
       if (typeof activeGame.pause === 'function') activeGame.pause();
       showModeMenu(container, true);
-    });
+    };
+    menuBtnEl.addEventListener('click', function () { homeToggleFn(); });
 
     modal.appendChild(menuBtnEl);
     modal.appendChild(helpBtn);
@@ -1426,6 +1651,9 @@
       showModeMenu(c, true);
     };
     showModeMenu(container, false);
+
+    /* --- Gamepad: drive the menus + Home/Start pause toggle while open --- */
+    startPadLoop();
   }
 
   /* ================================================================
@@ -1438,6 +1666,9 @@
     if (btnEl) btnEl.classList.remove('light-again-btn--modal-open');
 
     userPaused = false;
+
+    // Stop the gamepad menu loop + drop any lingering focus ring.
+    stopPadLoop();
 
     // Close help popup immediately (whole modal is exiting — no animation needed)
     closeHelpPopup(true);

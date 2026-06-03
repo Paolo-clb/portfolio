@@ -619,6 +619,9 @@
       // restart (unbounded growth + N redundant self._keys={} per resume).
       this.events.on('resume', self._onSceneResume = function () {
         self._keys = {};
+        // A button may still be held from the menu tap/press that un-paused us —
+        // re-sync the pad baseline so it doesn't fire on this first live frame.
+        self._padResync = true;
       });
 
       // Clear stuck keys when window regains focus

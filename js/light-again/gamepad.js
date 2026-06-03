@@ -54,6 +54,25 @@
     // Edge-detection of the action buttons (fire on press, not while held).
     // dup/ddown = D-pad ↑/↓ (sandbox rate); face = any right-side face button (clear board).
     this._padPrev = { lt: false, rt: false, lb: false, rb: false, dup: false, ddown: false, face: false };
+    // On the first poll after a (re)start, pause/resume, or a closed menu overlay,
+    // re-sync _padPrev to whatever is held instead of firing — so a button still
+    // pressed from the click/tap that launched or un-paused the run can't instantly
+    // trigger an attack / dash / clear-board. (Set here + on the scene 'resume'
+    // event in scene.js; the overlay-bail branch below re-arms it every frame.)
+    this._padResync = true;
+  };
+
+  // True while a shell DOM menu/overlay (home menu, upgrade draft, game over,
+  // help, tutorial confirm/complete) is on screen. The shell's own gamepad
+  // navigator (shell.js) drives those; the in-scene poll stands down so a menu
+  // button press can't ALSO fire a gameplay action behind the overlay.
+  M._padMenuOverlayOpen = function () {
+    return !!(document.getElementById('_la-upgrade-overlay') ||
+              document.getElementById('_la-mode-select') ||
+              document.getElementById('_la-go-overlay') ||
+              document.getElementById('_la-tutorial-confirm') ||
+              document.querySelector('.light-again-help-overlay') ||
+              document.querySelector('.la-tut-complete'));
   };
 
   M._pollGamepad = function () {
@@ -72,6 +91,36 @@
     var lstick = radialDead(ax[0] || 0, ax[1] || 0, STICK_DEAD);
     var rstick = radialDead(ax[2] || 0, ax[3] || 0, AIM_DEAD);
 
+    var btns = gp.buttons || [];
+    function pressed(idx) { var b = btns[idx]; return !!b && (b.pressed || b.value > TRIG_ON); }
+    var lt = pressed(BTN_LT), rt = pressed(BTN_RT), lb = pressed(BTN_LB), rb = pressed(BTN_RB);
+    var dup   = pressed(BTN_DUP), ddown = pressed(BTN_DDOWN);
+    var face  = pressed(FACE_BTNS[0]) || pressed(FACE_BTNS[1]) ||
+                pressed(FACE_BTNS[2]) || pressed(FACE_BTNS[3]);
+    var prev = this._padPrev;
+
+    // A shell DOM menu/overlay owns the pad → the shell's gamepad navigator
+    // handles it (focus + A/B + Home/Start toggle). Stand down here: freeze
+    // movement/aim and keep _padPrev synced so the frame the overlay closes can
+    // never fire a stale edge (and re-arm _padResync for that first live frame).
+    if (this._padMenuOverlayOpen()) {
+      this._padMove.dx = 0; this._padMove.dy = 0; this._padAimActive = false;
+      prev.lt = lt; prev.rt = rt; prev.lb = lb; prev.rb = rb;
+      prev.dup = dup; prev.ddown = ddown; prev.face = face;
+      this._padResync = true;
+      return;
+    }
+    // First live frame after a start / resume / closed overlay: adopt the held
+    // buttons as the baseline (no edges this frame) so a button still pressed from
+    // dismissing a menu doesn't immediately attack / dash / clear the board.
+    if (this._padResync) {
+      this._padResync = false;
+      this._padMove.dx = lstick.x; this._padMove.dy = lstick.y;
+      prev.lt = lt; prev.rt = rt; prev.lb = lb; prev.rb = rb;
+      prev.dup = dup; prev.ddown = ddown; prev.face = face;
+      return;
+    }
+
     this._padMove.dx = lstick.x;
     this._padMove.dy = lstick.y;
 
@@ -86,10 +135,6 @@
       this._padAim.dx = lstick.x / ll; this._padAim.dy = lstick.y / ll;
     }
 
-    var btns = gp.buttons || [];
-    function pressed(idx) { var b = btns[idx]; return !!b && (b.pressed || b.value > TRIG_ON); }
-    var lt = pressed(BTN_LT), rt = pressed(BTN_RT), lb = pressed(BTN_LB), rb = pressed(BTN_RB);
-
     // Any meaningful pad input makes the gamepad the active aiming device. The
     // pointermove handler flips this back to 'mouse' the moment the mouse moves.
     if (lstick.mag > 0 || rstick.mag > 0 || lt || rt || lb || rb) this._inputMode = 'pad';
@@ -103,13 +148,8 @@
       this._mouseY = (this.p.y - cam.scrollY) + this._padAim.dy * R;
     }
 
-    var dup   = pressed(BTN_DUP), ddown = pressed(BTN_DDOWN);
-    var face  = pressed(FACE_BTNS[0]) || pressed(FACE_BTNS[1]) ||
-                pressed(FACE_BTNS[2]) || pressed(FACE_BTNS[3]);
-
     // Edge-triggered actions (re-use the same entry points as mouse/keyboard, so
     // all their state guards — DEAD / cooldown / TW-locked — apply unchanged).
-    var prev = this._padPrev;
     if (rt && !prev.rt) this._tryAttack();                       // torpedo, along aim
     if (lt && !prev.lt) this._tryDash();                         // dash, along movement
     if ((lb && !prev.lb) || (rb && !prev.rb)) this._tryTimeStop(); // The World
