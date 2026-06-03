@@ -554,6 +554,41 @@
     CACHE_TINT_ARR:              [155, 48, 255], // ...as an [r,g,b] for particle bursts
     CACHE_COMPLETE_SCORE:        2000,          // bonus points a finished hack banks (× combo), shown as a big-score "POWER UP READY" popup
 
+    /* ---- The Signal Amplifier (Amplificateur de Signal) — the GREED trial ------
+       A large square "tech platform" etched on the ground, in the Digital-Tree /
+       Cyber-Fairy MINT palette (so it reads as a distinct, kindred map event next
+       to the violet glitch Cache circle). Stand on it and your score gain is ×2 —
+       but the plate is a BEACON: the longer you hold it, the more it floods enemies
+       in a tight band AROUND its edges (never inside). Pure King-of-the-Hill greed:
+       how long can you milk the ×2 before the swarm forces you off? Gated behind a
+       fully-maxed loadout (every Lv3 upgrade, The World aside) so it only shows up
+       once a run is "complete" and the only thing left to chase is high score.
+       During The World it greys out and goes fully dormant (no ×2, no beacon).
+       Self-contained on this._greed + two shared ADD graphics layers (ground + top).
+       MAY coexist with the Cache Zone (kept spatially apart, never overlapping). */
+    GREED_HALF:                  460,    // square half-side (px) — slightly bigger than the Cache circle (R 440)
+    GREED_CORNER:                30,     // rounded-corner radius of the platform plate
+    GREED_SCORE_MULT:            2,      // per-kill score ×this while standing on the platform
+    GREED_IDLE_LIFE:             30000,  // ms an un-entered platform sits before it quietly dissolves
+    GREED_ABANDON_GRACE:         6000,   // ms away (after first entering) before it powers back down to IDLE
+    GREED_MAX_LIFE:              180000, // ms hard cap on total age — even held, it eventually leaves
+    GREED_DISSOLVE_DUR:          1000,   // ms of the dissolve-out
+    GREED_SPAWN_MIN_DELAY:       25000,  // ms after the gate is met before the first platform may appear
+    GREED_SPAWN_INTERVAL_MIN:    55000,  // ms between platforms (min) — a rare, climactic event
+    GREED_SPAWN_INTERVAL_MAX:    95000,  // ms between platforms (max)
+    GREED_SPAWN_DIST_MIN:        640,    // min spawn distance from the player (px) — start OUTSIDE the plate
+    GREED_SPAWN_DIST_MAX:        1100,   // max spawn distance from the player (px)
+    GREED_BEACON_INTERVAL_MAX:   850,    // ms between beacon spawns at heldT=0 (a trickle)
+    GREED_BEACON_INTERVAL_MIN:   140,    // ms between beacon spawns at full ramp (a torrent)
+    GREED_BEACON_RAMP:           45000,  // ms of cumulative hold to reach max beacon intensity
+    GREED_BEACON_BAND:           80,     // px band just OUTSIDE the plate where beacon enemies appear
+    GREED_BEACON_BURST_MAX:      3,      // up to N enemies per beacon tick at full ramp
+    GREED_HELD_DECAY:            2.2,    // heldT bleeds off at this × real-time while you're off the plate
+    GREED_TINT:                  0x33ff99,      // tree-mint green (Digital-Tree / Cyber-Fairy family)
+    GREED_TINT_ARR:              [51, 255, 153], // ...as an [r,g,b] for particle bursts
+    GREED_FRUIT:                 0x66ffd0,      // brighter mint accent (matches the tree's fruit)
+    GREED_HOT:                   0xeafff4,      // near-white mint highlight (matches the fairy core)
+
     /* ---- The Unstable Core (Noyau Instable) — environmental billiard weapon ---
        A big pulsing geometric sphere wrapped in a cyan containment force-field,
        sitting NEUTRAL in the arena. DASH-ATTACK it and the field bursts: the core

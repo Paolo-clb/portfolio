@@ -193,9 +193,11 @@
     // absent (a parallel feature) → guarded. Re-roll a few times, then accept.
     var genSep2  = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
     var cacheSep = Math.max(C.MAP_FEATURE_MIN_SEP, C.CURSE_FOUNT_ZONE_R + (C.CACHE_ZONE_R || 0));
+    var greedSep = Math.max(C.MAP_FEATURE_MIN_SEP, C.CURSE_FOUNT_ZONE_R + (C.GREED_HALF || 0) + 60);
     var avoid = [
       [this._tree,  genSep2],
       [this._cache, cacheSep * cacheSep],
+      [this._greed, greedSep * greedSep],
     ];
     var x, y, tries = 0, ok;
     do {

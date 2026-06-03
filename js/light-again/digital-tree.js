@@ -175,9 +175,11 @@
     // few times, then accept. Mirrors _spawnCurseFount's avoid-list pattern.
     var sep2 = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
     var cacheSep = Math.max(C.MAP_FEATURE_MIN_SEP, C.TREE_SIZE + (C.CACHE_ZONE_R || 0));
+    var greedSep = Math.max(C.MAP_FEATURE_MIN_SEP, C.TREE_SIZE + (C.GREED_HALF || 0) + 60);
     var avoid = [
       [this._fount, sep2],
       [this._cache, cacheSep * cacheSep],
+      [this._greed, greedSep * greedSep],
     ];
     var x, y, tries = 0, ok;
     do {

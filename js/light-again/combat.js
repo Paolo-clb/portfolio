@@ -486,6 +486,7 @@
     var pts = basePts * this.comboMultiplier;
     if (ctx.reflected) pts *= 2;
     if (this._scoreMult && this._scoreMult !== 1) pts = Math.round(pts * this._scoreMult);  // glassHeart curse
+    if (this._greedActive) pts *= C.GREED_SCORE_MULT;   // standing on the Signal Amplifier (Greed platform)
     this.score += pts;
     this.comboTimer = 2000;
     var prevCm = this.comboMultiplier;

@@ -141,9 +141,13 @@
     // generic crowding gap); the Digital Tree / Unstable Core just keep the map
     // events from crowding. _core may be absent (a parallel feature) → guarded.
     var fountSep = Math.max(C.MAP_FEATURE_MIN_SEP, R + C.CURSE_FOUNT_ZONE_R);
+    // The Greed platform is the other big KotH zone — they MAY coexist but must
+    // never overlap (radius-sum on the plate's half-side).
+    var greedSep = Math.max(C.MAP_FEATURE_MIN_SEP, R + C.GREED_HALF + 60);
     var genSep2  = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
     var avoid = [
       [this._fount, fountSep * fountSep],
+      [this._greed, greedSep * greedSep],
       [this._tree,  genSep2],
       [this._core,  genSep2],
     ];

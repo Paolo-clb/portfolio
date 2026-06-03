@@ -230,6 +230,10 @@ window.SITE_I18N = {
     laCacheHack:         'CHARGEMENT…',
     laCacheSecured:      'POWER-UP PRÊT',
 
+    // The Signal Amplifier (Greed platform — score ×2 King-of-the-Hill event)
+    laGreedEnter:        'SIGNAL ×2',
+    laGreedLeave:        'SIGNAL PERDU',
+
     // Misc
     closeLbl: 'Fermer',
   },
@@ -457,6 +461,10 @@ window.SITE_I18N = {
     // The Cache Zone (risk/reward King-of-the-Hill event)
     laCacheHack:         'CHARGING…',
     laCacheSecured:      'POWER UP READY',
+
+    // The Signal Amplifier (Greed platform — score ×2 King-of-the-Hill event)
+    laGreedEnter:        'SIGNAL ×2',
+    laGreedLeave:        'SIGNAL LOST',
 
     // Misc
     closeLbl: 'Close',

@@ -359,6 +359,20 @@
       this._comboTxt.setBlendMode(Phaser.BlendModes.ADD);
       this._comboTxt.setAlpha(0);
 
+      // Signal-Amplifier "X2" badge — lights up (mint green) just right of the
+      // score while you stand on a live Greed platform; hidden otherwise.
+      this._greedMultTxt = this.add.text(cam.width / 2, 16, 'X2', {
+        fontFamily: 'monospace', fontSize: '22px', fontStyle: 'bold', color: '#66ffcc',
+        stroke: '#063322', strokeThickness: 3,
+      });
+      this._greedMultTxt.setScrollFactor(0);
+      this._greedMultTxt.setOrigin(0, 0);
+      this._greedMultTxt.setDepth(102);
+      this._greedMultTxt.setBlendMode(Phaser.BlendModes.ADD);
+      this._greedMultTxt.setShadow(0, 0, '#33ff99', 12, false, true);
+      this._greedMultTxt.setAlpha(0);
+      this._greedBadgePulse = 0;
+
       // Combo FX: x10+ trail emitter
       this._comboTrailEmitter = this.add.particles(0, 0, '_spark', {
         speed: { min: 20, max: 80 },
@@ -443,6 +457,7 @@
       this._initCurseFount();
       this._initDataHighways();
       this._initCacheZone();
+      this._initGreedZone();
       this._initCore();
       this._initPrism();
       this._initTutorial();
@@ -528,6 +543,12 @@
         if (ev.code === 'KeyB' && !ev.repeat) {
           ev.preventDefault();
           if (self._spawnCacheZone) self._spawnCacheZone({ near: true });
+        }
+        // Cheat: force-spawn the Signal Amplifier near the player (greed platform —
+        // bypasses the "all upgrades maxed" gate, which only blocks NATURAL spawns)
+        if (ev.code === 'KeyX' && !ev.repeat) {
+          ev.preventDefault();
+          if (self._spawnGreedZone) self._spawnGreedZone({ near: true });
         }
         // Cheat: relocate the Prism of Refraction next to the player (prisme de
         // réfraction). Only when it's dormant/absent — never clobber a live
@@ -639,6 +660,7 @@
         if (self._clearCore)        self._clearCore(true);
         if (self._clearPrism)       self._clearPrism(true);
         if (self._clearCacheZone)   self._clearCacheZone(true);
+        if (self._clearGreedZone)   self._clearGreedZone();
         if (self._removeBossHintDom) self._removeBossHintDom();
         self._treeGfx = null; self._treePtrGfx = null; self._fairyGfx = null;
         self._fountDarkGfx = null; self._fountGfx = null; self._fountObGfx = null; self._fountPtrGfx = null;
@@ -652,6 +674,7 @@
         self._prismGfx = null;  // graphics destroyed with the scene; drop the stale ref
         self._cacheGfx = null; self._cacheTopGfx = null; self._starPtrGfx = null;
         self._cacheStarGhost = null; self._cacheStarFill = null; self._cacheStarMaskGfx = null;
+        self._greedGfx = null; self._greedTopGfx = null;
         // Tear down any tutorial overlay so it can't outlive the scene (e.g. a
         // mode switch from the home menu mid-tutorial would otherwise orphan it).
         self._tutorialActive = false;
@@ -1034,6 +1057,7 @@
       // while everything else is frozen). Spawns are already suspended during TW.
       this._updateDataHighways(this._twActive ? dt * C.HIGHWAY_TW_VISUAL_SCALE : dt);
       this._updateCacheZone(dt, ms);   // ms = scaled world time → the hack gauge pauses during The World / hitstop
+      this._updateGreedZone(dt, ms);   // ms = scaled world time → the ×2 + beacon pause during The World / hitstop
       this._updateCore(dt, sDt);
       this._updatePrism(dt, sDt);
       this._updateTutorial(dt);

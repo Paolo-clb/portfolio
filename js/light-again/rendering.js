@@ -722,6 +722,31 @@
       }
     }
 
+    // ---- Signal-Amplifier "X2" badge (Greed platform) ----
+    // Shown just right of the score whenever the ×2 is live; a green pulse on the
+    // badge + a subtle scale-throb on the score number sell the doubling.
+    if (this._greedMultTxt) {
+      if (this._greedActive) {
+        this._greedBadgePulse = Math.min(1, (this._greedBadgePulse || 0) + (dt || 0.016) * 3.5);
+        var gThrob = 0.85 + 0.15 * Math.abs(Math.sin(gt * Math.PI * 3));
+        // Park the badge to the right of the (centre-anchored) score number.
+        var scoreHalf = this._scoreTxt.width * 0.5;
+        this._greedMultTxt.setPosition(cx2 + scoreHalf + 8, 18);
+        this._greedMultTxt.setAlpha(this._greedBadgePulse * gThrob);
+        this._greedMultTxt.setScale(1 + 0.12 * Math.abs(Math.sin(gt * Math.PI * 3)));
+        // Subtle score-number throb while doubling (restored to 1 when it ends).
+        this._scoreTxt.setScale(1 + 0.05 * Math.abs(Math.sin(gt * Math.PI * 3)));
+        this._scoreGreedThrobbing = true;
+      } else if (this._greedBadgePulse > 0) {
+        this._greedBadgePulse = Math.max(0, this._greedBadgePulse - (dt || 0.016) * 4);
+        this._greedMultTxt.setAlpha(this._greedBadgePulse);
+        if (this._greedBadgePulse <= 0 && this._scoreGreedThrobbing) {
+          this._scoreTxt.setScale(1);            // release the throb once faded out
+          this._scoreGreedThrobbing = false;
+        }
+      }
+    }
+
     // Combo multiplier
     if (this.comboMultiplier > 1) {
       this._comboTxt.setPosition(cx2, 48);

@@ -121,7 +121,7 @@
 
     var inset = C.CORE_FIELD_RADIUS + 40;   // keep the WHOLE field in-bounds (disc)
     var sep2 = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
-    var avoid = [this._fount, this._tree, this._cache, this._prism];   // optional refs (may not exist)
+    var avoid = [this._fount, this._tree, this._cache, this._prism, this._greed];   // optional refs (may not exist)
     var x, y, tries = 0, ok;
     do {
       var ang  = Math.random() * TAU;
