@@ -41,6 +41,19 @@
     return { x: Math.cos(a) * r, y: Math.sin(a) * r };
   };
 
+  // Squared distance from point (px,py) to the segment (ax,ay)-(bx,by). Shared so
+  // a Data Highway CAPSULE (centreline segment + half-width band) and a point-radius
+  // map feature can be kept from ever overlapping (see _spawnHighway / the features).
+  LA.segDistSq = function (px, py, ax, ay, bx, by) {
+    var dx = bx - ax, dy = by - ay;
+    var l2 = dx * dx + dy * dy;
+    var t = l2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    var cx = ax + dx * t, cy = ay + dy * t;
+    var ex = px - cx, ey = py - cy;
+    return ex * ex + ey * ey;
+  };
+
   /* ---- Game constants ---- */
   var C = LA.C = {
     ACCEL:       0.7,
@@ -559,6 +572,17 @@
     HIGHWAY_EJECT_SPREAD:        3.6,    // px/frame lateral fan added at the mouth so they scatter, not single-file
     HIGHWAY_SPAWN_NEAR_MIN:      160,    // the corridor passes at least this close to the player...
     HIGHWAY_SPAWN_NEAR_MAX:      840,    // ...and at most this far, so it's discoverable without a pointer
+    // Keep a new highway from forming ON a live map feature (Cache, Greed, Curse
+    // Fountain, Unstable Core, Prism) or right on the player — and, reciprocally,
+    // keep those features from spawning on a live highway. The capsule (centreline +
+    // HALF_WIDTH+FEATHER band) is kept FEATURE_PAD px clear of each feature's
+    // interactive edge; the player gets a slightly bigger personal bubble so the road
+    // never draws itself across the ship. Placement re-rolls up to PLACE_TRIES times
+    // for a fully-clear corridor; if none is found it keeps the least-overlapping
+    // roll, so a road always still appears, near + in view (see _spawnHighway).
+    HIGHWAY_PLACE_TRIES:         28,     // placement re-rolls for a corridor clear of every feature + the player
+    HIGHWAY_FEATURE_PAD:         70,     // px gap kept between the highway band and a feature's interactive edge
+    HIGHWAY_PLAYER_PAD:          80,     // px personal bubble (beyond SIZE) the band keeps off the ship ("un peu loin")
 
     /* ---- Cache Zone (Zone de Cache) — risk/reward King-of-the-Hill event ------
        A big glitchy violet circle with a download glyph at its heart. Step in and
@@ -623,6 +647,7 @@
     GREED_TINT_ARR:              [51, 255, 153], // ...as an [r,g,b] for particle bursts
     GREED_FRUIT:                 0x66ffd0,      // brighter mint accent (matches the tree's fruit)
     GREED_HOT:                   0xeafff4,      // near-white mint highlight (matches the fairy core)
+    GREED_TETHER_DUR:            0.7,    // s a mint "beacon tether" laser links a freshly-spawned enemy to the central node, then fades (kept brief so the lines never clutter the screen)
 
     /* ---- The Unstable Core (Noyau Instable) — environmental billiard weapon ---
        A big pulsing geometric sphere wrapped in a cyan containment force-field,
@@ -651,8 +676,10 @@
     CORE_MAX_BOUNCES:        6,      // bruiser ricochets before it detonates ("rebondisse 6 fois max")
     CORE_SAFETY_LIFETIME:    9000,   // ms hard cap on a launched core (failsafe → detonate)
     CORE_FIZZLE_DUR:         320,    // ms it coasts on ("avance un peu") with NO bruiser left to chain → then explodes
-    CORE_DETECT_MARGIN:      520,    // px of slack around the camera view for ACQUIRING/keeping a target — lets it chase a far
-                                     //   aimed hexagon a bit off-screen before it self-destructs for lack of bruisers
+    CORE_VIEW_INSET:         120,    // px the camera view is shrunk INWARD when acquiring the next bounce target — the core
+                                     //   prefers enemies WELL within the field of vision so it (and its ricochets) stay on-screen
+    CORE_DETECT_MARGIN:      520,    // px of slack around the camera view — LAST-RESORT acquire range + how far it keeps chasing a
+                                     //   target that drifted off-screen, before it self-destructs only when no enemy is left near
     CORE_CRUSH_PAD:          8,      // extra slack on the crush hit-test (core radius + enemy half + this)
     CORE_BRUISER_DMG:        3,      // damage a ricochet deals to an unshielded tier-3 bruiser body
     CORE_EXP_RADIUS:         300,    // final detonation blast radius (px)

@@ -368,10 +368,25 @@
           e.spr.setAlpha(0.7 + Math.abs(flick) * 0.3);
           e.spr.setScale(1.0 + Math.abs(flick) * 0.15);
         } else {
-          var t3tint = e.hp >= 2 ? 0x5c0099 : 0x8b0000;
-          e.spr.setTint(t3tint);
-          e.spr.setAlpha(1.0);
-          e.spr.setScale(1.0 + 0.035 * Math.sin(gt * Math.PI * 2.2 + i * 0.7));  // heavy, slow idle
+          var t3base = e.hp >= 2 ? 0x5c0099 : 0x8b0000;
+          var bp = e._spawnPulseT || 0;
+          if (bp > 0) {
+            // Birth throb: every time it ejects a minion the hexagon visibly
+            // SWELLS, flashes white-hot → magenta, and recoils with a quick
+            // wobble — it really grabs the eye, then settles back to idle.
+            var bpE = bp * (2 - bp);                                  // easeOut so the snap reads
+            var flashCol = bpE > 0.6
+              ? _lerpHex(0xff7bff, 0xffffff, (bpE - 0.6) / 0.4)       // peak: blown out to white
+              : _lerpHex(t3base, 0xff7bff, bpE / 0.6);                // settle: magenta → base
+            e.spr.setTint(flashCol);
+            e.spr.setAlpha(1.0);
+            e.spr.setScale(1.0 + 0.62 * bpE);
+            e.spr.setRotation(e.angle + Math.sin(bp * Math.PI * 5) * 0.32 * bp);  // damped recoil wobble
+          } else {
+            e.spr.setTint(t3base);
+            e.spr.setAlpha(1.0);
+            e.spr.setScale(1.0 + 0.035 * Math.sin(gt * Math.PI * 2.2 + i * 0.7));  // heavy, slow idle
+          }
         }
 
         // Shield ring
@@ -752,15 +767,18 @@
     }
 
     // ---- Signal-Amplifier "X2" badge (Greed platform) ----
-    // Shown just right of the score whenever the ×2 is live; a green pulse on the
-    // badge + a subtle scale-throb on the score number sell the doubling.
+    // Shown just LEFT of the score whenever the ×2 is live; a green pulse on the
+    // badge + a subtle scale-throb on the score number sell the doubling. It only
+    // appears once the in-zone "X2" has flown up and docked (`_greedHudArmed`), so
+    // the player visibly connects the platform's ×2 with their score.
     if (this._greedMultTxt) {
-      if (this._greedActive) {
+      if (this._greedActive && this._greedHudArmed) {
         this._greedBadgePulse = Math.min(1, (this._greedBadgePulse || 0) + (dt || 0.016) * 3.5);
         var gThrob = 0.85 + 0.15 * Math.abs(Math.sin(gt * Math.PI * 3));
-        // Park the badge to the right of the (centre-anchored) score number.
+        // Park the badge snug to the LEFT of the (centre-anchored) score number,
+        // vertically centred on it (origin (1, 0.5)).
         var scoreHalf = this._scoreTxt.width * 0.5;
-        this._greedMultTxt.setPosition(cx2 + scoreHalf + 8, 18);
+        this._greedMultTxt.setPosition(cx2 - scoreHalf - 10, 16 + this._scoreTxt.height * 0.5);
         this._greedMultTxt.setAlpha(this._greedBadgePulse * gThrob);
         this._greedMultTxt.setScale(1 + 0.12 * Math.abs(Math.sin(gt * Math.PI * 3)));
         // Subtle score-number throb while doubling (restored to 1 when it ends).

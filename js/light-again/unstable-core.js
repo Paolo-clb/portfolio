@@ -11,15 +11,18 @@
                   hex bubble shimmers. Neutral — enemies pass straight over it.
      3. LAUNCH  — DASH-ATTACK it (and ONLY a dash-attack) and the field bursts:
                   it fires off toward the bruiser best matching your aim.
-     4. BILLIARD— it rockets BRUISER TO BRUISER, ricocheting off the chunky tier-3
-                  bruisers (a smart, steered ricochet — only ever targeting bruisers
-                  VISIBLE ON SCREEN), CRUSHING every lesser enemy it ploughs through.
+     4. BILLIARD— it rockets ENEMY TO ENEMY, a smart steered ricochet that targets a
+                  tier-3 bruiser BY PREFERENCE but falls back to a tier-2/1 when none is
+                  left, so it can always reach its full bounce count. It chains to the
+                  enemy FARTHEST from the last one (max travel) and stays WELL WITHIN the
+                  player's view (it'll chase a target that drifts off-screen, then comes
+                  back to one in-view), CRUSHING every lesser enemy it ploughs through.
                   It does NOT bounce off the far world walls (that just flung it off
                   screen). Bosses live outside this.enemies, so it never sees them.
-     5. DETONATE— after CORE_MAX_BOUNCES ricochets it explodes. With no on-screen
-                  bruiser left to chain to, it simply coasts a short beat (CORE_FIZZLE_DUR)
-                  and blows up where it is — it never flies off into the void. The
-                  WHOLE rampage's score lands as one "NOYAU INSTABLE" big-score popup.
+     5. DETONATE— after CORE_MAX_BOUNCES ricochets it explodes. ONLY when no enemy is
+                  left anywhere near does it coast a short beat (CORE_FIZZLE_DUR) and blow
+                  up where it is — it never flies off into the void. The WHOLE rampage's
+                  score lands as one "NOYAU INSTABLE" big-score popup.
 
    Self-contained on this._core (plain data) + one shared, persistent ADD
    graphics layer created in scene.create (mirrors the digital-tree / highway
@@ -133,6 +136,9 @@
         var av = avoid[ai];
         if (av && (x - av.x) * (x - av.x) + (y - av.y) * (y - av.y) < sep2) { ok = false; break; }
       }
+      // Never drop the core onto a live Data Highway band (reciprocal of the
+      // highway's own avoidance — the two must never overlap).
+      if (ok && !this._pointClearsHighways(x, y, C.CORE_FIELD_RADIUS)) ok = false;
       tries++;
     } while (!ok && tries < 24);
 
@@ -217,10 +223,10 @@
     c.fizzleT  = 0;
     this._coreScoreAccum = 0;
 
-    // Pick the first bruiser to chain to (aim-aligned, within detection range so a
-    // far hexagon a touch off-screen still counts); head straight at it. With none,
+    // Pick the first enemy to chain to (aim-aligned, preferring one well inside the
+    // screen — T3 first, then T2/T1); head straight at it. With none anywhere near,
     // coast in the aim direction and fizzle (see _tickCoreLaunched).
-    var tgt = this._corePickTarget(c, { dirX: ax, dirY: ay, margin: C.CORE_DETECT_MARGIN });
+    var tgt = this._coreAcquire(c, { dirX: ax, dirY: ay });
     c.target = tgt;
     var hx = ax, hy = ay;
     if (tgt) {
@@ -272,13 +278,13 @@
     if (step60 <= 0.0001) return;   // genuinely paused (hitstop / draft) → don't move or detonate
     c.lifeMs += stepMs;
 
-    // ---- Steering: home toward the current bruiser target ----
-    // (Re-acquire if the target died or left the detection range; with none left
-    // to chain to, drop into the fizzle coast below.)
+    // ---- Steering: home toward the current target (T3 by preference, else T2/T1) ----
+    // (Re-acquire — in-view first — if the target died or drifted out of detection
+    // range; with no enemy left anywhere near, drop into the fizzle coast below.)
     if (!c.fizzle) {
       if (!this._coreTargetValid(c)) {
         var sp0 = Math.sqrt(c.vx * c.vx + c.vy * c.vy) || 1;
-        c.target = this._corePickTarget(c, { dirX: c.vx / sp0, dirY: c.vy / sp0, excludeList: c.hitList, margin: C.CORE_DETECT_MARGIN });
+        c.target = this._coreAcquire(c, { dirX: c.vx / sp0, dirY: c.vy / sp0, excludeList: c.hitList });
         if (!c.target) { c.fizzle = true; c.fizzleT = 0; }
       }
       if (c.target) {
@@ -322,27 +328,32 @@
     if (c.bounces >= C.CORE_MAX_BOUNCES || c.lifeMs >= C.CORE_SAFETY_LIFETIME) this._detonateCore(c);
   };
 
-  /* Pick a tier-3 bruiser to chain to, considering only bruisers within the camera
-     view (+ opts.margin px). Two selection modes:
-       • opts.farFrom = {x,y} → the bruiser FARTHEST from that point (maximises the
+  /* Find the single best enemy OF ONE TIER to chain to, considering only enemies
+     within the camera view (+ opts.margin px; a NEGATIVE margin insets the view
+     inward → "well inside the screen"). Two selection modes:
+       • opts.farFrom = {x,y} → the enemy FARTHEST from that point (maximises the
          distance the core travels — used for the bounce-to-next redirect).
        • otherwise → the one scoring near + forward-of-(opts.dirX,opts.dirY) best
          (used at launch and mid-flight re-acquisition).
-     opts.excludeList hard-skips already-struck bruisers. Returns null if none qualify. */
-  M._corePickTarget = function (c, opts) {
+     opts.excludeList hard-skips already-struck enemies. Returns null if none qualify. */
+  M._corePickTargetTier = function (c, opts, tier) {
     var enemies = this.enemies;
-    var mg = opts.margin || 0;
     var view = this.cameras.main.worldView;
+    var mg = opts.margin || 0;
+    // A negative margin shrinks the view inward (prefer enemies WELL inside the
+    // screen so the core stays on-screen). Clamp so the zone can never collapse.
+    if (mg < 0) mg = Math.max(mg, -Math.min(view.width, view.height) * 0.3);
     var vL = view.x - mg, vR = view.right + mg, vT = view.y - mg, vB = view.bottom + mg;
     var ff = opts.farFrom || null, exList = opts.excludeList || null;
     var dirX = opts.dirX || 0, dirY = opts.dirY || 0;
     var best = null, bestScore = ff ? -Infinity : Infinity;
     for (var i = 0; i < enemies.length; i++) {
       var e = enemies[i];
-      if (e.tier !== 3) continue;
-      if (exList && exList.indexOf(e) >= 0) continue;               // hard-skip already-struck bruisers
+      if (e.tier !== tier) continue;
+      if (e._snIntangible) continue;                                // cloaked sniper — can't be chained to
+      if (exList && exList.indexOf(e) >= 0) continue;               // hard-skip already-struck enemies
       if (e._spawnAnimT != null && e._spawnAnimT < 1) continue;
-      if (e.x < vL || e.x > vR || e.y < vT || e.y > vB) continue;   // outside the (margin-expanded) view
+      if (e.x < vL || e.x > vR || e.y < vT || e.y > vB) continue;   // outside the (margin-adjusted) view
       if (ff) {
         var fdx = e.x - ff.x, fdy = e.y - ff.y, fd2 = fdx * fdx + fdy * fdy;
         if (fd2 > bestScore) { bestScore = fd2; best = e; }         // farthest from the reference
@@ -357,20 +368,51 @@
     return best;
   };
 
-  /* Is the core's current target still a live bruiser within the detection range? */
+  /* Acquire the next target. TIER comes first (a tier-3 bruiser is the satisfying
+     billiard, then tier-2, then tier-1) so the core keeps chaining — and reaches its
+     full bounce count — as long as ANY enemy is around. WITHIN each tier it prefers an
+     enemy WELL inside the view (inset) over one near the edge, then anywhere on-screen,
+     so ricochets stay comfortably on-screen. Only once no enemy of any tier is on-screen
+     does it reach OFF-screen (detection range) as a last resort, rather than fizzling —
+     so it self-destructs only when there's genuinely no enemy left anywhere near. */
+  M._coreAcquire = function (c, opts) {
+    var self = this;
+    function pick(margin, tier) {
+      return self._corePickTargetTier(c, {
+        dirX: opts.dirX, dirY: opts.dirY, farFrom: opts.farFrom,
+        excludeList: opts.excludeList, margin: margin,
+      }, tier);
+    }
+    // Primary — ON-SCREEN, tier-first, inset-preferred within each tier.
+    for (var tier = 3; tier >= 1; tier--) {
+      var best = pick(-C.CORE_VIEW_INSET, tier) || pick(0, tier);
+      if (best) return best;
+    }
+    // Last resort — chain to a just-off-screen enemy (still tier-first) before giving up.
+    for (var t2 = 3; t2 >= 1; t2--) {
+      var b2 = pick(C.CORE_DETECT_MARGIN, t2);
+      if (b2) return b2;
+    }
+    return null;
+  };
+
+  /* Is the core's current target still a live enemy within the detection range?
+     It deliberately keeps chasing a target that drifted OFF-SCREEN (up to the wide
+     detection margin) — losing it just triggers a fresh in-view acquisition. */
   M._coreTargetValid = function (c) {
     var t = c.target;
     if (!t || this.enemies.indexOf(t) < 0) return false;            // gone / crushed
     var view = this.cameras.main.worldView, mg = C.CORE_DETECT_MARGIN;
     if (t.x < view.x - mg || t.x > view.right + mg ||
-        t.y < view.y - mg || t.y > view.bottom + mg) return false;  // out of detection range
+        t.y < view.y - mg || t.y > view.bottom + mg) return false;  // wandered out of detection range
     return true;
   };
 
-  /* Contact resolution each frame. Tier 1/2 are ploughed through (crushed, no
-     deflection). A tier-3 bruiser is a billiard ball: the core chips/breaks it,
-     counts a bounce, and redirects toward the NEXT on-screen bruiser (or fizzles
-     out if there's none). Bosses aren't in this.enemies, so they're never touched. */
+  /* Contact resolution each frame. A bounce happens on a tier-3 bruiser (always — the
+     satisfying billiard) OR on the core's CURRENT chase target whatever its tier — so
+     when no bruiser is left, the core still ricochets off a tier-2/1 it was homing on
+     and keeps its rampage alive. Every OTHER lesser enemy in the path is just ploughed
+     through (crushed). Bosses aren't in this.enemies, so they're never touched. */
   M._coreContact = function (c) {
     var enemies = this.enemies, cr = C.CORE_RADIUS;
     for (var i = enemies.length - 1; i >= 0; i--) {
@@ -381,40 +423,46 @@
       var rr = cr + e.size * 0.5 + C.CORE_CRUSH_PAD;
       if (dx * dx + dy * dy >= rr * rr) continue;
 
-      if (e.tier === 3) {
-        // Already smashed this launch → plough straight past it (never double-bounce
-        // the same hexagon). The just-struck one is pushed to hitList below, so this
+      if (e.tier === 3 || e === c.target) {
+        // Already struck this launch → plough straight past it (never double-bounce
+        // the same enemy). The just-struck one is pushed to hitList below, so this
         // also blocks an instant re-bounce on the very next frame.
         if (c.hitList.indexOf(e) >= 0) continue;
-        if (e.hasShield) {
-          this._breakShield(e);
+        if (e.tier === 3) {
+          if (e.hasShield) {
+            this._breakShield(e);
+          } else {
+            e.hp -= C.CORE_BRUISER_DMG;
+            if (e.hp <= 0) this._killEnemy(i, { core: true });
+            else this._explode(e.x, e.y, [255, 140, 40], 10);
+          }
         } else {
-          e.hp -= C.CORE_BRUISER_DMG;
-          if (e.hp <= 0) this._killEnemy(i, { core: true });
-          else this._explode(e.x, e.y, [255, 140, 40], 10);
+          this._killEnemy(i, { core: true });   // a weak T1/T2 target → crushed outright on the ricochet
         }
-        c.hitList.push(e);                        // mark struck — avoid ever re-hitting it
+        c.hitList.push(e);                       // mark struck — avoid ever re-hitting it
         this._coreBounce(c);
-
-        // Redirect toward the UN-HIT bruiser FARTHEST from the one just struck (max
-        // travel), strictly within the field of view. If none is strictly on-screen,
-        // fall back to the farthest un-hit within the wider detection range. With no
-        // un-hit bruiser left, fizzle — it won't circle back to re-smash an old one.
-        var nxt = this._corePickTarget(c, { farFrom: { x: e.x, y: e.y }, excludeList: c.hitList, margin: 0 });
-        if (!nxt) nxt = this._corePickTarget(c, { farFrom: { x: e.x, y: e.y }, excludeList: c.hitList, margin: C.CORE_DETECT_MARGIN });
-        c.target = nxt;
-        if (nxt) {
-          c.fizzle = false; c.fizzleT = 0;
-          var ndx = nxt.x - c.x, ndy = nxt.y - c.y, nd = Math.sqrt(ndx * ndx + ndy * ndy) || 1;
-          c.vx = (ndx / nd) * C.CORE_LAUNCH_SPEED;
-          c.vy = (ndy / nd) * C.CORE_LAUNCH_SPEED;
-        } else {
-          c.fizzle = true; c.fizzleT = 0;
-        }
+        this._coreRedirect(c, e.x, e.y);         // chain to the next, max-travel, in-view target
         return;   // one ricochet per frame
       } else {
         this._killEnemy(i, { core: true });   // crush lesser enemies (plough through)
       }
+    }
+  };
+
+  /* After a ricochet, chain to the UN-HIT enemy FARTHEST from the point just struck
+     (max travel), preferring one well within the field of view (then on-screen, then
+     within detection range). With nothing left to chain to, drop into the fizzle
+     coast — it never circles back to re-smash an old target. */
+  M._coreRedirect = function (c, fromX, fromY) {
+    var nxt = this._coreAcquire(c, { farFrom: { x: fromX, y: fromY }, excludeList: c.hitList });
+    c.target = nxt;
+    if (nxt) {
+      c.fizzle = false; c.fizzleT = 0;
+      var ndx = nxt.x - c.x, ndy = nxt.y - c.y, nd = Math.sqrt(ndx * ndx + ndy * ndy) || 1;
+      c.vx = (ndx / nd) * C.CORE_LAUNCH_SPEED;
+      c.vy = (ndy / nd) * C.CORE_LAUNCH_SPEED;
+    } else {
+      c.fizzle = true; c.fizzleT = 0;
     }
   };
 

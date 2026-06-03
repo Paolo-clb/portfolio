@@ -64,6 +64,8 @@
     this._greedSpawnT      = 0;
     this._greedNextDelay   = C.GREED_SPAWN_MIN_DELAY;
     this._greedTrappedPrev = false;   // anomaly-barrier edge detection
+    this._greedHudArmed    = false;   // HUD "X2" badge holds back until the in-zone X2 flies up and docks
+    this._greedFlyTxt      = null;    // the in-flight "X2" token (zone → HUD), if any
 
     // Ground layer (under enemies/player) — the etched plate, grid, border.
     this._greedGfx = this.add.graphics();
@@ -81,6 +83,8 @@
   M._clearGreedZone = function () {
     this._greed = null;
     this._greedActive = false;
+    this._greedHudArmed = false;
+    if (this._greedFlyTxt) { this._greedFlyTxt.destroy(); this._greedFlyTxt = null; }
     if (this._greedGfx)    this._greedGfx.clear();
     if (this._greedTopGfx) this._greedTopGfx.clear();
   };
@@ -137,6 +141,7 @@
       [this._fount, fountSep * fountSep],
       [this._tree,  genSep2],
       [this._core,  genSep2],
+      [this._prism, genSep2],
     ];
 
     var dMin = opts.near ? (H + 130) : C.GREED_SPAWN_DIST_MIN;
@@ -152,6 +157,10 @@
         var av = avoid[ai][0];
         if (av && (x - av.x) * (x - av.x) + (y - av.y) * (y - av.y) < avoid[ai][1]) { ok = false; break; }
       }
+      // Never lay the plate across a live Data Highway band (reciprocal of the
+      // highway's own avoidance — the two must never overlap). The plate is a square,
+      // so use its circumscribed radius (H·√2) to keep the corners clear too.
+      if (ok && !this._pointClearsHighways(x, y, H * Math.SQRT2)) ok = false;
       tries++;
     } while (!ok && tries < 24);
     if (!ok) return;                                // blocked this cycle → try again later
@@ -280,7 +289,76 @@
     this._spawnWaveRing(f.x, f.y, { maxRadius: f.half, color: C.GREED_FRUIT, expandTime: 0.4 });
     this._explode(f.x, f.y, C.GREED_TINT_ARR, 16);
     this.cameras.main.flash(160, 40, 200, 120);
-    this._floatLabel(f.x, f.y - f.half * 0.42, LA.laGoT('laGreedEnter'), '#66ffcc');
+    // The greed read-out: a big "SCORE X2" pops in the zone, then its "X2" detaches
+    // and flies up to dock at the LEFT of the HUD score. Re-arm so the HUD badge
+    // only lights once that token lands (no premature, disconnected ×2 at the score).
+    this._greedHudArmed = false;
+    this._greedBadgePulse = 0;
+    this._greedAnnounceX2(f);
+  };
+
+  /* The entry flourish: a big "SCORE X2" banner blooms in the zone, then hands its
+     "X2" off to the HUD (it lifts away as the banner fades) so the player ties the
+     platform's doubling to the number at the top of the screen. World-space banner;
+     the flying token is screen-space (launched from the banner's projected spot). */
+  M._greedAnnounceX2 = function (f) {
+    var self = this;
+    var wx = f.x, wy = f.y - f.half * 0.30;
+    var banner = this.add.text(wx, wy, LA.laGoT('laGreedEnter'), {
+      fontFamily: 'monospace', fontSize: '40px', fontStyle: 'bold',
+      color: '#eafff4', stroke: '#063322', strokeThickness: 5,
+      shadow: { offsetX: 0, offsetY: 2, color: '#33ff99', blur: 16, fill: true },
+    });
+    banner.setOrigin(0.5, 0.5);
+    banner.setDepth(74);
+    banner.setBlendMode(Phaser.BlendModes.ADD);
+    banner.setAlpha(0);
+    banner.setScale(0.5);
+    // Pop in with an overshoot; on settle, launch the flying "X2" and let the
+    // banner lift + fade (so the X2 reads as detaching and rising to the HUD).
+    this.tweens.add({
+      targets: banner, scaleX: 1, scaleY: 1, alpha: 1, duration: 280, ease: 'Back.easeOut',
+      onComplete: function () {
+        self._greedLaunchHudX2(wx + banner.width * 0.25, wy);   // ≈ where the "X2" sits (right quarter)
+        self.tweens.add({
+          targets: banner, alpha: 0, y: banner.y - 46, duration: 520, ease: 'Cubic.easeIn', delay: 60,
+          onComplete: function () { banner.destroy(); },
+        });
+      },
+    });
+  };
+
+  /* Fly a screen-space "X2" from the zone (projected to screen) up to snug LEFT of
+     the HUD score, shrinking to badge size. On landing, arm the persistent HUD badge
+     (rendering.js) which then holds that exact slot. */
+  M._greedLaunchHudX2 = function (wx, wy) {
+    var self = this;
+    if (!this._scoreTxt) { this._greedHudArmed = true; return; }   // no HUD → just arm the badge
+    var cam = this.cameras.main, zoom = cam.zoom || 1;
+    var sx = (wx - cam.scrollX) * zoom;
+    var sy = (wy - cam.scrollY) * zoom;
+    var tx = cam.width / 2 - this._scoreTxt.width * 0.5 - 10;       // right edge, 10px left of the score
+    var ty = 16 + this._scoreTxt.height * 0.5;                      // vertically centred on the score
+    if (this._greedFlyTxt) { this._greedFlyTxt.destroy(); this._greedFlyTxt = null; }
+    var fly = this.add.text(sx, sy, 'X2', {
+      fontFamily: 'monospace', fontSize: '22px', fontStyle: 'bold', color: '#66ffcc',
+      stroke: '#063322', strokeThickness: 3,
+      shadow: { offsetX: 0, offsetY: 0, color: '#33ff99', blur: 12, fill: true },
+    });
+    fly.setScrollFactor(0);
+    fly.setOrigin(1, 0.5);
+    fly.setDepth(103);
+    fly.setBlendMode(Phaser.BlendModes.ADD);
+    fly.setScale(2.2);
+    this._greedFlyTxt = fly;
+    this.tweens.add({
+      targets: fly, x: tx, y: ty, scaleX: 1, scaleY: 1, duration: 520, ease: 'Cubic.easeInOut',
+      onComplete: function () {
+        self._greedHudArmed = true;                                // badge takes over this slot
+        if (self._greedFlyTxt === fly) self._greedFlyTxt = null;
+        if (fly.active) fly.destroy();
+      },
+    });
   };
 
   /* ACTIVE abandoned (player stayed off the plate past the grace) → power down. */
@@ -339,7 +417,14 @@
     var tier = this._drawFromBag();
     // Spawn-ring VFX in the GREED mint (not the tier colour) so beacon-spawned
     // enemies visibly "belong" to the platform that summoned them.
+    var before = this.enemies.length;
     this._spawnTierAt(tier, c.x, c.y, { ringColor: C.GREED_TINT });
+    // Tag the just-spawned enemy so a brief mint "tether" laser links it back to the
+    // plate's central node (rendered in _renderGreedGlyph). gameTime-expiry keeps it
+    // to a quick flash at spawn → the cause reads, the lines never pile up.
+    if (this.enemies.length > before) {
+      this.enemies[this.enemies.length - 1]._greedTetherUntil = this.gameTime + C.GREED_TETHER_DUR;
+    }
   };
 
   /* Outward "broadcast" square-rings that pulse off the plate edge while a live
@@ -489,6 +574,27 @@
     var br = Hh * 0.16;                                    // base glyph radius
     var breathe = 1 + 0.05 * Math.sin(gt * 4);
     var baseY = cy + br * 0.22;                            // fan / node anchor
+
+    // ---- Beacon "tether" lasers: a thin mint beam from the central node to each
+    //      enemy this plate just summoned, so the cause is unmistakable. Each fades
+    //      over GREED_TETHER_DUR (gameTime expiry, tagged at spawn) → a quick flash
+    //      at spawn that never lingers, so even a torrent never clutters the screen.
+    //      Drawn first so the node/halo sit cleanly on top of the beam origins.
+    var ens = this.enemies;
+    if (ens) {
+      for (var ti = 0; ti < ens.length; ti++) {
+        var e = ens[ti], until = e && e._greedTetherUntil;
+        if (!until || until <= gt) continue;
+        var tf = (until - gt) / C.GREED_TETHER_DUR;       // 1 at spawn → 0 at expiry
+        if (tf > 1) tf = 1;
+        tg.lineStyle(3, col, 0.10 * tf * A);              // soft outer glow
+        tg.beginPath(); tg.moveTo(cx, baseY); tg.lineTo(e.x, e.y); tg.strokePath();
+        tg.lineStyle(1.4, fruit, 0.42 * tf * A);          // thin bright core
+        tg.beginPath(); tg.moveTo(cx, baseY); tg.lineTo(e.x, e.y); tg.strokePath();
+        tg.fillStyle(hotc, 0.5 * tf * A);                 // a small node at the enemy end
+        tg.fillCircle(e.x, e.y, 2.5);
+      }
+    }
 
     // Soft halo for readability over the grid.
     tg.fillStyle(col, A * 0.10);

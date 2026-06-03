@@ -180,6 +180,8 @@
       [this._fount, sep2],
       [this._cache, cacheSep * cacheSep],
       [this._greed, greedSep * greedSep],
+      [this._core,  sep2],
+      [this._prism, sep2],
     ];
     var x, y, tries = 0, ok;
     do {

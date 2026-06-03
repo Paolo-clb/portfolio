@@ -205,18 +205,25 @@
     return true;
   };
 
-  /* Dash-MARK tracker for a CLOAKED sniper: rather than a target reticle, the
-     mark makes the invisible eye FLICKER VISIBLE (cyan "blink") and leave fading
-     cyan AFTERIMAGES of itself along its glide path — so you can follow it to
-     where it'll open. Sparks jut out from the marked-enemy particles emitted in
-     _updateEnemies. (Frozen-static under The World, where it isn't gliding.) */
+  /* Dash-MARK tracker for a CLOAKED sniper. Rather than a target reticle, the
+     mark reveals the invisible eye as a CYAN HOLOGRAM — and crucially draws it
+     SHUT (a thin breathing slit, never a wide open eye). Two reads are wanted:
+       • "revealed but NOT killable": the eye only becomes vulnerable once it
+         OPENS to charge, so a closed, pupil-less slit says "I see it, but it
+         can't be hit yet" — no glowing pupil to mistake for an active target;
+       • "still invisible, only seen through the mark": it phases like an x-ray
+         ghost (double-exposed outline + slow breathing alpha) instead of a
+         solid eyeball, yet stays bright enough to PRE-AIM its next opening.
+     Fading cyan afterimages trace its glide path so you can follow it there.
+     Sparks jut out from the marked-enemy particles emitted in _updateEnemies.
+     (Frozen-static under The World, where it isn't gliding.) */
   M._renderSniperGhostTrail = function (e, gt, i) {
     var g = e.scopeGfx;
     if (!g) return;
     var s = e.size, tw = this._twActive;
     var ca = Math.cos(e.angle), sa = Math.sin(e.angle);
     var pca = -sa, psa = ca;
-    var hw = s * 1.7, ho = s * 0.8;
+    var hw = s * 1.7;
 
     // Sample the gliding path into a short afterimage buffer (skip while TW-frozen).
     if (!e.snGhost) e.snGhost = [];
@@ -226,34 +233,85 @@
       var dgx = last ? e.x - last.x : 999, dgy = last ? e.y - last.y : 999;
       if (!last || dgx * dgx + dgy * dgy > 100) {
         buf.push({ x: e.x, y: e.y, pca: pca, psa: psa });
-        if (buf.length > 8) buf.shift();
+        if (buf.length > 14) buf.shift();
       }
     }
 
-    // Fading afterimages (oldest faintest) — cyan eyelid outlines.
+    // Slow, DEEP "breathing" — the phantom mostly hovers at the faint edge of
+    // visibility and only briefly surges into view (the ^2 curve keeps it low
+    // most of the time, so the eye "appears" rarely / rémanent), reading as
+    // something invisible bleeding through the mark rather than a solid, killable
+    // marked enemy. A faster shimmer on top makes it flicker like a hologram.
+    // Static under The World (no gt-driven motion there).
+    var breathe = tw ? 0.5 : Math.pow(0.5 + 0.5 * Math.sin(gt * Math.PI * 1.4 + i), 2);
+    var shimmer = tw ? 1 : (0.6 + 0.4 * Math.abs(Math.sin(gt * Math.PI * 11 + i * 2.3)));
+    var slit = s * (0.24 + 0.12 * breathe);   // gently-open lid — an eye, not a line
+    var cx = e.x, cy = e.y;
+
+    // Fading afterimages along the glide path — a LONG, persistent trail of faint
+    // cyan eye-ghosts is the main "where is it / where's it going" read while the
+    // head phases in and out.
     for (var k = 0; k < buf.length; k++) {
       var gh = buf[k];
-      var a = ((k + 1) / (buf.length + 1)) * 0.36;
-      _eyeAlmond(g, gh.x, gh.y, gh.pca, gh.psa, hw * 0.92, ho * 0.92, 12);
-      g.lineStyle(2, 0x00ffff, a);
+      var a = ((k + 1) / (buf.length + 1)) * 0.3;
+      _eyeAlmond(g, gh.x, gh.y, gh.pca, gh.psa, hw * 0.9, s * 0.18, 12);
+      g.lineStyle(1.4, 0x00ffff, a);
       g.strokePath();
     }
 
-    // The marked eye flickers VISIBLE at the head (static-bright under TW).
-    var blink = tw ? 0.7 : (0.42 + 0.58 * Math.abs(Math.sin(gt * Math.PI * 6 + i)));
-    var hot = (tw ? 0 : Math.sin(gt * Math.PI * 9 + i)) > 0 ? 0x00ffff : 0xdcffff;
-    g.fillStyle(0x00ffff, 0.08 * blink);
-    g.fillCircle(e.x, e.y, hw * 1.05);
-    _eyeAlmond(g, e.x, e.y, pca, psa, hw, ho, 14);
-    g.fillStyle(0x00e6ff, 0.16 * blink);
+    // Twinkling spark motes orbiting the eye — a shimmer of étincelles that keeps
+    // marking the phantom's spot even at the bottom of a breath (drawn on the ADD
+    // gfx, independent of the real emitter particles).
+    if (!tw) {
+      for (var sp = 0; sp < 7; sp++) {
+        var orb = gt * 0.7 + sp * 2.399 + i;                       // slow drift
+        var rad = hw * (0.95 + 0.55 * (0.5 + 0.5 * Math.sin(sp * 1.7 + i)));
+        var twk = 0.5 + 0.5 * Math.sin(gt * Math.PI * (6 + sp) + sp * 2.1 + i);
+        var sx = cx + Math.cos(orb) * rad, sy = cy + Math.sin(orb) * rad;
+        g.fillStyle(sp % 2 ? 0xbafcff : 0x00ffff, 0.5 * twk);
+        g.fillCircle(sx, sy, 0.9 + 1.7 * twk);
+      }
+    }
+
+    // 1. Soft reveal halo — barely-there glow that swells on a breath.
+    g.fillStyle(0x00e6ff, (0.03 + 0.07 * breathe) * shimmer);
+    g.fillCircle(cx, cy, hw * (1.04 + 0.14 * breathe));
+
+    // 2. Translucent sclera — see-through cyan glass, never a solid eyeball.
+    _eyeAlmond(g, cx, cy, pca, psa, hw, slit, 14);
+    g.fillStyle(0x00e6ff, (0.04 + 0.06 * breathe) * shimmer);
     g.fillPath();
-    _eyeAlmond(g, e.x, e.y, pca, psa, hw, ho, 14);
-    g.lineStyle(2.4, hot, 0.85 * blink);
+
+    // 3. Holographic TRIPLE exposure: the lid drawn three times, slightly offset,
+    //    so it reads as a glitching projection instead of a solid, hittable edge.
+    _eyeAlmond(g, cx, cy, pca, psa, hw, slit, 14);
+    g.lineStyle(2, 0xbafcff, (0.22 + 0.5 * breathe) * shimmer);
     g.strokePath();
-    g.fillStyle(0xffffff, 0.6 * blink);
-    g.fillCircle(e.x, e.y, s * 0.32);
-    g.fillStyle(hot, 0.45 * blink);
-    g.fillCircle(e.x, e.y, s * 0.6);
+    _eyeAlmond(g, cx + 1.6, cy - 1.6, pca, psa, hw, slit, 14);
+    g.lineStyle(1, 0x9ffcff, (0.08 + 0.22 * breathe) * shimmer);
+    g.strokePath();
+    _eyeAlmond(g, cx - 1.6, cy + 1.6, pca, psa, hw, slit, 14);
+    g.lineStyle(1, 0x9ffcff, (0.08 + 0.22 * breathe) * shimmer);
+    g.strokePath();
+
+    // 4. The lid crease — a faint line across the gently-shut eye. Together with
+    //    the slit (not a wide open eye) this is the "closed → can't be hit yet"
+    //    cue; no pupil is ever drawn while cloaked.
+    g.lineStyle(2, 0x00ffff, (0.25 + 0.4 * breathe) * shimmer);
+    g.beginPath();
+    g.moveTo(cx - pca * hw * 0.94, cy - psa * hw * 0.94);
+    g.lineTo(cx + pca * hw * 0.94, cy + psa * hw * 0.94);
+    g.strokePath();
+
+    // 5. Corner lock-ticks — tiny brackets that say "your mark is tracking it".
+    g.lineStyle(1.6, 0x00ffff, (0.25 + 0.35 * breathe) * shimmer);
+    for (var lc = -1; lc <= 1; lc += 2) {
+      var bx = cx + pca * hw * 1.06 * lc, by = cy + psa * hw * 1.06 * lc;
+      g.beginPath();
+      g.moveTo(bx, by);
+      g.lineTo(bx + pca * s * 0.32 * lc, by + psa * s * 0.32 * lc);
+      g.strokePath();
+    }
   };
 
   /* Full self-render: cloak / open-close eye / charge animation / dash mark /

@@ -207,6 +207,7 @@
       shieldRot: 0,
       spawnCD: C.T3_SPAWN_CD * (0.7 + Math.random() * 0.6),
       spawnCycle: 0,
+      _spawnPulseT: 0,   // birth-throb timer (set in _hiveEmitPulse on each spawn)
       targetWaypoint: { x: ex, y: ey },
       waypointTimer: 0,
       texKey: '_bruiser',

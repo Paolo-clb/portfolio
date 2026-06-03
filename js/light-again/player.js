@@ -16,6 +16,15 @@
     if (k['ArrowRight'] || k['KeyD'])               dx += 1;
     var len = Math.sqrt(dx * dx + dy * dy);
     if (len > 0.001) { dx /= len; dy /= len; }
+    // Gamepad left stick (analog): add it to the keyboard vector, then clamp the
+    // combined magnitude to 1 so a partial tilt walks slower while diagonals stay
+    // correct. Stick-only input keeps its analog magnitude (slow/fast walking).
+    var pm = this._padMove;
+    if (pm && (pm.dx !== 0 || pm.dy !== 0)) {
+      dx += pm.dx; dy += pm.dy;
+      var cl = Math.sqrt(dx * dx + dy * dy);
+      if (cl > 1) { dx /= cl; dy /= cl; }
+    }
     return { dx: dx, dy: dy };
   };
 

@@ -150,6 +150,7 @@
       [this._greed, greedSep * greedSep],
       [this._tree,  genSep2],
       [this._core,  genSep2],
+      [this._prism, genSep2],
     ];
 
     var dMin = opts.near ? (R + 110) : C.CACHE_SPAWN_DIST_MIN;   // debug: drop it just outside the rim
@@ -165,6 +166,9 @@
         var av = avoid[ai][0];
         if (av && (x - av.x) * (x - av.x) + (y - av.y) * (y - av.y) < avoid[ai][1]) { ok = false; break; }
       }
+      // Never carve the zone across a live Data Highway band (reciprocal of the
+      // highway's own avoidance — the two must never overlap).
+      if (ok && !this._pointClearsHighways(x, y, R)) ok = false;
       tries++;
     } while (!ok && tries < 24);
     if (!ok) return;                                // blocked (a feature is out) → try again later

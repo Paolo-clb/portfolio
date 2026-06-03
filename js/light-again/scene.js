@@ -279,6 +279,7 @@
       for (var hbi = 0; hbi < 12; hbi++) {
         var hbg = this.add.graphics();
         hbg.setDepth(24);
+        hbg.setBlendMode(Phaser.BlendModes.ADD);   // glowing laser look
         hbg.setVisible(false);
         this._hiveBeams.push({ gfx: hbg, x1: 0, y1: 0, x2: 0, y2: 0, alpha: 0, active: false });
       }
@@ -359,14 +360,16 @@
       this._comboTxt.setBlendMode(Phaser.BlendModes.ADD);
       this._comboTxt.setAlpha(0);
 
-      // Signal-Amplifier "X2" badge — lights up (mint green) just right of the
-      // score while you stand on a live Greed platform; hidden otherwise.
+      // Signal-Amplifier "X2" badge — lights up (mint green) just LEFT of the
+      // score while you stand on a live Greed platform; hidden otherwise. Origin
+      // (1, 0.5) so it docks by its right edge, vertically centred on the score
+      // (the in-zone "X2" flies here on entry — greed-zone.js _greedLaunchHudX2).
       this._greedMultTxt = this.add.text(cam.width / 2, 16, 'X2', {
         fontFamily: 'monospace', fontSize: '22px', fontStyle: 'bold', color: '#66ffcc',
         stroke: '#063322', strokeThickness: 3,
       });
       this._greedMultTxt.setScrollFactor(0);
-      this._greedMultTxt.setOrigin(0, 0);
+      this._greedMultTxt.setOrigin(1, 0.5);
       this._greedMultTxt.setDepth(102);
       this._greedMultTxt.setBlendMode(Phaser.BlendModes.ADD);
       this._greedMultTxt.setShadow(0, 0, '#33ff99', 12, false, true);
@@ -460,6 +463,7 @@
       this._initGreedZone();
       this._initCore();
       this._initPrism();
+      this._initGamepad();
       this._initTutorial();
       this._resetBossHint();
 
@@ -582,6 +586,7 @@
       this._mouseY = cam.height / 2;
       this.input.on('pointermove', function (ptr) {
         self._mouseX = ptr.x; self._mouseY = ptr.y;
+        self._inputMode = 'mouse';   // mouse moved → it reclaims aiming from the pad
       });
       this.input.on('pointerdown', function (ptr) {
         if (ptr.leftButtonDown())   self._tryAttack();
@@ -781,6 +786,11 @@
       }
 
       this._checkTheme();
+
+      // Poll the gamepad every frame (analog sticks + edge-triggered buttons).
+      // Runs before _inputVec/facing below; its action calls re-use the mouse/
+      // keyboard entry points, so their state guards apply unchanged.
+      if (this.p && this._pollGamepad) this._pollGamepad();
 
       // Kick off the interactive tutorial once the loader has cleared. The flag
       // is armed by shell.js on first launch, the ? button, or a hardcore→sandbox
@@ -1016,6 +1026,10 @@
       } else if (p.state === 'DASHING') {
         // During dash: point in dash direction
         p.angle = Math.atan2(p.dashDy, p.dashDx);
+      } else if (this._padAimActive) {
+        // Gamepad right stick deflected → face it, even while moving. This is the
+        // twin-stick aim, intentionally unlike the keyboard/mouse "movement = facing".
+        p.angle = Math.atan2(this._padAim.dy, this._padAim.dx);
       } else {
         // Normal movement: follow input direction; point at mouse when idle
         if (Math.abs(inp.dx) > 0.01 || Math.abs(inp.dy) > 0.01) {

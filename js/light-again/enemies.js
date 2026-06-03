@@ -92,6 +92,8 @@
       var e = en[i];
       // Spawn animation decay
       if (e._spawnAnimT < 1.0) e._spawnAnimT = Math.min(1.0, e._spawnAnimT + dt * 2.5);
+      // Generator birth-throb decay (set in _hiveEmitPulse, read in _renderEnemies)
+      if (e._spawnPulseT > 0) e._spawnPulseT = Math.max(0, e._spawnPulseT - dt * 2.6);
       var tSl = e.trail[e._tw % this.ENEMY_TRAIL_N];
       tSl.x = e.x; tSl.y = e.y; tSl.angle = e.angle;
       e._tw++; if (e._tn < this.ENEMY_TRAIL_N) e._tn++;
@@ -116,6 +118,15 @@
         var mpy = e.y + (Math.random() - 0.5) * 8;
         this._emitter2.setParticleTint(0x00ffff);
         this._emitter2.explode(1, mpx, mpy);
+      }
+      // A MARKED cloaked sniper sheds a much denser, wider cyan spark cloud — the
+      // eye is invisible-but-revealed, so the shimmer of étincelles (not a solid
+      // body) is what marks where the un-killable phantom is hovering.
+      if (e.isMarked && e.snState === 'CLOAK' && Math.random() < 0.55) {
+        var spx = e.x + (Math.random() - 0.5) * e.size * 3.4;
+        var spy = e.y + (Math.random() - 0.5) * e.size * 2.4;
+        this._emitter2.setParticleTint(Math.random() < 0.5 ? 0x00ffff : 0xbafcff);
+        this._emitter2.explode(1, spx, spy);
       }
 
       if (e.stunTimer > 0) {
@@ -244,10 +255,8 @@
                 var sy2 = e.y + (Math.random() - 0.5) * 40;
                 var cp = clampHive(sx2, sy2); sx2 = cp.x; sy2 = cp.y;
                 this._spawnShooterAt(sx2, sy2);
+                this._hiveBirthFx(e, this.enemies[this.enemies.length - 1]);
                 hiveDid = true;
-                this._hiveSpawnBeam(e.x, e.y, sx2, sy2);
-                this._explode(sx2, sy2, [187, 0, 255], 14);
-                this._explode(sx2, sy2, [255, 150, 255], 7);
               }
             } else {
               for (var sw = 0; sw < 3; sw++) {
@@ -257,18 +266,18 @@
                 var spy = e.y + Math.sin(sAng) * 35;
                 var cp2 = clampHive(spx, spy); spx = cp2.x; spy = cp2.y;
                 this._spawnRusherAt(spx, spy);
-                var spawned = this.enemies[this.enemies.length - 1];
-                spawned.vx = Math.cos(sAng) * 6;
-                spawned.vy = Math.sin(sAng) * 6;
-                this._hiveSpawnBeam(e.x, e.y, spx, spy);
+                // _hiveBirthFx handles the outward shove (away from the parent).
+                this._hiveBirthFx(e, this.enemies[this.enemies.length - 1]);
                 hiveDid = true;
               }
-              if (hiveDid) {
-                this._explode(e.x, e.y, [187, 0, 255], 12);
-                this._explode(e.x, e.y, [255, 150, 255], 6);
-              }
             }
-            if (hiveDid) this.cameras.main.shake(40, 0.0015);
+            // The generator itself reacts to every birth: a sprite swell/flash/
+            // recoil (e._spawnPulseT, read in _renderEnemies) + a small core spark
+            // puff + a camera kick, so the parent is unmistakably the swarm source.
+            if (hiveDid) {
+              this._hiveEmitPulse(e);
+              this.cameras.main.shake(55, 0.0024);
+            }
           }
         }
       } else if (e.tier === 4) {

@@ -72,43 +72,100 @@
     ring.maxRadius  = opts.maxRadius  || 121;
     ring.color      = opts.color      || 0x00ffff;
     ring.expandTime = opts.expandTime || 0.28;
+    // Optional LIVE centre: while this enemy is alive the ring re-centres on it
+    // every frame (see _updateWaveRings), so a spawn ring stays ON a newborn
+    // that's being shoved away instead of being stranded at the spawn point.
+    ring.follow     = opts.follow || null;
     ring.gfx.setVisible(true);
   };
 
-  M._hiveSpawnBeam = function (x1, y1, x2, y2) {
+  M._hiveSpawnBeam = function (x1, y1, x2, y2, pe, ce) {
     var b = this._hiveBeams[this._hiveBeamW % this._hiveBeams.length];
     this._hiveBeamW++;
     b.x1 = x1; b.y1 = y1; b.x2 = x2; b.y2 = y2;
+    // Optional LIVE endpoints: while these enemies are alive the beam re-reads
+    // their current positions every frame (see _updateHiveBeams), so it stays
+    // glued to the parent and to the freshly-shoved newborn instead of leaving
+    // a disconnected stub at the original spawn point. Callers passing only
+    // coords (e.g. the Giga-Bruiser) get the old static beam.
+    b.pe = pe || null;   // parent (generator) end
+    b.ce = ce || null;   // child  (newborn)  end
     b.alpha = 1.0; b.active = true;
     b.gfx.setVisible(true);
+  };
+
+  /* A generator (T3) "pushes out" a minion: flares its OWN sprite (the render
+     pass reads e._spawnPulseT for a swell + bright magenta flash) and fires a
+     magenta shock ring from its core, so the birth visibly originates AT the
+     parent — not just a beam pointing at the baby. */
+  M._hiveEmitPulse = function (e) {
+    e._spawnPulseT = 1.0;
+    // The attention-grab now lives on the hexagon sprite itself (the swell/flash
+    // in _renderEnemies), so the core only gets a small spark puff — no big ring
+    // that would compete with the connection lasers.
+    this._explode(e.x, e.y, [221, 102, 255], 6);
+  };
+
+  /* A single minion is born from a generator at parent (gx,gy): a BRIGHT
+     connection laser (the main read — see _updateHiveBeams), a materialise-in
+     (scale-up/fade-in via _spawnAnimT), a discreet spawn ring, and an outward
+     SHOVE so the newborn visibly gets ejected from the parent. `spawned` is the
+     freshly-pushed enemy object. */
+  M._hiveBirthFx = function (parent, spawned) {
+    if (!spawned || !parent) return;
+    var gx = parent.x, gy = parent.y;
+    var bx = spawned.x, by = spawned.y;
+    spawned._spawnAnimT = 0.0;            // play the scale-up/fade-in materialise
+
+    // Shove away from the parent so the ejection reads; a brief stun lets the
+    // push coast out before the minion's own AI takes the wheel.
+    var pdx = bx - gx, pdy = by - gy;
+    var pd  = Math.sqrt(pdx * pdx + pdy * pdy) || 1;
+    spawned.vx = (pdx / pd) * 8;
+    spawned.vy = (pdy / pd) * 8;
+    spawned.stunTimer = Math.max(spawned.stunTimer || 0, 160);
+
+    // Bright connection laser parent → newborn; pass both refs so the beam
+    // tracks their live positions while alive (no disconnected stub).
+    this._hiveSpawnBeam(gx, gy, bx, by, parent, spawned);
+    // Discreet spawn ring centred ON the newborn (follows it as it's shoved out,
+    // so it never appears stranded in the void) + a small spark puff.
+    this._spawnWaveRing(bx, by, { maxRadius: C.T3_SIZE * 1.3, color: 0x9933ff, expandTime: 0.18, follow: spawned });
+    this._explode(bx, by, [187, 0, 255], 8);
+    this._explode(bx, by, [221, 130, 255], 4);
   };
 
   M._updateHiveBeams = function (dt) {
     for (var i = 0; i < this._hiveBeams.length; i++) {
       var b = this._hiveBeams[i];
       if (!b.active) continue;
-      b.alpha -= dt * 2.2;
+      b.alpha -= dt * 1.15;                // ~0.85s linger so the laser stays readable
       if (b.alpha <= 0) {
         b.active = false;
+        b.pe = null; b.ce = null;          // drop refs — never hold a dead enemy alive
         b.gfx.clear();
         b.gfx.setVisible(false);
         continue;
       }
+      // Track live endpoints: stays attached to the parent and to the shoved-away
+      // newborn. A dead endpoint just freezes at its last-known position.
+      if (b.pe && !b.pe._dead) { b.x1 = b.pe.x; b.y1 = b.pe.y; }
+      if (b.ce && !b.ce._dead) { b.x2 = b.ce.x; b.y2 = b.ce.y; }
       b.gfx.clear();
-      // Thick glow core
-      b.gfx.lineStyle(6, 0xbb00ff, b.alpha * 0.55);
+      // Wide outer glow (ADD-blended → reads as a beam, not a thin wire)
+      b.gfx.lineStyle(10, 0xbb00ff, b.alpha * 0.45);
       b.gfx.beginPath();
       b.gfx.moveTo(b.x1, b.y1);
       b.gfx.lineTo(b.x2, b.y2);
       b.gfx.strokePath();
       // Bright inner line
-      b.gfx.lineStyle(2.5, 0xdd66ff, b.alpha * 0.95);
+      b.gfx.lineStyle(4.5, 0xdd66ff, b.alpha * 0.9);
       b.gfx.beginPath();
       b.gfx.moveTo(b.x1, b.y1);
       b.gfx.lineTo(b.x2, b.y2);
       b.gfx.strokePath();
       // White hot center
-      b.gfx.lineStyle(1, 0xffffff, b.alpha * 0.7);
+      b.gfx.lineStyle(2, 0xffffff, b.alpha * 0.85);
       b.gfx.beginPath();
       b.gfx.moveTo(b.x1, b.y1);
       b.gfx.lineTo(b.x2, b.y2);
@@ -196,10 +253,15 @@
 
       if (t >= expT + fadeT) {
         ring.active = false;
+        ring.follow = null;            // drop ref — never hold a dead enemy alive
         ring.gfx.clear();
         ring.gfx.setVisible(false);
         continue;
       }
+
+      // Track a live centre (e.g. a shoved-out newborn); a dead one just freezes
+      // the ring at its last-known position.
+      if (ring.follow && !ring.follow._dead) { ring.x = ring.follow.x; ring.y = ring.follow.y; }
 
       var a;
       if (t < expT) {

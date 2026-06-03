@@ -187,10 +187,11 @@
     var dMin = opts.near ? 360 : C.CURSE_FOUNT_SPAWN_DIST_MIN;
     var dMax = opts.near ? 360 : C.CURSE_FOUNT_SPAWN_DIST_MAX;
     var inset = C.CURSE_FOUNT_ZONE_R + 40;   // keep the WHOLE circle in-bounds (disc)
-    // Random spot far from the player AND clear of a live Digital Tree (crowding)
-    // and — the HARD requirement — a live Cache Zone: a fountain must NEVER spawn
-    // inside one (their circles must not overlap → radius-sum). _cache may be
-    // absent (a parallel feature) → guarded. Re-roll a few times, then accept.
+    // Random spot far from the player AND clear of every other live map feature:
+    // the Digital Tree / Unstable Core / Prism (generic crowding gap) and — the HARD
+    // requirement — a live Cache Zone / Greed plate (their circles must not overlap →
+    // radius-sum). Every ref may be absent (parallel features) → guarded. Re-roll a
+    // few times, then accept.
     var genSep2  = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
     var cacheSep = Math.max(C.MAP_FEATURE_MIN_SEP, C.CURSE_FOUNT_ZONE_R + (C.CACHE_ZONE_R || 0));
     var greedSep = Math.max(C.MAP_FEATURE_MIN_SEP, C.CURSE_FOUNT_ZONE_R + (C.GREED_HALF || 0) + 60);
@@ -198,6 +199,8 @@
       [this._tree,  genSep2],
       [this._cache, cacheSep * cacheSep],
       [this._greed, greedSep * greedSep],
+      [this._core,  genSep2],
+      [this._prism, genSep2],
     ];
     var x, y, tries = 0, ok;
     do {
@@ -210,6 +213,9 @@
         var av = avoid[ai][0];
         if (av && (x - av.x) * (x - av.x) + (y - av.y) * (y - av.y) < avoid[ai][1]) { ok = false; break; }
       }
+      // Never open the fountain across a live Data Highway band (reciprocal of the
+      // highway's own avoidance — the two must never overlap).
+      if (ok && !this._pointClearsHighways(x, y, C.CURSE_FOUNT_ZONE_R)) ok = false;
       tries++;
     } while (!ok && tries < 20);
 

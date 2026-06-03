@@ -231,8 +231,8 @@ window.SITE_I18N = {
     laCacheSecured:      'POWER-UP PRÊT',
 
     // The Signal Amplifier (Greed platform — score ×2 King-of-the-Hill event)
-    laGreedEnter:        'SIGNAL ×2',
-    laGreedLeave:        'SIGNAL PERDU',
+    laGreedEnter:        'SCORE X2',
+    laGreedLeave:        'X2 PERDU',
 
     // Misc
     closeLbl: 'Fermer',
@@ -463,8 +463,8 @@ window.SITE_I18N = {
     laCacheSecured:      'POWER UP READY',
 
     // The Signal Amplifier (Greed platform — score ×2 King-of-the-Hill event)
-    laGreedEnter:        'SIGNAL ×2',
-    laGreedLeave:        'SIGNAL LOST',
+    laGreedEnter:        'SCORE X2',
+    laGreedLeave:        'X2 LOST',
 
     // Misc
     closeLbl: 'Close',

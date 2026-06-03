@@ -33,11 +33,19 @@
 
   function esc(s) { return LA.escHtml ? LA.escHtml(s) : String(s); }
 
-  function buildKeysHtml(keys, fr) {
+  function buildKeysHtml(keys, fr, padKeys) {
     var sep = '<span class="la-tut-or">' + (fr ? 'ou' : 'or') + '</span>';
-    return keys.map(function (k) {
+    var html = keys.map(function (k) {
       return '<span class="la-tut-kbd">' + esc(k) + '</span>';
     }).join(sep);
+    // Controller alternative, in distinct violet chips after a 🎮 marker.
+    if (padKeys && padKeys.length) {
+      var padHtml = padKeys.map(function (k) {
+        return '<span class="la-tut-kbd la-tut-kbd--pad">' + esc(k) + '</span>';
+      }).join(sep);
+      html += '<span class="la-tut-pad-mark">🎮</span>' + padHtml;
+    }
+    return html;
   }
 
   /* ---- inject stylesheet once ---- */
@@ -110,6 +118,9 @@
         'background:var(--la-accent-fill);border:1px solid var(--la-accent-line);border-bottom-width:3px;' +
         'color:var(--la-accent);font-weight:700;font-size:calc(.82rem * var(--la-ui-scale));letter-spacing:.02em}',
       '#_la-tut-overlay .la-tut-or{opacity:.45;font-size:calc(.66rem * var(--la-ui-scale));margin:0 .1rem;letter-spacing:.1em}',
+      // Controller chips: violet variant + a small 🎮 marker separating them from keys.
+      '#_la-tut-overlay .la-tut-kbd--pad{background:rgba(120,90,220,.16);border-color:rgba(167,139,255,.5);color:#c9bcff}',
+      '#_la-tut-overlay .la-tut-pad-mark{margin:0 .15rem 0 .35rem;font-size:calc(.8rem * var(--la-ui-scale));opacity:.85;filter:saturate(.85)}',
       '#_la-tut-overlay .la-tut-desc{font-size:calc(.82rem * var(--la-ui-scale));line-height:1.6;color:#bcd4e6;' +
         'text-shadow:0 1px 3px #000,0 0 7px rgba(0,0,0,.9)}',
       '#_la-tut-overlay .la-tut-desc b{color:#dff6ff}',
@@ -433,6 +444,7 @@
         title: fr ? 'Déplacement' : 'Move',
         quest: fr ? 'Déplace-toi dans l’arène' : 'Move around the arena',
         keys:  fr ? ['Z Q S D', 'W A S D', 'Flèches'] : ['W A S D', 'Z Q S D', 'Arrows'],
+        pad:   fr ? ['Stick gauche'] : ['Left stick'],
         desc:  fr
           ? 'Bienvenue ! <b>Bouge</b> dans la direction des touches.'
           : 'Welcome! <b>Move</b> in the key direction.',
@@ -449,6 +461,7 @@
         title: 'Dash',
         quest: fr ? 'Réalise un dash' : 'Perform a dash',
         keys:  fr ? ['Maj', 'Espace', 'Clic droit'] : ['Shift', 'Space', 'Right click'],
+        pad:   fr ? ['Gâchette gauche'] : ['Left trigger'],
         desc:  fr
           ? 'Le <span class="c-dash">dash</span> te propulse dans la direction de ton déplacement, avec une brève invincibilité.'
           : 'The <span class="c-dash">dash</span> launches you in your movement direction, with brief invincibility.',
@@ -460,6 +473,7 @@
         title: fr ? 'Attaque Torpille' : 'Torpedo Attack',
         quest: fr ? 'Détruis l’éclaireur à l’attaque torpille' : 'Destroy the scout with the torpedo attack',
         keys:  fr ? ['Clic gauche'] : ['Left click'],
+        pad:   fr ? ['Gâchette droite'] : ['Right trigger'],
         desc:  fr
           ? 'L’<span class="c-torp">attaque torpille</span> : ta flèche fonce vers le curseur en rotation. Vise l’éclaireur <span class="c-torp">▲</span> ! <b>⚠️ La rater</b> te laisse vulnérable un instant (récupération).'
           : 'The <span class="c-torp">torpedo attack</span>: your arrow spins toward the cursor. Aim at the scout <span class="c-torp">▲</span>! <b>⚠️ Whiffing it</b> leaves you exposed for a moment (recovery).',
@@ -474,6 +488,7 @@
         title: fr ? 'Vague' : 'Wave',
         quest: fr ? 'Enchaîne : élimine 5 éclaireurs à l’attaque' : 'Chain it: take out 5 scouts',
         keys:  fr ? ['Clic gauche  ×  spam'] : ['Left click  ×  spam'],
+        pad:   fr ? ['Gâchette droite  ×  spam'] : ['Right trigger  ×  spam'],
         desc:  fr
           ? 'Astuce clé : <b>chaque kill réarme aussitôt ton attaque</b>. Tu peux donc <b>spammer</b> l’<span class="c-torp">attaque torpille</span> à travers toute une vague d’éclaireurs <span class="c-torp">▲</span> sans temps mort !'
           : 'Key tip: <b>every kill instantly re-arms your attack</b>. So you can <b>spam</b> the <span class="c-torp">torpedo attack</span> through a whole scout wave <span class="c-torp">▲</span> with no downtime!',
@@ -489,6 +504,7 @@
         title: fr ? 'Dash-Attaque' : 'Dash-Attack',
         quest: fr ? 'Touche l’éclaireur avec une dash-attaque' : 'Hit the scout with a dash-attack',
         keys:  fr ? ['Clic gauche  (pendant un dash)'] : ['Left click  (during a dash)'],
+        pad:   fr ? ['Gâchette droite  (pendant un dash)'] : ['Right trigger  (during a dash)'],
         desc:  fr
           ? 'Clique pendant un <span class="c-dash">dash</span> : la <span class="c-datk">dash-attaque</span> est plus rapide, plus large, et traverse les ennemis. <b>⚠️ Récupération plus longue qu’une attaque ratée.'
           : 'Click during a <span class="c-dash">dash</span>: the <span class="c-datk">dash-attack</span> is faster, wider, and pierces enemies. <b>⚠️ A longer recovery than a missed attack.',
@@ -502,6 +518,7 @@
         title: fr ? 'Marque & Détonation' : 'Mark & Detonation',
         quest: fr ? 'Marque un ennemi au dash, puis fais-le détoner' : 'Mark an enemy on a dash, then detonate it',
         keys:  fr ? ['Dash  →  torpille torpille'] : ['Dash  →  torpedo-attack'],
+        pad:   fr ? ['Dash  →  gâchette droite'] : ['Dash  →  right trigger'],
         desc:  fr
           ? '<span class="c-dash">Dashe</span> À TRAVERS un ennemi pour le <span class="c-mark">marquer</span> (étincelles bleues), puis fais une <span class="c-torp">attaque torpille</span> dessus → <span class="c-shield">NUKE</span> à zone d’effet ! (⚠️ La dash-attaque ne déclenche pas la nuke.)'
           : '<span class="c-dash">Dash</span> THROUGH an enemy to <span class="c-mark">mark</span> it (blue sparks), then <span class="c-torp">torpedo-attack</span> it → AoE <span class="c-shield">NUKE</span>! (⚠️ Dash-attack does NOT trigger it.)',
@@ -537,6 +554,7 @@
         title: fr ? 'Star Power' : 'Star Power',
         quest: fr ? 'Ramasse l’étoile et pulvérise 3 ennemis' : 'Grab the star and smash 3 enemies',
         keys:  fr ? ['Clic gauche  (survolté)'] : ['Left click  (overdriven)'],
+        pad:   fr ? ['Gâchette droite  (survolté)'] : ['Right trigger  (overdriven)'],
         desc:  fr
           ? 'Au contact de l’<span class="c-star">étoile bonus</span> : ton attaque devient un <span class="c-datk">dash-attaque spammable</span>. Fonce dans le tas !'
           : 'The <span class="c-star">bonus star</span> overdrives you : your attack becomes a <span class="c-datk">spammable dash-attack</span>. Go wild!',
@@ -570,6 +588,7 @@
         title: fr ? 'Parade' : 'Parry',
         quest: fr ? 'Renvoie le projectile du Tireur' : 'Reflect the Shooter’s projectile',
         keys:  fr ? ['Dash-attaque sur le projectile'] : ['Dash-attack onto the projectile'],
+        pad:   fr ? ['Dash  +  gâchette droite'] : ['Dash  +  right trigger'],
         desc:  fr
           ? 'Le Tireur <span class="c-shooter">◆</span> garde ses distances et tire. Un <span class="c-datk">dash-attaque</span> sur un projectile le <span class="c-datk">renvoie</span> à l’envoyeur (<span class="c-combo">x2 points</span>). ⚠️ L’attaque simple ne renvoie pas.'
           : 'The Shooter <span class="c-shooter">◆</span> keeps its distance and fires. A <span class="c-datk">dash-attack</span> on a projectile <span class="c-datk">reflects</span> it back (<span class="c-combo">x2 points</span>). ⚠️ The basic attack does not.',
@@ -592,6 +611,7 @@
         title: fr ? 'Bruiser' : 'Bruiser',
         quest: fr ? 'Brise le bouclier du Bruiser et achève-le' : 'Break the Bruiser’s shield and finish it',
         keys:  fr ? ['Dash-attaque  →  brise le bouclier'] : ['Dash-attack  →  break the shield'],
+        pad:   fr ? ['Dash  +  gâchette droite'] : ['Dash  +  right trigger'],
         desc:  fr
           ? 'Le <span class="c-bruiser">Bruiser ⬢</span> a un <span class="c-shield">bouclier</span> que seule la <span class="c-datk">dash-attaque</span> brise, puis achève-le. Astuce : <span class="c-mark">marque-le</span> au dash puis <span class="c-shield">NUKE</span> — one shot !'
           : 'The <span class="c-bruiser">Bruiser ⬢</span> has a <span class="c-shield">shield</span> only the <span class="c-datk">dash-attack</span> can break — then finish it. Tip: <span class="c-mark">mark it</span> on a dash then <span class="c-shield">NUKE</span> — one shot !',
@@ -619,9 +639,10 @@
         noFreeze: true,
         quest: fr ? 'Les 2 outils du bac à sable' : 'The 2 sandbox tools',
         keys:  fr ? ['Molette ↑', 'Suppr / Retour arrière'] : ['Wheel ↑', 'Delete / Backspace'],
+        pad:   fr ? ['Croix dir. ↑ / ↓', 'Boutons de droite (A B X Y)'] : ['D-pad ↑ / ↓', 'Right buttons (A B X Y)'],
         desc:  fr
-          ? 'Outils <b>bac à sable</b> : la <span class="c-dash">molette</span> <b>accélère</b> (↑) ou calme (↓) l’apparition des ennemis. <span class="c-shield">Suppr</span> ou <span class="c-shield">Retour arrière</span> déclenche une onde qui <b>balaie l’arène</b> — sans points.'
-          : 'Sandbox-only tools : the <span class="c-dash">mouse wheel</span> <b>speeds up</b> (↑) or calms (↓) enemy spawns. <span class="c-shield">Delete</span> or <span class="c-shield">Backspace</span> fires a wave that <b>sweeps the arena</b> — no points.',
+          ? 'Outils <b>bac à sable</b> : la <span class="c-dash">molette</span> <b>accélère</b> (↑) ou calme (↓) l’apparition des ennemis. <span class="c-shield">Suppr</span> ou <span class="c-shield">Retour arrière</span> déclenche une onde qui <b>balaie l’arène</b> — sans points. <span style="color:#c9bcff">🎮 Manette : la <b>croix directionnelle ↑ / ↓</b> pace l’apparition, <b>n’importe quel bouton de droite</b> balaie l’arène.</span>'
+          : 'Sandbox-only tools : the <span class="c-dash">mouse wheel</span> <b>speeds up</b> (↑) or calms (↓) enemy spawns. <span class="c-shield">Delete</span> or <span class="c-shield">Backspace</span> fires a wave that <b>sweeps the arena</b> — no points. <span style="color:#c9bcff">🎮 Controller: the <b>D-pad ↑ / ↓</b> paces the spawns, <b>any right-side button</b> sweeps the arena.</span>',
         setup: function () {
           // Free play: let the REAL sandbox spawner run (paced live by the wheel)
           // and re-enable Clear Board for this step only.
@@ -642,6 +663,7 @@
             label: fr ? 'Accélère l’apparition à la <span class="c-dash">molette</span>'
                       : 'Speed up the spawns with the <span class="c-dash">wheel</span>',
             keys:  fr ? ['Molette ↑'] : ['Wheel ↑'],
+            pad:   fr ? ['Croix dir. ↑'] : ['D-pad ↑'],
             prog:  function () {
               var r = self._sandboxRate;
               var rateStr = (r % 1 === 0) ? String(r) : r.toFixed(1);
@@ -652,6 +674,7 @@
           {
             label: fr ? 'Balaie toute l’arène d’un coup' : 'Sweep the whole arena at once',
             keys:  fr ? ['Suppr', 'Retour arrière'] : ['Delete', 'Backspace'],
+            pad:   fr ? ['Boutons de droite'] : ['Right buttons'],
             done:  function () { return !!d().sandCleared; },
           },
         ],
@@ -785,7 +808,7 @@
     dom.quest.classList.remove('la-tut-done');
 
     if (step.keys && step.keys.length) {
-      dom.keys.innerHTML = buildKeysHtml(step.keys, fr);
+      dom.keys.innerHTML = buildKeysHtml(step.keys, fr, step.pad);
       dom.keys.style.display = '';
     } else {
       dom.keys.innerHTML = '';
@@ -833,7 +856,7 @@
     var rows = [];
     for (var i = 0; i < subs.length; i++) {
       var sq = subs[i];
-      var keysHtml = (sq.keys && sq.keys.length) ? ' ' + buildKeysHtml(sq.keys, fr) : '';
+      var keysHtml = (sq.keys && sq.keys.length) ? ' ' + buildKeysHtml(sq.keys, fr, sq.pad) : '';
       var row = document.createElement('div');
       row.className = 'la-tut-subq';
       row.innerHTML =

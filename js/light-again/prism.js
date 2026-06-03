@@ -149,7 +149,7 @@
     var inset = C.PRISM_RADIUS + C.PRISM_SPAWN_MARGIN;
     var sep2  = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
     var minP2 = C.PRISM_MIN_PLAYER_DIST * C.PRISM_MIN_PLAYER_DIST;
-    var avoid = [this._fount, this._tree, this._cache, this._core];   // optional refs (may be null)
+    var avoid = [this._fount, this._tree, this._cache, this._core, this._greed];   // optional refs (may be null) — same generic gap the core uses for greed
     var x, y, tries = 0, ok;
 
     if (opts.near) {
@@ -170,6 +170,9 @@
             if (av && (x - av.x) * (x - av.x) + (y - av.y) * (y - av.y) < sep2) { ok = false; break; }
           }
         }
+        // Never surface the prism on a live Data Highway band (reciprocal of the
+        // highway's own avoidance — the two must never overlap).
+        if (ok && !this._pointClearsHighways(x, y, C.PRISM_TRIGGER_R)) ok = false;
         tries++;
       } while (!ok && tries < 40);
     }

@@ -369,6 +369,8 @@
         // bottom of the panel so it scrolls with the content and can never overlap it.
         '#_la-mode-select .la-ms-tip{margin:1.5rem auto 0;max-width:560px;text-align:center;font-size:calc(.62rem * var(--la-ui-scale));letter-spacing:.03em;line-height:1.55;color:#5d7f9c;opacity:.9}' +
         '#_la-mode-select .la-ms-tip b{color:#8fb6d6;font-weight:700}' +
+        // Controller-support line: a touch tighter to the pause tip, faintly tinted.
+        '#_la-mode-select .la-ms-tip--pad{margin-top:.55rem;color:#6a86b0}' +
         // Run loadout: chips + hover→3-levels detail (lives in the resume section).
         '#_la-mode-select .la-lo{width:100%;margin-top:.3rem;padding-top:.85rem;border-top:1px solid rgba(255,255,255,0.1);text-align:left}' +
         '#_la-mode-select .la-lo-title{font-size:calc(.54rem * var(--la-ui-scale));letter-spacing:.16em;text-transform:uppercase;color:#7799bb;margin-bottom:.55rem;text-align:center}' +
@@ -544,6 +546,11 @@
       '<div class="la-ms-tip">' + (fr
         ? '💡 Le bouton <b>⏸ pause</b> (en haut à droite) met la partie en pause, ouvre ce menu et vos <b>améliorations</b> ; l’icône <b>▶</b> reprend la partie en cours.'
         : '💡 The <b>⏸ pause</b> button (top right) pauses the game, opens this menu and your <b>upgrades</b>; the <b>▶</b> icon resumes the current run.') + '</div>' +
+      // Controller support note — the game is fully playable with a gamepad
+      // (twin-stick). Branch a controller in and the sticks/triggers take over.
+      '<div class="la-ms-tip la-ms-tip--pad">' + (fr
+        ? '🎮 <b>Manette</b> compatible : <b>stick gauche</b> = déplacement · <b>stick droit</b> = visée · <b>gâchette droite</b> = attaque torpille · <b>gâchette gauche</b> = dash · <b>une des deux gâchettes hautes</b> = The World.'
+        : '🎮 <b>Controller</b> supported: <b>left stick</b> = move · <b>right stick</b> = aim · <b>right trigger</b> = torpedo attack · <b>left trigger</b> = dash · <b>either bumper</b> = The World.') + '</div>' +
       '</div>';
 
     container.style.position = 'relative';
@@ -894,15 +901,22 @@
         label:    isFr ? 'Vitesse \u00b7 Bac \u00e0 sable' : 'Speed \u00b7 Sandbox',
         color:    '#39c6ff',
         descHtml: isFr
-          ? 'Molette de la souris \u2014 <span style="color:#39c6ff">acc\u00e9l\u00e8re</span> (vers le haut) ou <span style="color:#39c6ff">ralentit</span> (vers le bas) l\u2019apparition des ennemis. La vitesse actuelle s\u2019affiche au-dessus du vaisseau.'
-          : 'Mouse wheel \u2014 spawns <span style="color:#39c6ff">speed up</span> (scroll up) or <span style="color:#39c6ff">calm down</span> (scroll down). The current speed shows above your ship.',
+          ? 'Molette de la souris \u2014 <span style="color:#39c6ff">acc\u00e9l\u00e8re</span> (vers le haut) ou <span style="color:#39c6ff">ralentit</span> (vers le bas) l\u2019apparition des ennemis. La vitesse actuelle s\u2019affiche au-dessus du vaisseau. <span style="color:#a78bff">\ud83c\udfae Croix dir. \u2191 / \u2193.</span>'
+          : 'Mouse wheel \u2014 spawns <span style="color:#39c6ff">speed up</span> (scroll up) or <span style="color:#39c6ff">calm down</span> (scroll down). The current speed shows above your ship. <span style="color:#a78bff">\ud83c\udfae D-pad \u2191 / \u2193.</span>',
       },
       {
         label:    isFr ? 'Vider l\u2019\u00e9cran \u00b7 Bac \u00e0 sable' : 'Clear board \u00b7 Sandbox',
         color:    '#66ddff',
         descHtml: isFr
-          ? '<span class="la-help-dash">Suppr</span> ou <span class="la-help-dash">Retour arri\u00e8re</span> \u2014 une onde de choc part du vaisseau et balaie l\u2019\u00e9cran pour d\u00e9truire tous les ennemis (sans points).'
-          : '<span class="la-help-dash">Delete</span> or <span class="la-help-dash">Backspace</span> \u2014 a shockwave bursts from your ship and sweeps the screen, destroying every enemy (no points).',
+          ? '<span class="la-help-dash">Suppr</span> ou <span class="la-help-dash">Retour arri\u00e8re</span> \u2014 une onde de choc part du vaisseau et balaie l\u2019\u00e9cran pour d\u00e9truire tous les ennemis (sans points). <span style="color:#a78bff">\ud83c\udfae N\u2019importe quel bouton de droite (A B X Y).</span>'
+          : '<span class="la-help-dash">Delete</span> or <span class="la-help-dash">Backspace</span> \u2014 a shockwave bursts from your ship and sweeps the screen, destroying every enemy (no points). <span style="color:#a78bff">\ud83c\udfae Any right-side button (A B X Y).</span>',
+      },
+      {
+        label:    isFr ? '\ud83c\udfae Manette' : '\ud83c\udfae Controller',
+        color:    '#a78bff',
+        descHtml: isFr
+          ? '<b>Stick gauche</b> = d\u00e9placement \u00b7 <b>stick droit</b> = vis\u00e9e (sinon la fl\u00e8che suit le d\u00e9placement) \u00b7 <span style="color:#ff1e3c">g\u00e2chette droite</span> = <span style="color:#ff1e3c">attaque torpille</span> \u00b7 <span style="color:#00ffff">g\u00e2chette gauche</span> = <span class="la-help-dash">dash</span> \u00b7 <b>une des deux petites g\u00e2chettes hautes</b> = The World.'
+          : '<b>Left stick</b> = move \u00b7 <b>right stick</b> = aim (otherwise the arrow follows your movement) \u00b7 <span style="color:#ff1e3c">right trigger</span> = <span style="color:#ff1e3c">torpedo attack</span> \u00b7 <span style="color:#00ffff">left trigger</span> = <span class="la-help-dash">dash</span> \u00b7 <b>either small bumper</b> = The World.',
       },
     ];
 

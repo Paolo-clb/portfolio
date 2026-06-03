@@ -617,13 +617,16 @@
       spawned.vx = Math.cos(sa) * 9;
       spawned.vy = Math.sin(sa) * 9;
       spawned.stunTimer = 220;     // brief stagger after pop-out (own AI takes over)
-      // Connection beam from boss → bruiser
-      this._hiveSpawnBeam(g.x, g.y, sx, sy);
-      // Per-slot mini-explosion + tiny wave ring so each pop is its own moment
+      // Connection beam boss → bruiser. Pass both refs so it tracks their live
+      // positions (lingering ~0.85s) and stays glued to the bruiser as it's
+      // shoved out — no disconnected stub at the spawn slot.
+      this._hiveSpawnBeam(g.x, g.y, sx, sy, g, spawned);
+      // Per-slot mini-explosion + tiny wave ring centred ON the bruiser (follows
+      // it as it's ejected) so each pop is its own moment.
       this._explode(sx, sy, [187, 0, 255], 14);
       this._explode(sx, sy, [255, 150, 255], 8);
       this._explode(sx, sy, [255, 255, 255], 6);
-      this._spawnWaveRing(sx, sy, { maxRadius: C.T3_SIZE * 4, color: 0x9933ff, expandTime: 0.16 });
+      this._spawnWaveRing(sx, sy, { maxRadius: C.T3_SIZE * 4, color: 0x9933ff, expandTime: 0.16, follow: spawned });
     }
 
     // Central burst on the boss — bigger than the per-slot pops so the

@@ -119,11 +119,68 @@
     this._spawnHighway({});
   };
 
+  /* ----------------------------------------------------------------
+     PLACEMENT AVOIDANCE — a highway must never form ON a live map feature
+     (Cache / Greed / Curse Fountain / Unstable Core / Prism) or right on the
+     player, and reciprocally those features must never spawn on a live highway.
+     The highway is a CAPSULE (centreline segment + HALF_WIDTH+FEATHER band), so
+     every test is point(feature)-to-segment(centreline), not centre-to-centre.
+     ---------------------------------------------------------------- */
+
+  /* [x, y, exclusionRadius] for each live map feature + the player, for a NEW
+     highway to dodge. A feature's radius is its interactive extent + FEATURE_PAD;
+     the player gets a small personal bubble (SIZE + PLAYER_PAD). Greed is a SQUARE —
+     use its CIRCUMSCRIBED circle (half·√2) so the band can't clip a corner either.
+     Refs are optional (a feature may be absent) → guarded. Kept symmetric with the
+     reciprocal radii the features pass to _pointClearsHighways. */
+  M._highwayAvoidList = function () {
+    var pad = C.HIGHWAY_FEATURE_PAD, list = [], p = this.p;
+    if (p)           list.push([p.x, p.y, C.SIZE + C.HIGHWAY_PLAYER_PAD]);
+    if (this._cache) list.push([this._cache.x, this._cache.y, this._cache.zoneR + pad]);
+    if (this._greed) list.push([this._greed.x, this._greed.y, this._greed.half * Math.SQRT2 + pad]);
+    if (this._fount) list.push([this._fount.x, this._fount.y, this._fount.zoneR + pad]);
+    if (this._core)  list.push([this._core.x,  this._core.y,  C.CORE_FIELD_RADIUS + pad]);
+    if (this._prism) list.push([this._prism.x, this._prism.y, C.PRISM_TRIGGER_R + pad]);
+    return list;
+  };
+
+  /* Minimum signed clearance of the capsule (ax,ay)-(bx,by) against an avoid list:
+     for each [x,y,r], (dist from the point to the centreline) − (r + band half-width).
+     ≥ 0 everywhere ⇒ fully clear; the most-negative value measures the worst overlap
+     (used to rank fallback rolls). Empty list ⇒ +∞ (nothing to avoid). */
+  M._highwayCapsuleSlack = function (ax, ay, bx, by, list) {
+    if (!list || !list.length) return Infinity;
+    var hw = C.HIGHWAY_HALF_WIDTH + C.HIGHWAY_EDGE_FEATHER, worst = Infinity;
+    for (var i = 0; i < list.length; i++) {
+      var o = list[i];
+      var slack = Math.sqrt(LA.segDistSq(o[0], o[1], ax, ay, bx, by)) - (hw + o[2]);
+      if (slack < worst) worst = slack;
+    }
+    return worst;
+  };
+
+  /* Reciprocal test the map features call: true if a circle (x,y,r) stays clear of
+     EVERY live highway band by FEATURE_PAD (so a feature never spawns on a highway).
+     No highways ⇒ trivially true. */
+  M._pointClearsHighways = function (x, y, r) {
+    var hs = this._highways;
+    if (!hs || !hs.length) return true;
+    var need = r + C.HIGHWAY_HALF_WIDTH + C.HIGHWAY_EDGE_FEATHER + C.HIGHWAY_FEATURE_PAD;
+    var need2 = need * need;
+    for (var i = 0; i < hs.length; i++) {
+      var h = hs[i];
+      if (LA.segDistSq(x, y, h.ax, h.ay, h.bx, h.by) < need2) return false;
+    }
+    return true;
+  };
+
   /* Place a highway as a capsule fully inside the disc map. The corridor centre
      is kept within a radius (Rk - half) of the origin, where Rk = WORLD_HALF -
      margin - (halfWidth+feather); since every capsule point is within `half` of
      the centre, the ENTIRE capsule (glow included) is guaranteed in-bounds.
-     Biased so the road passes near the player (discoverable without a pointer). */
+     Biased so the road passes near the player (discoverable without a pointer),
+     and re-rolled so the band never forms on a live map feature or on the ship
+     (see _highwayAvoidList / _highwayCapsuleSlack). */
   M._spawnHighway = function (opts) {
     opts = opts || {};
     if (!this.p || this.p.state === 'DEAD') return;
@@ -149,41 +206,67 @@
     }
     if (Rk < 40) Rk = 40;   // degenerate-zone guard (still produce a short stub)
 
-    var ang  = Math.random() * TAU;
-    var dirx = Math.cos(ang), diry = Math.sin(ang);
-    var len  = C.HIGHWAY_LEN_MIN + Math.random() * (C.HIGHWAY_LEN_MAX - C.HIGHWAY_LEN_MIN);
-    var half = len / 2;
+    // Avoid forming ON a live map feature or the player: roll the placement up to
+    // HIGHWAY_PLACE_TRIES times for a corridor whose band clears everything, keeping
+    // the LEAST-overlapping roll as a fallback so a road always still appears, near +
+    // in view. Skipped while CONFINED (the quarantine owns the arena and the features
+    // are already dismissed for the anomaly) — a single roll there, as before.
+    var avoid = confined ? null : this._highwayAvoidList();
+    var maxTries = (avoid && avoid.length) ? C.HIGHWAY_PLACE_TRIES : 1;
 
-    // In a quarantine, cap the corridor well under the zone diameter so it can be
-    // placed OFF-centre (near the player) instead of being forced dead-centre.
-    if (confined && half > az.R * C.HIGHWAY_ZONE_LEN_FRAC) half = az.R * C.HIGHWAY_ZONE_LEN_FRAC;
-    // Shrink a corridor too long to leave the centre any room inside the keep-in disc.
-    if (half > Rk * 0.96) { half = Rk * 0.96; }
-    len = half * 2;
-    var limR = Math.max(0, Rk - half);   // keep-in radius for the centreline centre
+    var dirx, diry, len, half, cx, cy, ax, ay, bx, by, alongOff;
+    var best = null, bestSlack = -Infinity;
+    for (var attempt = 0; attempt < maxTries; attempt++) {
+      var ang = Math.random() * TAU;
+      dirx = Math.cos(ang); diry = Math.sin(ang);
+      len  = C.HIGHWAY_LEN_MIN + Math.random() * (C.HIGHWAY_LEN_MAX - C.HIGHWAY_LEN_MIN);
+      half = len / 2;
 
-    // Target a near-point a short way from the player, then slide it somewhere
-    // along the corridor's length so the player doesn't always land mid-road.
-    // (Confined, the centre clamp below caps how far it can sit from the zone
-    // centre, so the near-point is reined in to that same budget.)
-    var nAng  = Math.random() * TAU;
-    var nearMax = confined ? Math.min(C.HIGHWAY_SPAWN_NEAR_MAX, limR) : C.HIGHWAY_SPAWN_NEAR_MAX;
-    var nearMin = Math.min(C.HIGHWAY_SPAWN_NEAR_MIN, nearMax);
-    var nDist = nearMin + Math.random() * (nearMax - nearMin);
-    var nearX = p.x + Math.cos(nAng) * nDist;
-    var nearY = p.y + Math.sin(nAng) * nDist;
-    var alongOff = (Math.random() - 0.5) * 1.2 * half;   // ∈ [-0.6, 0.6]·half (bias to the boostable middle)
-    var cx = nearX - dirx * alongOff;
-    var cy = nearY - diry * alongOff;
+      // In a quarantine, cap the corridor well under the zone diameter so it can be
+      // placed OFF-centre (near the player) instead of being forced dead-centre.
+      if (confined && half > az.R * C.HIGHWAY_ZONE_LEN_FRAC) half = az.R * C.HIGHWAY_ZONE_LEN_FRAC;
+      // Shrink a corridor too long to leave the centre any room inside the keep-in disc.
+      if (half > Rk * 0.96) { half = Rk * 0.96; }
+      len = half * 2;
+      var limR = Math.max(0, Rk - half);   // keep-in radius for the centreline centre
 
-    // Clamp the centre to the keep-in disc so the whole capsule stays inside the
-    // map (or, while confined, inside the quarantine circle around ox,oy).
-    var rcx = cx - ox, rcy = cy - oy;
-    var cd = Math.sqrt(rcx * rcx + rcy * rcy);
-    if (cd > limR && cd > 0) { var cs = limR / cd; cx = ox + rcx * cs; cy = oy + rcy * cs; }
+      // Target a near-point a short way from the player, then slide it somewhere
+      // along the corridor's length so the player doesn't always land mid-road.
+      // (Confined, the centre clamp below caps how far it can sit from the zone
+      // centre, so the near-point is reined in to that same budget.)
+      var nAng  = Math.random() * TAU;
+      var nearMax = confined ? Math.min(C.HIGHWAY_SPAWN_NEAR_MAX, limR) : C.HIGHWAY_SPAWN_NEAR_MAX;
+      var nearMin = Math.min(C.HIGHWAY_SPAWN_NEAR_MIN, nearMax);
+      var nDist = nearMin + Math.random() * (nearMax - nearMin);
+      var nearX = p.x + Math.cos(nAng) * nDist;
+      var nearY = p.y + Math.sin(nAng) * nDist;
+      alongOff = (Math.random() - 0.5) * 1.2 * half;   // ∈ [-0.6, 0.6]·half (bias to the boostable middle)
+      cx = nearX - dirx * alongOff;
+      cy = nearY - diry * alongOff;
 
-    var ax = cx - dirx * half, ay = cy - diry * half;   // upstream end
-    var bx = cx + dirx * half, by = cy + diry * half;   // downstream end
+      // Clamp the centre to the keep-in disc so the whole capsule stays inside the
+      // map (or, while confined, inside the quarantine circle around ox,oy).
+      var rcx = cx - ox, rcy = cy - oy;
+      var cd = Math.sqrt(rcx * rcx + rcy * rcy);
+      if (cd > limR && cd > 0) { var cs = limR / cd; cx = ox + rcx * cs; cy = oy + rcy * cs; }
+
+      ax = cx - dirx * half; ay = cy - diry * half;   // upstream end
+      bx = cx + dirx * half; by = cy + diry * half;   // downstream end
+
+      if (!avoid) break;                              // confined / nothing to avoid → take this roll
+      var slack = this._highwayCapsuleSlack(ax, ay, bx, by, avoid);
+      if (slack >= 0) { best = null; break; }         // fully clear → use these vars as-is
+      if (slack > bestSlack) {                         // remember the least-overlapping roll
+        bestSlack = slack;
+        best = { dirx: dirx, diry: diry, len: len, half: half, cx: cx, cy: cy,
+                 ax: ax, ay: ay, bx: bx, by: by, alongOff: alongOff };
+      }
+    }
+    if (best) {   // no fully-clear roll in the budget → fall back to the least-overlapping one
+      dirx = best.dirx; diry = best.diry; len = best.len; half = best.half;
+      cx = best.cx; cy = best.cy; ax = best.ax; ay = best.ay; bx = best.bx; by = best.by;
+      alongOff = best.alongOff;
+    }
 
     var h = {
       ax: ax, ay: ay, bx: bx, by: by, cx: cx, cy: cy,
