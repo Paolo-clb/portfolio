@@ -43,14 +43,17 @@
     return this._enemyBag.splice(i, 1)[0];
   };
 
-  /* Spawn one enemy of `tier` at (sx, sy) with its spawn-ring VFX. */
-  M._spawnTierAt = function (tier, sx, sy) {
+  /* Spawn one enemy of `tier` at (sx, sy) with its spawn-ring VFX. opts.ringColor
+     overrides the default tier colour (e.g. Greed beacon spawns ring in mint). */
+  M._spawnTierAt = function (tier, sx, sy, opts) {
+    opts = opts || {};
     this._naturalSpawn = true;
     if (tier === 3) this._spawnBruiserAt(sx, sy);
     else if (tier === 2) this._spawnShooterAt(sx, sy);
     else this._spawnRusherAt(sx, sy);
     this._naturalSpawn = false;
-    var ringColor = tier === 3 ? 0xaa00ff : tier === 2 ? 0xff7722 : 0xff0044;
+    var ringColor = (opts.ringColor != null) ? opts.ringColor
+      : (tier === 3 ? 0xaa00ff : tier === 2 ? 0xff7722 : 0xff0044);
     var ringR     = tier === 3 ? 90 : tier === 2 ? 72 : 55;
     this._spawnWaveRing(sx, sy, { maxRadius: ringR, color: ringColor, expandTime: 0.16 + tier * 0.04 });
   };

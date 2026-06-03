@@ -337,7 +337,9 @@
     var sy = f.y + (sa / m) * reach;
     var c = LA.clampDisc(sx, sy, 60);                           // keep it inside the arena wall
     var tier = this._drawFromBag();
-    this._spawnTierAt(tier, c.x, c.y);
+    // Spawn-ring VFX in the GREED mint (not the tier colour) so beacon-spawned
+    // enemies visibly "belong" to the platform that summoned them.
+    this._spawnTierAt(tier, c.x, c.y, { ringColor: C.GREED_TINT });
   };
 
   /* Outward "broadcast" square-rings that pulse off the plate edge while a live
@@ -345,16 +347,19 @@
   M._greedTickSignals = function (dt) {
     var f = this._greed;
     var live = (f.phase === 'ACTIVE' && f.inside);
+    var ramp = Math.min(1, f.heldT * 1000 / C.GREED_BEACON_RAMP);
     if (live) {
-      var ramp = Math.min(1, f.heldT * 1000 / C.GREED_BEACON_RAMP);
-      var emitGap = lerp(0.9, 0.28, ramp);                      // seconds between broadcast rings
+      // Emission cadence ramps hard with intensity (a lazy pulse → a rapid strobe).
+      var emitGap = lerp(1.0, 0.20, ramp);                      // seconds between broadcast rings
       f.sigT += dt;
-      while (f.sigT >= emitGap && f.sig.length < 6) {
+      while (f.sigT >= emitGap && f.sig.length < 8) {
         f.sigT -= emitGap;
         f.sig.push({ r: f.half * 0.86, life: 1 });
       }
     }
-    var grow = lerp(180, 420, Math.min(1, f.heldT * 1000 / C.GREED_BEACON_RAMP)); // px/s outward
+    // Ring travel SPEED is the danger read-out: slow crawl at 1 bar, fast burst at
+    // 3 bars (wide range so it's unmistakable, like the wifi arcs).
+    var grow = lerp(110, 620, ramp);                            // px/s outward
     for (var i = f.sig.length - 1; i >= 0; i--) {
       var s = f.sig[i];
       s.r   += grow * dt;
@@ -468,43 +473,53 @@
     }
 
     // ---- Central amplifier glyph: a "broadcast" wifi-style fan of arcs + node ----
-    this._renderGreedGlyph(x, y, Hh, A, gt, hot, ramp, col, fruit, hotc);
+    // Bars only show while you actually stand on a live plate (= the ×2 is on).
+    var barsLive = !!this._greedActive;
+    this._renderGreedGlyph(x, y, Hh, A, gt, hot, ramp, col, fruit, hotc, barsLive);
   };
 
-  /* The amplifier motif at the plate centre: a stack of upward-broadcasting arcs
-     (the "signal" being amplified) over a glowing node, breathing with the plate.
-     The arcs brighten + the node swells as the held-time ramp climbs. */
-  M._renderGreedGlyph = function (cx, cy, Hh, A, gt, hot, ramp, col, fruit, hotc) {
+  /* The amplifier motif at the plate centre: a node (small diamond) under a stack
+     of "wifi" broadcast arcs. The arcs double as the DANGER GAUGE — the number of
+     lit bars maps to the beacon intensity (1 bar when you first step on, climbing
+     to 3 as held-time ramps), so a glance tells you how hot the spawn rate is. The
+     bars are drawn ONLY while you stand on a live plate (`live`); off the plate the
+     glyph is just the node + halo (no signal). */
+  M._renderGreedGlyph = function (cx, cy, Hh, A, gt, hot, ramp, col, fruit, hotc, live) {
     var tg = this._greedTopGfx;
     var br = Hh * 0.16;                                    // base glyph radius
     var breathe = 1 + 0.05 * Math.sin(gt * 4);
+    var baseY = cy + br * 0.22;                            // fan / node anchor
 
     // Soft halo for readability over the grid.
     tg.fillStyle(col, A * 0.10);
     tg.fillCircle(cx, cy, br * 1.5);
 
-    // Broadcast arcs — three concentric quarter-arcs fanning UP-and-out both sides
-    // (a wifi/antenna read), pulsing outward; the active "wave" cycles with time.
-    var arcs = 3;
-    var wave = (gt * (1.2 + ramp * 1.6)) % 1;             // which arc is "hot" right now
-    for (var a = 0; a < arcs; a++) {
-      var ar = br * (0.7 + a * 0.55) * breathe;
-      var frac = a / (arcs - 1);
-      var lit = 1 - Math.min(1, Math.abs(frac - wave) * 2.2);  // brightest where the wave is
-      var aA = (0.20 + 0.55 * lit) * (0.6 + 0.4 * ramp) * A;
-      tg.lineStyle(3, lit > 0.5 ? hotc : fruit, aA);
-      // top fan
-      tg.beginPath(); tg.arc(cx, cy + br * 0.3, ar, -Math.PI * 0.85, -Math.PI * 0.15, false); tg.strokePath();
+    // Broadcast "wifi" bars = the danger gauge. barsF in [1,3]; full bars are solid
+    // and the next one FADES IN with the fractional ramp so the climb reads smoothly.
+    if (live) {
+      var barsF    = 1 + ramp * 2;                        // 1.0 → 3.0
+      var fullBars = Math.min(3, Math.floor(barsF));
+      var partial  = Math.min(1, barsF - Math.floor(barsF));
+      var wave     = (gt * (1.4 + ramp * 1.8)) % 1;       // travelling shimmer across the bars
+      for (var a = 0; a < 3; a++) {
+        var present = (a < fullBars) ? 1 : (a === fullBars ? partial : 0);
+        if (present <= 0.02) continue;
+        var ar  = br * (0.62 + a * 0.52) * breathe;
+        var lit = 1 - Math.min(1, Math.abs((a / 2) - wave) * 2.2);   // brightest where the shimmer is
+        var aA  = (0.34 + 0.50 * lit) * present * A;       // min 0.34 → every present bar clearly visible
+        tg.lineStyle(3.4, lit > 0.5 ? hotc : fruit, aA);
+        tg.beginPath(); tg.arc(cx, baseY, ar, -Math.PI * 0.82, -Math.PI * 0.18, false); tg.strokePath();
+      }
     }
 
-    // The amplified node (a bright diamond) at the base of the fan.
-    var nr = br * (0.30 + 0.10 * Math.sin(gt * 6)) * (1 + 0.3 * ramp);
+    // The amplified node (a small bright diamond) at the base of the fan.
+    var nr = br * (0.18 + 0.06 * Math.sin(gt * 6)) * (1 + (live ? 0.2 * ramp : 0));
     tg.fillStyle(hotc, (0.7 + 0.3 * hot) * A);
     tg.beginPath();
-    tg.moveTo(cx, cy + br * 0.3 - nr);
-    tg.lineTo(cx + nr, cy + br * 0.3);
-    tg.lineTo(cx, cy + br * 0.3 + nr);
-    tg.lineTo(cx - nr, cy + br * 0.3);
+    tg.moveTo(cx, baseY - nr);
+    tg.lineTo(cx + nr, baseY);
+    tg.lineTo(cx, baseY + nr);
+    tg.lineTo(cx - nr, baseY);
     tg.closePath();
     tg.fillPath();
   };
