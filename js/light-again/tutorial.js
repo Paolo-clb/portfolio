@@ -319,6 +319,7 @@
         if (e.spr) e.spr.destroy();
         if (e.trSpr) for (t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
         if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
+        if (e.scopeGfx) { e.scopeGfx.destroy(); e.scopeGfx = null; }
       }
       this.enemies.length = 0;
     }

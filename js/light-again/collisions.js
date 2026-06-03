@@ -21,6 +21,8 @@
       for (var mi = 0; mi < this.enemies.length; mi++) {
         var me = this.enemies[mi];
         if (me.isMarked) continue;
+        if (me._twCondemned) continue;    // already condemned (TW) → no new mark, it's going to die
+        if (me._snIntangible) continue;   // cloaked sniper — can't be dash-marked
         var mdx = p.x - me.x, mdy = p.y - me.y;
         var mThresh = C.DASH_MARK_RADIUS + me.size * 0.5;
         if (mdx * mdx + mdy * mdy < mThresh * mThresh) {
@@ -36,6 +38,11 @@
 
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var e = this.enemies[i];
+
+      // Cloaked sniper (T4 between shots) is fully intangible: the arrow passes
+      // through it harmlessly and it can't be hit. Only a CHARGING/firing sniper
+      // (e._snIntangible false) is solid — the player's window to kill it.
+      if (e._snIntangible) continue;
 
       // During TW, arrow passes through condemned enemies (already going to die)
       if (e._twCondemned && (isAtk || isDAtk)) continue;
@@ -112,7 +119,7 @@
             }
             return;
           }
-          var datkDmg = (e.tier === 3) ? 2 : 1;
+          var datkDmg = (e.tier === 3 || e.tier === 4) ? 2 : 1;   // dash-attack one-shots the 2-HP sniper
           var dex2 = e.x, dey2 = e.y;
           e.hp -= datkDmg;
           if (e.hp <= 0) {

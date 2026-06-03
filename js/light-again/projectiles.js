@@ -132,7 +132,7 @@
       // parried hatchlings) are drawn as procedural mini-serpents by
       // _renderSnakeVenom, so they get no shard trail.
       var spd = pr.vx * pr.vx + pr.vy * pr.vy;
-      if (spd > 0.01 && !pr.snakeSpit) {
+      if (spd > 0.01 && !pr.snakeSpit && !pr.laser) {
         var slot = this._projTrailPool[this._projTrailPoolW % this._projTrailPool.length];
         this._projTrailPoolW++;
         slot.x = pr.x;
@@ -179,6 +179,7 @@
         // Reflected projectile hits enemies
         for (var ei = this.enemies.length - 1; ei >= 0; ei--) {
           var e = this.enemies[ei];
+          if (e._snIntangible) continue;   // cloaked sniper — immune between shots
           var edx = pr.x - e.x, edy = pr.y - e.y;
           var prR = pr.glitch ? C.ANO_PROJ_RADIUS : C.PROJ_RADIUS;
           var eThresh = prR + e.size * 0.5;
@@ -206,6 +207,7 @@
               }
               for (var si = this.enemies.length - 1; si >= 0; si--) {
                 var se = this.enemies[si];
+                if (se._snIntangible) continue;   // cloaked sniper — immune
                 var sdx2 = se.x - pr.x, sdy2 = se.y - pr.y;
                 var sd2Sq = sdx2 * sdx2 + sdy2 * sdy2;
                 if (sd2Sq < smashAoeSq && sd2Sq > 0.01) {
@@ -253,7 +255,7 @@
         if (vuln && !p.invincible && !twActive) {
           var pdx = p.x - pr.x, pdy = p.y - pr.y;
           var pdSq = pdx * pdx + pdy * pdy;
-          var prR2 = pr.glitch ? C.ANO_PROJ_RADIUS : C.PROJ_RADIUS;
+          var prR2 = pr.laser ? C.T4_LASER_RADIUS : pr.glitch ? C.ANO_PROJ_RADIUS : C.PROJ_RADIUS;
           var prThresh = pR + prR2;
           if (pdSq < prThresh * prThresh) {
             var pd = Math.sqrt(pdSq);
@@ -266,9 +268,10 @@
           }
         }
 
-        // Deflect: only dash attack can reflect projectiles
+        // Deflect: only dash attack can reflect projectiles. Sniper LASERS can
+        // NEVER be parried/reflected (pr.laser) — a dash-attack passes through.
         // Lv2 extended vacuum is disabled during TW to avoid re-catching frozen reflected projectiles
-        if (isDAtk) {
+        if (isDAtk && !pr.laser) {
           var ddx = p.x - pr.x, ddy = p.y - pr.y;
           // Parrybox: generous base, diminishes as arrow grows (combo + star buff arrow size)
           var cm = this.comboMultiplier;

@@ -441,6 +441,7 @@
     for (var i = enemies.length - 1; i >= 0; i--) {
       var e = enemies[i];
       if (e._spawnAnimT != null && e._spawnAnimT < 1) continue;   // still materialising → leave it
+      if (e._snIntangible) continue;   // cloaked sniper — the strike passes through it
       var hit = false;
       for (var j = 0; j < pr.arrows.length; j++) {
         var a = pr.arrows[j];

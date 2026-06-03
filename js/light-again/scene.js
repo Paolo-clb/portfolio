@@ -560,6 +560,18 @@
             self._spawnPrism({ near: true });
           }
         }
+        // Cheat / test: spawn a T4 Sniper ("Œil-scope") at a far, on-screen
+        // vantage. It enters CLOAKED (invisible + invincible), then charges +
+        // fires a fast laser. (Only spawn path for now — no natural spawns yet.)
+        if (ev.code === 'KeyF' && !ev.repeat) {
+          ev.preventDefault();
+          if (self._spawnSniperAt && self.p && self.enemies.length < C.MAX_ENEMIES) {
+            var snA = Math.random() * Math.PI * 2;
+            var snD = self._sniperVantageDist ? self._sniperVantageDist() : C.T4_KEEP_DIST;
+            var snP = LA.clampDisc(self.p.x + Math.cos(snA) * snD, self.p.y + Math.sin(snA) * snD, C.T4_SIZE * 1.4);
+            self._spawnSniperAt(snP.x, snP.y);
+          }
+        }
 
       });
       this.input.keyboard.on('keyup', function (ev) {

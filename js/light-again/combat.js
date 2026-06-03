@@ -40,6 +40,7 @@
     for (var k = 0; k < this.enemies.length; k++) {
       var o = this.enemies[k];
       if (o.tier === 3) continue;
+      if (o._snIntangible) continue;   // cloaked sniper — not shoved around between shots
       var sdx = o.x - cx, sdy = o.y - cy;
       var sdSq = sdx * sdx + sdy * sdy;
       if (sdSq < rSq) {
@@ -186,7 +187,7 @@
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var e  = this.enemies[i];
       e._dead = true;   // keep the removal invariant (homing projectiles test _dead)
-      var bp = e.tier === 3 ? 100 : e.tier === 2 ? 30 : 10;
+      var bp = e.tier === 3 ? 100 : e.tier === 4 ? C.T4_SCORE : e.tier === 2 ? 30 : 10;
       total += bp * cm;
       this.totalKills++;
       // Stagger the burst by distance so it reads as the wave passing through.
@@ -200,6 +201,7 @@
       e.spr.destroy();
       for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
       if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
+      if (e.scopeGfx) { e.scopeGfx.destroy(); e.scopeGfx = null; }
     }
     this.enemies.length = 0;
 
@@ -261,7 +263,9 @@
 
   M._floatScore = function (wx, wy, pts, tier) {
     var col, sz, shCol;
-    if (tier === 3) {
+    if (tier === 4) {
+      col = '#dff0ff'; sz = '32px'; shCol = 'rgba(20,40,64,0.80)';
+    } else if (tier === 3) {
       col = '#b44dff'; sz = '30px'; shCol = 'rgba(40,0,72,0.75)';
     } else if (tier === 2) {
       col = '#ffaa22'; sz = '26px'; shCol = 'rgba(48,24,0,0.72)';
@@ -482,7 +486,7 @@
 
     this.totalKills++;
     if (!this._batchActive) this._checkUpgradeTrigger();
-    var basePts = e.tier === 3 ? 100 : e.tier === 2 ? 30 : 10;
+    var basePts = e.tier === 3 ? 100 : e.tier === 4 ? C.T4_SCORE : e.tier === 2 ? 30 : 10;
     var pts = basePts * this.comboMultiplier;
     if (ctx.reflected) pts *= 2;
     if (this._scoreMult && this._scoreMult !== 1) pts = Math.round(pts * this._scoreMult);  // glassHeart curse
@@ -548,6 +552,7 @@
     e.spr.destroy();
     for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
     if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
+    if (e.scopeGfx) { e.scopeGfx.destroy(); e.scopeGfx = null; }
     e._dead = true;   // mark removed → homing projectiles test this O(1) (vs an O(n) indexOf)
     this.enemies.splice(idx, 1);
 
@@ -589,6 +594,7 @@
     e.spr.destroy();
     for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
     if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
+    if (e.scopeGfx) { e.scopeGfx.destroy(); e.scopeGfx = null; }
     e._dead = true;   // keep the removal invariant (homing projectiles test _dead)
     this.enemies.splice(idx, 1);
   };
@@ -668,6 +674,7 @@
 
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var o = this.enemies[i];
+      if (o._snIntangible) continue;   // cloaked sniper — immune to the nuke
       var odx = o.x - ex, ody = o.y - ey;
       var odSq = odx * odx + ody * ody;
       if (odSq < detRadiusSq) {
@@ -872,6 +879,7 @@
 
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var e   = this.enemies[i];
+      if (e._snIntangible) continue;   // cloaked sniper — immune to delayed explosions
       var dx  = e.x - x, dy = e.y - y;
       var dSq = dx * dx + dy * dy;
       if (dSq >= radiusSq) continue;

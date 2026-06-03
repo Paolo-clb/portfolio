@@ -594,6 +594,7 @@
         var hit = false;
         for (var ei = 0; ei < this.enemies.length; ei++) {
           var e = this.enemies[ei];
+          if (e._snIntangible) continue;   // cloaked sniper — shards pass through it
           var ex = s.x - e.x, ey = s.y - e.y;
           var et = er + e.size * 0.5;
           if (ex * ex + ey * ey < et * et) { hit = true; break; }
@@ -671,6 +672,7 @@
       var R2 = R * R;
       for (var ei = this.enemies.length - 1; ei >= 0; ei--) {
         var e = this.enemies[ei];
+        if (e._snIntangible) continue;   // cloaked sniper — immune
         var dx = e.x - x, dy = e.y - y;
         var d2 = dx * dx + dy * dy;
         if (d2 > R2) continue;

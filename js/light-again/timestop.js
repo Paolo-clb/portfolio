@@ -619,12 +619,18 @@
     var e = this.enemies[idx];
     if (e._twCondemned) return true;
     e._twCondemned = true;
-    // Restore normal texture so condemned enemies are vivid (not gray)
-    if (e._twGrayed && e.texKey && e.spr) {
+    // Restore the normal (vivid, non-gray) texture AND drop any dash mark — a
+    // condemned enemy is going to die at resolution, so the mark no longer
+    // applies (e.g. a dash-marked T1 you dash-attack under TW turns red
+    // 'condemned' and LOSES its mark instead of keeping it).
+    if ((e._twGrayed || e._markGrayed) && e.texKey && e.spr) {
       e.spr.setTexture(e.texKey);
       for (var ti = 0; ti < e.trSpr.length; ti++) { e.trSpr[ti].setTexture(e.texKey); }
-      e._twGrayed = false;
     }
+    e._twGrayed = false;
+    e._markGrayed = false;
+    e.isMarked = false;
+    e.markTimer = 0;
 
     // Visual feedback: red flash + particles
     this._explode(e.x, e.y, [255, 30, 30], 8);

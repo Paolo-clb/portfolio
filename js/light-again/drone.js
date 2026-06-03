@@ -188,6 +188,7 @@
     if (ownBatch) this._beginBatch('DRONE');
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var e   = this.enemies[i];
+      if (e._snIntangible) continue;   // cloaked sniper — immune to drone blasts
       var ex  = e.x - x, ey = e.y - y;
       var dsq = ex * ex + ey * ey;
       if (dsq >= Rsq) continue;

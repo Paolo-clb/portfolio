@@ -34,8 +34,8 @@
           var ov = (C.SEPARATION_RADIUS - sd) / C.SEPARATION_RADIUS;
           var fx = (sdx / sd) * C.SEPARATION_FORCE * ov * sc60;
           var fy = (sdy / sd) * C.SEPARATION_FORCE * ov * sc60;
-          var massA = a.tier === 3 ? 6.0 : a.tier === 2 ? 2.5 : 1.0;
-          var massB = b.tier === 3 ? 6.0 : b.tier === 2 ? 2.5 : 1.0;
+          var massA = a.tier === 3 ? 6.0 : a.tier === 4 ? 3.0 : a.tier === 2 ? 2.5 : 1.0;
+          var massB = b.tier === 3 ? 6.0 : b.tier === 4 ? 3.0 : b.tier === 2 ? 2.5 : 1.0;
           var total = massA + massB;
           a.vx += fx * (massB / total); a.vy += fy * (massB / total);
           b.vx -= fx * (massA / total); b.vy -= fy * (massA / total);
@@ -271,6 +271,9 @@
             if (hiveDid) this.cameras.main.shake(40, 0.0015);
           }
         }
+      } else if (e.tier === 4) {
+        // Tier 4: the Sniper — its own cloak/charge/fire state machine.
+        this._updateSniper(e, ms, sc60);
       } else {
         // Tier 1: rush toward player (Cache-Zone rage → faster)
         var dx = p.x - e.x, dy = p.y - e.y;
@@ -284,7 +287,7 @@
         e.x += e.vx * sc60; e.y += e.vy * sc60;
       }
 
-      var eHalf = e.tier === 3 ? C.T3_SIZE : e.tier === 2 ? C.T2_SIZE : C.SIZE;
+      var eHalf = e.tier === 3 ? C.T3_SIZE : e.tier === 4 ? C.T4_SIZE : e.tier === 2 ? C.T2_SIZE : C.SIZE;
       var eMargin = eHalf * 1.2;
       var BOUNCE = 0.55;
 

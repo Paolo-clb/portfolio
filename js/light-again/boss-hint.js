@@ -151,8 +151,13 @@
     var type = this._currentBossType();
 
     // No boss being fought → forget the current instance (a NEW boss of the same
-    // type later is a repeat encounter and won't re-arm; see _bossHintMet).
-    if (!type) { this._bossHintType = null; this._bossHintArmed = false; this._bossHintT = 0; return; }
+    // type later is a repeat encounter and won't re-arm; see _bossHintMet). The
+    // hint is tied to the boss it describes, so the instant that boss dies it
+    // closes (it used to linger out its own lifetime over an empty board).
+    if (!type) {
+      if (this._bossHintShowing) this._dismissBossHint();
+      this._bossHintType = null; this._bossHintArmed = false; this._bossHintT = 0; return;
+    }
 
     // A new boss just became the one we're tracking → decide whether to arm.
     if (this._bossHintType !== type) {

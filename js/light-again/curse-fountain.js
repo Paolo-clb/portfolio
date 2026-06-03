@@ -358,6 +358,7 @@
         e.spr.destroy();
         for (var t = 0; t < e.trSpr.length; t++) e.trSpr[t].destroy();
         if (e.shieldGfx) { e.shieldGfx.destroy(); e.shieldGfx = null; }
+        if (e.scopeGfx) { e.scopeGfx.destroy(); e.scopeGfx = null; }
         e._dead = true;   // keep the removal invariant (homing projectiles test _dead)
         this.enemies.splice(i, 1);
       }

@@ -557,6 +557,7 @@
       for (var ei = 0; ei < en.length; ei++) {
         var e = en[ei];
         if (!e._cacheRage) continue;
+        if (e._snIntangible) continue;   // cloaked T4 sniper is invisible → no orphan rage corona
         if (e.x < view.x - 40 || e.x > view.right + 40 || e.y < view.y - 40 || e.y > view.bottom + 40) continue;
         var fade  = Math.min(1, (e._cacheRageT || 0) / C.CACHE_RAGE_LINGER);
         var baseR = (e.size || 14) * 0.95;                          // small — hugs the body

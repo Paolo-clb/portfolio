@@ -376,6 +376,7 @@
     for (var i = enemies.length - 1; i >= 0; i--) {
       var e = enemies[i];
       if (e._spawnAnimT != null && e._spawnAnimT < 1) continue;   // still materialising → leave it
+      if (e._snIntangible) continue;   // cloaked sniper — the core ploughs through it
       var dx = e.x - c.x, dy = e.y - c.y;
       var rr = cr + e.size * 0.5 + C.CORE_CRUSH_PAD;
       if (dx * dx + dy * dy >= rr * rr) continue;
@@ -435,6 +436,7 @@
 
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var e = this.enemies[i];
+      if (e._snIntangible) continue;   // cloaked sniper — immune to the core's blast
       var dx = e.x - x, dy = e.y - y;
       if (dx * dx + dy * dy >= R2) continue;
       if (e.tier === 3 && e.hasShield) { this._breakShield(e); continue; }

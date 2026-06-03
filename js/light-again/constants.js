@@ -143,6 +143,41 @@
     T3_SPAWN_CD:       3500,
     T3_SHIELD_RADIUS:  42,
 
+    /* ---- The Sniper (T4 — "Œil-scope") -----------------------------------
+       A cyclopean steel lens that snipes from the FAR edge of the screen.
+       It cycles: CLOAK (near-invisible + invincible, drifting to a fresh
+       vantage) → CHARGE (it materialises, an iris/réticule locks onto the
+       player with a stylish charge animation — the ONLY window it can be
+       killed) → FIRE (a single very fast, non-reflectable laser bolt aimed at
+       the player's position at the instant of the shot, NO trajectory
+       telegraph) → VANISH (snaps shut, re-cloaks). 2 HP, no shield. Worth
+       more than a generator. The World does NOT reveal a cloaked sniper, but a
+       sniper frozen mid-CHARGE/FIRE can be calmly killed (a dash-attack or a
+       detonation one-shots it, else 2 basic "torpedo" hits); its laser greys
+       out + halts like an enemy (NOT bright/parryable like a T2 bullet). Lives
+       in this.enemies as tier 4. */
+    T4_SIZE:             20,     // lens half-radius (px)
+    T4_HP:               2,      // like a bruiser; no shield
+    T4_KEEP_DIST:        640,    // desired vantage distance from the player (px) — "encore plus loin que les T2"
+    T4_VANTAGE_VIS_FRAC: 0.82,   // vantage distance is capped to this × the on-screen safe radius (stays in view)
+    T4_VANTAGE_MIN:      340,    // hard floor on the vantage distance (px) — never charge point-blank
+    T4_CLOAK_DUR:        2600,   // ms invisible + invincible between shots (repositioning)
+    T4_CHARGE_DUR:       1150,   // ms of the visible, VULNERABLE charge before the shot
+    T4_VANISH_DUR:       220,    // ms of the snap-shut fade back to cloak after firing
+    T4_APPEAR_DUR:       240,    // ms fade-in pop when a charge begins
+    T4_DRIFT_SPD:        1.7,    // px/frame orbit speed while cloaked (legacy; glide below is used now)
+    T4_GLIDE_RATE:       2.8,    // 1/s smooth-glide rate toward the next firing vantage while cloaked (NO teleport → a dash-marked eye is followable; gentle enough to track by eye)
+    T4_ORBIT_RATE:       0.55,   // rad/s slow angular drift of the cloak orbit (variety)
+    T4_SCORE:            250,    // base points (× combo) — MORE than a T3 generator (100)
+    T4_LASER_SPEED:      980,    // px/s — a very fast bolt (≈2.6× PROJ_SPEED), hard to dodge
+    T4_LASER_LIFE:       2600,   // ms before the bolt expires
+    T4_LASER_RADIUS:     6,      // thin hit radius vs the player (px)
+    T4_TINT:             0xdff0ff,        // icy white-steel body tint
+    T4_TINT_ARR:         [223, 240, 255], // ...as an [r,g,b] for particle bursts
+    T4_HOT:              0xbfeaff,        // charged-lens hot accent (cold electric blue)
+    T4_LASER_CORE:       0xffffff,        // laser white-hot core
+    T4_LASER_GLOW:       0x8fe6ff,        // laser cyan glow halo
+
     STAR_DUR:          5000,    // default Overdrive duration (a normal star pickup)
     STAR_WARN_REMAIN:  1000,    // ms of Overdrive left at which the HUD bar starts blinking
     STAR_DETO_THRESH:  50,

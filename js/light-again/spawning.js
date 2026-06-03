@@ -48,14 +48,15 @@
   M._spawnTierAt = function (tier, sx, sy, opts) {
     opts = opts || {};
     this._naturalSpawn = true;
-    if (tier === 3) this._spawnBruiserAt(sx, sy);
+    if (tier === 4) this._spawnSniperAt(sx, sy);
+    else if (tier === 3) this._spawnBruiserAt(sx, sy);
     else if (tier === 2) this._spawnShooterAt(sx, sy);
     else this._spawnRusherAt(sx, sy);
     this._naturalSpawn = false;
     var ringColor = (opts.ringColor != null) ? opts.ringColor
-      : (tier === 3 ? 0xaa00ff : tier === 2 ? 0xff7722 : 0xff0044);
-    var ringR     = tier === 3 ? 90 : tier === 2 ? 72 : 55;
-    this._spawnWaveRing(sx, sy, { maxRadius: ringR, color: ringColor, expandTime: 0.16 + tier * 0.04 });
+      : (tier === 4 ? 0x8fe6ff : tier === 3 ? 0xaa00ff : tier === 2 ? 0xff7722 : 0xff0044);
+    var ringR     = tier === 4 ? 84 : tier === 3 ? 90 : tier === 2 ? 72 : 55;
+    this._spawnWaveRing(sx, sy, { maxRadius: ringR, color: ringColor, expandTime: 0.16 + Math.min(tier, 3) * 0.04 });
   };
 
   /* ---- Sandbox: a single enemy, drawn from the bag, around the player ---- */
@@ -210,6 +211,53 @@
       waypointTimer: 0,
       texKey: '_bruiser',
       _spawnAnimT: this._naturalSpawn ? 0.0 : 1.0,
+    });
+  };
+
+  /* T4 Sniper ("Œil-scope") — spawns CLOAKED (invisible + invincible) and runs
+     its own appear/charge/fire animation (sniper.js), so it skips the generic
+     spawn-pop. It carries a per-enemy scopeGfx for the animated réticule. */
+  M._spawnSniperAt = function (ex, ey) {
+    var spr = this.add.image(ex, ey, '_sniper');
+    spr.setBlendMode(Phaser.BlendModes.ADD);
+    spr.setDepth(20);
+
+    var trSpr = [], trData = [];
+    for (var t = 0; t < this.ENEMY_TRAIL_N; t++) {
+      var ts = this.add.image(ex, ey, '_sniper');
+      ts.setBlendMode(Phaser.BlendModes.ADD);
+      ts.setDepth(15); ts.setVisible(false);
+      trSpr.push(ts);
+      trData.push({ x: ex, y: ey, angle: 0 });
+    }
+
+    var scopeGfx = this.add.graphics();
+    scopeGfx.setDepth(23);
+    scopeGfx.setBlendMode(Phaser.BlendModes.ADD);
+
+    // A sniper VACUUMED into the Anomaly zone must be VISIBLE the instant it's
+    // teleported in (time is stopped during the wave — an invisible cloaked spawn
+    // would look like nothing arrived). So it spawns as an already-OPEN charging
+    // eye (snState CHARGE, snAppearT 1). After that first charge it resumes its
+    // NORMAL cloak/charge cycle inside the zone — it is NOT permanently exposed.
+    var trapped = !!this._anomalyBarrierActive;
+
+    this.enemies.push({
+      spr: spr, x: ex, y: ey, vx: 0, vy: 0,
+      angle: 0, hp: C.T4_HP, size: C.T4_SIZE,
+      speed: 0,
+      stunTimer: 0, isMarked: false, markTimer: 0,
+      trail: trData, trSpr: trSpr, _tw: 0, _tn: 0,
+      tier: 4, fireCD: 0, chargeTimer: 0, isCharging: false, fireFlashTimer: 0,
+      texKey: '_sniper',
+      scopeGfx: scopeGfx,
+      // Sniper state machine (see sniper.js)
+      snState: trapped ? 'CHARGE' : 'CLOAK',
+      snTimer: trapped ? C.T4_CHARGE_DUR : C.T4_CLOAK_DUR * (0.4 + Math.random() * 0.3),
+      snChargeT: 0, snAppearT: trapped ? 1 : 0, snFireFlash: 0,   // trapped → eye OPEN at the teleport-in
+      snOrbAng: null, snOrbDir: Math.random() < 0.5 ? -1 : 1, snAimAngle: 0,
+      _snIntangible: !trapped,
+      _spawnAnimT: 1.0,   // its own appear animation replaces the generic spawn pop
     });
   };
 

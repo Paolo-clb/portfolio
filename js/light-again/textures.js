@@ -607,4 +607,123 @@
     tm.addCanvas(key, oc);
   };
 
+  /* ---- The Sniper (T4) body: a static open EYE (almond + iris + pupil) -------
+     The live sniper is drawn 100% procedurally (open/close eyelids, charge
+     animation) on a per-enemy graphics overlay in sniper.js, so this baked
+     sprite is only used for the The-World "condemned" death flash (tinted
+     crimson) and the grayscale variant. Baked in cold WHITE/steel so it tints
+     cleanly. Wide axis is horizontal; the runtime rotates it ⟂ to the aim. */
+  LA.buildSniperTex = function (tm, key) {
+    if (tm.exists(key)) tm.remove(key);
+    var s = C.T4_SIZE, pad = 10;
+    var hw = s * 1.85, ho = s * 1.08;
+    var W = Math.ceil(hw * 2 + pad * 2), H = Math.ceil(ho * 2.6 + pad * 2);
+    var oc = document.createElement('canvas');
+    oc.width = W; oc.height = H;
+    var g2 = oc.getContext('2d');
+    var ox = W / 2, oy = H / 2;
+
+    function almond(eho) {
+      g2.beginPath();
+      g2.moveTo(ox - hw, oy);
+      g2.quadraticCurveTo(ox, oy - eho * 1.5, ox + hw, oy);   // top lid
+      g2.quadraticCurveTo(ox, oy + eho * 1.5, ox - hw, oy);   // bottom lid
+      g2.closePath();
+    }
+
+    // Soft glow halo.
+    g2.save();
+    g2.globalCompositeOperation = 'lighter';
+    g2.shadowColor = 'rgba(210,235,255,0.7)'; g2.shadowBlur = 14;
+    almond(ho);
+    g2.fillStyle = 'rgba(210,235,255,0.12)'; g2.fill();
+    g2.shadowBlur = 0; g2.restore();
+
+    // Sclera (eyeball) — radial cold gradient.
+    var grd = g2.createRadialGradient(ox, oy, 2, ox, oy, hw);
+    grd.addColorStop(0,    '#f4fbff');
+    grd.addColorStop(0.6,  '#cfe3f2');
+    grd.addColorStop(1,    '#8aa0b4');
+    almond(ho);
+    g2.fillStyle = grd; g2.fill();
+
+    // Iris (radial) + rim.
+    var ri = ho * 0.82;
+    var irg = g2.createRadialGradient(ox, oy, 1, ox, oy, ri);
+    irg.addColorStop(0,    '#eaf6ff');
+    irg.addColorStop(0.55, '#bfeaff');
+    irg.addColorStop(1,    '#6f9bb8');
+    g2.beginPath(); g2.arc(ox, oy, ri, 0, Math.PI * 2);
+    g2.fillStyle = irg; g2.fill();
+    g2.lineWidth = Math.max(1, s * 0.08);
+    g2.strokeStyle = 'rgba(120,150,175,0.85)';
+    g2.beginPath(); g2.arc(ox, oy, ri, 0, Math.PI * 2); g2.stroke();
+
+    // Pupil + catchlight.
+    g2.beginPath(); g2.arc(ox, oy, ri * 0.42, 0, Math.PI * 2);
+    g2.fillStyle = 'rgba(16,26,38,0.92)'; g2.fill();
+    g2.beginPath(); g2.arc(ox - ri * 0.16, oy - ri * 0.16, ri * 0.12, 0, Math.PI * 2);
+    g2.fillStyle = 'rgba(255,255,255,0.9)'; g2.fill();
+
+    // Eyelid outline.
+    almond(ho);
+    g2.lineWidth = Math.max(2, s * 0.16); g2.lineJoin = 'round';
+    g2.strokeStyle = 'rgba(245,251,255,0.95)';
+    g2.stroke();
+
+    tm.addCanvas(key, oc);
+  };
+
+  /* ---- The Sniper's laser bolt: a fast white-hot beam streak --------------
+     Baked horizontal (points +x), white-cyan, tapered at both ends, with an
+     additive glow halo. The render layer rotates it to the velocity heading,
+     stretches it along its length, and tints it (bright in play, gray during
+     The World — so it reads "halted like an enemy", never a parryable bullet). */
+  LA.buildLaserTex = function (tm, key) {
+    if (tm.exists(key)) tm.remove(key);
+    var W = 72, H = 18;
+    var oc = document.createElement('canvas');
+    oc.width = W; oc.height = H;
+    var g2 = oc.getContext('2d');
+    var cy = H / 2;
+
+    g2.save();
+    g2.globalCompositeOperation = 'lighter';
+
+    // Soft cyan glow halo (wide, low alpha).
+    g2.shadowColor = 'rgba(143,230,255,0.9)'; g2.shadowBlur = 12;
+    var halo = g2.createLinearGradient(0, 0, W, 0);
+    halo.addColorStop(0,    'rgba(143,230,255,0)');
+    halo.addColorStop(0.5,  'rgba(143,230,255,0.55)');
+    halo.addColorStop(1,    'rgba(143,230,255,0)');
+    g2.fillStyle = halo;
+    g2.fillRect(0, cy - 5, W, 10);
+    g2.shadowBlur = 0;
+
+    // Bright body — white-cyan, tapered via the horizontal alpha gradient.
+    var body = g2.createLinearGradient(0, 0, W, 0);
+    body.addColorStop(0,    'rgba(200,245,255,0)');
+    body.addColorStop(0.18, 'rgba(220,250,255,0.85)');
+    body.addColorStop(0.5,  'rgba(255,255,255,1)');
+    body.addColorStop(0.82, 'rgba(220,250,255,0.85)');
+    body.addColorStop(1,    'rgba(200,245,255,0)');
+    g2.fillStyle = body;
+    g2.fillRect(0, cy - 2.4, W, 4.8);
+
+    // White-hot core line.
+    var core = g2.createLinearGradient(0, 0, W, 0);
+    core.addColorStop(0,   'rgba(255,255,255,0)');
+    core.addColorStop(0.5, 'rgba(255,255,255,1)');
+    core.addColorStop(1,   'rgba(255,255,255,0)');
+    g2.fillStyle = core;
+    g2.fillRect(0, cy - 1, W, 2);
+
+    // Hot leading tip.
+    g2.beginPath(); g2.arc(W - 8, cy, 3.2, 0, Math.PI * 2);
+    g2.fillStyle = 'rgba(255,255,255,0.95)'; g2.fill();
+
+    g2.restore();
+    tm.addCanvas(key, oc);
+  };
+
 })();

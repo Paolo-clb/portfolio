@@ -95,11 +95,14 @@
     LA.buildEnemyTex(tm, '_enemy');
     LA.buildShooterTex(tm, '_shooter');
     LA.buildBruiserTex(tm, '_bruiser');
+    LA.buildSniperTex(tm, '_sniper');   // T4 scope-lens
     // Pre-bake grayscale variants for The World texture-swap — zero runtime GPU cost
     LA.buildGrayscaleVariant(tm, '_enemy',   '_enemy_gray');
     LA.buildGrayscaleVariant(tm, '_shooter', '_shooter_gray');
     LA.buildGrayscaleVariant(tm, '_bruiser', '_bruiser_gray');
+    LA.buildGrayscaleVariant(tm, '_sniper',  '_sniper_gray');
     LA.buildProjTex(tm, '_proj');
+    LA.buildLaserTex(tm, '_laser');     // T4 fast laser bolt
     LA.buildSparkTex(tm, '_spark');   // soft radial-gradient particle for the ADD emitters
     LA.buildPCBTex(tm, '_pcb', c);
     LA.buildStarTex(tm, '_star');
@@ -344,10 +347,16 @@
         // place that clears/redraws e.shieldGfx — is skipped by this `continue`,
         // so its cyan ring would otherwise stay frozen on the now-crimson sprite.
         if (e.shieldGfx) e.shieldGfx.clear();
+        // Same for a condemned sniper — its animated scope overlay would freeze.
+        if (e.scopeGfx) e.scopeGfx.clear();
 
         for (var t = 0; t < this.ENEMY_TRAIL_N; t++) e.trSpr[t].setVisible(false);
         continue;
       }
+
+      // T4 sniper: fully self-rendered (cloak shimmer, charge animation, scope
+      // overlay) — no comet trail, no shared tint logic below.
+      if (e.tier === 4) { this._renderSniper(e, gt, i); continue; }
 
       if (e.tier === 3) {
         if (e.isMarked) {
@@ -548,6 +557,26 @@
 
     for (var i = 0; i < this.projectiles.length; i++) {
       var pr = this.projectiles[i];
+      if (pr.laser) {
+        // Sniper laser bolt: a bright white-cyan beam streak aimed along its
+        // velocity, stretched long. During The World it greys out + reads
+        // "halted like an enemy" (NOT a bright, parryable T2 bullet).
+        var lang = Math.atan2(pr.vy, pr.vx);
+        pr.spr.setRotation(lang);
+        pr.spr.setBlendMode(Phaser.BlendModes.ADD);
+        if (this._twActive) {
+          pr.spr.setTint(0x8a96a4);                 // desaturated steel — frozen
+          pr.spr.setAlpha(0.55);
+          pr.spr.setScale(2.4, 0.9);
+        } else {
+          var lpul = 0.85 + 0.15 * Math.sin(gt * Math.PI * 30 + i);
+          pr.spr.setTint(0xffffff);
+          pr.spr.setAlpha(lpul);
+          // Long, thin, slightly throbbing beam.
+          pr.spr.setScale(3.0 + 0.25 * Math.sin(gt * Math.PI * 22 + i), 1.0);
+        }
+        continue;
+      }
       if (pr._twFrozen) {
         // Frozen during TW: pulsing purple, slightly larger
         var fpA = 0.5 + 0.4 * Math.sin(gt * Math.PI * 6 + i);

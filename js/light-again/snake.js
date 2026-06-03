@@ -868,6 +868,7 @@
     if (ownBatch) this._beginBatch('PARADE', { dashAtkId: pr._dashAtkId });
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var e = this.enemies[i];
+      if (e._snIntangible) continue;   // cloaked sniper — immune
       var dx = e.x - x, dy = e.y - y, d2 = dx * dx + dy * dy;
       if (d2 > r2) continue;
       if (e.tier === 3 && e.hasShield) { this._breakShield(e); continue; }

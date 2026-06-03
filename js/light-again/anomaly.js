@@ -373,12 +373,12 @@
     // The time-stop literally makes them vanish; they reappear in a clean
     // circle around the player during VACUUM.
     var cam = this.cameras.main;
-    var tierCounts = { 1: 0, 2: 0, 3: 0 };
+    var tierCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };   // tier 4 = the Sniper (re-materialised with the crowd, not despawned)
     for (var ci = 0; ci < this.enemies.length; ci++) {
       var tt = this.enemies[ci].tier;
       tierCounts[tt] = (tierCounts[tt] || 0) + 1;
     }
-    var realTotal = tierCounts[1] + tierCounts[2] + tierCounts[3];
+    var realTotal = tierCounts[1] + tierCounts[2] + tierCounts[3] + tierCounts[4];
     // Pad up to ANO_MIN_TRAPPED with rushers / shooters
     var need = Math.max(0, C.ANO_MIN_TRAPPED - realTotal);
     for (var k = 0; k < need; k++) {
@@ -397,9 +397,9 @@
       this.projectiles.splice(pi, 1);
     }
 
-    // Build the queue from the tier mix
+    // Build the queue from the tier mix (incl. tier 4 snipers)
     a.vacQueue = [];
-    for (var tIdx = 1; tIdx <= 3; tIdx++) {
+    for (var tIdx = 1; tIdx <= 4; tIdx++) {
       for (var nn = 0; nn < tierCounts[tIdx]; nn++) a.vacQueue.push({ tier: tIdx });
     }
     // Shuffle so the appearance ORDER is random (the final layout is still a
