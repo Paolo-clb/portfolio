@@ -137,4 +137,33 @@
     }
   };
 
+  /* Bounce the player off a circular boundary they're pressed against, given its
+     OUTWARD unit normal (nx, ny). Aggressive states (dash / dash-attack / torpedo
+     attack) rebound FASTER (restitution > 1 + a flat kick, capped); a gentle drift
+     just springs off. Shared by the map wall (scene.js) AND the Anomaly firewall
+     (anomaly.js) so both edges bounce identically. Caller has already snapped the
+     position onto the rim. The wall-FX throttle (p._wallFxCd) is decremented once
+     per frame by the scene wall pass. */
+  M._applyAggressiveRebound = function (nx, ny) {
+    var p = this.p;
+    var vd = p.vx * nx + p.vy * ny;                  // speed INTO the boundary (>0 = outward)
+    if (vd <= 0) return;
+    var aggressive = (p.state === 'DASHING' || p.state === 'DASH_ATTACKING' || p.state === 'ATTACKING');
+    var rest = aggressive ? C.WALL_REBOUND_ATTACK : C.WALL_REBOUND_BASE;
+    p.vx -= nx * vd * (1 + rest);
+    p.vy -= ny * vd * (1 + rest);
+    if (aggressive) { p.vx -= nx * C.WALL_REBOUND_KICK; p.vy -= ny * C.WALL_REBOUND_KICK; }
+    // Cap the rebound so it can never run away (inward speed = -(v·n)).
+    var back = -(p.vx * nx + p.vy * ny);
+    if (back > C.WALL_REBOUND_MAX) {
+      var ex = back - C.WALL_REBOUND_MAX;
+      p.vx += nx * ex; p.vy += ny * ex;
+    }
+    if (!(p._wallFxCd > 0)) {
+      this._spawnWallImpact(p.x, p.y, nx, ny, aggressive ? 1.0 : 0.45);
+      if (aggressive) { this.cameras.main.shake(80, 0.006); this._triggerHitstop(40); }
+      p._wallFxCd = C.WALL_FX_CD;
+    }
+  };
+
 })();

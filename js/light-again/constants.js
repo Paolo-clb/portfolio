@@ -587,6 +587,38 @@
     CORE_BRUISER_DMG:        3,      // damage a ricochet deals to an unshielded tier-3 bruiser body
     CORE_EXP_RADIUS:         300,    // final detonation blast radius (px)
 
+    /* ---- The Prism of Refraction (Prisme de Réfraction) — offensive "billiard" -
+       A crystalline prism sitting NEUTRAL in the arena: present from the START,
+       placed FULLY at random anywhere on the map, with NO guidance arrow. DASH-
+       ATTACK through it and the ship is CAUGHT inside — a magic cannon charges and a
+       long spectral aiming line tracks the mouse ("on a chargé un prisme canon"). A
+       LEFT-CLICK hurls the ship back out as THREE chromatic ghost-arrows in a fan
+       (éventail): a super dash-attack that flies faster + farther, ONE-SHOTS every
+       enemy it sweeps and hits a boss for 3 dash-attacks, before the clones MERGE
+       back and the whole rampage lands as one "PRISME" big-score popup. It works
+       during The World (the giga-dash runs in slow-mo and every swept enemy dies at
+       once, exactly like the Unstable Core). After use the prism vanishes and
+       reappears elsewhere at random. Self-contained on this._prism + one shared ADD
+       graphics layer. Bosses live outside this.enemies; the strike damages them via
+       their own damage entry points (3× a dash-attack). */
+    PRISM_FIRST_DELAY:       800,    // ms before the very first prism appears (≈ from the start)
+    PRISM_RESPAWN_MIN:       1400,   // ms after a strike before the next prism appears...
+    PRISM_RESPAWN_MAX:       2600,   // ...somewhere else at random (kept short — it's a fixture, always around)
+    PRISM_RADIUS:            42,      // crystal body radius (px)
+    PRISM_TRIGGER_R:         72,      // dash-attack capture radius around the crystal (px)
+    PRISM_TRIGGER_PAD:       16,      // extra slack on (trigger + player half) for the capture test
+    PRISM_SPAWN_MARGIN:      80,      // px the crystal keeps clear of the world edge (whole body + ground decal in-bounds)
+    PRISM_MIN_PLAYER_DIST:   260,     // never spawn right on top of the player (px) — otherwise truly uniform-random
+    PRISM_CHARGE_RAMP:       340,     // ms the cannon takes to read as "fully charged" (visual ramp only)
+    PRISM_CHARGE_MAXHOLD:    5000,    // ms safety auto-launch (no indefinite invulnerable hold inside the prism)
+    PRISM_STRIKE_SPEED:      28,      // px/frame strike speed (≈1680 px/s — clearly "plus vite" than a dash)
+    PRISM_STRIKE_DIST:       1080,    // px the strike travels ("plus loin"), capped so the endpoint stays in the disc
+    PRISM_STRIKE_DIST_MIN:   360,     // px floor so a wall-facing strike still goes somewhere
+    PRISM_FAN_LATERAL:       96,      // px peak half-spread of the éventail (opens then converges back → the merge)
+    PRISM_KILL_R:            74,      // px one-shot radius around EACH of the 3 arrows
+    PRISM_BOSS_REACH:        120,     // px slack (added to boss size) for the "an arrow passed through a boss" test
+    PRISM_TW_SCALE:          0.32,    // during The World the strike advances at this × speed (clear slow-mo, like the core)
+
     /* ---- The World slow-mo for energy/terrain systems --------------------------
        During The World the WHOLE world crawls at ~2% (it never fully freezes).
        A few "energy" systems instead keep a graceful SLOW-MO (clearly slowed, but

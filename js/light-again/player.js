@@ -43,6 +43,13 @@
   M._tryAttack = function () {
     var p = this.p;
     if (p.state === 'DEAD') return;   // dead / mid-resurrection → input is fully frozen
+    // Prism of Refraction: while the ship is charged inside the crystal, a left-click
+    // FIRES the 3-arrow strike instead of a normal attack (and is otherwise swallowed,
+    // so a click mid-flight does nothing). See prism.js.
+    if (p.state === 'PRISM') {
+      if (this._prism && this._prism.phase === 'CHARGING') this._prismLaunch();
+      return;
+    }
     if (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING') return;
     if (p.state === 'RECOVERY') return;
     if (p.state === 'DASHING') { this._triggerDashAtk(); return; }

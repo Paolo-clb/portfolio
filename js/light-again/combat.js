@@ -356,6 +356,7 @@
             : label === 'DRONE' ? '#66e0ff'
             : label === 'NOYAU' ? '#ff8a3c'
             : label === 'CACHE' ? '#ff66ff'
+            : label === 'PRISME' ? '#9fb8ff'
             : label === 'THE WORLD' ? '#ffc832'
             : '#ffcc00';
     var displayLbl = label === 'DELAY_EXP' ? (count > 1 ? 'Delayed Explosion ×' + count : 'Delayed Explosion')
@@ -466,7 +467,7 @@
     // EXCEPTION: the Unstable Core keeps pinballing through frozen time (see
     // unstable-core.js), so its crushes resolve immediately and stay in its OWN
     // score (the core branch below wins over any batch flag set during TW).
-    if (this._twActive && !ctx._twResolving && !ctx.core) {
+    if (this._twActive && !ctx._twResolving && !ctx.core && !ctx.prism) {
       this._twDeferKill(idx);
       return;
     }
@@ -512,6 +513,10 @@
       // corrupt the accumulation. The combo still climbs (these are real kills,
       // exactly like the nuke's), feeding the multiplier into each pts above.
       this._coreScoreAccum = (this._coreScoreAccum || 0) + pts;
+    } else if (ctx.prism) {
+      // Prism strike sweep: bank into the strike's OWN tally (flushed as one
+      // "PRISME" big-score popup at the merge). Same isolation as the core.
+      this._prismScoreAccum = (this._prismScoreAccum || 0) + pts;
     } else if (ctx.batch) {
       this._batchScore += pts;
     } else {
@@ -526,6 +531,11 @@
       // explosion per kill would just be visual noise as it ploughs a whole lane.
       this._explode(ex, ey, [255, 140, 40], 16);
       this._explode(ex, ey, [255, 240, 200], 8);
+    } else if (ctx.prism) {
+      // Swept by the Prism strike — a compact prismatic spark. The blazing chromatic
+      // arrow trails carry the spectacle; full death blooms would be visual noise.
+      this._explode(ex, ey, [180, 220, 255], 14);
+      this._explode(ex, ey, [255, 255, 255], 7);
     } else {
       var cnt = Math.round(30 + (e.size / C.RUSHER_SIZE) * 20);
       cnt = Math.min(cnt, 50);
@@ -545,7 +555,7 @@
     //  • core crushes          — a hitstop (timeScale 0) would stutter the world-time core;
     //  • batch kills (detonation / delayed-explosion) — they fire ONE central
     //    shockwave after their kill loop instead of N here (O(kills×enemies) → O(n)).
-    if (!ctx.condemned && !ctx.core && !ctx.batch) {
+    if (!ctx.condemned && !ctx.core && !ctx.prism && !ctx.batch) {
       this._triggerHitstop(C.HITSTOP_DUR);
       this.cameras.main.shake(60, 0.005);
       this._applyShockwave(ex, ey, C.SHOCKWAVE_RADIUS, C.SHOCKWAVE_FORCE, C.SHOCKWAVE_STUN);

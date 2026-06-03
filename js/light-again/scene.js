@@ -444,6 +444,7 @@
       this._initDataHighways();
       this._initCacheZone();
       this._initCore();
+      this._initPrism();
       this._initTutorial();
       this._resetBossHint();
 
@@ -527,6 +528,16 @@
         if (ev.code === 'KeyB' && !ev.repeat) {
           ev.preventDefault();
           if (self._spawnCacheZone) self._spawnCacheZone({ near: true });
+        }
+        // Cheat: relocate the Prism of Refraction next to the player (prisme de
+        // réfraction). Only when it's dormant/absent — never clobber a live
+        // charge/strike (that would strand the captured ship).
+        if (ev.code === 'KeyV' && !ev.repeat) {
+          ev.preventDefault();
+          if (self._spawnPrism && (!self._prism || self._prism.phase === 'DORMANT')) {
+            self._prism = null;
+            self._spawnPrism({ near: true });
+          }
         }
 
       });
@@ -626,6 +637,7 @@
         if (self._clearCurseFount)  self._clearCurseFount(true);
         if (self._clearDataHighways) self._clearDataHighways(true);
         if (self._clearCore)        self._clearCore(true);
+        if (self._clearPrism)       self._clearPrism(true);
         if (self._clearCacheZone)   self._clearCacheZone(true);
         if (self._removeBossHintDom) self._removeBossHintDom();
         self._treeGfx = null; self._treePtrGfx = null; self._fairyGfx = null;
@@ -637,6 +649,7 @@
         self._worldDark = null; self._borderGfx = null; self._wallImpacts = null;
         self._motesGfx = null; self._motes = null;
         self._coreGfx = null;   // graphics destroyed with the scene; drop the stale ref
+        self._prismGfx = null;  // graphics destroyed with the scene; drop the stale ref
         self._cacheGfx = null; self._cacheTopGfx = null; self._starPtrGfx = null;
         self._cacheStarGhost = null; self._cacheStarFill = null; self._cacheStarMaskGfx = null;
         // Tear down any tutorial overlay so it can't outlive the scene (e.g. a
@@ -866,6 +879,12 @@
       // Key state is constant within a frame — compute once and reuse for both
       // velocity integration and angle facing below.
       var inp = this._inputVec();
+      // While the Prism of Refraction holds the ship (CHARGING) or hurls it as the
+      // 3-arrow strike (STRIKE), prism.js owns the ship's position outright. Skip the
+      // normal accel/friction/integration + Highway conveyor + wall clamp so they
+      // can't fight the captured hold or the strike path (prism.js clamps to the disc).
+      var prismCtl = !!(this._prism && (this._prism.phase === 'CHARGING' || this._prism.phase === 'STRIKE'));
+      if (!prismCtl) {
       var frDt = Math.pow(C.FRICTION, pS60);
       if (p.state === 'MOVING') {
         p.vx = (p.vx + inp.dx * C.ACCEL * pS60) * frDt;
@@ -887,37 +906,14 @@
       var wClamp = LA.clampDisc(p.x, p.y, C.SIZE * 1.5);
       if (wClamp.hit) {
         p.x = wClamp.x; p.y = wClamp.y;
-        var wnx = wClamp.nx, wny = wClamp.ny;            // outward wall normal
-        var wvd = p.vx * wnx + p.vy * wny;               // speed INTO the wall (>0)
-        if (wvd > 0) {
-          // Dash / attack into the rim launches you back FASTER (restitution > 1)
-          // and adds a flat inward kick; a gentle drift just springs off.
-          var aggressive = (p.state === 'DASHING' || p.state === 'DASH_ATTACKING' || p.state === 'ATTACKING');
-          var rest = aggressive ? C.WALL_REBOUND_ATTACK : C.WALL_REBOUND_BASE;
-          p.vx -= wnx * wvd * (1 + rest);
-          p.vy -= wny * wvd * (1 + rest);
-          if (aggressive) { p.vx -= wnx * C.WALL_REBOUND_KICK; p.vy -= wny * C.WALL_REBOUND_KICK; }
-          // Cap the rebound so it can never run away (inward speed = -(v·n)).
-          // Add back along the OUTWARD normal to shave the excess inward speed.
-          var back = -(p.vx * wnx + p.vy * wny);
-          if (back > C.WALL_REBOUND_MAX) {
-            var ex = back - C.WALL_REBOUND_MAX;
-            p.vx += wnx * ex; p.vy += wny * ex;
-          }
-          // Impact feedback — throttled so a wall-slide doesn't machine-gun VFX.
-          if (!(p._wallFxCd > 0)) {
-            this._spawnWallImpact(p.x, p.y, wnx, wny, aggressive ? 1.0 : 0.45);
-            if (aggressive) {
-              this.cameras.main.shake(80, 0.006);
-              this._triggerHitstop(40);
-            }
-            p._wallFxCd = C.WALL_FX_CD;
-          }
-        }
+        this._applyAggressiveRebound(wClamp.nx, wClamp.ny);   // bounce off the map rim
       }
+      }  // end if (!prismCtl) — prism.js drove the ship this frame
 
-      // Anomaly quarantine: trap the player inside the firewall
-      this._confinePlayerToBarrier();
+      // Anomaly quarantine: trap the player inside the firewall (it bounces the
+      // ship off the rim just like the map wall). Skipped during a Prism strike —
+      // prism.js reflects the bolt off the firewall itself.
+      if (!prismCtl) this._confinePlayerToBarrier();
 
       if (p.state === 'DASHING') {
         p.dashTimer -= pMs;
@@ -1039,6 +1035,7 @@
       this._updateDataHighways(this._twActive ? dt * C.HIGHWAY_TW_VISUAL_SCALE : dt);
       this._updateCacheZone(dt, ms);   // ms = scaled world time → the hack gauge pauses during The World / hitstop
       this._updateCore(dt, sDt);
+      this._updatePrism(dt, sDt);
       this._updateTutorial(dt);
 
       // Overdrive countdown — drives the HUD bar, the low-time blink AND the end,

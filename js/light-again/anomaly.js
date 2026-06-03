@@ -1149,17 +1149,16 @@
       var d = Math.sqrt(d2) || 1;
       p.x = a.bx + (dx / d) * lim;
       p.y = a.by + (dy / d) * lim;
-      var nx = dx / d, ny = dy / d;
-      var vdot = p.vx * nx + p.vy * ny;
-      if (vdot > 0) { p.vx -= nx * vdot * 1.4; p.vy -= ny * vdot * 1.4; }
+      // Same aggressive rebound as the map wall: dash / dash-attack / torpedo
+      // attack ricochet FAST off the firewall, a drift just springs off.
+      this._applyAggressiveRebound(dx / d, dy / d);
     }
     // World wins over the barrier — if the firewall extends past the map,
     // the player can't be pushed through the disc wall.
     var pwc = LA.clampDisc(p.x, p.y, C.SIZE * 1.5);
     if (pwc.hit) {
       p.x = pwc.x; p.y = pwc.y;
-      var pvd = p.vx * pwc.nx + p.vy * pwc.ny;
-      if (pvd > 0) { p.vx -= pwc.nx * pvd * 1.4; p.vy -= pwc.ny * pvd * 1.4; }
+      this._applyAggressiveRebound(pwc.nx, pwc.ny);
     }
   };
 

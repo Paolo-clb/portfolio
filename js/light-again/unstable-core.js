@@ -121,7 +121,7 @@
 
     var inset = C.CORE_FIELD_RADIUS + 40;   // keep the WHOLE field in-bounds (disc)
     var sep2 = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
-    var avoid = [this._fount, this._tree, this._cache];   // _cache is optional (may not exist)
+    var avoid = [this._fount, this._tree, this._cache, this._prism];   // optional refs (may not exist)
     var x, y, tries = 0, ok;
     do {
       var ang  = Math.random() * TAU;
@@ -177,8 +177,12 @@
     c.pulse     += dt;
     c.age       += ms;
 
-    // LAUNCH: a dash-attack (and only a dash-attack) that bites into the field.
-    if (p && p.state === 'DASH_ATTACKING') {
+    // LAUNCH: a dash-attack biting into the field — OR a Prism strike sweeping the
+    // ship through it (the prism turns YOU into the bolt, so it triggers the core
+    // exactly like a dash-attack would).
+    var strikingThrough = p && (p.state === 'DASH_ATTACKING' ||
+      (this._prism && this._prism.phase === 'STRIKE'));
+    if (strikingThrough) {
       var dx = c.x - p.x, dy = c.y - p.y;
       var reach = C.CORE_FIELD_RADIUS + C.SIZE * 0.6 + C.CORE_TRIGGER_PAD;
       if (dx * dx + dy * dy < reach * reach) { this._launchCore(c); return; }
