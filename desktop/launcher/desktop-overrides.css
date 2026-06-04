@@ -1,0 +1,79 @@
+/* ==========================================================================
+   Desktop-only overrides for the Light Again .exe build.
+
+   Loaded AFTER css/light-again.css, so equal-specificity rules win by order.
+   This file lives ONLY in desktop/launcher/ and is copied into the bundle by
+   build-dist.ps1 — it never touches the portfolio's Light Again.
+   ========================================================================== */
+
+/* 1 ── Cyan UI accent ─────────────────────────────────────────────────────
+   The in-canvas palette is already cyan in the dark theme; make the DOM chrome
+   (menus, upgrade/curse drafts, game-over, tutorial, buttons, frames) match.
+   We override the two accent sources the game UI uses — --la-accent* and
+   --clr-primary — but deliberately KEEP the dark violet/blue panel backgrounds
+   (--la-win-bg*, --clr-bg) and the canvas background untouched.
+   Scoped to .light-again-modal: every game pop-up lives inside it. */
+[data-theme="dark"]  .light-again-modal,
+[data-theme="nature"] .light-again-modal,
+.light-again-modal {
+  --la-accent:         #00ffff;
+  --la-accent-soft:    rgba(0, 255, 255, 0.30);
+  --la-accent-line:    rgba(0, 255, 255, 0.55);
+  --la-accent-faint:   rgba(0, 255, 255, 0.05);
+  --la-accent-fill:    rgba(0, 255, 255, 0.10);
+  --la-accent-fill-hi: rgba(0, 255, 255, 0.18);
+  --la-accent-glow:    rgba(0, 255, 255, 0.22);
+  --la-win-border:     rgba(0, 255, 255, 0.20);
+  --clr-primary:       #00ffff;
+}
+
+
+/* 2 ── True fullscreen ────────────────────────────────────────────────────
+   The portfolio caps the modal at 1600×900 (centred) with 1rem breathing room,
+   so on large displays the game looks like a floating window. Drop the cap so
+   the canvas fills the whole (fullscreen) window edge-to-edge. */
+.light-again-overlay { padding: 0 !important; }
+.light-again-modal {
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+/* The × close button is kept (top-right) — the launcher wires it to quit the
+   app (desktop-cursor.js / index.html). Lift it above the fullscreen canvas. */
+.light-again-modal > .modal__close { z-index: 90; }
+
+
+/* 3 ── Cursor halo → cyan ─────────────────────────────────────────────────
+   The custom follower (ring + dot, see desktop-cursor.js) is purple in the dark
+   theme; recolour it cyan to match the UI. The native cursor stays visible for
+   aiming; the ring grows + lights up cyan when an attack/left-click will land. */
+[data-theme="dark"]  .cursor-halo__ring,
+[data-theme="nature"] .cursor-halo__ring {
+  background: radial-gradient(circle,
+    rgba(0, 255, 255, 0.15) 0%,
+    rgba(0, 255, 255, 0.08) 50%,
+    transparent 70%);
+  border-color: rgba(0, 255, 255, 0.28);
+  animation-name: cursorPulse-cyan;
+}
+[data-theme="dark"]  .cursor-halo__dot,
+[data-theme="nature"] .cursor-halo__dot {
+  background: rgba(0, 255, 255, 0.9);
+}
+[data-theme="dark"]  .cursor-halo--hover .cursor-halo__ring,
+[data-theme="nature"] .cursor-halo--hover .cursor-halo__ring {
+  border-color: rgba(0, 255, 255, 0.55);
+  background: rgba(0, 255, 255, 0.12);
+  box-shadow: 0 0 16px rgba(0, 255, 255, 0.28),
+              inset 0 0 10px rgba(0, 255, 255, 0.10);
+}
+[data-theme="dark"]  .cursor-halo--click .cursor-halo__ring,
+[data-theme="nature"] .cursor-halo--click .cursor-halo__ring {
+  border-color: rgba(0, 255, 255, 0.6);
+  background: rgba(0, 255, 255, 0.2);
+}
+@keyframes cursorPulse-cyan {
+  0%, 100% { box-shadow: 0 0 6px  rgba(0, 255, 255, 0.10); }
+  50%      { box-shadow: 0 0 16px rgba(0, 255, 255, 0.22); }
+}

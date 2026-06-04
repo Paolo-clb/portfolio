@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Light Again</title>
+
+  <!-- Pick a theme before any CSS/JS runs so the neon palette is correct from the
+       first paint. The desktop app uses dark by default (best for the game);
+       a previously-saved 'nature' theme is still honoured. The portfolio's
+       light theme is intentionally skipped here. -->
+  <script>
+    (function () {
+      var t = localStorage.getItem('portfolio_theme');
+      document.documentElement.setAttribute('data-theme', t === 'nature' ? 'nature' : 'dark');
+    })();
+  </script>
+
+  <!-- Same stylesheets the portfolio loads for Light Again. styles.css provides
+       the theme tokens (--clr-*, --radius) that light-again.css consumes;
+       modals.css provides the base .modal-overlay; light-again.css styles the
+       game shell, help popup and game-over overlay. -->
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/modals.css" />
+  <link rel="stylesheet" href="css/light-again.css" />
+  <!-- Desktop-only tweaks (cyan UI, no close button, true fullscreen).
+       Must load AFTER light-again.css to win the cascade. -->
+  <link rel="stylesheet" href="desktop-overrides.css" />
+
+  <style>
+    /* The game is a fullscreen fixed overlay, so the page behind it is barely
+       seen — keep it a calm dark backdrop with a small "loading" hint. */
+    html, body { margin: 0; height: 100%; background: #0d0b14; overflow: hidden; }
+    #boot {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      color: #6f6a82; font: 600 15px/1.4 'Segoe UI', system-ui, sans-serif;
+      letter-spacing: .04em; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="boot">Light Again…</div>
+
+  <!-- Phaser, vendored locally so the .exe runs fully offline -->
+  <script src="vendor/phaser.min.js"></script>
+
+  <!-- Site translations (FR/EN dictionary) + a tiny shim that re-creates the
+       window.__siteT helper Light Again expects (normally provided by main.js). -->
+  <script src="js/i18n.js"></script>
+  <script src="i18n-shim.js"></script>
+
+  <!-- Light Again modules — this list is injected by build-dist.ps1 straight from
+       the portfolio's index.html, so the load order can never drift out of sync. -->
+  <!--LIGHT_AGAIN_SCRIPTS-->
+
+  <!-- Custom cursor halo (cyan; lights up when an attack/click will land) -->
+  <script src="desktop-cursor.js"></script>
+
+  <!-- Launch: open the game immediately. The × (top-right) quits the app; Escape
+       (or any other dismissal) bounces back to the mode-select menu instead of a
+       blank window. -->
+  <script>
+    (function () {
+      function launch() {
+        if (typeof window.__openLightAgain === 'function') window.__openLightAgain();
+      }
+      // Quit the whole app — used by the × button (no OS title bar in fullscreen).
+      function quit() {
+        try {
+          var T = window.__TAURI__;
+          if (T && T.window) {
+            var get = T.window.getCurrentWindow || T.window.getCurrent;
+            if (get) { var w = get.call(T.window); if (w && w.close) { w.close(); return; } }
+          }
+        } catch (e) { /* fall through */ }
+        try { window.close(); } catch (e2) { /* ignore */ }
+      }
+      function ready(fn) {
+        if (document.readyState === 'complete') fn();
+        else window.addEventListener('load', fn);
+      }
+      ready(function () {
+        launch();
+
+        // × quits. Intercept in the CAPTURE phase so we run BEFORE the game's own
+        // close handler (which would otherwise just reopen the menu).
+        document.addEventListener('click', function (e) {
+          var x = e.target.closest && e.target.closest('.modal__close');
+          if (x && x.closest('.light-again-overlay')) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            quit();
+          }
+        }, true);
+
+        // Escape / other dismissals remove the overlay → bounce back to the menu.
+        var reopening = false;
+        new MutationObserver(function () {
+          if (reopening) return;
+          if (!document.querySelector('.modal-overlay')) {
+            reopening = true;
+            setTimeout(function () { launch(); reopening = false; }, 60);
+          }
+        }).observe(document.body, { childList: true });
+      });
+    })();
+  </script>
+</body>
+</html>

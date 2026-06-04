@@ -1,0 +1,12 @@
+# Tauri / Rust build output
+src-tauri/target/
+src-tauri/gen/
+
+# Node
+node_modules/
+
+# Generated frontend bundle (rebuilt from the portfolio by build-dist.ps1)
+dist/
+
+# Build log
+build.log
