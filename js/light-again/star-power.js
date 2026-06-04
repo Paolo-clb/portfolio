@@ -298,4 +298,43 @@
     // Restore player visuals (handled in _renderPlayer — clearTint)
   };
 
+  /* "Power-down" punctuation, fired the instant the countdown hits 0 (see
+     scene.update). Without it the aura, the +25% scale and the HUD bar all just
+     blink out silently, so a player looking elsewhere can keep believing they're
+     still overdriven. This makes the END a distinct moment — the read is the
+     mirror of the hot pickup burst: the boost is LEAVING you, not arriving.
+     Called BEFORE _deactivateStarPower so the player position is still valid. */
+  M._starPowerExpireFx = function () {
+    var p = this.p;
+    if (!p) return;
+    var x = p.x, y = p.y;
+
+    // Cooling puff: magenta sparks fading into a dim grey (vs. the bright magenta
+    // + white of the pickup) — colour-codes "power lost".
+    this._explode(x, y, C.STAR_TINT_ARR, 16);
+    this._explode(x, y, [150, 150, 165], 12);
+
+    // The aura visibly SNAPS inward and winks out — a quick implosion ring that
+    // mirrors the pulsing aura it replaces, so the eye registers the change.
+    var ring = this.add.graphics();
+    ring.setDepth(31);
+    ring.setBlendMode(Phaser.BlendModes.ADD);
+    var auraR = C.SIZE * 1.25 * 1.4;   // matches the live aura radius in _renderPlayer
+    ring.lineStyle(4, C.STAR_TINT, 0.85);
+    ring.strokeCircle(0, 0, auraR);
+    ring.lineStyle(2, 0xff88ff, 0.95);
+    ring.strokeCircle(0, 0, auraR * 0.62);
+    ring.setPosition(x, y);
+    this.tweens.add({
+      targets: ring,
+      scaleX: 0.05, scaleY: 0.05, alpha: 0,
+      duration: 300, ease: 'Quad.easeIn',
+      onComplete: function () { ring.destroy(); },
+    });
+
+    // A clear, cooled-down callout the player can't miss — a desaturated blue-grey
+    // (not the hot magenta of "OVERDRIVE !") so it reads unmistakably as "over".
+    this._floatLabel(x, y - 30, 'OVERDRIVE OVER', '#9aa6c0');
+  };
+
 })();

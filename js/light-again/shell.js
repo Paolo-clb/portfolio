@@ -200,7 +200,7 @@
     var CU = LA.CURSES || {};
     var lvls = sc._upgradeLevels || {};
     var tcz  = sc._takenCurses || {};
-    var order      = ['dashAtk', 'detonation', 'dash', 'baseAtk', 'shield', 'drone'];
+    var order      = ['dashAtk', 'detonation', 'dash', 'baseAtk', 'shield', 'drone', 'core', 'prism'];
     var curseOrder = ['glassHeart', 'dashRage', 'cursedBlast'];
 
     var items = [];   // { kind, glyphId, color, name, lvl, maxLvl, levels:[{n,txt,on,color}] }
@@ -560,8 +560,8 @@
       // Controller support note — the game is fully playable with a gamepad
       // (twin-stick). Branch a controller in and the sticks/triggers take over.
       '<div class="la-ms-tip la-ms-tip--pad">' + (fr
-        ? '🎮 <b>Manette</b> compatible : <b>stick gauche</b> = déplacement · <b>stick droit</b> = visée · <b>gâchette droite</b> = attaque torpille · <b>gâchette gauche</b> = dash · <b>une des deux gâchettes hautes</b> = The World.<br>Dans les menus : <b>croix dir. / stick</b> = naviguer · <b>A</b> = valider · <b>B</b> = retour · <b>Home</b> ou <b>Start</b> = pause / reprendre (comme l’icône ⏸/▶).'
-        : '🎮 <b>Controller</b> supported: <b>left stick</b> = move · <b>right stick</b> = aim · <b>right trigger</b> = torpedo attack · <b>left trigger</b> = dash · <b>either bumper</b> = The World.<br>In menus: <b>D-pad / stick</b> = navigate · <b>A</b> = select · <b>B</b> = back · <b>Home</b> or <b>Start</b> = pause / resume (like the ⏸/▶ icon).') + '</div>' +
+        ? '🎮 <b>Manette</b> compatible : <b>croix dir. / stick</b> = naviguer · <b>A</b> = valider · <b>B</b> = retour · <b>Home</b> ou <b>Start</b> = pause / reprendre (comme l’icône ⏸/▶).'
+        : '🎮 <b>Controller</b> supported: <b>D-pad / stick</b> = navigate · <b>A</b> = select · <b>B</b> = back · <b>Home</b> or <b>Start</b> = pause / resume (like the ⏸/▶ icon).') + '</div>' +
       '</div>';
 
     container.style.position = 'relative';

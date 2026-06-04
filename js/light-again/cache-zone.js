@@ -9,7 +9,8 @@
    to 100 % and the cache DETONATES, ejecting a huge 20 s OVERDRIVE bonus in
    its centre (with a little guidance chevron toward it).
 
-     1. SPAWN    — paced + gated, one at a time, a deliberate walk from the
+     1. SPAWN    — gated behind CACHE_BOSS_REQ bosses felled this run (both modes),
+                   then paced, one at a time, a deliberate walk from the
                    player. NO guidance arrow (a big glowing circle is its own
                    beacon). MUTUALLY EXCLUSIVE with the Curse Fountain: a zone
                    never overlaps a live fountain, and the fountain never spawns
@@ -60,6 +61,11 @@
     this._cacheSpawnT      = 0;
     this._cacheNextDelay   = C.CACHE_SPAWN_MIN_DELAY;   // wait before the very first one
     this._cacheTrappedPrev = false;                     // anomaly-barrier edge detection
+    // Cumulative bosses felled this run — the Cache Zone is gated behind
+    // CACHE_BOSS_REQ of them (both modes). Incremented in _noteBossDefeat (the
+    // unified boss-defeat hook), never reset mid-run. Guarded so a re-init can't
+    // wipe a count already earned earlier in the same run.
+    this._bossesDefeated   = this._bossesDefeated || 0;
 
     // Ground layer (under enemies/player) — the etched circle, fill, glitch, gauge.
     this._cacheGfx = this.add.graphics();
@@ -115,8 +121,16 @@
               this._anomalyIntroActive || this._twActive || !this.p || this.p.state === 'DEAD');
   };
 
+  // The defining gate: the Cache Zone only appears once at least CACHE_BOSS_REQ
+  // bosses have fallen this run — in BOTH sandbox and hardcore (the counter is
+  // mode-independent; see _noteBossDefeat). Mirrors the Greed plate's gate.
+  M._cacheGateMet = function () {
+    return (this._bossesDefeated || 0) >= C.CACHE_BOSS_REQ;
+  };
+
   M._maybeSpawnCacheZone = function (dt) {
     if (this._cache) return;
+    if (!this._cacheGateMet()) { this._cacheSpawnT = 0; return; }   // < CACHE_BOSS_REQ bosses → hold the timer at 0
     this._cacheSpawnT += dt * 1000;
     if (this._cacheSpawnT < this._cacheNextDelay) return;
     this._cacheSpawnT = 0;

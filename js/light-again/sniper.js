@@ -126,7 +126,8 @@
       e.x += (tp.x - e.x) * k; e.y += (tp.y - e.y) * k;
       e.vx = 0; e.vy = 0;
       e.angle = Math.atan2(p.y - e.y, p.x - e.x);
-      e.snTimer -= ms;
+      // Cache-Zone rage → re-arms faster (shorter cloak between shots).
+      e.snTimer -= e._cacheRage ? ms * C.CACHE_RAGE_T4_FIRE : ms;
       if (e.snTimer <= 0) this._sniperBeginCharge(e, p);   // opens RIGHT HERE — no teleport jump
       return;
     }
@@ -142,7 +143,8 @@
         e.snAimAngle = e.angle;
       }
       e.snAppearT = Math.min(1, e.snAppearT + ms / C.T4_APPEAR_DUR);
-      e.snTimer -= ms;
+      // Cache-Zone rage → charges faster (shorter windup → the shot lands sooner).
+      e.snTimer -= e._cacheRage ? ms * C.CACHE_RAGE_T4_FIRE : ms;
       e.snChargeT = Math.max(0, Math.min(1, 1 - e.snTimer / C.T4_CHARGE_DUR));
       if (e.snTimer <= 0) {
         // FIRE — a single very fast bolt at the player's position right now.
@@ -245,8 +247,34 @@
     // Static under The World (no gt-driven motion there).
     var breathe = tw ? 0.5 : Math.pow(0.5 + 0.5 * Math.sin(gt * Math.PI * 1.4 + i), 2);
     var shimmer = tw ? 1 : (0.6 + 0.4 * Math.abs(Math.sin(gt * Math.PI * 11 + i * 2.3)));
+    // SHARED MARK BLINK — on top of the breath/shimmer the phantom now also pulses
+    // with the exact cyan↔white cadence every other marked enemy uses (flickFreq =
+    // 22 + urgency*20, faster as the mark nears expiry). This is the clear "je suis
+    // révélé par la marque" read: the eye throbs in lockstep with the rest of the
+    // marked swarm — but it stays a SHUT, pupil-less slit, so it still says
+    // "revealed, NOT killable yet". Frozen mid-blink under The World.
+    var urg   = Math.max(0, 1 - e.markTimer / (e.markMaxTimer || 3000));
+    var bsin  = tw ? 1 : Math.sin(gt * Math.PI * (22 + urg * 20) + i);
+    // Hard on/off blink: square the |sin| so it snaps bright then drops almost to
+    // black between flashes (0.12 floor → near-dark, 1 peak). Reads as a deliberate
+    // strobing "révélé" beacon, far punchier than a gentle pulse.
+    var blink = tw ? 1 : (0.12 + 0.88 * Math.abs(bsin) * Math.abs(bsin));
+    var bCol  = bsin > 0 ? 0x00ffff : 0xbafcff;            // cyan ↔ icy-white, like the marked tint flip
+    shimmer  *= blink;                                     // fold the blink into the master visibility
     var slit = s * (0.24 + 0.12 * breathe);   // gently-open lid — an eye, not a line
     var cx = e.x, cy = e.y;
+
+    // IMMATERIAL float — the live eye is never quite anchored to a solid spot: a
+    // slow lissajous drift (frozen under TW) makes it hover/phase like a projection
+    // with no physical body to hit. It floats MORE at the bottom of a breath (when
+    // it's faintest), so the moment it's hardest to see is also the moment it slips
+    // furthest from where you'd aim — selling "revealed, but not a target". The
+    // afterimage trail stays at the real positions, so the path read is preserved.
+    if (!tw) {
+      var fl = s * (0.55 + 0.75 * (1 - breathe));
+      cx += Math.sin(gt * Math.PI * 0.85 + i) * fl;
+      cy += Math.cos(gt * Math.PI * 0.63 + i * 1.7) * fl;
+    }
 
     // Fading afterimages along the glide path — a LONG, persistent trail of faint
     // cyan eye-ghosts is the main "where is it / where's it going" read while the
@@ -274,37 +302,44 @@
     }
 
     // 1. Soft reveal halo — barely-there glow that swells on a breath.
-    g.fillStyle(0x00e6ff, (0.03 + 0.07 * breathe) * shimmer);
+    g.fillStyle(0x00e6ff, (0.02 + 0.045 * breathe) * shimmer);
     g.fillCircle(cx, cy, hw * (1.04 + 0.14 * breathe));
 
     // 2. Translucent sclera — see-through cyan glass, never a solid eyeball.
+    //    Kept very low so you always see the board THROUGH it (no opaque mass to
+    //    read as a hittable body).
     _eyeAlmond(g, cx, cy, pca, psa, hw, slit, 14);
-    g.fillStyle(0x00e6ff, (0.04 + 0.06 * breathe) * shimmer);
+    g.fillStyle(0x00e6ff, (0.025 + 0.04 * breathe) * shimmer);
     g.fillPath();
 
-    // 3. Holographic TRIPLE exposure: the lid drawn three times, slightly offset,
-    //    so it reads as a glitching projection instead of a solid, hittable edge.
+    // 3. Holographic DOUBLE exposure: the lid drawn as two parallax ghosts that
+    //    SPLIT apart and rejoin (the split widens at the bottom of a breath), with
+    //    only a whisper of a centre line. There is deliberately no single crisp,
+    //    solid edge to lock onto — it reads as a glitching x-ray projection, not a
+    //    surface you could hit.
+    var gx = (2.6 + 3.2 * (1 - breathe)) * (0.55 + 0.45 * Math.sin(gt * Math.PI * 6.5 + i));
+    var gpx = pca * gx, gpy = psa * gx;   // split along the eye's wide axis
     _eyeAlmond(g, cx, cy, pca, psa, hw, slit, 14);
-    g.lineStyle(2, 0xbafcff, (0.22 + 0.5 * breathe) * shimmer);
+    g.lineStyle(1.2, bCol, (0.12 + 0.3 * breathe) * shimmer);   // faint centre, blinks cyan↔white
     g.strokePath();
-    _eyeAlmond(g, cx + 1.6, cy - 1.6, pca, psa, hw, slit, 14);
-    g.lineStyle(1, 0x9ffcff, (0.08 + 0.22 * breathe) * shimmer);
+    _eyeAlmond(g, cx + gpx, cy + gpy, pca, psa, hw, slit, 14);
+    g.lineStyle(1, 0x9ffcff, (0.07 + 0.2 * breathe) * shimmer);
     g.strokePath();
-    _eyeAlmond(g, cx - 1.6, cy + 1.6, pca, psa, hw, slit, 14);
-    g.lineStyle(1, 0x9ffcff, (0.08 + 0.22 * breathe) * shimmer);
+    _eyeAlmond(g, cx - gpx, cy - gpy, pca, psa, hw, slit, 14);
+    g.lineStyle(1, 0x9ffcff, (0.07 + 0.2 * breathe) * shimmer);
     g.strokePath();
 
     // 4. The lid crease — a faint line across the gently-shut eye. Together with
     //    the slit (not a wide open eye) this is the "closed → can't be hit yet"
     //    cue; no pupil is ever drawn while cloaked.
-    g.lineStyle(2, 0x00ffff, (0.25 + 0.4 * breathe) * shimmer);
+    g.lineStyle(1.4, bCol, (0.18 + 0.34 * breathe) * shimmer);
     g.beginPath();
     g.moveTo(cx - pca * hw * 0.94, cy - psa * hw * 0.94);
     g.lineTo(cx + pca * hw * 0.94, cy + psa * hw * 0.94);
     g.strokePath();
 
     // 5. Corner lock-ticks — tiny brackets that say "your mark is tracking it".
-    g.lineStyle(1.6, 0x00ffff, (0.25 + 0.35 * breathe) * shimmer);
+    g.lineStyle(1.6, bCol, (0.25 + 0.35 * breathe) * shimmer);
     for (var lc = -1; lc <= 1; lc += 2) {
       var bx = cx + pca * hw * 1.06 * lc, by = cy + psa * hw * 1.06 * lc;
       g.beginPath();

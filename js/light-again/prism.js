@@ -10,8 +10,8 @@
                   and reappears somewhere else, also at random.
      2. DORMANT — the crystal turns slowly, refracting a rainbow dispersion fan;
                   a spectral hazard ring marks its trigger zone. Enemies ignore it.
-     3. CAPTURE — DASH-ATTACK through it (and ONLY a dash-attack) and the ship is
-                  CAUGHT inside: it freezes at the crystal's heart, invulnerable.
+     3. CAPTURE — TOUCH it (any direct contact, no dash-attack required) and the ship
+                  is CAUGHT inside: it freezes at the crystal's heart, invulnerable.
      4. CHARGING— a magic cannon winds up: the crystal blazes, a long spectral
                   AIMING LINE tracks the mouse and a 3-way fan is previewed. You are
                   the loaded super-bullet. (Safety auto-fire after PRISM_CHARGE_MAXHOLD.)
@@ -92,6 +92,8 @@
     this._prismSpawnT     = 0;
     this._prismNextDelay  = C.PRISM_FIRST_DELAY;   // appear ≈ from the start
     this._prismScoreAccum = 0;                      // running tally for the launched strike
+    this._prismChainScore = 0;                      // Lv3: combined tally across a chained pair (one popup at the end)
+    this._prismChainCount = 0;                      // ...and how many strikes scored, for the "PRISME ×N" read
 
     // One shared persistent ADD layer at depth 27 (above the core/enemies, below
     // the ship at 30 so the real centre arrow always sits on top of its phantoms).
@@ -111,6 +113,9 @@
     }
     this._prism = null;
     if (this._prismGfx) this._prismGfx.clear();
+    // Drop any deferred chain tally (its points are already in this.score; only the
+    // combined popup is abandoned when the prism is torn down mid-chain).
+    this._prismChainScore = 0; this._prismChainCount = 0;
   };
 
   M._rollPrismNextDelay = function () {
@@ -130,11 +135,18 @@
               this._anomalyIntroActive || !this.p || this.p.state === 'DEAD');
   };
 
+  // The Prism is now an UPGRADE: it only exists on the map once its branch has been
+  // drafted (Lv1+). Mode-independent — purely the upgrade level.
+  M._prismUnlocked = function () {
+    return !!(this._upgradeLevels && this._upgradeLevels.prism > 0);
+  };
+
   M._maybeSpawnPrism = function (dt) {
     if (this._prism) return;
+    if (!this._prismUnlocked()) return;           // locked → never surfaces
     this._prismSpawnT += dt * 1000;
     if (this._prismSpawnT < this._prismNextDelay) return;
-    this._rollPrismNextDelay();
+    this._rollPrismNextDelay();                   // delay is 0 → instant respawn once used
     this._spawnPrism({});
   };
 
@@ -146,13 +158,19 @@
     if (this._prism) return;
     if (!this.p || this.p.state === 'DEAD') return;
 
+    var lvl   = (this._upgradeLevels && this._upgradeLevels.prism) || 1;
     var inset = C.PRISM_RADIUS + C.PRISM_SPAWN_MARGIN;
     var sep2  = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
     var minP2 = C.PRISM_MIN_PLAYER_DIST * C.PRISM_MIN_PLAYER_DIST;
     var avoid = [this._fount, this._tree, this._cache, this._core, this._greed];   // optional refs (may be null) — same generic gap the core uses for greed
     var x, y, tries = 0, ok;
 
-    if (opts.near) {
+    if (opts.at) {
+      // Lv3 CHAIN: rematerialise EXACTLY at the giga-dash landing point (clamped
+      // in-bounds), so you arrive on it and can immediately fire again.
+      var atc = LA.clampDisc(opts.at.x, opts.at.y, inset);
+      x = atc.x; y = atc.y;
+    } else if (opts.near) {
       // Debug spawn: drop it a short hop from the player so it's instantly testable.
       var na = Math.random() * TAU, nd = 320 + Math.random() * 260;
       var nc = LA.clampDisc(this.p.x + Math.cos(na) * nd, this.p.y + Math.sin(na) * nd, inset);
@@ -185,6 +203,11 @@
       pulse: Math.random() * TAU,
       seed: Math.random() * 1000,
       dispAng: Math.random() * TAU,        // dispersion-fan base heading
+      // per-level strike tuning (locked in at spawn; the dormant/charging preview reflects it too)
+      strikeDist: C.PRISM_DIST_BY_LVL[lvl],
+      fanLateral: C.PRISM_FAN_BY_LVL[lvl],
+      killR:      C.PRISM_KILL_BY_LVL[lvl],
+      chained:    !!opts.at,               // Lv3: this prism was itself spawned at a landing point → it won't chain AGAIN (cap = 1)
       // charging
       chargeT: 0, hold: 0, aimAng: 0,
       // strike
@@ -216,7 +239,7 @@
     this._renderPrism(dt);
   };
 
-  /* DORMANT: breathe, refract, and watch for a dash-attack biting into the field. */
+  /* DORMANT: breathe, refract, and watch for the ship touching the field. */
   M._tickPrismDormant = function (pr, dt) {
     var p = this.p;
     pr.spin    += dt * 0.6;
@@ -224,8 +247,9 @@
     pr.dispAng += dt * 0.28;
     pr.age     += dt * 1000;
 
-    // CAPTURE: a dash-attack (and ONLY a dash-attack) that reaches the crystal.
-    if (p && p.state === 'DASH_ATTACKING') {
+    // CAPTURE: ANY direct contact catches the ship now (no dash-attack required) —
+    // just touch the crystal. Only skip when already caught or dead.
+    if (p && p.state !== 'PRISM' && p.state !== 'DEAD') {
       var dx = pr.x - p.x, dy = pr.y - p.y;
       var reach = C.PRISM_TRIGGER_R + C.SIZE * 0.6 + C.PRISM_TRIGGER_PAD;
       if (dx * dx + dy * dy < reach * reach) { this._prismCapture(pr); }
@@ -251,7 +275,7 @@
     // blink) — exactly the "you are the loaded super-bullet" read.
     p.x = pr.x; p.y = pr.y; p.vx = 0; p.vy = 0;
     p.state = 'PRISM';
-    p.hasHitDuringDashAttack = true;          // a successful dash-attack → no whiff punish
+    p.hasHitDuringDashAttack = true;          // if caught mid-dash-attack → no whiff punish
     p.invincible = true; p.invincTimer = 999999; p.dashInvinc = true;
     p.spinAngle = 0; p.angle = aim;
 
@@ -308,7 +332,7 @@
     pr.origX     = pr.x; pr.origY = pr.y;
     pr.cx        = pr.x; pr.cy   = pr.y;     // live centre of the fan (bounces)
     pr.dirX      = ax;   pr.dirY = ay;       // live heading (reflects at boundaries)
-    pr.aimAng    = aim;  pr.dist = C.PRISM_STRIKE_DIST;
+    pr.aimAng    = aim;  pr.dist = pr.strikeDist;
     pr.travelled = 0;    pr.t    = 0;
     pr.bossHit   = [];   pr.snakeHit = [];
     // Three arrows, coincident at the origin: centre (real ship) + two chromatic
@@ -368,7 +392,7 @@
     var t = pr.dist > 0 ? Math.min(1, pr.travelled / pr.dist) : 1;
     pr.t = t;
 
-    var lateral = Math.sin(t * Math.PI) * C.PRISM_FAN_LATERAL;   // 0 → peak → 0 (open then merge)
+    var lateral = Math.sin(t * Math.PI) * pr.fanLateral;   // 0 → peak → 0 (open then merge)
     var perpX = -pr.dirY, perpY = pr.dirX;                       // perpendicular to the LIVE heading
 
     for (var i = 0; i < pr.arrows.length; i++) {
@@ -440,7 +464,7 @@
   /* Kill every enemy within PRISM_KILL_R of ANY of the 3 arrows (step < radius, so
      no tunnelling), then deal bosses their 3-dash-attack hit. */
   M._prismStrikeContact = function (pr) {
-    var enemies = this.enemies, kr = C.PRISM_KILL_R;
+    var enemies = this.enemies, kr = pr.killR;
     for (var i = enemies.length - 1; i >= 0; i--) {
       var e = enemies[i];
       if (e._spawnAnimT != null && e._spawnAnimT < 1) continue;   // still materialising → leave it
@@ -472,7 +496,7 @@
   M._prismCarveSnake = function (pr) {
     var s = this._snake;
     if (!s || s.dead || s.spawnPhase === 'EMERGE' || !this._damageSnakeSegment) return;
-    var reach = C.PRISM_KILL_R + 20, r2 = reach * reach;
+    var reach = pr.killR + 20, r2 = reach * reach;
     var hits = [];
     for (var i = 0; i < s.worms.length; i++) {
       var segs = s.worms[i].segs;
@@ -544,8 +568,25 @@
     var p  = this.p;
     var ex = p.x, ey = p.y;
 
-    if (this._prismScoreAccum > 0) this._floatScoreBig('PRISME', this._prismScoreAccum);
+    // Chain-aware scoring. A Lv3 chain fires two strikes back-to-back, and a popup
+    // for the FIRST one gets buried under the second strike's spectacle. So bank each
+    // strike's tally into a running chain total + count, and only FLOAT it once — when
+    // the chain ends (a non-chaining merge) — as one clear "PRISME ×N" big-score popup.
+    // Lv1/2 (and the spent chain prism) have canChain=false → they flush immediately,
+    // exactly as before.
+    var canChain = this._upgradeLevels && this._upgradeLevels.prism >= 3 && !pr.chained;
+    if (this._prismScoreAccum > 0) {
+      this._prismChainScore = (this._prismChainScore || 0) + this._prismScoreAccum;
+      this._prismChainCount = (this._prismChainCount || 0) + 1;
+    }
     this._prismScoreAccum = 0;
+    if (!canChain) {
+      if (this._prismChainScore > 0) {
+        this._floatScoreBig('PRISME', this._prismChainScore,
+          this._prismChainCount > 1 ? { count: this._prismChainCount } : null);
+      }
+      this._prismChainScore = 0; this._prismChainCount = 0;
+    }
 
     // Merge spectacle — a white re-fusion bursting back into the spectrum.
     this._spawnWaveRing(ex, ey, { maxRadius: 260, color: WHITE,       expandTime: 0.50 });
@@ -568,10 +609,19 @@
     // Clear any straggler that wandered onto the landing spot after the sweep.
     if (this._safeBubblePush) this._safeBubblePush(p, 280);
 
-    // Consumed → reappear elsewhere at random after a short beat.
+    // Consumed → the prism leaves. Lv3 rematerialises it RIGHT at the landing point
+    // (ex,ey) — you arrive on it and watch it appear, free to chain straight into ONE
+    // more giga-dash. The chained prism is flagged (pr.chained) so it does NOT chain a
+    // second time: the cap is exactly 1 free follow-up. Lv1/2 (and the spent chain
+    // prism) respawn instantly somewhere random instead.
     this._prism = null;
     if (this._prismGfx) this._prismGfx.clear();
-    this._rollPrismNextDelay();
+    if (canChain) {                 // canChain computed up top with the chain-scoring
+      this._prismSpawnT = 0; this._prismNextDelay = 0;
+      this._spawnPrism({ at: { x: ex, y: ey } });
+    } else {
+      this._rollPrismNextDelay();
+    }
   };
 
   /* ================================================================
@@ -667,7 +717,7 @@
   };
 
   /* Ground hazard decal — a faint pulse + rotating dashed spectral ring marking the
-     dash-through trigger zone (mirrors the core's hazard pad, in the spectrum). */
+     contact trigger zone (mirrors the core's hazard pad, in the spectrum). */
   M._drawPrismDecal = function (g, x, y, R, spin, pulse, A) {
     g.fillStyle(SPECTRUM[4], 0.04 * A * (0.6 + 0.4 * Math.sin(pulse * 2.5)));
     g.fillCircle(x, y, R * 0.95);
@@ -700,7 +750,7 @@
     this._drawPrismDecal(g, x, y, C.PRISM_TRIGGER_R * 1.05, -pr.spin * 0.7, pr.pulse, 1);
 
     // ---- The big spectral AIMING LINE (the "loaded cannon") ----
-    var beamLen = Math.min(this._prismMaxDist(x, y, ax, ay), C.PRISM_STRIKE_DIST);
+    var beamLen = Math.min(this._prismMaxDist(x, y, ax, ay), pr.strikeDist);
     var ex = x + ax * beamLen, ey = y + ay * beamLen;
     // Layered glow → core.
     g.lineStyle(26, SPECTRUM[5], 0.05 * energy); g.beginPath(); g.moveTo(x, y); g.lineTo(ex, ey); g.strokePath();
@@ -731,8 +781,8 @@
       g.beginPath();
       g.moveTo(x, y);
       // matches the strike's mid-fan offset for an honest preview
-      g.lineTo(x + ax * previewLen + px * s * C.PRISM_FAN_LATERAL,
-               y + ay * previewLen + py * s * C.PRISM_FAN_LATERAL);
+      g.lineTo(x + ax * previewLen + px * s * pr.fanLateral,
+               y + ay * previewLen + py * s * pr.fanLateral);
       g.strokePath();
     }
 

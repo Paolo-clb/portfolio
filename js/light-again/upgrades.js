@@ -25,6 +25,8 @@
       baseAtk:    0,
       shield:     0,
       drone:      0,
+      core:       0,
+      prism:      0,
     };
 
     this._upgradePool = [];

@@ -9,8 +9,11 @@
      2. DORMANT — the sphere breathes: counter-rotating geometric lattices spin,
                   a hot core pulses, instability arcs flicker, the containment
                   hex bubble shimmers. Neutral — enemies pass straight over it.
-     3. LAUNCH  — DASH-ATTACK it (and ONLY a dash-attack) and the field bursts:
-                  it fires off toward the bruiser best matching your aim.
+     3. LAUNCH  — DASH-ATTACK it (and ONLY a dash-attack) and the field bursts: it fires
+                  off DEAD STRAIGHT along your aim line — away from the side the dash bit
+                  into, so you can deliberately aim the opening shot. This first leg does
+                  NOT home: reach the screen edge with nothing struck and it self-destructs
+                  (a missed shot); strike ANY enemy and it begins its billiard ricochets.
      4. BILLIARD— it rockets ENEMY TO ENEMY, a smart steered ricochet that targets a
                   tier-3 bruiser BY PREFERENCE but falls back to a tier-2/1 when none is
                   left, so it can always reach its full bounce count. It chains to the
@@ -106,11 +109,18 @@
               this._anomalyIntroActive || this._twActive || !this.p || this.p.state === 'DEAD');
   };
 
+  // The Unstable Core is now an UPGRADE: it only exists on the map once its branch
+  // has been drafted (Lv1+). Mode-independent — purely the upgrade level.
+  M._coreUnlocked = function () {
+    return !!(this._upgradeLevels && this._upgradeLevels.core > 0);
+  };
+
   M._maybeSpawnCore = function (dt) {
     if (this._core) return;
+    if (!this._coreUnlocked()) return;            // locked → never surfaces
     this._coreSpawnT += dt * 1000;
     if (this._coreSpawnT < this._coreNextDelay) return;
-    this._rollCoreNextDelay();
+    this._rollCoreNextDelay();                    // delay is 0 → instant respawn once used
     this._spawnCore({});
   };
 
@@ -122,40 +132,63 @@
     if (this._core) return;
     if (!this.p || this.p.state === 'DEAD') return;
 
-    var inset = C.CORE_FIELD_RADIUS + 40;   // keep the WHOLE field in-bounds (disc)
-    var sep2 = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
+    // Per-level size (defaults to Lv1 if a debug spawn fires while still locked).
+    var lvl    = (this._upgradeLevels && this._upgradeLevels.core) || 1;
+    var radius = C.CORE_BODY_BY_LVL[lvl];
+    var fieldR = C.CORE_FIELD_BY_LVL[lvl];
+
+    var inset = fieldR + 40;                            // keep the WHOLE field in-bounds (disc)
+    var sep2  = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
+    var minP2 = C.PRISM_MIN_PLAYER_DIST * C.PRISM_MIN_PLAYER_DIST;   // never surface right on the player
     var avoid = [this._fount, this._tree, this._cache, this._prism, this._greed];   // optional refs (may not exist)
-    var x, y, tries = 0, ok;
-    do {
-      var ang  = Math.random() * TAU;
-      var dist = C.CORE_SPAWN_DIST_MIN + Math.random() * (C.CORE_SPAWN_DIST_MAX - C.CORE_SPAWN_DIST_MIN);
-      var ccc = LA.clampDisc(this.p.x + Math.cos(ang) * dist, this.p.y + Math.sin(ang) * dist, inset);
-      x = ccc.x; y = ccc.y;
-      ok = true;
-      for (var ai = 0; ai < avoid.length; ai++) {
-        var av = avoid[ai];
-        if (av && (x - av.x) * (x - av.x) + (y - av.y) * (y - av.y) < sep2) { ok = false; break; }
-      }
-      // Never drop the core onto a live Data Highway band (reciprocal of the
-      // highway's own avoidance — the two must never overlap).
-      if (ok && !this._pointClearsHighways(x, y, C.CORE_FIELD_RADIUS)) ok = false;
-      tries++;
-    } while (!ok && tries < 24);
+    var x, y, tries = 0, ok = false;
+
+    if (opts.near) {
+      // Debug spawn (KeyC): pop it RIGHT in front of the player ("sous tes yeux") — close
+      // enough to watch it materialise on screen, but just OUTSIDE the dash-attack launch
+      // reach (fieldR + ship half + pad) so it doesn't instantly fire if you're dashing.
+      var na = Math.random() * TAU, nd = fieldR + 120 + Math.random() * 70;
+      var nc = LA.clampDisc(this.p.x + Math.cos(na) * nd, this.p.y + Math.sin(na) * nd, inset);
+      x = nc.x; y = nc.y;
+    } else {
+      // Like the Prism: surface UNIFORMLY at random ANYWHERE on the map (not anchored
+      // to the player), re-rolling only to keep it off the player and clear of the
+      // other live features + a Data Highway band.
+      do {
+        var pt = LA.randInDisc(inset);
+        x = pt.x; y = pt.y;
+        ok = true;
+        var pdx = x - this.p.x, pdy = y - this.p.y;
+        if (pdx * pdx + pdy * pdy < minP2) ok = false;
+        if (ok) for (var ai = 0; ai < avoid.length; ai++) {
+          var av = avoid[ai];
+          if (av && (x - av.x) * (x - av.x) + (y - av.y) * (y - av.y) < sep2) { ok = false; break; }
+        }
+        // Never drop the core onto a live Data Highway band (reciprocal of the
+        // highway's own avoidance — the two must never overlap).
+        if (ok && !this._pointClearsHighways(x, y, fieldR)) ok = false;
+        tries++;
+      } while (!ok && tries < 40);
+    }
 
     this._core = {
       x: x, y: y, vx: 0, vy: 0,
       phase: 'DORMANT',
       age: 0, lifeMs: 0, bounces: 0,
+      radius: radius, fieldR: fieldR,                  // per-level body + containment-field size
+      maxBounces:  C.CORE_BOUNCES_BY_LVL[lvl],         // per-level flight (ricochets / speed / blast)
+      launchSpeed: C.CORE_SPEED_BY_LVL[lvl],
+      expRadius:   C.CORE_EXP_BY_LVL[lvl],
       spin: Math.random() * TAU, fieldSpin: Math.random() * TAU, pulse: Math.random() * TAU,
       seed: Math.random() * 1000,
       trail: [], trailT: 0,
-      target: null, hitList: [], fizzle: false, fizzleT: 0,
+      target: null, hitList: [], fizzle: false, fizzleT: 0, firstLeg: false,
     };
     this._coreScoreAccum = 0;
 
-    // Arrival flourish — a hot burst inside a cool containment ring.
-    this._spawnWaveRing(x, y, { maxRadius: 175, color: HOT,   expandTime: 0.45 });
-    this._spawnWaveRing(x, y, { maxRadius: 95,  color: FIELD, expandTime: 0.32 });
+    // Arrival flourish — a hot burst inside a cool containment ring (scaled to size).
+    this._spawnWaveRing(x, y, { maxRadius: fieldR * 2.2, color: HOT,   expandTime: 0.45 });
+    this._spawnWaveRing(x, y, { maxRadius: fieldR * 1.2, color: FIELD, expandTime: 0.32 });
     this._explode(x, y, [255, 150, 40],  26);
     this._explode(x, y, [120, 220, 255], 14);
   };
@@ -175,7 +208,8 @@
     this._renderCore(dt);
   };
 
-  /* DORMANT: breathe, age toward the wither, and watch for a dash-attack hit. */
+  /* DORMANT: breathe and watch for a dash-attack hit. As an upgrade fixture it no
+     longer withers — it sits until USED, then respawns instantly elsewhere (Prism-like). */
   M._tickCoreDormant = function (c, dt) {
     var p = this.p, ms = dt * 1000;
     c.spin      += dt * 0.7;
@@ -190,12 +224,10 @@
       (this._prism && this._prism.phase === 'STRIKE'));
     if (strikingThrough) {
       var dx = c.x - p.x, dy = c.y - p.y;
-      var reach = C.CORE_FIELD_RADIUS + C.SIZE * 0.6 + C.CORE_TRIGGER_PAD;
+      var reach = c.fieldR + C.SIZE * 0.6 + C.CORE_TRIGGER_PAD;
       if (dx * dx + dy * dy < reach * reach) { this._launchCore(c); return; }
     }
-
-    // Destabilise away if left unused for too long (frees the slot, avoids clutter).
-    if (c.age >= C.CORE_LIFETIME) this._witherCore();
+    // No wither: a persistent upgrade fixture (only the player using it relocates it).
   };
 
   /* Dash-attack connected → the field bursts. The core heads for the on-screen
@@ -221,22 +253,17 @@
     c.hitList  = [];            // bruisers already struck this launch (never re-bounce them)
     c.fizzle   = false;
     c.fizzleT  = 0;
+    c.firstLeg = true;          // the aimed opening shot — flies DEAD STRAIGHT, no homing yet
+    c.target   = null;
     this._coreScoreAccum = 0;
 
-    // Pick the first enemy to chain to (aim-aligned, preferring one well inside the
-    // screen — T3 first, then T2/T1); head straight at it. With none anywhere near,
-    // coast in the aim direction and fizzle (see _tickCoreLaunched).
-    var tgt = this._coreAcquire(c, { dirX: ax, dirY: ay });
-    c.target = tgt;
-    var hx = ax, hy = ay;
-    if (tgt) {
-      var tdx = tgt.x - c.x, tdy = tgt.y - c.y, tdd = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
-      hx = tdx / tdd; hy = tdy / tdd;
-    } else {
-      c.fizzle = true;
-    }
-    c.vx = hx * C.CORE_LAUNCH_SPEED;
-    c.vy = hy * C.CORE_LAUNCH_SPEED;
+    // OPENING SHOT — fire it DEAD STRAIGHT along the aim line (away from the impact,
+    // i.e. opposite the side the dash bit into), so the player can deliberately aim it.
+    // It does NOT home this leg: reach the screen edge with nothing struck and it
+    // self-destructs (a miss, see _tickCoreLaunched); the instant it strikes ANY enemy
+    // it begins its usual billiard ricochets (see _coreContact).
+    c.vx = ax * c.launchSpeed;
+    c.vy = ay * c.launchSpeed;
 
     // Count the launch as a successful dash-attack hit: no whiff punish, and the
     // ship gets its usual satisfying landing burst when the dash-attack ends.
@@ -250,7 +277,7 @@
     this.cameras.main.flash(160, 255, 150, 60);
     this.cameras.main.shake(180, 0.012);
     this._triggerHitstop(70);
-    this._floatLabel(c.x, c.y - C.CORE_FIELD_RADIUS, 'NOYAU LIBÉRÉ', '#ff8a3c');
+    this._floatLabel(c.x, c.y - c.fieldR, 'NOYAU LIBÉRÉ', '#ff8a3c');
   };
 
   /* LAUNCHED: spin + trail on real dt; steer/move/contact on the core's own clock.
@@ -281,7 +308,8 @@
     // ---- Steering: home toward the current target (T3 by preference, else T2/T1) ----
     // (Re-acquire — in-view first — if the target died or drifted out of detection
     // range; with no enemy left anywhere near, drop into the fizzle coast below.)
-    if (!c.fizzle) {
+    // The opening straight shot (firstLeg) skips ALL steering — it just flies on.
+    if (!c.firstLeg && !c.fizzle) {
       if (!this._coreTargetValid(c)) {
         var sp0 = Math.sqrt(c.vx * c.vx + c.vy * c.vy) || 1;
         c.target = this._coreAcquire(c, { dirX: c.vx / sp0, dirY: c.vy / sp0, excludeList: c.hitList });
@@ -295,8 +323,8 @@
         if (diff >  maxTurn) diff =  maxTurn;
         else if (diff < -maxTurn) diff = -maxTurn;
         var ang = cur + diff;
-        c.vx = Math.cos(ang) * C.CORE_LAUNCH_SPEED;
-        c.vy = Math.sin(ang) * C.CORE_LAUNCH_SPEED;
+        c.vx = Math.cos(ang) * c.launchSpeed;
+        c.vy = Math.sin(ang) * c.launchSpeed;
       }
     }
 
@@ -304,16 +332,33 @@
     c.x += c.vx * step60;
     c.y += c.vy * step60;
 
-    // Defensive world clamp: it never bounces off the far walls (that flung it off
-    // screen) — if it ever reaches the very edge, it just blows up there.
-    if (!LA.inDisc(c.x, c.y, C.CORE_RADIUS)) {
-      var clc = LA.clampDisc(c.x, c.y, C.CORE_RADIUS);
+    // World wall (the arena "barrière"):
+    //  • Opening straight shot (firstLeg) → REFLECT off the wall and keep flying dead
+    //    straight, so it always carries on until it leaves the SCREEN (self-destruct)
+    //    or meets an enemy. It never explodes on the wall.
+    //  • Once bouncing (billiard) → the old failsafe: it just blows up at the edge
+    //    (it steers to stay on-screen, so reaching the wall there means something's off).
+    if (!LA.inDisc(c.x, c.y, c.radius)) {
+      var clc = LA.clampDisc(c.x, c.y, c.radius);
       c.x = clc.x; c.y = clc.y;
-      this._detonateCore(c); return;
+      if (c.firstLeg) {
+        var vn = c.vx * clc.nx + c.vy * clc.ny;   // speed INTO the wall (along outward normal)
+        c.vx -= 2 * vn * clc.nx;                   // mirror the velocity across the wall
+        c.vy -= 2 * vn * clc.ny;
+        this._spawnWaveRing(c.x, c.y, { maxRadius: 95, color: FIELD, expandTime: 0.28 });
+        this._explode(c.x, c.y, [120, 220, 255], 10);
+        this.cameras.main.shake(70, 0.006);
+      } else {
+        this._detonateCore(c); return;
+      }
     }
 
     // ---- Contact: crush lesser enemies, ricochet off bruisers ----
     this._coreContact(c);
+
+    // ---- Missed opening shot: reached the screen edge with nothing struck → self-destruct ----
+    // (Only the straight first leg; once bouncing it deliberately chases off-screen targets.)
+    if (c.firstLeg && this._coreOffScreen(c)) { this._selfDestructCore(c); return; }
 
     // ---- Flying embers ----
     if (Math.random() < 0.6) this._explode(c.x - c.vx * 0.3, c.y - c.vy * 0.3, [255, 140, 40], 3);
@@ -325,7 +370,7 @@
     }
 
     // ---- End conditions ----
-    if (c.bounces >= C.CORE_MAX_BOUNCES || c.lifeMs >= C.CORE_SAFETY_LIFETIME) this._detonateCore(c);
+    if (c.bounces >= c.maxBounces || c.lifeMs >= C.CORE_SAFETY_LIFETIME) this._detonateCore(c);
   };
 
   /* Find the single best enemy OF ONE TIER to chain to, considering only enemies
@@ -414,7 +459,7 @@
      and keeps its rampage alive. Every OTHER lesser enemy in the path is just ploughed
      through (crushed). Bosses aren't in this.enemies, so they're never touched. */
   M._coreContact = function (c) {
-    var enemies = this.enemies, cr = C.CORE_RADIUS;
+    var enemies = this.enemies, cr = c.radius;
     for (var i = enemies.length - 1; i >= 0; i--) {
       var e = enemies[i];
       if (e._spawnAnimT != null && e._spawnAnimT < 1) continue;   // still materialising → leave it
@@ -423,11 +468,15 @@
       var rr = cr + e.size * 0.5 + C.CORE_CRUSH_PAD;
       if (dx * dx + dy * dy >= rr * rr) continue;
 
-      if (e.tier === 3 || e === c.target) {
+      // A bounce happens on a tier-3 bruiser, on the current chase target, OR on the
+      // VERY FIRST enemy the straight opening shot meets (any tier) — that contact is
+      // what kicks off the usual billiard ricochets.
+      if (e.tier === 3 || e === c.target || c.firstLeg) {
         // Already struck this launch → plough straight past it (never double-bounce
         // the same enemy). The just-struck one is pushed to hitList below, so this
         // also blocks an instant re-bounce on the very next frame.
         if (c.hitList.indexOf(e) >= 0) continue;
+        c.firstLeg = false;                       // the opening shot connected → normal billiard from here on
         if (e.tier === 3) {
           if (e.hasShield) {
             this._breakShield(e);
@@ -459,8 +508,8 @@
     if (nxt) {
       c.fizzle = false; c.fizzleT = 0;
       var ndx = nxt.x - c.x, ndy = nxt.y - c.y, nd = Math.sqrt(ndx * ndx + ndy * ndy) || 1;
-      c.vx = (ndx / nd) * C.CORE_LAUNCH_SPEED;
-      c.vy = (ndy / nd) * C.CORE_LAUNCH_SPEED;
+      c.vx = (ndx / nd) * c.launchSpeed;
+      c.vy = (ndy / nd) * c.launchSpeed;
     } else {
       c.fizzle = true; c.fizzleT = 0;
     }
@@ -474,13 +523,13 @@
     this._explode(c.x, c.y, [255, 255, 210], 8);
     this.cameras.main.shake(90, 0.008);
     // Flash a warning the instant it arms its final bounce.
-    if (c.bounces === C.CORE_MAX_BOUNCES - 1) this.cameras.main.flash(120, 255, 120, 40);
+    if (c.bounces === c.maxBounces - 1) this.cameras.main.flash(120, 255, 120, 40);
   };
 
   /* The big finale: blast the area, bank the whole rampage as ONE popup, retire. */
   M._detonateCore = function (c) {
     var x = c.x, y = c.y;
-    var R = C.CORE_EXP_RADIUS, R2 = R * R;
+    var R = c.expRadius, R2 = R * R;
 
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var e = this.enemies[i];
@@ -513,6 +562,25 @@
     this._rollCoreNextDelay();
   };
 
+  /* Has the core's body fully cleared the camera view? (used only for the straight
+     opening shot — once bouncing it deliberately chases off-screen targets). */
+  M._coreOffScreen = function (c) {
+    var view = this.cameras.main.worldView, r = c.radius;
+    return (c.x < view.x - r || c.x > view.right + r ||
+            c.y < view.y - r || c.y > view.bottom + r);
+  };
+
+  /* A missed opening shot left the screen without meeting an enemy → a quiet
+     self-destruct (NO area blast — it never reached anything), then free the slot. */
+  M._selfDestructCore = function (c) {
+    this._explode(c.x, c.y, [255, 150, 40],  20);
+    this._explode(c.x, c.y, [255, 240, 200], 10);
+    this._spawnWaveRing(c.x, c.y, { maxRadius: 120, color: HOT, expandTime: 0.38 });
+    this.cameras.main.shake(80, 0.006);
+    this._clearCore(true);
+    this._rollCoreNextDelay();
+  };
+
   /* Unused for too long → it destabilises and pops with a small flourish. */
   M._witherCore = function () {
     var c = this._core;
@@ -536,7 +604,7 @@
 
     // Cull when the whole core (+ its field) is off-screen.
     var view = this.cameras.main.worldView;
-    var pad  = C.CORE_FIELD_RADIUS + 90;
+    var pad  = c.fieldR + 90;
     if (c.x < view.x - pad || c.x > view.right + pad ||
         c.y < view.y - pad || c.y > view.bottom + pad) return;
 
@@ -583,15 +651,10 @@
     var gt = this.gameTime;
     var pulse = 0.6 + 0.4 * Math.sin(gt * 3 + c.seed);
 
-    // Wither strobe in the final stretch (unstable, about to blow).
+    // No wither strobe: as an upgrade fixture the core no longer destabilises away.
     var A = 1;
-    if (c.age > C.CORE_LIFETIME - C.CORE_WITHER_WARN) {
-      var w = Math.max(0, 1 - (c.age - (C.CORE_LIFETIME - C.CORE_WITHER_WARN)) / C.CORE_WITHER_WARN);
-      var flick = (Math.sin(gt * 40) > -0.3) ? 1 : 0.35;
-      A = (0.3 + 0.7 * w) * flick;
-    }
 
-    var x = c.x, y = c.y, fr = C.CORE_FIELD_RADIUS;
+    var x = c.x, y = c.y, fr = c.fieldR;
 
     // ---- Ground confinement decal (drawn FIRST, under the bubble) ----
     // Anchors the floating core to the floor and flags its trigger zone:
@@ -637,11 +700,11 @@
     }
 
     // ---- The geometric sphere ----
-    this._drawCoreSphere(g, x, y, C.CORE_RADIUS, c.spin, pulse, A);
+    this._drawCoreSphere(g, x, y, c.radius, c.spin, pulse, A);
 
     // ---- Instability arc, flickering inside the body ----
     if (Math.random() < 0.5) {
-      var r  = C.CORE_RADIUS;
+      var r  = c.radius;
       var a1 = Math.random() * TAU, a2 = a1 + (Math.random() - 0.5) * 2;
       g.lineStyle(1.4, WHITE, 0.6 * A);
       g.beginPath();
@@ -653,7 +716,7 @@
   };
 
   M._renderCoreLaunched = function (g, c) {
-    var gt = this.gameTime, r = C.CORE_RADIUS;
+    var gt = this.gameTime, r = c.radius;
     var tw = this._twActive;        // The World: dress it as a graceful gold slow-mo phantom (never grayed)
 
     // ---- Blazing motion trail (oldest → newest) ----
@@ -686,7 +749,7 @@
     }
 
     // ---- Raging plasma ball (no containment field — it burst on launch) ----
-    var armed = c.bounces >= C.CORE_MAX_BOUNCES - 1;     // last bounce: about to detonate
+    var armed = c.bounces >= c.maxBounces - 1;     // last bounce: about to detonate
     var pulse = 0.6 + 0.4 * Math.sin(gt * (tw ? 5 : (armed ? 28 : 14)));   // slow, breathing pulse under TW
     g.fillStyle(HOT, 0.18); g.fillCircle(c.x, c.y, r * 1.5 * (0.9 + 0.1 * pulse));
     this._drawCoreSphere(g, c.x, c.y, r, c.spin, pulse, 1);
@@ -704,7 +767,7 @@
     }
 
     // ---- Remaining-bounce pips around the ball (clear feedback) ----
-    var n = C.CORE_MAX_BOUNCES;
+    var n = c.maxBounces;
     for (var b = 0; b < n; b++) {
       var pa = -Math.PI / 2 + (b / n) * TAU;
       var px = c.x + Math.cos(pa) * (r + 14), py = c.y + Math.sin(pa) * (r + 14);

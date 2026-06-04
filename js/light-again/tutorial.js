@@ -107,9 +107,13 @@
       '@keyframes la-tut-cue-pulse{0%,100%{opacity:.5;box-shadow:0 0 10px rgba(255,204,0,.4),inset 0 0 8px rgba(255,204,0,.16)}' +
         '50%{opacity:1;box-shadow:0 0 22px rgba(255,204,0,.85),inset 0 0 15px rgba(255,204,0,.32)}}',
 
-      /* Big tooltip card (lower third) */
+      /* Big tooltip card (lower third). Wide on purpose: long explanations spread
+         HORIZONTALLY (fewer wrapped lines) instead of growing tall and creeping up
+         the screen over the action. The width tracks --la-ui-scale so large-text
+         mode (scale 1.3) gets proportionally more room — same words-per-line feel,
+         not a cramped block. Capped at 94% so it never overflows the canvas. */
       '#_la-tut-overlay .la-tut-tip{position:absolute;left:50%;bottom:4.6rem;transform:translateX(-50%);' +
-        'width:min(560px,92%);padding:1.05rem 1.3rem 1.15rem;border-radius:16px;text-align:center;' +
+        'width:min(calc(820px * var(--la-ui-scale)),94%);padding:1.05rem 1.3rem 1.15rem;border-radius:16px;text-align:center;' +
         'background:transparent;border:1px solid var(--la-accent-soft)}',
       '#_la-tut-overlay .la-tut-tip-title{font-size:calc(1.5rem * var(--la-ui-scale));font-weight:800;letter-spacing:.16em;' +
         'text-transform:uppercase;color:var(--la-accent);text-shadow:0 0 14px var(--la-accent-glow),0 2px 5px #000;margin-bottom:.7rem}',
@@ -121,8 +125,11 @@
       // Controller chips: violet variant + a small 🎮 marker separating them from keys.
       '#_la-tut-overlay .la-tut-kbd--pad{background:rgba(120,90,220,.16);border-color:rgba(167,139,255,.5);color:#c9bcff}',
       '#_la-tut-overlay .la-tut-pad-mark{margin:0 .15rem 0 .35rem;font-size:calc(.8rem * var(--la-ui-scale));opacity:.85;filter:saturate(.85)}',
-      '#_la-tut-overlay .la-tut-desc{font-size:calc(.82rem * var(--la-ui-scale));line-height:1.6;color:#bcd4e6;' +
-        'text-shadow:0 1px 3px #000,0 0 7px rgba(0,0,0,.9)}',
+      // text-wrap:balance evens out the line lengths so a long explanation never
+      // ends on a lone 2-word orphan line — matters most in large-text mode where
+      // fewer words fit per line. (Falls back to normal wrapping where unsupported.)
+      '#_la-tut-overlay .la-tut-desc{font-size:calc(.82rem * var(--la-ui-scale));line-height:1.5;color:#bcd4e6;' +
+        'text-wrap:balance;text-shadow:0 1px 3px #000,0 0 7px rgba(0,0,0,.9)}',
       '#_la-tut-overlay .la-tut-desc b{color:#dff6ff}',
       '#_la-tut-overlay .la-tut-desc .c-dash{color:#00ffff}',
       '#_la-tut-overlay .la-tut-desc .c-datk{color:#ff14c8}',
@@ -197,6 +204,13 @@
     // Seconds left in the post-respawn knockback window, during which enemies
     // stay live so they get flung away before the freeze re-latches. 0 = none.
     this._tutBurstT = 0;
+    // The tutorial always runs on a CLEAN, un-upgraded loadout so every lesson
+    // matches what a brand-new player sees. When launched mid-run via the ? button
+    // with upgrades / curses / drones / The World already in play, that loadout is
+    // snapshotted here, zeroed for the duration, and restored verbatim on exit
+    // (_tutEndMode). See _tutSuspendUpgrades / _tutRestoreUpgrades.
+    this._tutUpgradesSuspended = false;
+    this._tutSavedUpgrades     = null;
     // true → skip/finish bounces back to the home menu; false → stays in the
     // live game (tutorial launched in-place via the ? button mid-run).
     // Re-armed on every scene (re)create so a restart (hardcore→sandbox switch,
@@ -233,6 +247,12 @@
     // Force sandbox rules (respawn on death) so the lesson is forgiving.
     window.__laGameMode = 'sandbox';
 
+    // Snapshot + neutralise the run's upgrades/curses/drones BEFORE the lines below
+    // overwrite MAX_SHIELDS etc. — the lesson must play on a fresh loadout, and a
+    // mid-run ? launch could otherwise drop drones, bigger nukes or curse modifiers
+    // into the tutorial. Idempotent: a relaunch in place keeps the first snapshot.
+    this._tutSuspendUpgrades();
+
     // New run epoch — invalidates any pending step-transition callback from a
     // previous run (e.g. relaunched in place via ? during a transition).
     this._tutEpoch = (this._tutEpoch || 0) + 1;
@@ -248,6 +268,11 @@
     if (this._clearCurseFount) this._clearCurseFount(true);   // also drop a live Curse Fountain
     if (this._clearDataHighways) this._clearDataHighways(true); // and any live Data Highway
     if (this._clearCacheZone) this._clearCacheZone(true);     // and any live Cache Zone (also lifts enemy rage)
+    if (this._clearGreedZone) this._clearGreedZone();         // and a live Greed plate (also lifts the ×2)
+    if (this._clearDigitalTree) this._clearDigitalTree(true); // and a live Digital Tree...
+    if (this._clearFairy) this._clearFairy();                 // ...and its harvested Cyber-Fairy follower
+    if (this._clearCore) this._clearCore(true);               // and a live Unstable Core
+    if (this._clearPrism) this._clearPrism(true);             // and a live Prism (also un-captures the ship if it was caught/in-flight)
     this._anomalyBarrierActive = false;
     this._anomalyIntroActive = false;
     this._anomalyCooldownT = 0;
@@ -363,17 +388,96 @@
     this._tutStepIdx = -1;
     this._tutTransitioning = false;
 
-    // Hand back to normal sandbox free-play. Restore the shield cap from any
-    // owned upgrade level (don't clobber it to 1 — the tutorial may have been
-    // launched mid-run by a player who already took the Shield upgrade).
+    // Hand back to normal sandbox free-play. If the tutorial was launched mid-run
+    // it suspended the player's upgrades/curses/drones — restore that exact loadout
+    // (incl. its shield cap) now. Otherwise (a fresh run) derive the shield cap from
+    // the owned Shield level so we don't clobber it to a flat 1.
     this._tutClearBoard();
-    var shLvl = (this._upgradeLevels && this._upgradeLevels.shield) || 0;
-    this.MAX_SHIELDS = 1 + shLvl;
-    this.playerShields = Math.min(Math.max(1, this.playerShields), this.MAX_SHIELDS);
+    if (!this._tutRestoreUpgrades()) {
+      var shLvl = (this._upgradeLevels && this._upgradeLevels.shield) || 0;
+      this.MAX_SHIELDS = 1 + shLvl;
+      this.playerShields = Math.min(Math.max(1, this.playerShields), this.MAX_SHIELDS);
+    }
     this.comboMultiplier = 1;
     this.comboTimer = 0;
     this.spawnTimer = 0;
     this._tutResetPlayer();
+  };
+
+  /* ================================================================
+     UPGRADE SUSPEND / RESTORE
+     Snapshot the run's loadout (upgrade levels + curse modifiers + shield cap +
+     The World) and zero it so the tutorial always plays on a fresh baseline; put
+     it all back verbatim on exit. Both are idempotent and guarded by
+     _tutUpgradesSuspended so a relaunch in place can't lose or double-apply.
+     ================================================================ */
+  M._tutSuspendUpgrades = function () {
+    if (this._tutUpgradesSuspended) return;   // already suspended — keep the first snapshot
+    var lv = this._upgradeLevels;
+    if (!lv) return;
+
+    // Snapshot everything the live run could carry into the lesson.
+    var levels = {};
+    for (var k in lv) { if (lv.hasOwnProperty(k)) levels[k] = lv[k]; }
+    var curses = {};
+    var tc = this._takenCurses || {};
+    for (var c in tc) { if (tc.hasOwnProperty(c)) curses[c] = tc[c]; }
+    this._tutSavedUpgrades = {
+      levels:      levels,
+      takenCurses: curses,
+      scoreMult:   this._scoreMult,
+      dashCdMult:  this._dashCdMult,
+      blastMult:   this._blastMult,
+      maxShields:  this.MAX_SHIELDS,
+      twUnlocked:  this._twUnlocked,
+    };
+    this._tutUpgradesSuspended = true;
+
+    // Zero the upgrade levels → fresh, un-upgraded behaviour at every call site
+    // (they all read this._upgradeLevels.<x> with a `|| 0` fallback).
+    for (var z in lv) { if (lv.hasOwnProperty(z)) lv[z] = 0; }
+    // Disable the curses just like the upgrades: drop the taken-curse set (so their
+    // HUD icons vanish) and reset the three modifiers they drive (score / dash-cd /
+    // blast radius). Their −1 shield penalty is moot — the tutorial sets MAX_SHIELDS.
+    this._takenCurses = {};
+    this._scoreMult  = 1;
+    this._dashCdMult = 1;
+    this._blastMult  = 1;
+    // Lock out The World (middle-click) and defuse any active instance — _tryTimeStop
+    // bails on !_twUnlocked, _tutClearBoard wipes the frozen-enemy state, and we drop
+    // its lingering wave ring so nothing survives onto the lesson.
+    this._twUnlocked   = false;
+    this._twActive     = false;
+    this._twWaveActive = false;
+    if (this._twWaveGfx) this._twWaveGfx.clear();
+    // Drop any orbiting drones now (drone level is 0 → _updateDrones would clear them
+    // next frame anyway, but do it here so none linger over the first step).
+    if (this._drones) this._drones.length = 0;
+    if (this._droneGfx) this._droneGfx.clear();
+  };
+
+  // Restore the snapshot taken in _tutSuspendUpgrades. Returns true if it restored
+  // a real loadout (so _tutEndMode can skip its fallback shield recompute), false
+  // when nothing was suspended (a fresh tutorial with no upgrades to put back).
+  M._tutRestoreUpgrades = function () {
+    if (!this._tutUpgradesSuspended) return false;
+    var s = this._tutSavedUpgrades;
+    this._tutUpgradesSuspended = false;
+    this._tutSavedUpgrades = null;
+    if (!s || !this._upgradeLevels) return false;
+
+    var lv = this._upgradeLevels;
+    for (var k in s.levels) { if (s.levels.hasOwnProperty(k)) lv[k] = s.levels[k]; }
+    this._takenCurses = s.takenCurses || {};
+    this._scoreMult  = s.scoreMult;
+    this._dashCdMult = s.dashCdMult;
+    this._blastMult  = s.blastMult;
+    this._twUnlocked = s.twUnlocked;
+    this.MAX_SHIELDS = s.maxShields;
+    this.playerShields = Math.min(Math.max(1, this.playerShields), this.MAX_SHIELDS);
+    // Re-summon the player's drones for the restored Drone level (if any).
+    if (this._ensureDrones) this._ensureDrones();
+    return true;
   };
 
   /* ================================================================
@@ -463,8 +567,8 @@
         keys:  fr ? ['Maj', 'Espace', 'Clic droit'] : ['Shift', 'Space', 'Right click'],
         pad:   fr ? ['Gâchette gauche'] : ['Left trigger'],
         desc:  fr
-          ? 'Le <span class="c-dash">dash</span> te propulse dans la direction de ton déplacement, avec une brève invincibilité.'
-          : 'The <span class="c-dash">dash</span> launches you in your movement direction, with brief invincibility.',
+          ? 'Le <span class="c-dash">dash</span> te propulse dans ta direction, avec une brève invincibilité.'
+          : 'The <span class="c-dash">dash</span> launches you in your direction, with brief invincibility.',
         check: function () { return !!d().dashed; },
       },
 
@@ -475,8 +579,8 @@
         keys:  fr ? ['Clic gauche'] : ['Left click'],
         pad:   fr ? ['Gâchette droite'] : ['Right trigger'],
         desc:  fr
-          ? 'L’<span class="c-torp">attaque torpille</span> : ta flèche fonce vers le curseur en rotation. Vise l’éclaireur <span class="c-torp">▲</span> ! <b>⚠️ La rater</b> te laisse vulnérable un instant (récupération).'
-          : 'The <span class="c-torp">torpedo attack</span>: your arrow spins toward the cursor. Aim at the scout <span class="c-torp">▲</span>! <b>⚠️ Whiffing it</b> leaves you exposed for a moment (recovery).',
+          ? 'L’<span class="c-torp">attaque torpille</span> : ta flèche fonce vers le curseur. Vise l’éclaireur <span class="c-torp">▲</span> ! <b>⚠️ La rater</b> te laisse vulnérable (récupération).'
+          : 'The <span class="c-torp">torpedo attack</span>: your arrow shoots toward the cursor. Aim at the scout <span class="c-torp">▲</span>! <b>⚠️ Whiffing it</b> leaves you exposed (recovery).',
         setup: function () { self._tutSpawnOne(1, 340); },
         // Must be a BASIC-attack kill — killing it another way (e.g. dash-attack) does NOT count.
         check: function () { return self._tutEvents.basicKill - d().basicKill0 >= 1; },
@@ -490,8 +594,8 @@
         keys:  fr ? ['Clic gauche  ×  spam'] : ['Left click  ×  spam'],
         pad:   fr ? ['Gâchette droite  ×  spam'] : ['Right trigger  ×  spam'],
         desc:  fr
-          ? 'Astuce clé : <b>chaque kill réarme aussitôt ton attaque</b>. Tu peux donc <b>spammer</b> l’<span class="c-torp">attaque torpille</span> à travers toute une vague d’éclaireurs <span class="c-torp">▲</span> sans temps mort !'
-          : 'Key tip: <b>every kill instantly re-arms your attack</b>. So you can <b>spam</b> the <span class="c-torp">torpedo attack</span> through a whole scout wave <span class="c-torp">▲</span> with no downtime!',
+          ? '<b>Chaque kill réarme aussitôt ton attaque</b> : <b>spamme</b> l’<span class="c-torp">attaque torpille</span> à travers toute la vague d’éclaireurs <span class="c-torp">▲</span> sans temps mort !'
+          : '<b>Every kill instantly re-arms your attack</b> : <b>spam</b> the <span class="c-torp">torpedo attack</span> through the whole scout wave <span class="c-torp">▲</span> with no downtime!',
         setup: function () { self._tutSpawnRing(1, 9, 320); },
         progress: function () { return Math.min(5, self._tutEvents.basicKill - d().basicKill0) + ' / 5'; },
         // Only basic-attack kills count toward the chain (teaches the reset-on-kill loop).
@@ -520,8 +624,8 @@
         keys:  fr ? ['Dash  →  torpille torpille'] : ['Dash  →  torpedo-attack'],
         pad:   fr ? ['Dash  →  gâchette droite'] : ['Dash  →  right trigger'],
         desc:  fr
-          ? '<span class="c-dash">Dashe</span> À TRAVERS un ennemi pour le <span class="c-mark">marquer</span> (étincelles bleues), puis fais une <span class="c-torp">attaque torpille</span> dessus → <span class="c-shield">NUKE</span> à zone d’effet ! (⚠️ La dash-attaque ne déclenche pas la nuke.)'
-          : '<span class="c-dash">Dash</span> THROUGH an enemy to <span class="c-mark">mark</span> it (blue sparks), then <span class="c-torp">torpedo-attack</span> it → AoE <span class="c-shield">NUKE</span>! (⚠️ Dash-attack does NOT trigger it.)',
+          ? '<span class="c-dash">Dashe</span> À TRAVERS un ennemi pour le <span class="c-mark">marquer</span> (étincelles bleues), puis vise-le à l’<span class="c-torp">attaque torpille</span> → <span class="c-shield">NUKE</span> de zone ! (⚠️ Pas avec la dash-attaque.)'
+          : '<span class="c-dash">Dash</span> THROUGH an enemy to <span class="c-mark">mark</span> it (blue sparks), then <span class="c-torp">torpedo-attack</span> it → AoE <span class="c-shield">NUKE</span>! (⚠️ Not the dash-attack.)',
         setup: function () { d().nuke0 = self._tutEvents.nuke; self._tutSpawnRing(1, 6, 230); },
         check: function () { return self._tutEvents.nuke > d().nuke0; },
         maintain: function () { if (self._tutCountTier(1) < 3) self._tutSpawnRing(1, 5, 230); },
@@ -590,8 +694,8 @@
         keys:  fr ? ['Dash-attaque sur le projectile'] : ['Dash-attack onto the projectile'],
         pad:   fr ? ['Dash  +  gâchette droite'] : ['Dash  +  right trigger'],
         desc:  fr
-          ? 'Le Tireur <span class="c-shooter">◆</span> garde ses distances et tire. Un <span class="c-datk">dash-attaque</span> sur un projectile le <span class="c-datk">renvoie</span> à l’envoyeur (<span class="c-combo">x2 points</span>). ⚠️ L’attaque simple ne renvoie pas.'
-          : 'The Shooter <span class="c-shooter">◆</span> keeps its distance and fires. A <span class="c-datk">dash-attack</span> on a projectile <span class="c-datk">reflects</span> it back (<span class="c-combo">x2 points</span>). ⚠️ The basic attack does not.',
+          ? 'Le Tireur <span class="c-shooter">◆</span> garde ses distances et tire. Une <span class="c-datk">dash-attaque</span> sur le projectile le <span class="c-datk">renvoie</span> à l’envoyeur (<span class="c-combo">x2 points</span>). ⚠️ Pas l’attaque simple.'
+          : 'The Shooter <span class="c-shooter">◆</span> keeps its distance and fires. A <span class="c-datk">dash-attack</span> on the projectile <span class="c-datk">reflects</span> it back (<span class="c-combo">x2 points</span>). ⚠️ Not the basic attack.',
         setup: function () {
           d().parade0 = self._tutEvents.parade;
           var e = self._tutSpawnOne(2, 430);
@@ -641,8 +745,8 @@
         keys:  fr ? ['Molette ↑', 'Suppr / Retour arrière'] : ['Wheel ↑', 'Delete / Backspace'],
         pad:   fr ? ['Croix dir. ↑ / ↓', 'Boutons de droite (A B X Y)'] : ['D-pad ↑ / ↓', 'Right buttons (A B X Y)'],
         desc:  fr
-          ? 'Outils <b>bac à sable</b> : la <span class="c-dash">molette</span> <b>accélère</b> (↑) ou calme (↓) l’apparition des ennemis. <span class="c-shield">Suppr</span> ou <span class="c-shield">Retour arrière</span> déclenche une onde qui <b>balaie l’arène</b> — sans points. <span style="color:#c9bcff">🎮 Manette : la <b>croix directionnelle ↑ / ↓</b> pace l’apparition, <b>n’importe quel bouton de droite</b> balaie l’arène.</span>'
-          : 'Sandbox-only tools : the <span class="c-dash">mouse wheel</span> <b>speeds up</b> (↑) or calms (↓) enemy spawns. <span class="c-shield">Delete</span> or <span class="c-shield">Backspace</span> fires a wave that <b>sweeps the arena</b> — no points. <span style="color:#c9bcff">🎮 Controller: the <b>D-pad ↑ / ↓</b> paces the spawns, <b>any right-side button</b> sweeps the arena.</span>',
+          ? 'Bac à sable : la <span class="c-dash">molette</span> règle le rythme d’apparition — <b>↑ accélère</b>, ↓ calme. <span class="c-shield">Suppr</span> / <span class="c-shield">Retour arrière</span> envoie une onde qui <b>balaie l’arène</b> (sans points). <span style="color:#c9bcff">🎮 Manette : <b>croix ↑ / ↓</b> pour le rythme, <b>bouton de droite</b> pour balayer.</span>'
+          : 'Sandbox : the <span class="c-dash">wheel</span> sets the spawn pace — <b>↑ faster</b>, ↓ calmer. <span class="c-shield">Delete</span> / <span class="c-shield">Backspace</span> sends a wave that <b>sweeps the arena</b> (no points). <span style="color:#c9bcff">🎮 Controller : <b>D-pad ↑ / ↓</b> for pace, <b>right button</b> to sweep.</span>',
         setup: function () {
           // Free play: let the REAL sandbox spawner run (paced live by the wheel)
           // and re-enable Clear Board for this step only.

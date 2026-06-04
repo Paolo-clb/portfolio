@@ -601,10 +601,12 @@
     CACHE_RAGE_T1_SPEED:         1.7,    // rushers (T1) move this × faster while enraged in the zone
     CACHE_RAGE_T2_FIRE:          1.9,    // shooters (T2) tick their fire cooldown this × faster while enraged
     CACHE_RAGE_T3_SPAWN:         2.0,    // generators (T3) tick their spawn cooldown this × faster while enraged
+    CACHE_RAGE_T4_FIRE:          1.9,    // snipers (T4) tick their cloak + charge timers this × faster while enraged (re-arm & windup quicker)
     CACHE_RAGE_LINGER:           250,    // ms the rage (+ its visual) lingers after an enemy leaves the zone
     CACHE_DISSOLVE_DUR:          1000,   // ms of the success/timeout dissolve-out
     CACHE_FADE_DUR:              600,    // ms of the boss-arrival (Anomaly) dissolve
-    CACHE_SPAWN_MIN_DELAY:       20000,  // ms of play before the first cache zone may appear
+    CACHE_BOSS_REQ:              2,      // bosses that must fall (both modes) before the FIRST cache zone may appear
+    CACHE_SPAWN_MIN_DELAY:       20000,  // ms after the boss gate is met before the first cache zone may appear
     CACHE_SPAWN_INTERVAL_MIN:    45000,  // ms between zones (min) — a rarer, bigger event than a highway
     CACHE_SPAWN_INTERVAL_MAX:    75000,  // ms between zones (max)
     CACHE_SPAWN_DIST_MIN:        560,    // min spawn distance from the player (px) — > zone radius so you start OUTSIDE the rim
@@ -659,11 +661,11 @@
        guidance arrow (found at random) and it utterly IGNORES bosses — they live
        outside this.enemies, so the crush/bounce loops never touch them.
        Self-contained on this._core (plain data) + one shared ADD graphics layer. */
-    CORE_SPAWN_MIN_DELAY:    16000,  // ms of play before the first core may appear
-    CORE_SPAWN_INTERVAL_MIN: 24000,  // ms between cores (min)
-    CORE_SPAWN_INTERVAL_MAX: 40000,  // ms between cores (max)
+    CORE_SPAWN_MIN_DELAY:    0,      // now an UPGRADE: once unlocked there is always exactly one present...
+    CORE_SPAWN_INTERVAL_MIN: 0,      // ...and using it respawns one INSTANTLY (no repeat interval), like the Prism
+    CORE_SPAWN_INTERVAL_MAX: 0,
     CORE_MAX:                1,      // one core at a time
-    CORE_LIFETIME:           24000,  // ms a dormant core waits to be used before it destabilises away
+    CORE_LIFETIME:           24000,  // (unused now — the core is a persistent fixture and no longer withers)
     CORE_WITHER_WARN:        5000,   // ms of unstable "about to blow" strobe before an unused core vanishes
     CORE_SPAWN_DIST_MIN:     480,    // min spawn distance from the player (px)
     CORE_SPAWN_DIST_MAX:     900,    // max spawn distance from the player (px)
@@ -682,7 +684,17 @@
                                      //   target that drifted off-screen, before it self-destructs only when no enemy is left near
     CORE_CRUSH_PAD:          8,      // extra slack on the crush hit-test (core radius + enemy half + this)
     CORE_BRUISER_DMG:        3,      // damage a ricochet deals to an unshielded tier-3 bruiser body
-    CORE_EXP_RADIUS:         300,    // final detonation blast radius (px)
+    CORE_EXP_RADIUS:         300,    // final detonation blast radius (px) — base; per-level via CORE_EXP_BY_LVL
+    /* Per-upgrade-level scaling (index by level 1-3; [0] = safe fallback = Lv1).
+       Lv1 is deliberately WEAKER than the old fixed core (fewer bounces, slower,
+       a touch smaller), Lv2 STRONGER (+2 bounces, faster); Lv3 keeps Lv2's flight
+       but DOUBLES the body + the final blast. Old fixed values were 44 / 78 / 6 /
+       19 / 300 — bracketed by Lv1 (below) and Lv2 (above). */
+    CORE_BODY_BY_LVL:    [38, 38, 38, 76],     // sphere body radius (px) — Lv3 = ×2 base
+    CORE_FIELD_BY_LVL:   [67, 67, 67, 135],    // containment-field radius (px) — kept ∝ body (old 78/44 ratio)
+    CORE_BOUNCES_BY_LVL: [5, 5, 9, 9],         // ricochets before detonation — Lv1 < old 6, Lv2 = +2 > old
+    CORE_SPEED_BY_LVL:   [17, 17, 25, 25],     // px/frame billiard speed — Lv1 < old 19, Lv2 > old
+    CORE_EXP_BY_LVL:     [300, 300, 300, 600], // final blast radius (px) — Lv3 = ×2 base
 
     /* ---- The Prism of Refraction (Prisme de Réfraction) — offensive "billiard" -
        A crystalline prism sitting NEUTRAL in the arena: present from the START,
@@ -698,11 +710,11 @@
        reappears elsewhere at random. Self-contained on this._prism + one shared ADD
        graphics layer. Bosses live outside this.enemies; the strike damages them via
        their own damage entry points (3× a dash-attack). */
-    PRISM_FIRST_DELAY:       800,    // ms before the very first prism appears (≈ from the start)
-    PRISM_RESPAWN_MIN:       1400,   // ms after a strike before the next prism appears...
-    PRISM_RESPAWN_MAX:       2600,   // ...somewhere else at random (kept short — it's a fixture, always around)
+    PRISM_FIRST_DELAY:       0,      // now an UPGRADE: once unlocked there is always exactly one present...
+    PRISM_RESPAWN_MIN:       0,      // ...and using it respawns one INSTANTLY (no repeat interval). Lv1/2 respawn
+    PRISM_RESPAWN_MAX:       0,      // ...somewhere random; Lv3 respawns AT the giga-dash landing point (chain)
     PRISM_RADIUS:            42,      // crystal body radius (px)
-    PRISM_TRIGGER_R:         72,      // dash-attack capture radius around the crystal (px)
+    PRISM_TRIGGER_R:         72,      // contact capture radius around the crystal (px)
     PRISM_TRIGGER_PAD:       16,      // extra slack on (trigger + player half) for the capture test
     PRISM_SPAWN_MARGIN:      80,      // px the crystal keeps clear of the world edge (whole body + ground decal in-bounds)
     PRISM_MIN_PLAYER_DIST:   260,     // never spawn right on top of the player (px) — otherwise truly uniform-random
@@ -711,8 +723,15 @@
     PRISM_STRIKE_SPEED:      28,      // px/frame strike speed (≈1680 px/s — clearly "plus vite" than a dash)
     PRISM_STRIKE_DIST:       1080,    // px the strike travels ("plus loin"), capped so the endpoint stays in the disc
     PRISM_STRIKE_DIST_MIN:   360,     // px floor so a wall-facing strike still goes somewhere
-    PRISM_FAN_LATERAL:       96,      // px peak half-spread of the éventail (opens then converges back → the merge)
-    PRISM_KILL_R:            74,      // px one-shot radius around EACH of the 3 arrows
+    PRISM_FAN_LATERAL:       96,      // px peak half-spread of the éventail — base; per-level via PRISM_FAN_BY_LVL
+    PRISM_KILL_R:            74,      // px one-shot radius around EACH of the 3 arrows — base; per-level via PRISM_KILL_BY_LVL
+    /* Per-upgrade-level scaling (index by level 1-3; [0] = safe fallback = Lv1).
+       Lv1 is deliberately SHORTER/SMALLER than the old fixed strike, Lv2 LONGER/
+       BIGGER; Lv3 keeps Lv2 and adds the chain-respawn at the landing point. Old
+       fixed values were 1080 / 96 / 74 — bracketed by Lv1 (below) and Lv2 (above). */
+    PRISM_DIST_BY_LVL:    [920, 920, 1280, 1280],  // strike travel (px) — Lv1 < old 1080, Lv2 > old
+    PRISM_FAN_BY_LVL:     [84, 84, 116, 116],      // fan half-spread (px) — Lv1 < old 96, Lv2 > old
+    PRISM_KILL_BY_LVL:    [64, 64, 89, 89],        // per-arrow one-shot radius (px) — Lv1 < old 74, Lv2 > old
     PRISM_BOSS_REACH:        120,     // px slack (added to boss size) for the "an arrow passed through a boss" test
     PRISM_TW_SCALE:          0.32,    // during The World the strike advances at this × speed (clear slow-mo, like the core)
 
@@ -775,6 +794,22 @@
       i18nDesc1: 'laUpDroneDesc1',
       i18nDesc2: 'laUpDroneDesc2',
       i18nDesc3: 'laUpDroneDesc3',
+    },
+    core: {
+      id: 'core',
+      maxLvl: 3,
+      i18nName:  'laUpCoreName',
+      i18nDesc1: 'laUpCoreDesc1',
+      i18nDesc2: 'laUpCoreDesc2',
+      i18nDesc3: 'laUpCoreDesc3',
+    },
+    prism: {
+      id: 'prism',
+      maxLvl: 3,
+      i18nName:  'laUpPrismName',
+      i18nDesc1: 'laUpPrismDesc1',
+      i18nDesc2: 'laUpPrismDesc2',
+      i18nDesc3: 'laUpPrismDesc3',
     },
   };
 
@@ -867,6 +902,22 @@
       ['line', 10.4,13.6, 6.6,17.4], ['line', 13.6,13.6, 17.4,17.4],
       ['circle', 5,5, 2.6], ['circle', 19,5, 2.6],
       ['circle', 5,19, 2.6], ['circle', 19,19, 2.6],
+    ],
+    // NOYAU INSTABLE — a contained plasma sphere: a hex containment field around a
+    // ringed core with a hot heart (the billiard weapon you dash-attack loose).
+    core: [
+      ['poly', [12,3, 19.8,7.5, 19.8,16.5, 12,21, 4.2,16.5, 4.2,7.5], true],
+      ['circle', 12,12, 4.4],
+      ['dot', 12,12, 1.7],
+    ],
+    // PRISME DE RÉFRACTION — a crystal triangle splitting an incoming ray into a
+    // dispersion fan (the "giga-dash" cannon you launch from).
+    prism: [
+      ['poly', [12,3.5, 19,16.5, 5,16.5], true],
+      ['line', 2.5,10, 9,12],
+      ['line', 15,12, 21.5,8.5],
+      ['line', 15,13, 21.5,13],
+      ['line', 15,14, 21.5,17.5],
     ],
     // SCORE MAUDIT — a "stonks" rising zig-zag arrow (curse trades a shield slot
     // for a big score multiplier, so the icon screams "number go up").

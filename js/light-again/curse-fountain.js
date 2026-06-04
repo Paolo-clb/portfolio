@@ -132,12 +132,16 @@
     if (this._fountPtrGfx)  this._fountPtrGfx.clear();
   };
 
-  /* Count a defeated boss toward the next fountain's spawn gate. Called from the
-     unified _bossDefeatSequence (every boss routes through it). Tutorial kills are
-     ignored — the real run re-inits this counter from scratch. */
+  /* Count a defeated boss toward the spawn gates that pace off boss kills. Called
+     from the unified _bossDefeatSequence (every boss routes through it). Tutorial
+     kills are ignored — the real run re-inits these counters from scratch.
+       • _fountBossKills — resets to 0 on each consumed fountain (the rising gate).
+       • _bossesDefeated — cumulative for the whole run (never reset); gates the
+         first Cache Zone behind CACHE_BOSS_REQ kills (see _cacheGateMet). */
   M._noteBossDefeat = function () {
     if (this._tutorialActive) return;
     this._fountBossKills = (this._fountBossKills || 0) + 1;
+    this._bossesDefeated = (this._bossesDefeated || 0) + 1;
   };
 
   /* ================================================================

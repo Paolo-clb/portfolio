@@ -854,7 +854,7 @@
   };
 
   /* ---- Upgrade HUD icons — bottom-right, horizontal ---- */
-  var _upOrder    = ['dashAtk', 'detonation', 'dash', 'baseAtk', 'shield', 'drone'];
+  var _upOrder    = ['dashAtk', 'detonation', 'dash', 'baseAtk', 'shield', 'drone', 'core', 'prism'];
   var _curseOrder = ['glassHeart', 'dashRage', 'cursedBlast'];
   var _upIconSize = 46;
   var _upGap      = 10;

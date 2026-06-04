@@ -368,6 +368,7 @@
                    : label === 'NOYAU' ? 'NOYAU INSTABLE'
                    : label === 'CACHE' ? LA.laGoT('laCacheSecured')
                    : (label === 'PARADE' && count > 1) ? 'PARADE \u00d7' + count
+                   : (label === 'PRISME' && count > 1) ? 'PRISME \u00d7' + count
                    : label;
 
     // Stack upward from anchor, capped so popups can't cross into the top HUD.

@@ -538,10 +538,16 @@
           ev.preventDefault();
           if (self._spawnHighway) self._spawnHighway({});
         }
-        // Cheat: force-spawn the Unstable Core near the player (noyau instable)
+        // Cheat: (re)spawn the Unstable Core right next to the player (noyau instable).
+        // Once unlocked a core is ALWAYS present (it auto-respawns), so this RELOCATES
+        // the dormant one next to you for testing — but never clobbers a LAUNCHED core
+        // mid-rampage (mirrors the Prism's KeyV). Also works while still locked.
         if (ev.code === 'KeyC' && !ev.repeat) {
           ev.preventDefault();
-          if (self._spawnCore) self._spawnCore({});
+          if (self._spawnCore && (!self._core || self._core.phase === 'DORMANT')) {
+            self._core = null;
+            self._spawnCore({ near: true });
+          }
         }
         // Cheat: force-spawn a Cache Zone near the player (zone de cache — KotH)
         if (ev.code === 'KeyB' && !ev.repeat) {
@@ -682,6 +688,7 @@
         if (self._clearCacheZone)   self._clearCacheZone(true);
         if (self._clearGreedZone)   self._clearGreedZone();
         if (self._removeBossHintDom) self._removeBossHintDom();
+        if (self._clearBossArrow)   self._clearBossArrow();
         self._treeGfx = null; self._treePtrGfx = null; self._fairyGfx = null;
         self._fountDarkGfx = null; self._fountGfx = null; self._fountObGfx = null; self._fountPtrGfx = null;
         self._highwayGfx = null;
@@ -1078,6 +1085,7 @@
       this._checkMirrorCollision();
       this._updateSnake(ms, pMs, dt);
       this._checkSnakeCollision();
+      this._updateBossArrow(dt);  // persistent guidance chevron toward the active boss
       this._updateBossHint(dt);   // sandbox: first-encounter boss weakness tooltip (real dt)
       this._updateDigitalTree(dt);
       this._updateCurseFount(dt);
@@ -1098,7 +1106,7 @@
       if (this.isStarPowered) {
         this._starPowerTimer -= pMs;
         if (!this._starPowerWarning && this._starPowerTimer <= C.STAR_WARN_REMAIN) this._starPowerWarning = true;
-        if (this._starPowerTimer <= 0) { this._starPowerTimer = 0; this._deactivateStarPower(); }
+        if (this._starPowerTimer <= 0) { this._starPowerTimer = 0; this._starPowerExpireFx(); this._deactivateStarPower(); }
       }
 
       // Natural spawns pause while the anomaly's quarantine barrier is up, and
