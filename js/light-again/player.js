@@ -58,7 +58,7 @@
     // FIRES the 3-arrow strike instead of a normal attack (and is otherwise swallowed,
     // so a click mid-flight does nothing). See prism.js.
     if (p.state === 'PRISM') {
-      if (this._prism && this._prism.phase === 'CHARGING') this._prismLaunch();
+      if (this._chargingPrism && this._chargingPrism()) this._prismLaunch();
       return;
     }
     if (p.state === 'ATTACKING' || p.state === 'DASH_ATTACKING') return;

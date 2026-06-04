@@ -140,9 +140,8 @@
       [this._cache, cacheSep * cacheSep],
       [this._fount, fountSep * fountSep],
       [this._tree,  genSep2],
-      [this._core,  genSep2],
-      [this._prism, genSep2],
     ];
+    this._pushWeaponAvoids(avoid, genSep2);   // every live core + prism (multi-instance)
 
     var dMin = opts.near ? (H + 130) : C.GREED_SPAWN_DIST_MIN;
     var dMax = opts.near ? (H + 130) : C.GREED_SPAWN_DIST_MAX;

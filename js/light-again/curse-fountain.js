@@ -203,9 +203,8 @@
       [this._tree,  genSep2],
       [this._cache, cacheSep * cacheSep],
       [this._greed, greedSep * greedSep],
-      [this._core,  genSep2],
-      [this._prism, genSep2],
     ];
+    this._pushWeaponAvoids(avoid, genSep2);   // every live core + prism (multi-instance)
     var x, y, tries = 0, ok;
     do {
       var ang  = Math.random() * TAU;

@@ -61,11 +61,14 @@
     this._cacheSpawnT      = 0;
     this._cacheNextDelay   = C.CACHE_SPAWN_MIN_DELAY;   // wait before the very first one
     this._cacheTrappedPrev = false;                     // anomaly-barrier edge detection
-    // Cumulative bosses felled this run — the Cache Zone is gated behind
+    // Cumulative bosses felled THIS run — the Cache Zone is gated behind
     // CACHE_BOSS_REQ of them (both modes). Incremented in _noteBossDefeat (the
-    // unified boss-defeat hook), never reset mid-run. Guarded so a re-init can't
-    // wipe a count already earned earlier in the same run.
-    this._bossesDefeated   = this._bossesDefeated || 0;
+    // unified boss-defeat hook), never reset mid-run. RESET to 0 here: _initCacheZone
+    // runs exactly once per run from the scene's create(), and a retry / mode-switch
+    // REUSES the scene instance via scene.restart() — so the old `|| 0` guard leaked
+    // the count across runs, letting a zone appear ~20 s into a fresh run before ANY
+    // boss had fallen in it. Mirrors _fountBossKills in _initCurseFount.
+    this._bossesDefeated   = 0;
 
     // Ground layer (under enemies/player) — the etched circle, fill, glitch, gauge.
     this._cacheGfx = this.add.graphics();
@@ -163,9 +166,8 @@
       [this._fount, fountSep * fountSep],
       [this._greed, greedSep * greedSep],
       [this._tree,  genSep2],
-      [this._core,  genSep2],
-      [this._prism, genSep2],
     ];
+    this._pushWeaponAvoids(avoid, genSep2);   // every live core + prism (multi-instance)
 
     var dMin = opts.near ? (R + 110) : C.CACHE_SPAWN_DIST_MIN;   // debug: drop it just outside the rim
     var dMax = opts.near ? (R + 110) : C.CACHE_SPAWN_DIST_MAX;

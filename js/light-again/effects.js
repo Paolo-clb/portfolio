@@ -376,6 +376,13 @@
     var ga = this._shieldLinkGfx;
     ga.clear();
 
+    // Pre-spawn beat: the arrow is still hidden, so hide its shields too — they
+    // should pop in WITH the player when it materialises, not orbit an empty spot.
+    if (this._awaitingSpawnIntro && !this._tutorialActive) {
+      for (var sh = 0; sh < this._shieldOrbs.length; sh++) this._shieldOrbs[sh].setVisible(false);
+      return;
+    }
+
     for (var oi = 0; oi < this._shieldOrbs.length; oi++) {
       var og = this._shieldOrbs[oi];
       if (oi >= this.playerShields) {
@@ -820,6 +827,95 @@
       if (!self.p) return;
       self._explode(self.p.x, self.p.y, accCol, 30);
       self._spawnWaveRing(self.p.x, self.p.y, { maxRadius: 140, color: ringGold, expandTime: 0.36 });
+    });
+  };
+
+  /* ==========================================================================
+     RUN-START SPAWN FLOURISH — the arrow "materialises" into the arena.
+     Layered shockwaves + a coalescing fan of afterimages + a "READY" banner; the
+     arrow's own scale/alpha materialise is driven by _spawnIntroT in _renderPlayer.
+     _beginSpawnIntro wires this to the opening "welcome" upgrade draft.
+     ========================================================================== */
+  M._playerSpawnFx = function () {
+    var p = this.p;
+    if (!p) return;
+    var steve = !!window.__laSteveSkin;
+    this._spawnIntroT     = C.SPAWN_INTRO_DUR;
+    this._spawnIntroSteve = steve;
+
+    var ringMain = steve ? 0xb478ff : 0x00ffff;   // enchant violet vs cyan
+    var ringAcc  = steve ? 0x66ffb4 : 0x66ccff;
+    var ringGold = steve ? 0xffd864 : 0xffffff;
+    var coreCol  = steve ? [180, 120, 255] : [0, 255, 255];
+    var accCol   = steve ? [120, 255, 180] : [120, 200, 255];
+
+    // Triple shockwave erupting outward as the arrow snaps into being.
+    this._spawnWaveRing(p.x, p.y, { maxRadius: 120, color: 0xffffff, expandTime: 0.34 });
+    this._spawnWaveRing(p.x, p.y, { maxRadius: 220, color: ringMain, expandTime: 0.55 });
+    this._spawnWaveRing(p.x, p.y, { maxRadius: 320, color: ringAcc,  expandTime: 0.70 });
+    this._explode(p.x, p.y, [255, 255, 255], 32);
+    this._explode(p.x, p.y, coreCol, 42);
+
+    // A spiralling fan of afterimages "coalescing" into the arrow.
+    for (var i = 0; i < 8; i++) this._addGhost(p.x, p.y, 0.8 - i * 0.08, p.angle + (i - 3.5) * 0.22, false);
+
+    this.cameras.main.flash(280, coreCol[0], coreCol[1], coreCol[2]);
+    this.cameras.main.shake(210, 0.011);
+
+    // "READY" banner over the spawn point (shares the boss-kill banner styling).
+    var t = LA.laGoT;
+    this._bossKillBanner(p.x, p.y - 72, t('laSpawnReady'),
+      steve ? '#d8b4ff' : '#aef4ff', steve ? '#b478ff' : '#00ffff');
+
+    // "Lock-in" beat — a tighter gold ring + spark burst as the arrow settles.
+    var self = this;
+    this.time.delayedCall(360, function () {
+      if (!self.p) return;
+      self._explode(self.p.x, self.p.y, accCol, 26);
+      self._spawnWaveRing(self.p.x, self.p.y, { maxRadius: 150, color: ringGold, expandTime: 0.40 });
+    });
+  };
+
+  /* Kick off (or resume) the run-start sequence: materialise FX → welcome draft.
+     Called once on a normal launch (scene.js), and again at the end/skip of a
+     tutorial (tutorial.js). Self-guarding & idempotent:
+
+       • Does nothing once the welcome draft has been delivered (_welcomeDraftPending
+         false) — so resuming a tutorial mid-run never re-grants a draft.
+       • Plays the materialise ANIMATION only the first time (_spawnIntroDone) — if a
+         tutorial was launched DURING the spawn, the arrow already materialised, so we
+         skip straight to the (still-owed) draft.
+
+     The draft is the SAME 3-pick boss reward (_beginBossUpgradeDraft) but WITHOUT
+     the boss's +1 reroll, so the run opens with exactly UPGRADE_REROLLS_START (1)
+     reroll, then +1 per boss as before. _welcomeDraftPending is cleared in
+     _closeDraft when the draft actually resolves. */
+  M._beginSpawnIntro = function () {
+    var p = this.p;
+    if (!p || !this._welcomeDraftPending) return;             // no run, or already delivered
+    if (this._upgradeDraftOpen || this._upSlowMoPhase) return; // a draft is already opening/ramping
+
+    // Hold natural spawns until the welcome draft resolves (same gate the boss
+    // reward uses; _closeDraft releases it). The arrow is untouchable meanwhile —
+    // and renders steady (no i-frame flicker) for the whole grace (_spawnGrace).
+    this._bossDraftPending = true;
+    p.invincible = true;
+    p.invincTimer = Math.max(p.invincTimer || 0, 1700);
+    this._spawnGrace = true;
+
+    // Replay the flourish only if it hasn't been shown yet this run.
+    var skipAnim = this._spawnIntroDone;
+    if (!skipAnim) { this._spawnIntroDone = true; this._playerSpawnFx(); }
+
+    var self = this;
+    this.time.delayedCall(skipAnim ? 300 : C.SPAWN_INTRO_DRAFT_MS, function () {
+      // Bail (releasing the spawn gate) if the run ended or a tutorial (re)launched
+      // in this window — the draft stays owed and is retried at the tutorial's end.
+      if (!self._upgradeLevels || !self.p || self.p.state === 'DEAD') { self._bossDraftPending = false; return; }
+      if (self._tutorialActive) { self._bossDraftPending = false; return; }
+      if (!self._welcomeDraftPending) return;                  // delivered some other way
+      if (self._upgradeDraftOpen || self._upSlowMoPhase) return;
+      self._beginBossUpgradeDraft();
     });
   };
 

@@ -139,8 +139,9 @@
     if (this._cache) list.push([this._cache.x, this._cache.y, this._cache.zoneR + pad]);
     if (this._greed) list.push([this._greed.x, this._greed.y, this._greed.half * Math.SQRT2 + pad]);
     if (this._fount) list.push([this._fount.x, this._fount.y, this._fount.zoneR + pad]);
-    if (this._core)  list.push([this._core.x,  this._core.y,  C.CORE_FIELD_RADIUS + pad]);
-    if (this._prism) list.push([this._prism.x, this._prism.y, C.PRISM_TRIGGER_R + pad]);
+    // Every live core + prism (now multi-instance) — keep highways off them all.
+    if (this._cores)  for (var ci = 0; ci < this._cores.length;  ci++) list.push([this._cores[ci].x,  this._cores[ci].y,  this._cores[ci].fieldR + pad]);
+    if (this._prisms) for (var pi = 0; pi < this._prisms.length; pi++) list.push([this._prisms[pi].x, this._prisms[pi].y, C.PRISM_TRIGGER_R + pad]);
     return list;
   };
 

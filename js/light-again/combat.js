@@ -513,12 +513,12 @@
     }
 
     if (ctx.core) {
-      // Unstable Core crush: bank the points into the core's OWN running tally
-      // (flushed as a single "NOYAU INSTABLE" big-score popup when it detonates).
-      // Kept separate from the shared batch so a nuke fired mid-flight can't
-      // corrupt the accumulation. The combo still climbs (these are real kills,
-      // exactly like the nuke's), feeding the multiplier into each pts above.
-      this._coreScoreAccum = (this._coreScoreAccum || 0) + pts;
+      // Unstable Core crush: bank the points into THAT core's OWN running tally
+      // (ctx.core is the launched core object — each flies independently, so each
+      // banks into its own scoreAccum, flushed as a single "NOYAU" big-score popup
+      // when IT detonates). Kept separate from the shared batch so a nuke fired
+      // mid-flight can't corrupt it. The combo still climbs (these are real kills).
+      ctx.core.scoreAccum = (ctx.core.scoreAccum || 0) + pts;
     } else if (ctx.prism) {
       // Prism strike sweep: bank into the strike's OWN tally (flushed as one
       // "PRISME" big-score popup at the merge). Same isolation as the core.

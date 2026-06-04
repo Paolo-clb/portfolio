@@ -408,6 +408,27 @@
       this._powerUpT     = 0;
       this._powerUpSteve = false;
 
+      // Run-start spawn flourish: the arrow materialises with style, then the
+      // "welcome" upgrade draft opens (like a boss reward). _spawnIntroT drives
+      // the materialise override in _renderPlayer. Two independent once-per-run
+      // flags (reset every scene (re)create): _spawnIntroDone gates the ANIMATION
+      // (never replayed — e.g. a tutorial launched mid-spawn already showed it),
+      // _welcomeDraftPending tracks whether the welcome DRAFT is still owed (it's
+      // delivered at run start, OR deferred to the end of a tutorial that pre-empted
+      // it). _welcomeDraftPending is cleared in _closeDraft once the draft resolves.
+      this._spawnIntroT       = 0;
+      this._spawnIntroSteve   = false;
+      this._spawnIntroDone    = false;
+      this._welcomeDraftPending = true;
+      // True during the short beat between the loader clearing and the arrow
+      // materialising: the player is kept hidden + frozen so the EMPTY arena is
+      // visible first (and the spawn flourish isn't masked by the fading loader).
+      this._awaitingSpawnIntro  = false;
+      // True for the whole run-start grace invincibility → suppresses the i-frame
+      // flicker so the freshly-spawned arrow doesn't blink (cleared in _renderPlayer
+      // when that invincibility lapses).
+      this._spawnGrace          = false;
+
       // Mini kamikaze drones (6th upgrade): plain-data pool + one shared renderer
       this._drones        = [];
       this._droneRespawnT = 0;
@@ -544,8 +565,12 @@
         // mid-rampage (mirrors the Prism's KeyV). Also works while still locked.
         if (ev.code === 'KeyC' && !ev.repeat) {
           ev.preventDefault();
-          if (self._spawnCore && (!self._core || self._core.phase === 'DORMANT')) {
-            self._core = null;
+          // Relocate a DORMANT core right next to the player for testing (never touch a
+          // launched one mid-rampage); make room first so we stay within CORE_MAX.
+          if (self._spawnCore && self._cores) {
+            for (var _ci = 0; _ci < self._cores.length; _ci++) {
+              if (self._cores[_ci].phase === 'DORMANT') { self._cores.splice(_ci, 1); break; }
+            }
             self._spawnCore({ near: true });
           }
         }
@@ -565,8 +590,12 @@
         // charge/strike (that would strand the captured ship).
         if (ev.code === 'KeyV' && !ev.repeat) {
           ev.preventDefault();
-          if (self._spawnPrism && (!self._prism || self._prism.phase === 'DORMANT')) {
-            self._prism = null;
+          // Relocate a DORMANT prism next to the player for testing — never while one
+          // holds the ship (that would strand the captured ship). Make room first.
+          if (self._spawnPrism && self._prisms && !(self._prismControllingShip && self._prismControllingShip())) {
+            for (var _pi = 0; _pi < self._prisms.length; _pi++) {
+              if (self._prisms[_pi].phase === 'DORMANT' && !self._prisms[_pi].bonus) { self._prisms.splice(_pi, 1); break; }
+            }
             self._spawnPrism({ near: true });
           }
         }
@@ -810,6 +839,19 @@
         if (window.__laStartTutorialOnReady) {
           window.__laStartTutorialOnReady = false;
           this._startTutorial();
+        } else if (this._beginSpawnIntro) {
+          // No tutorial this run → launch a real game with the spawn flourish +
+          // welcome draft (the tutorial path triggers it on exit instead). Defer it
+          // until the loader has fully faded so the flourish isn't hidden behind it,
+          // and so a brief beat of the EMPTY arena shows before the arrow spawns in.
+          this._awaitingSpawnIntro = true;
+          this._bossDraftPending   = true;   // keep the arena empty during the pre-spawn beat
+          var selfSI = this;
+          this.time.delayedCall(C.SPAWN_INTRO_START_DELAY_MS, function () {
+            selfSI._awaitingSpawnIntro = false;
+            if (selfSI._tutorialActive) return;   // a tutorial pre-empted it → draft runs on tutorial exit
+            selfSI._beginSpawnIntro();
+          });
         }
       }
 
@@ -818,6 +860,8 @@
 
       // Boss power-up flourish decays on real time (a cosmetic surge before the draft)
       if (this._powerUpT > 0) this._powerUpT = Math.max(0, this._powerUpT - dt);
+      // Run-start spawn flourish decays the same way (the arrow materialising in).
+      if (this._spawnIntroT > 0) this._spawnIntroT = Math.max(0, this._spawnIntroT - dt);
 
       if (this.hitstopTimer > 0) {
         this.hitstopTimer -= delta;
@@ -846,6 +890,12 @@
         sDt = 0; s60 = 0; ms  = 0;
         pDt = 0; pS60 = 0; pMs = 0;
       }
+
+      // Pre-spawn beat: the arrow hasn't materialised yet — freeze just the PLAYER
+      // (it's hidden) so the camera stays centred on the empty spawn point, while
+      // the WORLD keeps running so the arena reads as alive (and empty). A tutorial
+      // launched in this window takes over, so don't freeze then.
+      if (this._awaitingSpawnIntro && !this._tutorialActive) { pDt = 0; pS60 = 0; pMs = 0; }
 
       this._fpsCounter = (this._fpsCounter || 0) + 1;
       if (this._fpsCounter >= 15) {
@@ -938,7 +988,7 @@
       // 3-arrow strike (STRIKE), prism.js owns the ship's position outright. Skip the
       // normal accel/friction/integration + Highway conveyor + wall clamp so they
       // can't fight the captured hold or the strike path (prism.js clamps to the disc).
-      var prismCtl = !!(this._prism && (this._prism.phase === 'CHARGING' || this._prism.phase === 'STRIKE'));
+      var prismCtl = this._prismControllingShip ? this._prismControllingShip() : false;
       if (!prismCtl) {
       var frDt = Math.pow(C.FRICTION, pS60);
       if (p.state === 'MOVING') {

@@ -4,8 +4,11 @@
    A big pulsing geometric sphere wrapped in a cyan containment force-field,
    sitting NEUTRAL in the arena. It is TERRAIN/a weapon, not an enemy:
 
-     1. SPAWN   — rare, gated, ONE at a time, somewhere away from the player.
-                  NO guidance arrow (found at random, by request).
+     1. SPAWN   — once the upgrade is unlocked the map keeps CORE_MAX (3) of them
+                  present, each somewhere away from the player, NO guidance arrow.
+                  Using one frees its slot, which returns a fresh core elsewhere on
+                  its OWN 15 s chrono (CORE_RESPAWN_MS) — individual per slot. Two can
+                  share the player's view but never spawn glued (CORE_SELF_GAP).
      2. DORMANT — the sphere breathes: counter-rotating geometric lattices spin,
                   a hot core pulses, instability arcs flicker, the containment
                   hex bubble shimmers. Neutral — enemies pass straight over it.
@@ -14,6 +17,12 @@
                   into, so you can deliberately aim the opening shot. This first leg does
                   NOT home: reach the screen edge with nothing struck and it self-destructs
                   (a missed shot); strike ANY enemy and it begins its billiard ricochets.
+   • CORE-ON-CORE — a LAUNCHED core that ploughs into a still-DORMANT one doesn't crush
+                  it (the field holds): it propels that core away from the impact (so two
+                  crossing cores shove each other apart) and ricochets off it, re-aiming
+                  at another enemy so its rampage carries on. The propelled core drifts
+                  and coasts to rest (CORE_DRIFT_FRICTION), still launchable.
+
      4. BILLIARD— it rockets ENEMY TO ENEMY, a smart steered ricochet that targets a
                   tier-3 bruiser BY PREFERENCE but falls back to a tier-2/1 when none is
                   left, so it can always reach its full bounce count. It chains to the
@@ -27,15 +36,15 @@
                   up where it is — it never flies off into the void. The WHOLE rampage's
                   score lands as one "NOYAU INSTABLE" big-score popup.
 
-   Self-contained on this._core (plain data) + one shared, persistent ADD
-   graphics layer created in scene.create (mirrors the digital-tree / highway
-   modules). The dormant lifecycle + render tick on real dt; the launched
-   movement/crush ride world time (sDt) normally, but during The World the core
-   DEFIES the freeze and keeps pinballing at CORE_TW_SCALE × its speed (combat.js
-   exempts its ctx.core kills from the Time-Stop deferral, so they resolve at once
-   and stay in its own tally). Score is banked through _killEnemy's `ctx.core`
-   path into this._coreScoreAccum (kept clear of the shared batch so a mid-flight
-   nuke can't corrupt it).
+   Self-contained on this._cores (array of plain-data cores) + this._coreRespawnT
+   (per-slot respawn chronos) + one shared, persistent ADD graphics layer created in
+   scene.create (mirrors the digital-tree / highway modules). The dormant lifecycle +
+   render tick on real dt; the launched movement/crush ride world time (sDt) normally,
+   but during The World the core DEFIES the freeze and keeps pinballing at CORE_TW_SCALE
+   × its speed (combat.js exempts its ctx.core kills from the Time-Stop deferral, so they
+   resolve at once and stay in its own tally). Score is banked through _killEnemy's
+   `ctx.core` path (the launched core object) into THAT core's own c.scoreAccum (each
+   flying core tallies independently, kept clear of the shared batch).
    ========================================================================== */
 (function () {
   'use strict';
@@ -72,28 +81,39 @@
      INIT / CLEANUP
      ================================================================ */
   M._initCore = function () {
-    this._core           = null;
-    this._coreSpawnT     = 0;
-    this._coreNextDelay  = C.CORE_SPAWN_MIN_DELAY;   // wait before the very first one
-    this._coreScoreAccum = 0;                         // running tally for the launched rampage
+    this._cores        = [];   // up to CORE_MAX live cores (dormant or launched)
+    this._coreRespawnT = [];   // one pending-respawn chrono (ms remaining) per freed slot
 
     // One shared persistent ADD layer at depth 26 (above drones/enemies, below
-    // the ship) — destroyed with the scene, cleared per-frame.
+    // the ship) — destroyed with the scene, cleared per-frame. ALL cores draw to it.
     this._coreGfx = this.add.graphics();
     this._coreGfx.setDepth(26);
     this._coreGfx.setBlendMode(Phaser.BlendModes.ADD);
   };
 
-  /* Drop the live core (graphics persist — just cleared). `silent` skips FX. */
+  /* Drop every live core + pending slot (graphics persist — just cleared). `silent`
+     skips FX. */
   M._clearCore = function (silent) {
-    this._core = null;
+    this._cores        = [];
+    this._coreRespawnT = [];
     if (this._coreGfx) this._coreGfx.clear();
   };
 
-  M._rollCoreNextDelay = function () {
-    this._coreSpawnT    = 0;
-    this._coreNextDelay = C.CORE_SPAWN_INTERVAL_MIN +
-      Math.random() * (C.CORE_SPAWN_INTERVAL_MAX - C.CORE_SPAWN_INTERVAL_MIN);
+  /* Retire ONE launched core (it detonated / self-destructed): pull it from the live
+     list and start its slot's individual 15 s respawn chrono. */
+  M._retireCore = function (c) {
+    var idx = this._cores.indexOf(c);
+    if (idx >= 0) this._cores.splice(idx, 1);
+    this._coreRespawnT.push(C.CORE_RESPAWN_MS);
+  };
+
+  /* Shared by every other map feature's spawn placement: push ALL live cores AND
+     prisms (now multi-instance) into its [obj, sep2] avoid list, so map events never
+     drop onto a weapon. Guarded — the arrays may not exist yet during early init. */
+  M._pushWeaponAvoids = function (avoid, sep2) {
+    var i;
+    if (this._cores)  for (i = 0; i < this._cores.length;  i++) avoid.push([this._cores[i],  sep2]);
+    if (this._prisms) for (i = 0; i < this._prisms.length; i++) avoid.push([this._prisms[i], sep2]);
   };
 
   /* ================================================================
@@ -115,13 +135,28 @@
     return !!(this._upgradeLevels && this._upgradeLevels.core > 0);
   };
 
-  M._maybeSpawnCore = function (dt) {
-    if (this._core) return;
-    if (!this._coreUnlocked()) return;            // locked → never surfaces
-    this._coreSpawnT += dt * 1000;
-    if (this._coreSpawnT < this._coreNextDelay) return;
-    this._rollCoreNextDelay();                    // delay is 0 → instant respawn once used
-    this._spawnCore({});
+  /* Keep the map populated with CORE_MAX cores. Each freed slot runs its OWN 15 s
+     chrono (this._coreRespawnT); when one elapses a fresh core surfaces somewhere
+     new. The chronos keep counting even while spawns are SUSPENDED (curated states),
+     so a slot that came due during a lull pops the instant the lull ends. */
+  M._tickCorePopulation = function (dt, suspended) {
+    if (!this._coreUnlocked()) {                  // locked → no cores, no pending slots
+      if (this._coreRespawnT.length) this._coreRespawnT.length = 0;
+      return;
+    }
+    // Top the slot count back up to CORE_MAX (live + pending). Fresh slots are due
+    // immediately (chrono 0) so the first unlock fills the map promptly.
+    var deficit = C.CORE_MAX - this._cores.length - this._coreRespawnT.length;
+    for (var d = 0; d < deficit; d++) this._coreRespawnT.push(0);
+
+    var ms = dt * 1000;
+    for (var i = this._coreRespawnT.length - 1; i >= 0; i--) {
+      this._coreRespawnT[i] -= ms;
+      if (this._coreRespawnT[i] > 0) continue;
+      if (suspended || this._cores.length >= C.CORE_MAX) { this._coreRespawnT[i] = 0; continue; }
+      if (this._spawnCore({})) this._coreRespawnT.splice(i, 1);   // placed → consume the slot
+      else this._coreRespawnT[i] = 0;                              // no clear spot this frame → retry next
+    }
   };
 
   /* Place a dormant core a random walk away from the player, clear of the world
@@ -129,8 +164,8 @@
      few times, then accept) so the map events never crowd each other. */
   M._spawnCore = function (opts) {
     opts = opts || {};
-    if (this._core) return;
-    if (!this.p || this.p.state === 'DEAD') return;
+    if (this._cores.length >= C.CORE_MAX) return false;
+    if (!this.p || this.p.state === 'DEAD') return false;
 
     // Per-level size (defaults to Lv1 if a debug spawn fires while still locked).
     var lvl    = (this._upgradeLevels && this._upgradeLevels.core) || 1;
@@ -140,7 +175,9 @@
     var inset = fieldR + 40;                            // keep the WHOLE field in-bounds (disc)
     var sep2  = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
     var minP2 = C.PRISM_MIN_PLAYER_DIST * C.PRISM_MIN_PLAYER_DIST;   // never surface right on the player
-    var avoid = [this._fount, this._tree, this._cache, this._prism, this._greed];   // optional refs (may not exist)
+    var avoid = [this._fount, this._tree, this._cache, this._greed];   // optional refs (may not exist)
+    // Prisms use the generic big feature gap (two DIFFERENT weapons shouldn't crowd).
+    for (var pi = 0; this._prisms && pi < this._prisms.length; pi++) avoid.push(this._prisms[pi]);
     var x, y, tries = 0, ok = false;
 
     if (opts.near) {
@@ -153,7 +190,8 @@
     } else {
       // Like the Prism: surface UNIFORMLY at random ANYWHERE on the map (not anchored
       // to the player), re-rolling only to keep it off the player and clear of the
-      // other live features + a Data Highway band.
+      // other live features + a Data Highway band. Siblings keep a SMALLER gap (just
+      // their fields + CORE_SELF_GAP) so two cores can share the view but never glue.
       do {
         var pt = LA.randInDisc(inset);
         x = pt.x; y = pt.y;
@@ -164,14 +202,21 @@
           var av = avoid[ai];
           if (av && (x - av.x) * (x - av.x) + (y - av.y) * (y - av.y) < sep2) { ok = false; break; }
         }
+        // Never let two cores spawn glued: keep their fields apart by CORE_SELF_GAP.
+        if (ok) for (var ci = 0; ci < this._cores.length; ci++) {
+          var oc = this._cores[ci];
+          var selfSep = oc.fieldR + fieldR + C.CORE_SELF_GAP;
+          if ((x - oc.x) * (x - oc.x) + (y - oc.y) * (y - oc.y) < selfSep * selfSep) { ok = false; break; }
+        }
         // Never drop the core onto a live Data Highway band (reciprocal of the
         // highway's own avoidance — the two must never overlap).
         if (ok && !this._pointClearsHighways(x, y, fieldR)) ok = false;
         tries++;
       } while (!ok && tries < 40);
+      if (!ok) return false;   // no clear spot this frame → the slot retries next tick
     }
 
-    this._core = {
+    var c = {
       x: x, y: y, vx: 0, vy: 0,
       phase: 'DORMANT',
       age: 0, lifeMs: 0, bounces: 0,
@@ -183,14 +228,16 @@
       seed: Math.random() * 1000,
       trail: [], trailT: 0,
       target: null, hitList: [], fizzle: false, fizzleT: 0, firstLeg: false,
+      scoreAccum: 0,                                   // per-core running tally for ITS launched rampage
     };
-    this._coreScoreAccum = 0;
+    this._cores.push(c);
 
     // Arrival flourish — a hot burst inside a cool containment ring (scaled to size).
     this._spawnWaveRing(x, y, { maxRadius: fieldR * 2.2, color: HOT,   expandTime: 0.45 });
     this._spawnWaveRing(x, y, { maxRadius: fieldR * 1.2, color: FIELD, expandTime: 0.32 });
     this._explode(x, y, [255, 150, 40],  26);
     this._explode(x, y, [120, 220, 255], 14);
+    return c;
   };
 
   /* ================================================================
@@ -198,10 +245,13 @@
      with dt = real seconds, sDt = WORLD seconds (frozen during The World).
      ================================================================ */
   M._updateCore = function (dt, sDt) {
-    if (!this._coreSpawnSuspended()) this._maybeSpawnCore(dt);
+    this._tickCorePopulation(dt, this._coreSpawnSuspended());
 
-    var c = this._core;
-    if (c) {
+    // Tick every live core (snapshot the length — _launchCore never adds/removes,
+    // and retire only happens at detonate/self-destruct which `return` right after).
+    for (var i = this._cores.length - 1; i >= 0; i--) {
+      var c = this._cores[i];
+      if (!c) continue;
       if (c.phase === 'DORMANT')       this._tickCoreDormant(c, dt);
       else if (c.phase === 'LAUNCHED') this._tickCoreLaunched(c, dt, sDt);
     }
@@ -209,7 +259,9 @@
   };
 
   /* DORMANT: breathe and watch for a dash-attack hit. As an upgrade fixture it no
-     longer withers — it sits until USED, then respawns instantly elsewhere (Prism-like). */
+     longer withers — it sits until USED, then its slot respawns elsewhere on a 15 s
+     chrono. It may also be DRIFTING after a launched core ploughed into it (it was
+     propelled away from the impact); the drift coasts to rest with friction. */
   M._tickCoreDormant = function (c, dt) {
     var p = this.p, ms = dt * 1000;
     c.spin      += dt * 0.7;
@@ -217,17 +269,42 @@
     c.pulse     += dt;
     c.age       += ms;
 
+    // ---- Propelled drift (after being hit by a launched core) ----
+    if (c.vx || c.vy) {
+      var s60 = dt * 60;
+      c.x += c.vx * s60; c.y += c.vy * s60;
+      var fr = Math.pow(C.CORE_DRIFT_FRICTION, s60);
+      c.vx *= fr; c.vy *= fr;
+      if (c.vx * c.vx + c.vy * c.vy < 0.0025) { c.vx = 0; c.vy = 0; }
+      // Bounce the drift off the arena wall so it never tunnels out.
+      if (!LA.inDisc(c.x, c.y, c.fieldR)) {
+        var cl = LA.clampDisc(c.x, c.y, c.fieldR);
+        c.x = cl.x; c.y = cl.y;
+        var vn = c.vx * cl.nx + c.vy * cl.ny;
+        if (vn > 0) { c.vx -= 2 * vn * cl.nx; c.vy -= 2 * vn * cl.ny; }
+      }
+    }
+
     // LAUNCH: a dash-attack biting into the field — OR a Prism strike sweeping the
     // ship through it (the prism turns YOU into the bolt, so it triggers the core
     // exactly like a dash-attack would).
-    var strikingThrough = p && (p.state === 'DASH_ATTACKING' ||
-      (this._prism && this._prism.phase === 'STRIKE'));
+    var strikingThrough = p && (p.state === 'DASH_ATTACKING' || this._anyPrismStriking());
     if (strikingThrough) {
       var dx = c.x - p.x, dy = c.y - p.y;
       var reach = c.fieldR + C.SIZE * 0.6 + C.CORE_TRIGGER_PAD;
       if (dx * dx + dy * dy < reach * reach) { this._launchCore(c); return; }
     }
     // No wither: a persistent upgrade fixture (only the player using it relocates it).
+  };
+
+  /* True while a Prism strike is sweeping the ship through the arena (the ship IS the
+     bolt), so a dormant core in its path launches exactly like a dash-attack hit. */
+  M._anyPrismStriking = function () {
+    if (!this._prisms) return false;
+    for (var i = 0; i < this._prisms.length; i++) {
+      if (this._prisms[i].phase === 'STRIKE') return true;
+    }
+    return false;
   };
 
   /* Dash-attack connected → the field bursts. The core heads for the on-screen
@@ -255,7 +332,7 @@
     c.fizzleT  = 0;
     c.firstLeg = true;          // the aimed opening shot — flies DEAD STRAIGHT, no homing yet
     c.target   = null;
-    this._coreScoreAccum = 0;
+    c.scoreAccum = 0;           // fresh per-core tally for this rampage
 
     // OPENING SHOT — fire it DEAD STRAIGHT along the aim line (away from the impact,
     // i.e. opposite the side the dash bit into), so the player can deliberately aim it.
@@ -355,6 +432,10 @@
 
     // ---- Contact: crush lesser enemies, ricochet off bruisers ----
     this._coreContact(c);
+
+    // ---- Core-on-core: plough into a still-dormant core → propel it away, ricochet
+    //      off it (re-aiming at another enemy so the rampage carries on). ----
+    this._coreVsDormantCores(c);
 
     // ---- Missed opening shot: reached the screen edge with nothing struck → self-destruct ----
     // (Only the straight first leg; once bouncing it deliberately chases off-screen targets.)
@@ -482,19 +563,60 @@
             this._breakShield(e);
           } else {
             e.hp -= C.CORE_BRUISER_DMG;
-            if (e.hp <= 0) this._killEnemy(i, { core: true });
+            if (e.hp <= 0) this._killEnemy(i, { core: c });
             else this._explode(e.x, e.y, [255, 140, 40], 10);
           }
         } else {
-          this._killEnemy(i, { core: true });   // a weak T1/T2 target → crushed outright on the ricochet
+          this._killEnemy(i, { core: c });   // a weak T1/T2 target → crushed outright on the ricochet
         }
         c.hitList.push(e);                       // mark struck — avoid ever re-hitting it
         this._coreBounce(c);
         this._coreRedirect(c, e.x, e.y);         // chain to the next, max-travel, in-view target
         return;   // one ricochet per frame
       } else {
-        this._killEnemy(i, { core: true });   // crush lesser enemies (plough through)
+        this._killEnemy(i, { core: c });   // crush lesser enemies (plough through)
       }
+    }
+  };
+
+  /* A LAUNCHED core that ploughs into a still-DORMANT core (its containment field
+     intact) doesn't crush it — it knocks it loose. The dormant core is propelled in
+     the direction AWAY from the impact (so two crossing cores shove each other apart),
+     and the launched core ricochets off it, immediately re-aiming at another enemy so
+     its rampage carries on. One such collision per frame; the two then separate on
+     their own (the struck core drifts off, the launched one steers to its new target). */
+  M._coreVsDormantCores = function (c) {
+    for (var i = 0; i < this._cores.length; i++) {
+      var o = this._cores[i];
+      if (o === c || o.phase !== 'DORMANT') continue;
+      var dx = o.x - c.x, dy = o.y - c.y;
+      var rr = c.radius + o.fieldR;                 // body of the bolt vs the dormant FIELD
+      var d2 = dx * dx + dy * dy;
+      if (d2 >= rr * rr) continue;
+      var d  = Math.sqrt(d2) || 1;
+      var nx = dx / d, ny = dy / d;                 // launched → dormant (the push / impact axis)
+
+      // Propel the dormant core away from the impact, turning it into a drifting core.
+      o.vx = nx * C.CORE_KNOCK_SPEED;
+      o.vy = ny * C.CORE_KNOCK_SPEED;
+      // Nudge them apart so they don't re-overlap and double-hit next frame.
+      var push = (rr - d) + 2;
+      o.x += nx * push; o.y += ny * push;
+
+      // Collision juice (between the two).
+      this._spawnWaveRing((c.x + o.x) * 0.5, (c.y + o.y) * 0.5, { maxRadius: o.fieldR * 1.7, color: HOT, expandTime: 0.30 });
+      this._explode((c.x + o.x) * 0.5, (c.y + o.y) * 0.5, [255, 150, 40], 16);
+      this._explode((c.x + o.x) * 0.5, (c.y + o.y) * 0.5, [120, 220, 255], 8);
+      this.cameras.main.shake(80, 0.007);
+
+      // The launched core BOUNCES off the dormant one and re-aims at another enemy
+      // (it does NOT cost a bruiser-ricochet from its bounce budget — this is terrain,
+      // not a kill). Reflect first so it visibly deflects even if no enemy is left.
+      c.firstLeg = false;                           // a deflection ends the dead-straight opening leg
+      var vn = c.vx * nx + c.vy * ny;
+      if (vn > 0) { c.vx -= 2 * vn * nx; c.vy -= 2 * vn * ny; }
+      this._coreRedirect(c, o.x, o.y);              // chain to another enemy (keeps the rampage alive)
+      return;                                       // one core-on-core hit per frame
     }
   };
 
@@ -537,12 +659,12 @@
       var dx = e.x - x, dy = e.y - y;
       if (dx * dx + dy * dy >= R2) continue;
       if (e.tier === 3 && e.hasShield) { this._breakShield(e); continue; }
-      this._killEnemy(i, { core: true });
+      this._killEnemy(i, { core: c });
     }
 
     // Bank the entire run (crush + blast) into a single dedicated big-score popup.
-    if (this._coreScoreAccum > 0) this._floatScoreBig('NOYAU', this._coreScoreAccum);
-    this._coreScoreAccum = 0;
+    if (c.scoreAccum > 0) this._floatScoreBig('NOYAU', c.scoreAccum);
+    c.scoreAccum = 0;
 
     // Detonation spectacle.
     this._spawnWaveRing(x, y, { maxRadius: R * 1.25, color: EMBER, expandTime: 0.60 });
@@ -558,8 +680,7 @@
     // Chip a serpent caught in the blast, consistent with the nuke / delayed exp.
     if (this._snake && !this._snake.dead) this._damageSnakeAoe(x, y, R, C.SNAKE_AOE_DMG);
 
-    this._clearCore(true);
-    this._rollCoreNextDelay();
+    this._retireCore(c);   // free this slot → its own 15 s respawn chrono
   };
 
   /* Has the core's body fully cleared the camera view? (used only for the straight
@@ -577,19 +698,7 @@
     this._explode(c.x, c.y, [255, 240, 200], 10);
     this._spawnWaveRing(c.x, c.y, { maxRadius: 120, color: HOT, expandTime: 0.38 });
     this.cameras.main.shake(80, 0.006);
-    this._clearCore(true);
-    this._rollCoreNextDelay();
-  };
-
-  /* Unused for too long → it destabilises and pops with a small flourish. */
-  M._witherCore = function () {
-    var c = this._core;
-    if (!c) return;
-    this._explode(c.x, c.y, [255, 150, 40],  22);
-    this._explode(c.x, c.y, [120, 220, 255], 12);
-    this._spawnWaveRing(c.x, c.y, { maxRadius: 135, color: HOT, expandTime: 0.40 });
-    this._clearCore(true);
-    this._rollCoreNextDelay();
+    this._retireCore(c);   // free this slot → its own 15 s respawn chrono
   };
 
   /* ================================================================
@@ -599,17 +708,18 @@
     var g = this._coreGfx;
     if (!g) return;
     g.clear();
-    var c = this._core;
-    if (!c) return;
+    if (!this._cores || !this._cores.length) return;
 
-    // Cull when the whole core (+ its field) is off-screen.
     var view = this.cameras.main.worldView;
-    var pad  = c.fieldR + 90;
-    if (c.x < view.x - pad || c.x > view.right + pad ||
-        c.y < view.y - pad || c.y > view.bottom + pad) return;
-
-    if (c.phase === 'LAUNCHED') this._renderCoreLaunched(g, c);
-    else                        this._renderCoreDormant(g, c);
+    for (var i = 0; i < this._cores.length; i++) {
+      var c = this._cores[i];
+      // Cull when the whole core (+ its field) is off-screen.
+      var pad = c.fieldR + 90;
+      if (c.x < view.x - pad || c.x > view.right + pad ||
+          c.y < view.y - pad || c.y > view.bottom + pad) continue;
+      if (c.phase === 'LAUNCHED') this._renderCoreLaunched(g, c);
+      else                        this._renderCoreDormant(g, c);
+    }
   };
 
   /* The geometric sphere body: a wireframe globe (latitude/longitude) crossed by

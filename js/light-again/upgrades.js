@@ -420,6 +420,10 @@
     this._upgradeDraftOpen = false;
     this._draftPicksRemaining = 0;
     this._draftsResolved = (this._draftsResolved || 0) + 1;
+    // The welcome draft is always the FIRST draft of a run (bosses/fountain/The
+    // World can't precede it), so the first close clears its "owed" flag — after
+    // which _beginSpawnIntro is a no-op (resuming a tutorial won't re-grant it).
+    this._welcomeDraftPending = false;
     // Boss death cleared the whole board, so let natural spawns resume only now —
     // the instant the player has finished choosing and time is about to flow.
     this._bossDraftPending = false;

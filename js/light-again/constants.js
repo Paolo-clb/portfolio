@@ -212,6 +212,9 @@
     BOSS_HINT_DELAY_S:           40,     // sandbox: seconds fighting a FIRST-time boss before its weakness tooltip pops
     BOSS_HINT_LIFE_S:            22,     // seconds the weakness tooltip stays on screen before auto-fading
     UPGRADE_REROLLS_START: 1,     // rerolls the run begins with (+1 earned per boss kill)
+    SPAWN_INTRO_DUR:       1.0,   // seconds the run-start arrow "materialise" flourish plays
+    SPAWN_INTRO_DRAFT_MS:  1000,  // ms after the spawn flourish before the welcome draft (3 picks) opens
+    SPAWN_INTRO_START_DELAY_MS: 1000,  // ms after the loader clears before the arrow materialises (loader fully fades + a beat where the EMPTY arena shows)
     UPGRADE_CURSE_CHANCE:  0.25,  // chance one draft slot becomes a curse (never on the 1st draft)
     UPGRADE_ANTIFLOOD_W:   0.16,  // weight ×factor for a card that was offered (not picked) last draft
     UPGRADE_W_LVL1:        1.0,   // draw weight by level — capstones are rarer
@@ -614,7 +617,7 @@
     CACHE_DISSOLVE_DUR:          1000,   // ms of the success/timeout dissolve-out
     CACHE_FADE_DUR:              600,    // ms of the boss-arrival (Anomaly) dissolve
     CACHE_BOSS_REQ:              2,      // bosses that must fall (both modes) before the FIRST cache zone may appear
-    CACHE_SPAWN_MIN_DELAY:       20000,  // ms after the boss gate is met before the first cache zone may appear
+    CACHE_SPAWN_MIN_DELAY:       10000,  // ms after the boss gate is met before the first cache zone may appear
     CACHE_SPAWN_INTERVAL_MIN:    45000,  // ms between zones (min) — a rarer, bigger event than a highway
     CACHE_SPAWN_INTERVAL_MAX:    75000,  // ms between zones (max)
     CACHE_SPAWN_DIST_MIN:        560,    // min spawn distance from the player (px) — > zone radius so you start OUTSIDE the rim
@@ -642,7 +645,7 @@
     GREED_ABANDON_GRACE:         6000,   // ms away (after first entering) before it powers back down to IDLE
     GREED_MAX_LIFE:              180000, // ms hard cap on total age — even held, it eventually leaves
     GREED_DISSOLVE_DUR:          1000,   // ms of the dissolve-out
-    GREED_SPAWN_MIN_DELAY:       25000,  // ms after the gate is met before the first platform may appear
+    GREED_SPAWN_MIN_DELAY:       10000,  // ms after the gate is met before the first platform may appear
     GREED_SPAWN_INTERVAL_MIN:    55000,  // ms between platforms (min) — a rare, climactic event
     GREED_SPAWN_INTERVAL_MAX:    95000,  // ms between platforms (max)
     GREED_SPAWN_DIST_MIN:        640,    // min spawn distance from the player (px) — start OUTSIDE the plate
@@ -669,10 +672,14 @@
        guidance arrow (found at random) and it utterly IGNORES bosses — they live
        outside this.enemies, so the crush/bounce loops never touch them.
        Self-contained on this._core (plain data) + one shared ADD graphics layer. */
-    CORE_SPAWN_MIN_DELAY:    0,      // now an UPGRADE: once unlocked there is always exactly one present...
-    CORE_SPAWN_INTERVAL_MIN: 0,      // ...and using it respawns one INSTANTLY (no repeat interval), like the Prism
+    CORE_SPAWN_MIN_DELAY:    0,      // now an UPGRADE: once unlocked the map keeps CORE_MAX of them present...
+    CORE_SPAWN_INTERVAL_MIN: 0,      // ...and using one frees its slot for CORE_RESPAWN_MS, then it returns elsewhere
     CORE_SPAWN_INTERVAL_MAX: 0,
-    CORE_MAX:                1,      // one core at a time
+    CORE_MAX:                3,      // up to THREE cores on the map at once (once the upgrade is unlocked)
+    CORE_RESPAWN_MS:         15000,  // ms an individual slot waits, on its OWN chrono, before a fresh core returns
+    CORE_SELF_GAP:           150,    // px gap KEPT between two cores' containment fields at spawn — never glued, but two can share the view
+    CORE_KNOCK_SPEED:        13,     // px/frame a LAUNCHED core propels a still-dormant core it ploughs into (opposite the impact)
+    CORE_DRIFT_FRICTION:     0.94,   // per-frame velocity decay of a propelled dormant core as it coasts to rest
     CORE_LIFETIME:           24000,  // (unused now — the core is a persistent fixture and no longer withers)
     CORE_WITHER_WARN:        5000,   // ms of unstable "about to blow" strobe before an unused core vanishes
     CORE_SPAWN_DIST_MIN:     480,    // min spawn distance from the player (px)
@@ -718,9 +725,12 @@
        reappears elsewhere at random. Self-contained on this._prism + one shared ADD
        graphics layer. Bosses live outside this.enemies; the strike damages them via
        their own damage entry points (3× a dash-attack). */
-    PRISM_FIRST_DELAY:       0,      // now an UPGRADE: once unlocked there is always exactly one present...
-    PRISM_RESPAWN_MIN:       0,      // ...and using it respawns one INSTANTLY (no repeat interval). Lv1/2 respawn
-    PRISM_RESPAWN_MAX:       0,      // ...somewhere random; Lv3 respawns AT the giga-dash landing point (chain)
+    PRISM_FIRST_DELAY:       0,      // now an UPGRADE: once unlocked the map keeps PRISM_MAX of them present...
+    PRISM_RESPAWN_MIN:       0,      // ...and using one frees its slot for PRISM_RESPAWN_MS, then it returns elsewhere
+    PRISM_RESPAWN_MAX:       0,      // (Lv3 still drops a BONUS prism AT the giga-dash landing point for the chain)
+    PRISM_MAX:               3,      // up to THREE prisms on the map at once (once the upgrade is unlocked)
+    PRISM_RESPAWN_MS:        15000,  // ms an individual slot waits, on its OWN chrono, before a fresh prism returns
+    PRISM_SELF_GAP:          150,    // px gap KEPT between two prisms' trigger zones at spawn — never glued, but two can share the view
     PRISM_RADIUS:            42,      // crystal body radius (px)
     PRISM_TRIGGER_R:         72,      // contact capture radius around the crystal (px)
     PRISM_TRIGGER_PAD:       16,      // extra slack on (trigger + player half) for the capture test
@@ -911,12 +921,16 @@
       ['circle', 5,5, 2.6], ['circle', 19,5, 2.6],
       ['circle', 5,19, 2.6], ['circle', 19,19, 2.6],
     ],
-    // NOYAU INSTABLE — a contained plasma sphere: a hex containment field around a
-    // ringed core with a hot heart (the billiard weapon you dash-attack loose).
+    // NOYAU INSTABLE — the in-game core's nested lattice, simplified: a round
+    // containment sphere → a hexagon → a six-pointed star (the two counter-rotating
+    // triangles) → a hot heart at the centre. The circle + hexagram together read as
+    // the core and NOT the T3 Bruiser (a solid nested-hex with no star/orbit ring).
     core: [
-      ['poly', [12,3, 19.8,7.5, 19.8,16.5, 12,21, 4.2,16.5, 4.2,7.5], true],
-      ['circle', 12,12, 4.4],
-      ['dot', 12,12, 1.7],
+      ['circle', 12,12, 9.2],                                                         // outer containment sphere
+      ['poly', [12,4.7, 18.32,8.35, 18.32,15.65, 12,19.3, 5.68,15.65, 5.68,8.35], true],  // containment hexagon
+      ['poly', [12,6.4, 13.62,9.2, 16.85,9.2, 15.23,12, 16.85,14.8, 13.62,14.8,
+                12,17.6, 10.38,14.8, 7.15,14.8, 8.77,12, 7.15,9.2, 10.38,9.2], true],     // 6-pointed star lattice
+      ['dot', 12,12, 2.3],                                                            // hot pulsing heart
     ],
     // PRISME DE RÉFRACTION — a crystal triangle splitting an incoming ray into a
     // dispersion fan (the "giga-dash" cannon you launch from).

@@ -163,11 +163,29 @@
     // hitstop fast-path (scene.update) without re-checking p, so a death/restart
     // landing on a hitstop frame would otherwise throw here and freeze the loop.
     if (!p) return;
+
+    // Pre-spawn beat: the arrow hasn't materialised yet — keep it (and its trail)
+    // hidden so the empty arena shows before the spawn flourish. Skipped during the
+    // tutorial, which presents the arrow immediately.
+    if (this._awaitingSpawnIntro && !this._tutorialActive) {
+      this.playerSpr.setVisible(false);
+      for (var _si = 0; _si < this.TRAIL_CAP; _si++) this._trail[_si].spr.setVisible(false);
+      if (this._starAuraGfx) this._starAuraGfx.clear();
+      return;
+    }
+
     var key = this._pTexKey();
 
-    // Normal hit i-frames: flicker (suppressed during the anomaly intro so
-    // the player stays clearly visible while the cinematic plays).
+    // The run-start grace invincibility renders as a clean, steady arrow (no
+    // i-frame flicker) for its whole duration — through the materialise, the
+    // pre-draft slow-mo, and the brief tail after the welcome draft. It lapses
+    // together with that invincibility.
+    if (this._spawnGrace && !p.invincible) this._spawnGrace = false;
+
+    // Normal hit i-frames: flicker (suppressed during the anomaly intro + the
+    // spawn grace so the player stays clearly visible).
     if (p.invincible && !p.dashInvinc && !this._twActive && !this._anomalyIntroActive
+        && !(this._spawnIntroT > 0) && !this._spawnGrace
         && Math.floor(this.gameTime * 12.5) % 2 === 0) {
       this.playerSpr.setVisible(false);
       for (var i = 0; i < this.TRAIL_CAP; i++) this._trail[i].spr.setVisible(false);
@@ -241,6 +259,20 @@
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
       this.playerSpr.setAlpha(1.0);
       this.playerSpr.setTint(this._powerUpSteve ? 0xc8a0ff : 0x88ffff);
+    }
+
+    // Run-start materialise — the arrow coalesces into being at spawn: it snaps
+    // in from an oversized bright bloom down to size (with a small overshoot) and
+    // fades up from transparent. Overrides the state look above; _spawnIntroT is
+    // set by _playerSpawnFx and decays in scene.update.
+    if (this._spawnIntroT > 0) {
+      var siProg   = 1 - Math.max(0, this._spawnIntroT) / C.SPAWN_INTRO_DUR;   // 0 → 1
+      var siSettle = 1 - Math.pow(1 - siProg, 3);                              // easeOutCubic
+      var siBump   = Math.sin(siProg * Math.PI) * 0.22;                        // mid-way overshoot
+      this.playerSpr.setScale(baseScale * ((2.6 - 1.6 * siSettle) + siBump));
+      this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
+      this.playerSpr.setAlpha(Math.min(1, siProg * 1.8));                      // fade in over first ~55%
+      this.playerSpr.setTint(this._spawnIntroSteve ? 0xc8a0ff : 0x88ffff);
     }
 
     // Reactive bloom (created in scene.create): brighter in dash / dash-attack and

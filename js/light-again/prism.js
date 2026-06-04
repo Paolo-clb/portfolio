@@ -5,9 +5,16 @@
    weapon, not an enemy, and it works very differently from the Unstable Core:
    here the PLAYER becomes the projectile.
 
-     1. SPAWN   — present from the START, ONE at a time, placed FULLY at random
-                  anywhere on the map (NO guidance arrow). After use it vanishes
-                  and reappears somewhere else, also at random.
+     1. SPAWN   — once unlocked the map keeps PRISM_MAX (3) of them present, each
+                  placed FULLY at random (NO guidance arrow). Using one frees its slot,
+                  which returns a fresh prism elsewhere on its OWN 15 s chrono
+                  (PRISM_RESPAWN_MS). Two can share the view but never spawn glued.
+   • CHAIN    — if the giga-dash hitbox sweeps a still-dormant prism, the ship chains
+                  straight INTO it at the merge (any level). The whole chained run banks
+                  as one "PRISME ×N" big-score popup. At Lv3 you're additionally owed
+                  ONE landing-point follow-up strike; getting intercepted by another
+                  prism does NOT spend it — it fires from a later merge (becoming the
+                  3rd strike), since the prism couldn't respawn at your landing point.
      2. DORMANT — the crystal turns slowly, refracting a rainbow dispersion fan;
                   a spectral hazard ring marks its trigger zone. Enemies ignore it.
      3. CAPTURE — TOUCH it (any direct contact, no dash-attack required) and the ship
@@ -88,12 +95,13 @@
      INIT / CLEANUP
      ================================================================ */
   M._initPrism = function () {
-    this._prism           = null;
-    this._prismSpawnT     = 0;
-    this._prismNextDelay  = C.PRISM_FIRST_DELAY;   // appear ≈ from the start
-    this._prismScoreAccum = 0;                      // running tally for the launched strike
-    this._prismChainScore = 0;                      // Lv3: combined tally across a chained pair (one popup at the end)
-    this._prismChainCount = 0;                      // ...and how many strikes scored, for the "PRISME ×N" read
+    this._prisms          = [];   // up to PRISM_MAX live prisms (dormant, or the ONE charging/striking)
+    this._prismRespawnT   = [];   // one pending-respawn chrono (ms remaining) per freed slot
+    this._prismScoreAccum = 0;    // running tally for the ONE active strike (only one can hold the ship)
+    this._prismChainScore = 0;    // combined tally across a chained run (one popup at the end)
+    this._prismChainCount = 0;    // ...and how many strikes scored, for the "PRISME ×N" read
+    this._prismChainActive = false;  // true between strikes of an ongoing chain (so a re-capture doesn't reset the tally)
+    this._prismFollowupOwed = false; // Lv3: a landing-point follow-up strike is still owed in this chain
 
     // One shared persistent ADD layer at depth 27 (above the core/enemies, below
     // the ship at 30 so the real centre arrow always sits on top of its phantoms).
@@ -102,8 +110,9 @@
     this._prismGfx.setBlendMode(Phaser.BlendModes.ADD);
   };
 
-  /* Drop the live prism (graphics persist — just cleared). Also un-captures the
-     ship if it was mid-charge/strike when this fires (e.g. a scene shutdown). */
+  /* Drop every live prism + pending slot (graphics persist — just cleared). Also
+     un-captures the ship if it was mid-charge/strike when this fires (e.g. a scene
+     shutdown). */
   M._clearPrism = function (silent) {
     var p = this.p;
     if (p && p.state === 'PRISM') {
@@ -111,17 +120,45 @@
       p.invincible = false; p.invincTimer = 0; p.dashInvinc = false;
       p.atkAvailable = true; p.dashAvailable = true;
     }
-    this._prism = null;
+    this._prisms        = [];
+    this._prismRespawnT = [];
     if (this._prismGfx) this._prismGfx.clear();
     // Drop any deferred chain tally (its points are already in this.score; only the
     // combined popup is abandoned when the prism is torn down mid-chain).
+    this._prismScoreAccum = 0;
     this._prismChainScore = 0; this._prismChainCount = 0;
+    this._prismChainActive = false; this._prismFollowupOwed = false;
   };
 
-  M._rollPrismNextDelay = function () {
-    this._prismSpawnT    = 0;
-    this._prismNextDelay = C.PRISM_RESPAWN_MIN +
-      Math.random() * (C.PRISM_RESPAWN_MAX - C.PRISM_RESPAWN_MIN);
+  /* Pull a spent prism out of the live list. `respawn` queues its slot's individual
+     15 s chrono; a BONUS Lv3 landing-point prism occupies no slot, so it never does. */
+  M._removePrism = function (pr, respawn) {
+    var idx = this._prisms.indexOf(pr);
+    if (idx >= 0) this._prisms.splice(idx, 1);
+    if (respawn) this._prismRespawnT.push(C.PRISM_RESPAWN_MS);
+  };
+
+  /* The single prism currently holding the ship (CHARGING or STRIKE), or null. Only
+     one can ever own the ship at a time, so the strike scoring stays a scene global. */
+  M._activePrism = function () {
+    if (!this._prisms) return null;
+    for (var i = 0; i < this._prisms.length; i++) {
+      var ph = this._prisms[i].phase;
+      if (ph === 'CHARGING' || ph === 'STRIKE') return this._prisms[i];
+    }
+    return null;
+  };
+
+  /* True while a prism owns the ship — scene.update hands p.x/p.y to prism.js then. */
+  M._prismControllingShip = function () { return !!this._activePrism(); };
+
+  /* The prism currently CHARGING (winding up), or null — the launch target. */
+  M._chargingPrism = function () {
+    if (!this._prisms) return null;
+    for (var i = 0; i < this._prisms.length; i++) {
+      if (this._prisms[i].phase === 'CHARGING') return this._prisms[i];
+    }
+    return null;
   };
 
   /* ================================================================
@@ -141,13 +178,27 @@
     return !!(this._upgradeLevels && this._upgradeLevels.prism > 0);
   };
 
-  M._maybeSpawnPrism = function (dt) {
-    if (this._prism) return;
-    if (!this._prismUnlocked()) return;           // locked → never surfaces
-    this._prismSpawnT += dt * 1000;
-    if (this._prismSpawnT < this._prismNextDelay) return;
-    this._rollPrismNextDelay();                   // delay is 0 → instant respawn once used
-    this._spawnPrism({});
+  /* Keep the map populated with PRISM_MAX prisms. Each freed slot runs its OWN 15 s
+     chrono; a Lv3 landing-point BONUS prism is extra (pr.bonus) and never counts
+     toward the slot cap. Chronos keep counting even while spawns are SUSPENDED. */
+  M._tickPrismPopulation = function (dt, suspended) {
+    if (!this._prismUnlocked()) {                 // locked → no prisms, no pending slots
+      if (this._prismRespawnT.length) this._prismRespawnT.length = 0;
+      return;
+    }
+    var liveSlots = 0;
+    for (var s = 0; s < this._prisms.length; s++) if (!this._prisms[s].bonus) liveSlots++;
+    var deficit = C.PRISM_MAX - liveSlots - this._prismRespawnT.length;
+    for (var d = 0; d < deficit; d++) this._prismRespawnT.push(0);   // due immediately on first unlock
+
+    var ms = dt * 1000;
+    for (var i = this._prismRespawnT.length - 1; i >= 0; i--) {
+      this._prismRespawnT[i] -= ms;
+      if (this._prismRespawnT[i] > 0) continue;
+      if (suspended) { this._prismRespawnT[i] = 0; continue; }
+      if (this._spawnPrism({})) this._prismRespawnT.splice(i, 1);   // placed → consume the slot
+      else this._prismRespawnT[i] = 0;                              // no clear spot this frame → retry next
+    }
   };
 
   /* Place a dormant prism UNIFORMLY at random across the whole disc (not anchored
@@ -155,14 +206,15 @@
      keep it off the player and clear of the other live map features. */
   M._spawnPrism = function (opts) {
     opts = opts || {};
-    if (this._prism) return;
-    if (!this.p || this.p.state === 'DEAD') return;
+    if (!opts.at && this._prisms.length >= C.PRISM_MAX) return false;   // bonus (at) is allowed past the cap
+    if (!this.p || this.p.state === 'DEAD') return false;
 
     var lvl   = (this._upgradeLevels && this._upgradeLevels.prism) || 1;
     var inset = C.PRISM_RADIUS + C.PRISM_SPAWN_MARGIN;
     var sep2  = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
     var minP2 = C.PRISM_MIN_PLAYER_DIST * C.PRISM_MIN_PLAYER_DIST;
-    var avoid = [this._fount, this._tree, this._cache, this._core, this._greed];   // optional refs (may be null) — same generic gap the core uses for greed
+    var avoid = [this._fount, this._tree, this._cache, this._greed];   // optional refs (may be null)
+    for (var ci = 0; this._cores && ci < this._cores.length; ci++) avoid.push(this._cores[ci]);   // generic gap vs cores
     var x, y, tries = 0, ok;
 
     if (opts.at) {
@@ -188,14 +240,24 @@
             if (av && (x - av.x) * (x - av.x) + (y - av.y) * (y - av.y) < sep2) { ok = false; break; }
           }
         }
+        // Never let two prisms spawn glued: keep their trigger zones apart by
+        // PRISM_SELF_GAP (small enough that two can still share the player's view).
+        if (ok) {
+          var selfSep = C.PRISM_TRIGGER_R * 2 + C.PRISM_SELF_GAP;
+          for (var qi = 0; qi < this._prisms.length; qi++) {
+            var op = this._prisms[qi];
+            if ((x - op.x) * (x - op.x) + (y - op.y) * (y - op.y) < selfSep * selfSep) { ok = false; break; }
+          }
+        }
         // Never surface the prism on a live Data Highway band (reciprocal of the
         // highway's own avoidance — the two must never overlap).
         if (ok && !this._pointClearsHighways(x, y, C.PRISM_TRIGGER_R)) ok = false;
         tries++;
       } while (!ok && tries < 40);
+      if (!ok) return false;   // no clear spot this frame → the slot retries next tick
     }
 
-    this._prism = {
+    var pr = {
       x: x, y: y,
       phase: 'DORMANT',
       age: 0,
@@ -207,13 +269,16 @@
       strikeDist: C.PRISM_DIST_BY_LVL[lvl],
       fanLateral: C.PRISM_FAN_BY_LVL[lvl],
       killR:      C.PRISM_KILL_BY_LVL[lvl],
-      chained:    !!opts.at,               // Lv3: this prism was itself spawned at a landing point → it won't chain AGAIN (cap = 1)
+      chained:    !!opts.at,               // a landing-point prism is itself the Lv3 follow-up → it owes none of its own
+      bonus:      !!opts.at,               // ...and it's a BONUS prism: occupies no slot, no respawn chrono when spent
+      interceptPrism: null,                // a dormant prism this strike's hitbox swept (→ chain into it at merge)
       // charging
       chargeT: 0, hold: 0, aimAng: 0,
       // strike
       origX: 0, origY: 0, dist: 0, travelled: 0, t: 0, perpX: 0, perpY: 0,
       arrows: [], bossHit: [],
     };
+    this._prisms.push(pr);
     this._prismScoreAccum = 0;
 
     // Arrival flourish — a clean white flash splitting into a spectral ring.
@@ -221,6 +286,7 @@
     this._spawnWaveRing(x, y, { maxRadius: 88,  color: WHITE,       expandTime: 0.30 });
     this._explode(x, y, [225, 240, 255], 18);
     for (var k = 0; k < SPECTRUM_RGB.length; k++) this._explode(x, y, SPECTRUM_RGB[k], 5);
+    return pr;
   };
 
   /* ================================================================
@@ -228,10 +294,14 @@
      dt = real seconds, sDt = WORLD seconds (frozen during The World / hitstop).
      ================================================================ */
   M._updatePrism = function (dt, sDt) {
-    if (!this._prismSpawnSuspended()) this._maybeSpawnPrism(dt);
+    this._tickPrismPopulation(dt, this._prismSpawnSuspended());
 
-    var pr = this._prism;
-    if (pr) {
+    // Tick every live prism. Only one can ever be CHARGING/STRIKE (it owns the ship);
+    // the rest breathe as DORMANT and stay eligible for a strike's interception chain.
+    // Snapshot via index — a merge may splice the active prism out mid-loop, so guard.
+    for (var i = this._prisms.length - 1; i >= 0; i--) {
+      var pr = this._prisms[i];
+      if (!pr) continue;
       if      (pr.phase === 'DORMANT')  this._tickPrismDormant(pr, dt);
       else if (pr.phase === 'CHARGING') this._tickPrismCharging(pr, dt);
       else if (pr.phase === 'STRIKE')   this._tickPrismStrike(pr, dt, sDt);
@@ -263,9 +333,20 @@
   M._prismCapture = function (pr) {
     var p   = this.p;
     var cam = this.cameras.main;
+
+    // Chain bookkeeping. A capture that BEGINS a fresh run (no chain in flight) resets
+    // the combined tally and arms the Lv3 owed follow-up. A capture that CONTINUES a
+    // chain (the landing-point bonus prism, or an interception re-capture, both of
+    // which pre-set _prismChainActive) keeps the running tally + the owed follow-up.
+    if (!this._prismChainActive) {
+      this._prismChainScore = 0; this._prismChainCount = 0;
+      this._prismFollowupOwed = !!(this._upgradeLevels && this._upgradeLevels.prism >= 3);
+    }
+
     var aim = Math.atan2((this._mouseY + cam.scrollY) - pr.y, (this._mouseX + cam.scrollX) - pr.x);
 
     pr.phase   = 'CHARGING';
+    pr.interceptPrism = null;
     pr.chargeT = 0;
     pr.hold    = 0;
     pr.aimAng  = aim;
@@ -319,8 +400,8 @@
      LAUNCH — fired by a left-click (player.js intercept) or the safety auto-fire.
      ================================================================ */
   M._prismLaunch = function () {
-    var pr = this._prism;
-    if (!pr || pr.phase !== 'CHARGING') return;
+    var pr = this._chargingPrism();
+    if (!pr) return;
     var p   = this.p;
     var cam = this.cameras.main;
     var aim = Math.atan2((this._mouseY + cam.scrollY) - pr.y, (this._mouseX + cam.scrollX) - pr.x);
@@ -479,6 +560,31 @@
       if (hit) this._killEnemy(i, { prism: true });   // one-shots ALL tiers (ignores shields)
     }
     this._prismHitBosses(pr);
+    this._prismDetectIntercept(pr);
+  };
+
+  /* While the giga-dash sweeps, watch for the FIRST still-dormant prism any arrow
+     passes through. We don't capture mid-flight (that would cut the strike short) —
+     we just remember it (pr.interceptPrism), then chain INTO it at the merge. One
+     interception per strike; further prisms the strike grazes stay on the map. */
+  M._prismDetectIntercept = function (pr) {
+    if (pr.interceptPrism) return;                 // already locked one this strike
+    var reach = C.PRISM_TRIGGER_R, r2 = reach * reach;
+    for (var i = 0; i < this._prisms.length; i++) {
+      var o = this._prisms[i];
+      if (o === pr || o.phase !== 'DORMANT') continue;
+      for (var j = 0; j < pr.arrows.length; j++) {
+        var a = pr.arrows[j];
+        var dx = o.x - a.x, dy = o.y - a.y;
+        if (dx * dx + dy * dy < r2) {
+          pr.interceptPrism = o;
+          // A bright spectral ping on the prism we'll chain into.
+          this._spawnWaveRing(o.x, o.y, { maxRadius: C.PRISM_TRIGGER_R * 1.7, color: WHITE,       expandTime: 0.30 });
+          this._spawnWaveRing(o.x, o.y, { maxRadius: C.PRISM_TRIGGER_R * 1.1, color: SPECTRUM[4], expandTime: 0.24 });
+          return;
+        }
+      }
+    }
   };
 
   /* Bosses live OUTSIDE this.enemies — damage them through their own entry points. */
@@ -567,26 +673,16 @@
   M._prismMerge = function (pr) {
     var p  = this.p;
     var ex = p.x, ey = p.y;
+    var lvl = (this._upgradeLevels && this._upgradeLevels.prism) || 1;
 
-    // Chain-aware scoring. A Lv3 chain fires two strikes back-to-back, and a popup
-    // for the FIRST one gets buried under the second strike's spectacle. So bank each
-    // strike's tally into a running chain total + count, and only FLOAT it once — when
-    // the chain ends (a non-chaining merge) — as one clear "PRISME ×N" big-score popup.
-    // Lv1/2 (and the spent chain prism) have canChain=false → they flush immediately,
-    // exactly as before.
-    var canChain = this._upgradeLevels && this._upgradeLevels.prism >= 3 && !pr.chained;
+    // Bank THIS strike's tally into the running chain total + count. The combined
+    // "PRISME ×N" popup only floats once — when the chain finally ends — so an early
+    // strike's points aren't buried under the next strike's spectacle.
     if (this._prismScoreAccum > 0) {
       this._prismChainScore = (this._prismChainScore || 0) + this._prismScoreAccum;
       this._prismChainCount = (this._prismChainCount || 0) + 1;
     }
     this._prismScoreAccum = 0;
-    if (!canChain) {
-      if (this._prismChainScore > 0) {
-        this._floatScoreBig('PRISME', this._prismChainScore,
-          this._prismChainCount > 1 ? { count: this._prismChainCount } : null);
-      }
-      this._prismChainScore = 0; this._prismChainCount = 0;
-    }
 
     // Merge spectacle — a white re-fusion bursting back into the spectrum.
     this._spawnWaveRing(ex, ey, { maxRadius: 260, color: WHITE,       expandTime: 0.50 });
@@ -598,7 +694,7 @@
     this._triggerHitstop(C.DETONATION_HITSTOP);
 
     // Hand the ship back, gliding along its FINAL heading (post-bounces), with a
-    // brief landing grace.
+    // brief landing grace. (A continuation below immediately re-captures it.)
     p.state = 'MOVING';
     p.vx = (pr.dirX || Math.cos(pr.aimAng)) * 6; p.vy = (pr.dirY || Math.sin(pr.aimAng)) * 6;
     p.invincible = true; p.invincTimer = 420; p.dashInvinc = true; p.dashCoyote = false;
@@ -609,19 +705,39 @@
     // Clear any straggler that wandered onto the landing spot after the sweep.
     if (this._safeBubblePush) this._safeBubblePush(p, 280);
 
-    // Consumed → the prism leaves. Lv3 rematerialises it RIGHT at the landing point
-    // (ex,ey) — you arrive on it and watch it appear, free to chain straight into ONE
-    // more giga-dash. The chained prism is flagged (pr.chained) so it does NOT chain a
-    // second time: the cap is exactly 1 free follow-up. Lv1/2 (and the spent chain
-    // prism) respawn instantly somewhere random instead.
-    this._prism = null;
-    if (this._prismGfx) this._prismGfx.clear();
-    if (canChain) {                 // canChain computed up top with the chain-scoring
-      this._prismSpawnT = 0; this._prismNextDelay = 0;
-      this._spawnPrism({ at: { x: ex, y: ey } });
-    } else {
-      this._rollPrismNextDelay();
+    // The fired prism leaves. A BONUS landing-point prism occupied no slot → no
+    // respawn chrono; a real slot prism frees its slot for the 15 s chrono.
+    this._removePrism(pr, !pr.bonus);
+
+    // ---- Continuation, in priority order ----
+    // 1) INTERCEPTION: the giga-dash swept a still-dormant prism → chain straight into
+    //    it (capture the ship there). This does NOT consume the Lv3 owed follow-up:
+    //    you were "intercepted", so your guaranteed landing follow-up is preserved and
+    //    will fire from a LATER merge (becoming the third strike).
+    var intercept = pr.interceptPrism;
+    if (intercept && intercept.phase === 'DORMANT' && this._prisms.indexOf(intercept) >= 0) {
+      this._prismChainActive = true;
+      this._prismCapture(intercept);   // snaps the ship onto it + winds the cannon back up
+      return;
     }
+
+    // 2) Lv3 LANDING FOLLOW-UP still owed: drop a BONUS prism RIGHT at the landing
+    //    point — you arrive on it and chain into one more giga-dash. Consume the owed
+    //    follow-up (cap = exactly one landing follow-up per chain).
+    if (lvl >= 3 && this._prismFollowupOwed) {
+      this._prismFollowupOwed = false;
+      this._prismChainActive = true;
+      this._spawnPrism({ at: { x: ex, y: ey } });   // bonus + chained; player captures it next frames
+      return;
+    }
+
+    // 3) CHAIN ENDS → flush the combined popup and reset the chain state.
+    if (this._prismChainScore > 0) {
+      this._floatScoreBig('PRISME', this._prismChainScore,
+        this._prismChainCount > 1 ? { count: this._prismChainCount } : null);
+    }
+    this._prismChainScore = 0; this._prismChainCount = 0;
+    this._prismChainActive = false; this._prismFollowupOwed = false;
   };
 
   /* ================================================================
@@ -632,18 +748,19 @@
     var g = this._prismGfx;
     if (!g) return;
     g.clear();
-    var pr = this._prism;
-    if (!pr) return;
-
-    if (pr.phase === 'STRIKE') { this._renderPrismStrike(g, pr); return; }
+    if (!this._prisms || !this._prisms.length) return;
 
     var view = this.cameras.main.worldView;
     var pad  = C.PRISM_TRIGGER_R + 140;
-    if (pr.x < view.x - pad || pr.x > view.right + pad ||
-        pr.y < view.y - pad || pr.y > view.bottom + pad) return;
-
-    if (pr.phase === 'CHARGING') this._renderPrismCharging(g, pr);
-    else                         this._renderPrismDormant(g, pr);
+    for (var i = 0; i < this._prisms.length; i++) {
+      var pr = this._prisms[i];
+      // The strike spans the map, so it always draws; dormant/charging are view-culled.
+      if (pr.phase === 'STRIKE') { this._renderPrismStrike(g, pr); continue; }
+      if (pr.x < view.x - pad || pr.x > view.right + pad ||
+          pr.y < view.y - pad || pr.y > view.bottom + pad) continue;
+      if (pr.phase === 'CHARGING') this._renderPrismCharging(g, pr);
+      else                         this._renderPrismDormant(g, pr);
+    }
   };
 
   /* The dispersion fan: a single white ray entering the crystal and a rainbow

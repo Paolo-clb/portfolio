@@ -402,6 +402,14 @@
     this.comboTimer = 0;
     this.spawnTimer = 0;
     this._tutResetPlayer();
+
+    // Flow into the real game with the welcome draft IF this run still owes one —
+    // i.e. the tutorial effectively launched a new game (fresh first run) OR it
+    // pre-empted the spawn intro before its draft fired. _beginSpawnIntro self-
+    // guards on _welcomeDraftPending (so resuming a tutorial on an established run
+    // does nothing) and on _spawnIntroDone (so it replays the draft only, never the
+    // animation, when the arrow already materialised before the tutorial).
+    if (this._beginSpawnIntro) this._beginSpawnIntro();
   };
 
   /* ================================================================
