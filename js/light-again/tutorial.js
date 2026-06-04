@@ -427,6 +427,9 @@
       takenCurses: curses,
       scoreMult:   this._scoreMult,
       dashCdMult:  this._dashCdMult,
+      dashImpMult:    this._dashImpMult,
+      dashDurMult:    this._dashDurMult,
+      dashIframeBonus: this._dashIframeBonus,
       blastMult:   this._blastMult,
       maxShields:  this.MAX_SHIELDS,
       twUnlocked:  this._twUnlocked,
@@ -442,6 +445,9 @@
     this._takenCurses = {};
     this._scoreMult  = 1;
     this._dashCdMult = 1;
+    this._dashImpMult     = 1;
+    this._dashDurMult     = 1;
+    this._dashIframeBonus = 0;
     this._blastMult  = 1;
     // Lock out The World (middle-click) and defuse any active instance — _tryTimeStop
     // bails on !_twUnlocked, _tutClearBoard wipes the frozen-enemy state, and we drop
@@ -471,6 +477,9 @@
     this._takenCurses = s.takenCurses || {};
     this._scoreMult  = s.scoreMult;
     this._dashCdMult = s.dashCdMult;
+    this._dashImpMult     = (s.dashImpMult     != null) ? s.dashImpMult     : 1;
+    this._dashDurMult     = (s.dashDurMult     != null) ? s.dashDurMult     : 1;
+    this._dashIframeBonus = (s.dashIframeBonus != null) ? s.dashIframeBonus : 0;
     this._blastMult  = s.blastMult;
     this._twUnlocked = s.twUnlocked;
     this.MAX_SHIELDS = s.maxShields;

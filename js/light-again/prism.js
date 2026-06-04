@@ -464,7 +464,7 @@
   /* Kill every enemy within PRISM_KILL_R of ANY of the 3 arrows (step < radius, so
      no tunnelling), then deal bosses their 3-dash-attack hit. */
   M._prismStrikeContact = function (pr) {
-    var enemies = this.enemies, kr = pr.killR;
+    var enemies = this.enemies, kr = pr.killR * (this._blastMult || 1);   // cursedBlast curse
     for (var i = enemies.length - 1; i >= 0; i--) {
       var e = enemies[i];
       if (e._spawnAnimT != null && e._spawnAnimT < 1) continue;   // still materialising → leave it
@@ -496,7 +496,7 @@
   M._prismCarveSnake = function (pr) {
     var s = this._snake;
     if (!s || s.dead || s.spawnPhase === 'EMERGE' || !this._damageSnakeSegment) return;
-    var reach = pr.killR + 20, r2 = reach * reach;
+    var reach = pr.killR * (this._blastMult || 1) + 20, r2 = reach * reach;   // cursedBlast curse
     var hits = [];
     for (var i = 0; i < s.worms.length; i++) {
       var segs = s.worms[i].segs;

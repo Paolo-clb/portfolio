@@ -45,7 +45,10 @@
     this._draftsResolved   = 0;
     this._takenCurses      = {};
     this._scoreMult        = 1;      // glassHeart curse
-    this._dashCdMult       = 1;      // dashRage curse
+    this._dashCdMult       = 1;      // dashRage curse (dash cooldown)
+    this._dashImpMult      = 1;      // dashRage curse (dash impulse — reach / mark sweep)
+    this._dashDurMult      = 1;      // dashRage curse (dash duration — more mark passes)
+    this._dashIframeBonus  = 0;      // dashRage curse (extra ms of post-dash i-frames)
     this._blastMult        = 1;      // cursedBlast curse (all player-allied explosion radii)
 
     // Bosses are the ONLY upgrade source now; the kill counter drives BOSS spawns.
@@ -209,7 +212,12 @@
     if (this.playerShields > this.MAX_SHIELDS) this.playerShields = this.MAX_SHIELDS;
 
     if (cid === 'glassHeart')       this._scoreMult  = (this._scoreMult  || 1) * C.CURSE_SCORE_MULT;
-    else if (cid === 'dashRage')    this._dashCdMult = (this._dashCdMult || 1) * C.CURSE_DASH_CD_MULT;
+    else if (cid === 'dashRage') {
+      this._dashCdMult      = (this._dashCdMult  || 1) * C.CURSE_DASH_CD_MULT;
+      this._dashImpMult     = (this._dashImpMult || 1) * C.CURSE_DASH_IMP_MULT;
+      this._dashDurMult     = (this._dashDurMult || 1) * C.CURSE_DASH_DUR_MULT;
+      this._dashIframeBonus = (this._dashIframeBonus || 0) + C.CURSE_DASH_IFRAME_BONUS;
+    }
     else if (cid === 'cursedBlast') this._blastMult  = (this._blastMult  || 1) * C.CURSE_BLAST_MULT;
 
     // Ominous red flourish — distinct from the cyan upgrade feedback.

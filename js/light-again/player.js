@@ -37,8 +37,10 @@
       dx = Math.cos(p.angle); dy = Math.sin(p.angle);
     }
     var dashLvl = (this._upgradeLevels && this._upgradeLevels.dash) || 0;
-    var impMult = dashLvl >= 1 ? 1.35 : 1.0;
-    var durMult = dashLvl >= 1 ? 1.20 : 1.0;
+    // dashRage curse lengthens the dash: more impulse (flee farther + sweep more
+    // enemies into the dash-mark) and a slightly longer window (more mark passes).
+    var impMult = (dashLvl >= 1 ? 1.35 : 1.0) * (this._dashImpMult || 1);
+    var durMult = (dashLvl >= 1 ? 1.20 : 1.0) * (this._dashDurMult || 1);
     p.vx += dx * C.DASH_IMP * impMult;
     p.vy += dy * C.DASH_IMP * impMult;
     p.state = 'DASHING';

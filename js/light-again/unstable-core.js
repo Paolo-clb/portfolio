@@ -529,7 +529,7 @@
   /* The big finale: blast the area, bank the whole rampage as ONE popup, retire. */
   M._detonateCore = function (c) {
     var x = c.x, y = c.y;
-    var R = c.expRadius, R2 = R * R;
+    var R = c.expRadius * (this._blastMult || 1), R2 = R * R;   // cursedBlast curse
 
     for (var i = this.enemies.length - 1; i >= 0; i--) {
       var e = this.enemies[i];

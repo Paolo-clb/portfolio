@@ -978,7 +978,7 @@
         if (p.dashTimer <= 0) {
           var dashUpLvl = (this._upgradeLevels && this._upgradeLevels.dash) || 0;
           p.state = 'MOVING'; p.dashCooldown = C.DASH_CD * (dashUpLvl >= 1 ? 0.70 : 1.0) * (this._dashCdMult || 1);
-          p.invincible = true; p.invincTimer = 220; p.dashInvinc = true;
+          p.invincible = true; p.invincTimer = 220 + (this._dashIframeBonus || 0); p.dashInvinc = true;   // dashRage curse adds i-frames
           p.dashCoyote = true; // coyote window: attack within post-dash iframes → Dash-Attack
           if (dashUpLvl >= 2) {
             this._dashTornadoCounter = (this._dashTornadoCounter || 0) + 1;

@@ -929,7 +929,7 @@
     // so it must NOT hand out explosion i-frames).
     if (pr.smashed && this._snake && !this._snake.dead) {
       best.aoeIframe = C.SNAKE_AOE_IFRAME;
-      this._damageSnakeAoe(pr.x, pr.y, C.SHOCKWAVE_RADIUS * 1.1, C.SNAKE_AOE_DMG);
+      this._damageSnakeAoe(pr.x, pr.y, C.SHOCKWAVE_RADIUS * 1.1 * (this._blastMult || 1), C.SNAKE_AOE_DMG);   // cursedBlast curse (matches the smash's enemy AoE)
     } else if (!pr.smashed && this._snake && !this._snake.dead) {
       // A parried HATCHLING detonates its small blast on the segment it struck.
       this._snakeHatchlingBurst(pr, best);

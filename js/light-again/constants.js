@@ -220,6 +220,14 @@
     // Curse magnitudes (risk/reward — every curse costs −1 shield slot)
     CURSE_SCORE_MULT:      1.8,   // glassHeart : score gain ×
     CURSE_DASH_CD_MULT:    0.5,   // dashRage   : dash cooldown ×
+    // dashRage also lengthens the dash itself: more impulse (flee farther + sweep
+    // more enemies into the dash-mark) and a slightly longer window (more mark
+    // passes), plus a few extra post-dash i-frames. Kept modest on purpose — the
+    // worst case (dashRage + Dash Lv1 → 420 ms cd) still leaves a ~130 ms vulnerable
+    // gap every cycle, so it's "safer", NOT permanently invincible.
+    CURSE_DASH_IMP_MULT:    1.25,  // dashRage : dash impulse × (reach / mark sweep)
+    CURSE_DASH_DUR_MULT:    1.15,  // dashRage : dash duration × (more mark passes)
+    CURSE_DASH_IFRAME_BONUS:  70,  // dashRage : extra ms of post-dash i-frames (base 220)
     CURSE_BLAST_MULT:      1.4,   // cursedBlast: all player-allied explosion radii ×
 
     /* ---- Delayed explosion (Explosion à retardement = baseAtk branch) ----
