@@ -101,7 +101,7 @@
 
     /* ---- Sandbox: continuous one-by-one stream, mouse-wheel paced ---- */
     SANDBOX_BASE_INTERVAL: 800,   // ms between spawns at rate x1
-    SANDBOX_RATE_MIN:      0.5,
+    SANDBOX_RATE_MIN:      0,
     SANDBOX_RATE_MAX:      16,
     SANDBOX_RATE_STEP:     0.5,
     SANDBOX_RATE_DEFAULT:  1,
