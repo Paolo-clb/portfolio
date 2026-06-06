@@ -18,10 +18,9 @@
                   NOT home: reach the screen edge with nothing struck and it self-destructs
                   (a missed shot); strike ANY enemy and it begins its billiard ricochets.
    • CORE-ON-CORE — a LAUNCHED core that ploughs into a still-DORMANT one doesn't crush
-                  it (the field holds): it propels that core away from the impact (so two
-                  crossing cores shove each other apart) and ricochets off it, re-aiming
-                  at another enemy so its rampage carries on. The propelled core drifts
-                  and coasts to rest (CORE_DRIFT_FRICTION), still launchable.
+                  it (the field holds): it ACTIVATES it, launching it away from the impact
+                  (exactly as if the player had dash-attacked it), and ricochets off it,
+                  re-aiming at another enemy so its rampage carries on.
 
      4. BILLIARD— it rockets ENEMY TO ENEMY, a smart steered ricochet that targets a
                   tier-3 bruiser BY PREFERENCE but falls back to a tier-2/1 when none is
@@ -259,9 +258,8 @@
   };
 
   /* DORMANT: breathe and watch for a dash-attack hit. As an upgrade fixture it no
-     longer withers — it sits until USED, then its slot respawns elsewhere on a 15 s
-     chrono. It may also be DRIFTING after a launched core ploughed into it (it was
-     propelled away from the impact); the drift coasts to rest with friction. */
+     longer withers — it sits until USED (dash-attack or core-on-core), then its slot
+     respawns elsewhere on a 15 s chrono. */
   M._tickCoreDormant = function (c, dt) {
     var p = this.p, ms = dt * 1000;
     c.spin      += dt * 0.7;
@@ -580,11 +578,9 @@
   };
 
   /* A LAUNCHED core that ploughs into a still-DORMANT core (its containment field
-     intact) doesn't crush it — it knocks it loose. The dormant core is propelled in
-     the direction AWAY from the impact (so two crossing cores shove each other apart),
-     and the launched core ricochets off it, immediately re-aiming at another enemy so
-     its rampage carries on. One such collision per frame; the two then separate on
-     their own (the struck core drifts off, the launched one steers to its new target). */
+     intact) doesn't crush it — it ACTIVATES it. The dormant core launches away from
+     the impact (as if the player had dash-attacked it), while the launched core
+     ricochets off it and re-aims at another enemy. One collision per frame. */
   M._coreVsDormantCores = function (c) {
     for (var i = 0; i < this._cores.length; i++) {
       var o = this._cores[i];
@@ -596,18 +592,36 @@
       var d  = Math.sqrt(d2) || 1;
       var nx = dx / d, ny = dy / d;                 // launched → dormant (the push / impact axis)
 
-      // Propel the dormant core away from the impact, turning it into a drifting core.
-      o.vx = nx * C.CORE_KNOCK_SPEED;
-      o.vy = ny * C.CORE_KNOCK_SPEED;
       // Nudge them apart so they don't re-overlap and double-hit next frame.
       var push = (rr - d) + 2;
       o.x += nx * push; o.y += ny * push;
 
-      // Collision juice (between the two).
-      this._spawnWaveRing((c.x + o.x) * 0.5, (c.y + o.y) * 0.5, { maxRadius: o.fieldR * 1.7, color: HOT, expandTime: 0.30 });
-      this._explode((c.x + o.x) * 0.5, (c.y + o.y) * 0.5, [255, 150, 40], 16);
-      this._explode((c.x + o.x) * 0.5, (c.y + o.y) * 0.5, [120, 220, 255], 8);
-      this.cameras.main.shake(80, 0.007);
+      // Activate the dormant core: launch it away from the impact (as if dash-attacked).
+      o.phase    = 'LAUNCHED';
+      o.bounces  = 0;
+      o.lifeMs   = 0;
+      o.trail    = [];
+      o.trailT   = 0;
+      o.hitList  = [];
+      o.fizzle   = false;
+      o.fizzleT  = 0;
+      o.firstLeg = true;
+      o.target   = null;
+      o.scoreAccum = 0;
+      o.vx = nx * o.launchSpeed;
+      o.vy = ny * o.launchSpeed;
+
+      // Collision + activation juice.
+      var mx = (c.x + o.x) * 0.5, my = (c.y + o.y) * 0.5;
+      this._spawnWaveRing(mx,  my,  { maxRadius: o.fieldR * 1.7, color: HOT,   expandTime: 0.30 });
+      this._spawnWaveRing(o.x, o.y, { maxRadius: o.fieldR * 2.0, color: FIELD, expandTime: 0.38 });
+      this._explode(mx,  my,  [255, 150, 40],  20);
+      this._explode(mx,  my,  [120, 220, 255], 10);
+      this._explode(o.x, o.y, [255, 240, 200], 16);
+      this._floatLabel(o.x, o.y - o.fieldR, 'NOYAU LIBÉRÉ', '#ff8a3c');
+      this.cameras.main.flash(100, 255, 150, 50);
+      this.cameras.main.shake(130, 0.010);
+      this._triggerHitstop(50);
 
       // The launched core BOUNCES off the dormant one and re-aims at another enemy
       // (it does NOT cost a bruiser-ricochet from its bounce budget — this is terrain,
