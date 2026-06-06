@@ -91,6 +91,19 @@
     g.closePath();
   }
 
+  /* Trace an oriented diamond/shard (long axis rl, short axis rw, rotated ang). */
+  function diamondPath(g, cx, cy, rl, rw, ang) {
+    var ca = Math.cos(ang), sa = Math.sin(ang);
+    function px(lx, ly) { return cx + lx * ca - ly * sa; }
+    function py(lx, ly) { return cy + lx * sa + ly * ca; }
+    g.beginPath();
+    g.moveTo(px(rl, 0),  py(rl, 0));
+    g.lineTo(px(0,  rw), py(0,  rw));
+    g.lineTo(px(-rl, 0), py(-rl, 0));
+    g.lineTo(px(0, -rw), py(0, -rw));
+    g.closePath();
+  }
+
   /* ================================================================
      INIT / CLEANUP
      ================================================================ */
@@ -269,6 +282,7 @@
       strikeDist: C.PRISM_DIST_BY_LVL[lvl],
       fanLateral: C.PRISM_FAN_BY_LVL[lvl],
       killR:      C.PRISM_KILL_BY_LVL[lvl],
+      lvl:        lvl,                     // upgrade level — drives the empowered L2+ look/FX
       chained:    !!opts.at,               // a landing-point prism is itself the Lv3 follow-up → it owes none of its own
       bonus:      !!opts.at,               // ...and it's a BONUS prism: occupies no slot, no respawn chrono when spent
       interceptPrism: null,                // a dormant prism this strike's hitbox swept (→ chain into it at merge)
@@ -426,13 +440,16 @@
     this._prismScoreAccum = 0;
 
     // The crystal bursts and the ship becomes the bolt — big launch juice.
-    this._explode(pr.x, pr.y, [255, 255, 255], 46);
-    for (var k = 0; k < SPECTRUM_RGB.length; k++) this._explode(pr.x, pr.y, SPECTRUM_RGB[k], 14);
-    this._spawnWaveRing(pr.x, pr.y, { maxRadius: 240, color: WHITE,       expandTime: 0.36 });
-    this._spawnWaveRing(pr.x, pr.y, { maxRadius: 150, color: SPECTRUM[4], expandTime: 0.30 });
-    this.cameras.main.flash(180, 238, 248, 255);
-    this.cameras.main.shake(220, 0.018);
-    this._triggerHitstop(90);
+    // L2+ erupts harder: more shards, a wider spectral burst + an extra ring.
+    var hi = pr.lvl >= 2;
+    this._explode(pr.x, pr.y, [255, 255, 255], hi ? 66 : 46);
+    for (var k = 0; k < SPECTRUM_RGB.length; k++) this._explode(pr.x, pr.y, SPECTRUM_RGB[k], hi ? 22 : 14);
+    this._spawnWaveRing(pr.x, pr.y, { maxRadius: hi ? 300 : 240, color: WHITE,       expandTime: hi ? 0.40 : 0.36 });
+    this._spawnWaveRing(pr.x, pr.y, { maxRadius: hi ? 190 : 150, color: SPECTRUM[4], expandTime: 0.30 });
+    if (hi) this._spawnWaveRing(pr.x, pr.y, { maxRadius: 240, color: SPECTRUM[5], expandTime: 0.34 });
+    this.cameras.main.flash(hi ? 210 : 180, 238, 248, 255);
+    this.cameras.main.shake(hi ? 260 : 220, hi ? 0.022 : 0.018);
+    this._triggerHitstop(hi ? 110 : 90);
 
     // The ship rides the centre arrow — stays PRISM (prismCtl) + invulnerable glow.
     p.state = 'PRISM';
@@ -850,11 +867,60 @@
     }
   };
 
+  /* L2+ EMPOWERED dormant look — a COMPOUND gem that refracts in every direction:
+     a turning radial rainbow crown, a wider spectral halo, the main crystal, then a
+     brighter counter-rotating crystal nested INSIDE it (the "gem within the gem"),
+     ringed by a few orbiting spectral shards. `energy` (0 dormant → 1 charged) lets
+     the charging preview reuse this and super-charge it. */
+  M._drawPrismCompound = function (g, pr, A, energy) {
+    var x = pr.x, y = pr.y, r = C.PRISM_RADIUS, gt = this.gameTime;
+    var glow = 0.6 + 0.4 * Math.sin(pr.pulse * 3);
+    var e2   = 0.5 + 0.5 * energy;                    // 0.5 dormant … 1 charged
+
+    // 1) Radial refraction crown — short rainbow rays fanning out all around, slowly
+    //    turning, breathing on game time. Reads as "this gem splits light everywhere".
+    var rays = 12;
+    for (var i = 0; i < rays; i++) {
+      var ra  = pr.dispAng * 0.8 + (i / rays) * TAU;
+      var col = SPECTRUM[i % SPECTRUM.length];
+      var len = r * (1.7 + 0.55 * Math.sin(gt * 1.6 + i * 0.7)) * (1 + 0.35 * energy);
+      g.lineStyle(2, col, (0.12 + 0.10 * energy) * A * glow);
+      g.beginPath();
+      g.moveTo(x + Math.cos(ra) * r * 0.85, y + Math.sin(ra) * r * 0.85);
+      g.lineTo(x + Math.cos(ra) * len,      y + Math.sin(ra) * len);
+      g.strokePath();
+    }
+
+    // 2) Wider layered spectral halo.
+    g.fillStyle(SPECTRUM[5], (0.05 + 0.05 * energy) * A * glow); g.fillCircle(x, y, r * (2.0 + 0.4 * energy));
+    g.fillStyle(SPECTRUM[4], 0.05 * A);                          g.fillCircle(x, y, r * 1.5);
+
+    // 3) Main crystal.
+    this._drawPrismCrystal(g, x, y, r, pr.spin, pr.pulse, A, energy);
+
+    // 4) Inner counter-rotating crystal — the gem WITHIN the gem, smaller + brighter
+    //    (slight built-in energy so its facets shine through the outer body).
+    this._drawPrismCrystal(g, x, y, r * 0.5, -pr.spin * 1.5 + Math.PI / 6, pr.pulse + 1.0, A * 0.9, Math.min(1, 0.4 + energy));
+
+    // 5) Orbiting spectral shards (oriented diamonds with a white spark core).
+    var shards = 3;
+    for (var s = 0; s < shards; s++) {
+      var sa = pr.spin * 1.25 + (s / shards) * TAU;
+      var sr = r * (1.9 + 0.25 * Math.sin(gt * 2 + s));
+      var sx = x + Math.cos(sa) * sr, sy = y + Math.sin(sa) * sr;
+      var sc = SPECTRUM[(s * 2 + Math.floor(gt)) % SPECTRUM.length];
+      g.fillStyle(sc, (0.45 + 0.25 * energy) * A * glow);
+      diamondPath(g, sx, sy, 7 * e2 + 2, 3 * e2 + 1, sa + Math.PI / 2); g.fillPath();
+      g.fillStyle(WHITE, 0.75 * A); g.fillCircle(sx, sy, 1.6);
+    }
+  };
+
   M._renderPrismDormant = function (g, pr) {
     var A = 1;
     this._drawPrismDecal(g, pr.x, pr.y, C.PRISM_TRIGGER_R * 1.05, -pr.spin * 0.7, pr.pulse, A);
     this._drawPrismDispersion(g, pr.x, pr.y, C.PRISM_RADIUS, pr.dispAng, A);
-    this._drawPrismCrystal(g, pr.x, pr.y, C.PRISM_RADIUS, pr.spin, pr.pulse, A, 0);
+    if (pr.lvl >= 2) this._drawPrismCompound(g, pr, A, 0);
+    else             this._drawPrismCrystal(g, pr.x, pr.y, C.PRISM_RADIUS, pr.spin, pr.pulse, A, 0);
   };
 
   M._renderPrismCharging = function (g, pr) {
@@ -911,7 +977,8 @@
       g.fillCircle(x + Math.cos(ma) * mr, y + Math.sin(ma) * mr, 2.4);
     }
 
-    this._drawPrismCrystal(g, x, y, C.PRISM_RADIUS * (1 + 0.12 * energy), pr.spin, pr.pulse, 1, energy);
+    if (pr.lvl >= 2) this._drawPrismCompound(g, pr, 1, energy);
+    else             this._drawPrismCrystal(g, x, y, C.PRISM_RADIUS * (1 + 0.12 * energy), pr.spin, pr.pulse, 1, energy);
 
     // A ring snapping to full as the cannon finishes charging.
     g.lineStyle(2.5, WHITE, 0.7 * energy);
@@ -923,27 +990,34 @@
   M._renderPrismStrike = function (g, pr) {
     var gt = this.gameTime;
     var tw = this._twActive;
-    var as = C.SIZE * 1.5;     // phantom arrow size
+    var hi = pr.lvl >= 2;             // L2+ : a bigger, hotter, prismatic bolt
+    var as = C.SIZE * (hi ? 1.78 : 1.5);     // phantom arrow size
 
     // (No straight origin→arrow wake: the strike can BOUNCE, so a straight ray would
     // cut across the map. The per-arrow chromatic trails trace the real path.)
     for (var i = 0; i < pr.arrows.length; i++) {
       var a = pr.arrows[i];
 
-      // Blazing chromatic streak.
+      // Blazing chromatic streak (L2+ : thicker, brighter).
       for (var t = 0; t < a.trail.length; t++) {
         var tr = a.trail[t];
         if (tr.a <= 0) continue;
         var rr = (t / a.trail.length) * as * 0.9;
-        g.fillStyle(a.col, tr.a * 0.22); g.fillCircle(tr.x, tr.y, rr);
-        g.fillStyle(WHITE, tr.a * 0.10); g.fillCircle(tr.x, tr.y, rr * 0.5);
+        g.fillStyle(a.col, tr.a * (hi ? 0.30 : 0.22)); g.fillCircle(tr.x, tr.y, rr);
+        g.fillStyle(WHITE, tr.a * (hi ? 0.15 : 0.10)); g.fillCircle(tr.x, tr.y, rr * 0.5);
+      }
+
+      // L2+ : an outer spectral aura wrapping the arrow → reads as "supercharged".
+      if (hi) {
+        var au = 0.6 + 0.4 * Math.sin(gt * 16 + i);
+        g.fillStyle(a.col, 0.16 * au); arrowPath(g, a.x, a.y, as * 1.7, a.ang); g.fillPath();
       }
 
       // The arrow itself — a glowing chromatic ship-glyph. The centre one sits
       // under the REAL ship sprite (depth 30) for a clean white-cyan core.
       g.fillStyle(a.col, 0.30); arrowPath(g, a.x, a.y, as * 1.25, a.ang); g.fillPath();
       g.fillStyle(a.col, 0.85); arrowPath(g, a.x, a.y, as, a.ang); g.fillPath();
-      g.lineStyle(1.6, WHITE, 0.9); arrowPath(g, a.x, a.y, as, a.ang); g.strokePath();
+      g.lineStyle(hi ? 2.2 : 1.6, WHITE, 0.9); arrowPath(g, a.x, a.y, as, a.ang); g.strokePath();
     }
 
     // Hot white head flare on the centre arrow.

@@ -220,6 +220,7 @@
       phase: 'DORMANT',
       age: 0, lifeMs: 0, bounces: 0,
       radius: radius, fieldR: fieldR,                  // per-level body + containment-field size
+      lvl: lvl,                                        // upgrade level — drives the empowered L2+ look/FX
       maxBounces:  C.CORE_BOUNCES_BY_LVL[lvl],         // per-level flight (ricochets / speed / blast)
       launchSpeed: C.CORE_SPEED_BY_LVL[lvl],
       expRadius:   C.CORE_EXP_BY_LVL[lvl],
@@ -344,14 +345,16 @@
     // ship gets its usual satisfying landing burst when the dash-attack ends.
     p.hasHitDuringDashAttack = true;
 
-    // Launch juice.
-    this._explode(c.x, c.y, [255, 150, 40],  38);
-    this._explode(c.x, c.y, [255, 240, 200], 22);
-    this._spawnWaveRing(c.x, c.y, { maxRadius: 210, color: HOT,   expandTime: 0.42 });
-    this._spawnWaveRing(c.x, c.y, { maxRadius: 120, color: WHITE, expandTime: 0.30 });
-    this.cameras.main.flash(160, 255, 150, 60);
-    this.cameras.main.shake(180, 0.012);
-    this._triggerHitstop(70);
+    // Launch juice — L2+ erupts harder (bigger rings, more embers, a third ring).
+    var hi = c.lvl >= 2;
+    this._explode(c.x, c.y, [255, 150, 40],  hi ? 56 : 38);
+    this._explode(c.x, c.y, [255, 240, 200], hi ? 34 : 22);
+    this._spawnWaveRing(c.x, c.y, { maxRadius: hi ? 270 : 210, color: HOT,   expandTime: hi ? 0.48 : 0.42 });
+    this._spawnWaveRing(c.x, c.y, { maxRadius: hi ? 155 : 120, color: WHITE, expandTime: 0.30 });
+    if (hi) this._spawnWaveRing(c.x, c.y, { maxRadius: 200, color: EMBER, expandTime: 0.40 });
+    this.cameras.main.flash(hi ? 200 : 160, 255, 150, 60);
+    this.cameras.main.shake(hi ? 230 : 180, hi ? 0.016 : 0.012);
+    this._triggerHitstop(hi ? 90 : 70);
     this._floatLabel(c.x, c.y - c.fieldR, 'NOYAU LIBÉRÉ', '#ff8a3c');
   };
 
@@ -823,8 +826,43 @@
       g.fillCircle(x + Math.cos(a) * fr, y + Math.sin(a) * fr, 2.4);
     }
 
+    // ---- L2+ : a second, COUNTER-rotating containment shell (double blindage) ----
+    // The two hexes crossing make a 12-point star; energy arcs lace them together.
+    if (c.lvl >= 2) {
+      var fr2 = fr * 0.9, fs2 = -c.fieldSpin * 1.3;
+      g.lineStyle(1.6, FIELDHOT, 0.40 * A * pulse); polyPath(g, x, y, fr2, 6, fs2); g.strokePath();
+      for (var j2 = 0; j2 < 6; j2++) {
+        var sa2 = fs2 + (j2 / 6) * TAU;
+        g.fillStyle(WHITE, 0.6 * A * pulse);
+        g.fillCircle(x + Math.cos(sa2) * fr2, y + Math.sin(sa2) * fr2, 1.8);
+      }
+      if (Math.random() < 0.6) {                    // flickering containment arc between the shells
+        var ja  = Math.floor(Math.random() * 6);
+        var oa1 = c.fieldSpin + (ja / 6) * TAU, ia1 = fs2 + (ja / 6) * TAU;
+        g.lineStyle(1.2, FIELDHOT, 0.5 * A);
+        g.beginPath();
+        g.moveTo(x + Math.cos(oa1) * fr,  y + Math.sin(oa1) * fr);
+        g.lineTo(x + Math.cos(ia1) * fr2, y + Math.sin(ia1) * fr2);
+        g.strokePath();
+      }
+    }
+
     // ---- The geometric sphere ----
     this._drawCoreSphere(g, x, y, c.radius, c.spin, pulse, A);
+
+    // ---- L2+ : an inner counter-rotating geometric core + orbiting plasma motes ----
+    // The "core within the core" mirrors the prism's gem-in-gem motif.
+    if (c.lvl >= 2) {
+      this._drawCoreSphere(g, x, y, c.radius * 0.5, -c.spin * 1.4, pulse, 0.85 * A);
+      var orbR = c.radius * 1.5;
+      for (var lo = 0; lo < 3; lo++) {
+        var oa = c.spin * 1.3 + (lo / 3) * TAU;
+        var ox = x + Math.cos(oa) * orbR, oy = y + Math.sin(oa) * orbR;
+        g.fillStyle(EMBER,   0.5 * A * pulse); g.fillCircle(ox, oy, 4.2);
+        g.fillStyle(HOTCORE, 0.8 * A);         g.fillCircle(ox, oy, 2.1);
+        g.fillStyle(WHITE,   0.9 * A);         g.fillCircle(ox, oy, 1.0);
+      }
+    }
 
     // ---- Instability arc, flickering inside the body ----
     if (Math.random() < 0.5) {
@@ -875,9 +913,24 @@
     // ---- Raging plasma ball (no containment field — it burst on launch) ----
     var armed = c.bounces >= c.maxBounces - 1;     // last bounce: about to detonate
     var pulse = 0.6 + 0.4 * Math.sin(gt * (tw ? 5 : (armed ? 28 : 14)));   // slow, breathing pulse under TW
-    g.fillStyle(HOT, 0.18); g.fillCircle(c.x, c.y, r * 1.5 * (0.9 + 0.1 * pulse));
+    // L2+ : a hotter, larger aura so the empowered bolt reads as more dangerous.
+    g.fillStyle(HOT, c.lvl >= 2 ? 0.26 : 0.18); g.fillCircle(c.x, c.y, r * (c.lvl >= 2 ? 1.85 : 1.5) * (0.9 + 0.1 * pulse));
     this._drawCoreSphere(g, c.x, c.y, r, c.spin, pulse, 1);
     g.fillStyle(WHITE, 0.5 * pulse); g.fillCircle(c.x, c.y, r * 0.3 * pulse);
+
+    // ---- L2+ : the same compound motif in flight — an inner counter-rotating core
+    //      plus 3 orbiting plasma motes trailing the bolt. ----
+    if (c.lvl >= 2) {
+      this._drawCoreSphere(g, c.x, c.y, r * 0.5, -c.spin * 1.4, pulse, 0.8);
+      var orbR = r * 1.55;
+      for (var lo = 0; lo < 3; lo++) {
+        var oa = c.spin * 1.6 + (lo / 3) * TAU;
+        var ox = c.x + Math.cos(oa) * orbR, oy = c.y + Math.sin(oa) * orbR;
+        g.fillStyle(EMBER,   (tw ? 0.30 : 0.55) * pulse); g.fillCircle(ox, oy, 4.2);
+        g.fillStyle(HOTCORE, (tw ? 0.5  : 0.8)  * pulse); g.fillCircle(ox, oy, 2.2);
+        g.fillStyle(WHITE,   (tw ? 0.6  : 0.9));          g.fillCircle(ox, oy, 1.0);
+      }
+    }
 
     // ---- The World: warm gold phase-shimmer ON the body (reads as TW, not gray) ----
     if (tw) {
