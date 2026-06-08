@@ -108,9 +108,9 @@
             halo.classList.add('cursor-halo--hover');
           else halo.classList.remove('cursor-halo--hover');
         } else if (t.closest('#_la-go-overlay')) {
-          // Game-over panel: the Steve toggle + name input are non-button clickables
+          // Game-over panel: the Steve toggle, Big-text toggle + name input are non-button clickables
           stopPoll(); halo.classList.remove('cursor-halo--game');
-          if (t.closest('#_la-go-steve-wrap') || t.closest('#_la-go-name'))
+          if (t.closest('#_la-go-steve-wrap') || t.closest('#_la-go-bigtext-wrap') || t.closest('#_la-go-name'))
             halo.classList.add('cursor-halo--hover');
           else halo.classList.remove('cursor-halo--hover');
         } else if (t.closest('#_la-upgrade-overlay')) {
