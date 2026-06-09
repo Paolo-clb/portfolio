@@ -63,6 +63,11 @@
     // tracks which types have fallen (real runs only; tutorial kills don't count).
     this._bossTeamSize      = 2;
     this._bossTypesDefeated = {};
+    // HUD "BOSS x/N" team gauge: total bosses in the current wave + fight-edge flag
+    // (snapshotted on the rising edge of each boss event in _renderUpgradeHUD).
+    this._bossWaveTotal     = 0;
+    this._bossWavePrev      = false;
+    this._bossWaveProg      = 1;
     // FRACTURED DIMENSION run-state (visual refs live in _initDimension):
     //  _dimTransition — the 1000-kill ramp window (cracks growing) is active;
     //  _dimFractured  — we've entered the altered dimension (persists for the run).

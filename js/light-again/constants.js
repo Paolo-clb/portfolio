@@ -84,6 +84,7 @@
     HITSTOP_DUR:        40,
     HITSTOP_MAX:        80,
     DETONATION_HITSTOP: 120,
+    BOSS_KILL_HITSTOP:  150,    // coup de grâce: heaviest freeze in the game, reserved for a boss's killing blow
     IFRAMES_DUR:   800,
     SPAWN_DIST:      650,
     MAX_ENEMIES:     700,

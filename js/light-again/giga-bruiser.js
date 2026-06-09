@@ -786,14 +786,27 @@
 
     // ── BLAST RING — drawn on the body gfx so it tracks the boss exactly ──
     if (blasting) {
-      var ringR = C.GBR_SHOCKWAVE_MAX_RADIUS * blastT;
-      var ringA = 1.0 - blastT;
-      gfx.lineStyle(14, 0xffffff, ringA * 0.85);
-      gfx.strokeCircle(g.x, g.y, ringR);
-      gfx.lineStyle(8, 0xff66ff, ringA * 0.75);
-      gfx.strokeCircle(g.x, g.y, ringR * 0.96);
-      gfx.lineStyle(4, 0x88ddff, ringA * 0.55);
-      gfx.strokeCircle(g.x, g.y, ringR * 1.04);
+      if (this._twActive) {
+        // The World: no knockback fires, so skip the wide outward shock front
+        // (it would read as a phantom shove across the frozen arena). Draw a
+        // ring SNAPPING inward onto the shield instead — pure "re-armour" read,
+        // greyed like the rest of the frozen boss.
+        var snapR = R * 1.40 + (C.GBR_SIZE * 2.4) * (1 - blastT);   // wide → shield radius
+        var snapA = (1 - blastT) * 0.9;
+        gfx.lineStyle(6, this._twGray(0x88ddff), snapA);
+        gfx.strokeCircle(g.x, g.y, snapR);
+        gfx.lineStyle(3, this._twGray(0xffffff), snapA * 0.55);
+        gfx.strokeCircle(g.x, g.y, snapR * 0.93);
+      } else {
+        var ringR = C.GBR_SHOCKWAVE_MAX_RADIUS * blastT;
+        var ringA = 1.0 - blastT;
+        gfx.lineStyle(14, 0xffffff, ringA * 0.85);
+        gfx.strokeCircle(g.x, g.y, ringR);
+        gfx.lineStyle(8, 0xff66ff, ringA * 0.75);
+        gfx.strokeCircle(g.x, g.y, ringR * 0.96);
+        gfx.lineStyle(4, 0x88ddff, ringA * 0.55);
+        gfx.strokeCircle(g.x, g.y, ringR * 1.04);
+      }
     }
 
     // ── SPAWN TELEGRAPH MARKERS ──────────────────────────────────────────
@@ -1040,21 +1053,37 @@
     g.shieldRespawnT = 0;
     g.shieldHitT     = 1.0;       // flash so the reform is super visible
 
-    // BIG visual burst — layered rings (purple core, white shell, cyan trail)
-    this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SHOCKWAVE_MAX_RADIUS,        color: 0xffffff, expandTime: 0.42 });
-    this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SHOCKWAVE_MAX_RADIUS * 0.78, color: 0xff66ff, expandTime: 0.36 });
-    this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SHOCKWAVE_MAX_RADIUS * 0.55, color: 0x9933ff, expandTime: 0.30 });
-    this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SHOCKWAVE_MAX_RADIUS * 0.34, color: 0x88ddff, expandTime: 0.22 });
-    this._explode(g.x, g.y, [255, 255, 255], 70);
-    this._explode(g.x, g.y, [255, 100, 255], 48);
-    this._explode(g.x, g.y, [200, 60, 255],  32);
-    if (shieldWasDown) {
-      // Extra shield-reform burst, cyan accent so the reset reads instantly
-      this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 2.6, color: 0x66ddff, expandTime: 0.20 });
-      this._explode(g.x, g.y, [120, 220, 255], 28);
+    // Visual burst. Outside The World it's a huge outward shock front, paired
+    // with the real knockback below. Under The World the blast can't shove the
+    // (frozen) player or crowd, so that giant wave washing across a stopped
+    // arena just reads as a phantom "push" into the void. Swap it there for a
+    // CONTAINED shield-REFORM flourish centred on the boss — cyan rings snapping
+    // onto the hex, the same language as the natural shield respawn — so the
+    // beat reads purely as "it re-armoured itself", never as a shove.
+    if (this._twActive) {
+      this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 2.6, color: 0x66ddff, expandTime: 0.22 });
+      this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 1.7, color: 0xffffff, expandTime: 0.16 });
+      this._explode(g.x, g.y, [120, 220, 255], 30);
+      this._explode(g.x, g.y, [255, 255, 255], 16);
+      this.cameras.main.flash(150, 160, 220, 255);
+      this.cameras.main.shake(150, 0.010);
+    } else {
+      // BIG visual burst — layered rings (purple core, white shell, cyan trail)
+      this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SHOCKWAVE_MAX_RADIUS,        color: 0xffffff, expandTime: 0.42 });
+      this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SHOCKWAVE_MAX_RADIUS * 0.78, color: 0xff66ff, expandTime: 0.36 });
+      this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SHOCKWAVE_MAX_RADIUS * 0.55, color: 0x9933ff, expandTime: 0.30 });
+      this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SHOCKWAVE_MAX_RADIUS * 0.34, color: 0x88ddff, expandTime: 0.22 });
+      this._explode(g.x, g.y, [255, 255, 255], 70);
+      this._explode(g.x, g.y, [255, 100, 255], 48);
+      this._explode(g.x, g.y, [200, 60, 255],  32);
+      if (shieldWasDown) {
+        // Extra shield-reform burst, cyan accent so the reset reads instantly
+        this._spawnWaveRing(g.x, g.y, { maxRadius: C.GBR_SIZE * 2.6, color: 0x66ddff, expandTime: 0.20 });
+        this._explode(g.x, g.y, [120, 220, 255], 28);
+      }
+      this.cameras.main.flash(220, 255, 200, 255);
+      this.cameras.main.shake(380, 0.024);
     }
-    this.cameras.main.flash(220, 255, 200, 255);
-    this.cameras.main.shake(380, 0.024);
     this._triggerHitstop(C.DEFLECT_HEAVY_HS);
 
     // During The World the shockwave is purely a defensive re-shield — it must

@@ -93,6 +93,17 @@
               (this._snakeList  && this._snakeList.length));
   };
 
+  /* How many mini-bosses are LIVING right now (excludes ones already mid death-
+     animation — they've left their lists). Feeds the HUD "BOSS x/N" team gauge. */
+  M._countBossesAlive = function () {
+    var n = 0;
+    if (this._anomaly) n++;
+    if (this._gigaList)   n += this._gigaList.length;
+    if (this._mirrorList) n += this._mirrorList.length;
+    if (this._snakeList)  n += this._snakeList.length;
+    return n;
+  };
+
   /* Has every distinct boss type fallen at least once this run? (Unlocks teams.) */
   M._allBossTypesDefeated = function () {
     var d = this._bossTypesDefeated || {};
@@ -994,6 +1005,94 @@
   /* ================================================================
      DEATH — shatter barrier, resume spawns, drop a free upgrade
      ================================================================ */
+  /* ZONE COLLAPSE — the firewall "quarantine" field caving in the instant the
+     Anomaly dies (fired HERE at kill-time, not in the ~2 s-delayed death blast,
+     so destroying the boss visibly pops its zone right away). Deliberately its
+     own visual language — a glitchy RGB-split ring that CONTRACTS inward and
+     shreds into digital fragments, collapsing to a singularity at the centre —
+     so it never reads like the round particle explosions or the white finisher
+     star. Runs on the tween timeline → animates straight through the kill
+     hitstop. Its own graphics object, so it survives _clearAnomaly. */
+  M._anomalyZoneCollapse = function (bx, by, R) {
+    if (!R || R < 1) return;
+    var self = this;
+    var gfx = this.add.graphics();
+    gfx.setDepth(8);                       // floor-level field, beneath the action
+    gfx.setBlendMode(Phaser.BlendModes.ADD);
+
+    // Static tear pattern so the shredding arcs are stable across the collapse.
+    var TEARS = 14, tears = [];
+    for (var ti = 0; ti < TEARS; ti++) {
+      tears.push({ a: Math.random() * TAU, w: 0.10 + Math.random() * 0.30, rf: 0.5 + Math.random() * 0.5 });
+    }
+
+    var state = { t: 0 };
+    this.tweens.add({
+      targets: state, t: 1, duration: 520, ease: 'Quart.easeIn',   // accelerates inward
+      onUpdate: function () {
+        if (!self._upgradeLevels) { gfx.clear(); return; }
+        var t     = state.t;
+        var a     = 1 - t * 0.8;                       // stays bright, fades late
+        var rr    = R * (1 - t);                        // ring contracts to the centre
+        var split = (3 + 20 * t) * (1 - t);             // chromatic split peaks mid-collapse
+        var rot   = t * 7.0;
+        gfx.clear();
+
+        // Central singularity flash — swells as the field caves into a point.
+        var coreA = t * t;
+        gfx.fillStyle(0xff2266, coreA * 0.5);
+        gfx.fillCircle(bx, by, 4 + 26 * coreA);
+        gfx.fillStyle(0xffffff, coreA * 0.9);
+        gfx.fillCircle(bx, by, 2 + 11 * coreA);
+        if (rr < 2) return;                             // ring gone → only the core remains
+
+        // Faint interior wash shrinking with the ring.
+        gfx.fillStyle(0xff0033, 0.06 * (1 - t));
+        gfx.fillCircle(bx, by, rr);
+
+        // RGB-split main ring (chromatic aberration — the Anomaly's signature).
+        gfx.lineStyle(3, 0xff0033, a * 0.85);
+        gfx.strokeCircle(bx + split, by, rr);
+        gfx.lineStyle(3, 0x00ff66, a * 0.7);
+        gfx.strokeCircle(bx - split * 0.6, by + split * 0.5, rr);
+        gfx.lineStyle(3, 0x3388ff, a * 0.7);
+        gfx.strokeCircle(bx - split * 0.4, by - split * 0.6, rr);
+        gfx.lineStyle(1.4, 0xffffff, a * 0.6);
+        gfx.strokeCircle(bx, by, rr * 0.99);
+
+        // Spinning firewall dashes, tightening as it implodes.
+        var segs = 40, dash = (TAU / segs) * 0.5;
+        for (var s = 0; s < segs; s++) {
+          var a1 = rot + (TAU / segs) * s;
+          gfx.lineStyle(2.5, 0xff5577, a * (0.3 + 0.3 * Math.sin(t * 30 + s)));
+          gfx.beginPath(); gfx.arc(bx, by, rr, a1, a1 + dash); gfx.strokePath();
+        }
+
+        // Digital "tear" fragments — short arcs flickering at jittered radii.
+        for (var k = 0; k < TEARS; k++) {
+          if (Math.random() < 0.25) continue;           // flicker on/off
+          var tr = tears[k];
+          var fr = rr * tr.rf + (Math.random() - 0.5) * 10;
+          if (fr < 2) continue;
+          var aa = tr.a + rot * 0.4;
+          gfx.lineStyle(2, Math.random() < 0.5 ? 0xffffff : 0x00ffcc, a * 0.8);
+          gfx.beginPath(); gfx.arc(bx, by, fr, aa, aa + tr.w); gfx.strokePath();
+        }
+
+        // Inward-streaking spokes — energy sucked toward the singularity.
+        for (var sp = 0; sp < 10; sp++) {
+          var ga = rot * 0.5 + (TAU / 10) * sp;
+          gfx.lineStyle(1.2, 0xff3355, a * 0.4);
+          gfx.beginPath();
+          gfx.moveTo(bx + Math.cos(ga) * rr, by + Math.sin(ga) * rr);
+          gfx.lineTo(bx + Math.cos(ga) * rr * (0.55 - 0.3 * t), by + Math.sin(ga) * rr * (0.55 - 0.3 * t));
+          gfx.strokePath();
+        }
+      },
+      onComplete: function () { gfx.destroy(); },
+    });
+  };
+
   M._killAnomaly = function () {
     var a = this._anomaly;
     if (!a || a.dead) return;
@@ -1005,17 +1104,21 @@
     // this was the LAST boss (set by _beginBossDeath via _bossDraftPending).
     this._anomalyBarrierActive = false;
 
+    // Pop the quarantine zone NOW (at the killing blow), not at the delayed boss
+    // blast — its glitch-implosion is distinct from both the finisher star and
+    // the RGB death burst below.
+    this._anomalyZoneCollapse(bx, by, R);
+
     this._beginBossDeath(ex, ey, {
       type: 'anomaly', label: 'ANOMALY PURGED',
       color: '#ff66cc', glow: '#ff66cc', ringColor: 0xff2255, coreColor: 0xff44aa, expCol: [255, 80, 180],
       explode: function (x, y) {
-        // RGB death burst + barrier collapse
+        // RGB death burst (the zone already collapsed at kill-time, so no
+        // barrier-sized rings here — just the boss's own chromatic blast).
         this._explode(x, y, [255, 40, 40],  50);
         this._explode(x, y, [40, 255, 40],  40);
         this._explode(x, y, [60, 120, 255], 40);
         this._explode(x, y, [255, 255, 255], 30);
-        this._spawnWaveRing(x, y,   { maxRadius: R * 1.05, color: 0xffffff, expandTime: 0.30 });
-        this._spawnWaveRing(bx, by, { maxRadius: R,        color: 0xff2255, expandTime: 0.40 });
         this.cameras.main.flash(280, 255, 255, 255);
         this.cameras.main.shake(300, 0.020);
         this._triggerHitstop(C.DETONATION_HITSTOP);

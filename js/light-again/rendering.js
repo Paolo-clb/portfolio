@@ -974,15 +974,29 @@
 
       var kcText, kcColor, kcRatio, kcBarA;
       if (bossAlive) {
-        // Counter is "paused" — kills during a boss fight don't count. Show DANGER.
+        // Counter is "paused" — kills during a boss fight don't count. The band
+        // reads BOSS (single) or, for a TEAM event, a "BOSS killed/total" gauge so
+        // you can see how far through the wave you are. Capture the wave total on
+        // the rising edge of the fight (all team members spawn the same frame), then
+        // killed = total − still-living (a member that just died left its list, so
+        // the count ticks up the instant the killing blow lands).
+        var bAlive = this._countBossesAlive ? this._countBossesAlive() : 1;
+        if (!this._bossWavePrev) this._bossWaveTotal = bAlive;          // new wave → snapshot
+        if (bAlive > (this._bossWaveTotal || 0)) this._bossWaveTotal = bAlive;  // self-heal / debug spawns
+        var bTotal  = this._bossWaveTotal || 1;
+        var bKilled = Math.max(0, bTotal - bAlive);
+
         var dPulse = 0.5 + 0.5 * Math.abs(Math.sin(this.gameTime * Math.PI * 3));
-        kcText  = '⚠ DANGER';
+        kcText  = bTotal > 1 ? '⚠ BOSS ' + bKilled + '/' + bTotal : '⚠ BOSS';
         kcColor = '#ff3344';
         kcRatio = 0;
         kcBarA  = 0.45 + 0.45 * dPulse;
+        // The bar fills with the wave's kill progress (team), or stays solid (solo).
+        this._bossWaveProg = bTotal > 1 ? bKilled / bTotal : 1;
         this._killCounterTxt.setScale(1.0);
         this._killCounterTxt.setAlpha(0.7 + dPulse * 0.3);
       } else {
+        this._bossWaveTotal = 0;   // fight over — clear the snapshot for the next wave
         var killsLeft = Math.max(0, (this._bossKillThreshold || 0) - this.totalKills);
         if (this._lastKillsLeft !== killsLeft) {
           this._lastKillsLeft    = killsLeft;
@@ -1011,6 +1025,8 @@
           this._killCounterTxt.setAlpha(0.78 + (this._killCounterPulse || 0) * 0.22);
         }
       }
+      // Track the boss-fight edge so the next rising edge re-snapshots the wave total.
+      this._bossWavePrev = bossAlive;
       // Guard setText/setColor behind a last-value cache: both re-rasterise the
       // text canvas, and kcText ('☠ ' + killsLeft) only changes on a kill while
       // kcColor only changes at a threshold — so this was re-uploading an
@@ -1031,8 +1047,10 @@
       this._killCounterTxt.setPosition(w - _upMarginR + _kcJx, iy - 34 + _kcJy);
       this._killCounterTxt.setVisible(true);
 
-      // Thin progress bar aligned to counter right edge
-      var prog  = bossAlive ? 1 : 1 - Math.min(1, kcRatio);
+      // Thin progress bar aligned to counter right edge. During a fight it tracks
+      // the wave kill progress (team) or stays solid (solo); otherwise it counts
+      // down toward the next boss.
+      var prog  = bossAlive ? (this._bossWaveProg != null ? this._bossWaveProg : 1) : 1 - Math.min(1, kcRatio);
       var pbW   = 100;
       var pbX   = w - _upMarginR - pbW;
       var pbY   = iy - 20;

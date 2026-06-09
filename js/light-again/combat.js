@@ -180,6 +180,113 @@
 
   /* Lethal hit → queue the death animation. Call AFTER the boss has removed itself
      from its live list (so _anyBossAlive reflects the remaining team). */
+  /* COUP DE GRÂCE — fired the instant a boss's HP hits zero, before the slow
+     retract → explosion. It exists purely to MARK the kill (the death blast only
+     lands ~2 s later, so without this the killing blow reads as "nothing
+     happened, then it died"). Deliberately particle-free: a sharp graphic
+     star-burst of radial spikes + a crisp snap ring + a white freeze-frame
+     flash, so it punctuates the hit without duplicating the death explosion's
+     look. Driven on the tween timeline → animates through the hitstop freeze,
+     which is exactly the "frozen game, finisher flashes" feel we want. */
+  M._bossKillStrike = function (ex, ey, opts) {
+    opts = opts || {};
+    var col  = opts.ringColor || 0xffffff;
+    var self = this;
+
+    // Heaviest freeze in the game + a strong white flash for the "frozen frame".
+    // Set the hitstop directly (bypassing _triggerHitstop's normal cap) — this
+    // single climactic moment is allowed to freeze harder than a detonation.
+    this.hitstopTimer = Math.max(this.hitstopTimer, C.BOSS_KILL_HITSTOP);
+    this.timeScale = 0;
+    this.cameras.main.flash(150, 255, 255, 255);
+    this.cameras.main.shake(260, 0.019);
+
+    var gfx = this.add.graphics();
+    gfx.setDepth(64);
+    gfx.setBlendMode(Phaser.BlendModes.ADD);
+
+    var SPIKES  = 12;
+    var baseAng = Math.random() * Math.PI * 2;
+    var state   = { t: 0 };
+    this.tweens.add({
+      targets: state, t: 1, duration: 460, ease: 'Cubic.easeOut',
+      onUpdate: function () {
+        if (!self._upgradeLevels) { gfx.clear(); return; }
+        var t    = state.t;
+        var a    = 1 - t;                                   // linear fade
+        var ease = 1 - (1 - t) * (1 - t) * (1 - t);         // easeOutCubic radius
+        gfx.clear();
+
+        // ── CROSS LENS-FLARE — screen-axis beams that bloom big then snap shut.
+        // A bright "critical hit" sparkle, the most readable layer.
+        var flare = Math.sin(Math.min(1, t * 1.7) * Math.PI);   // 0→1→0, peaks early
+        if (flare > 0.01) {
+          var fLen = 80 + 300 * flare;
+          var fW   = 2.2 + 5.5 * flare;
+          for (var f = 0; f < 4; f++) {
+            var fa  = (Math.PI / 2) * f;                         // N / E / S / W
+            var fp  = fa + Math.PI / 2;
+            gfx.fillStyle(0xffffff, flare * 0.9);
+            gfx.beginPath();
+            gfx.moveTo(ex + Math.cos(fa) * fLen, ey + Math.sin(fa) * fLen);
+            gfx.lineTo(ex + Math.cos(fp) * fW,   ey + Math.sin(fp) * fW);
+            gfx.lineTo(ex - Math.cos(fp) * fW,   ey - Math.sin(fp) * fW);
+            gfx.closePath();
+            gfx.fillPath();
+          }
+          // Bright core pin (kept small + a faint coloured halo — NOT a fill burst).
+          gfx.fillStyle(col, flare * 0.30);
+          gfx.fillCircle(ex, ey, 10 + 18 * flare);
+          gfx.fillStyle(0xffffff, flare);
+          gfx.fillCircle(ex, ey, 3 + 9 * flare);
+        }
+
+        // ── STAR-BURST — long white spikes (front) over the cross flare.
+        var reachW = 60 + 250 * ease;
+        var inner  = 12 + 26 * t;
+        for (var i = 0; i < SPIKES; i++) {
+          var ang  = baseAng + (Math.PI * 2 / SPIKES) * i;
+          var perp = ang + Math.PI / 2;
+          var hw   = 6.5 * (1 - t) + 1.3;
+          var tx = ex + Math.cos(ang) * reachW, ty = ey + Math.sin(ang) * reachW;
+          var bx = ex + Math.cos(ang) * inner,  by = ey + Math.sin(ang) * inner;
+          gfx.fillStyle(0xffffff, a * 0.95);
+          gfx.beginPath();
+          gfx.moveTo(tx, ty);
+          gfx.lineTo(bx + Math.cos(perp) * hw, by + Math.sin(perp) * hw);
+          gfx.lineTo(bx - Math.cos(perp) * hw, by - Math.sin(perp) * hw);
+          gfx.closePath();
+          gfx.fillPath();
+        }
+        // ── …and shorter boss-coloured spikes, interleaved, for body + colour.
+        var reachC = 40 + 160 * ease;
+        for (var j = 0; j < SPIKES; j++) {
+          var a2  = baseAng + (Math.PI * 2 / SPIKES) * j + Math.PI / SPIKES;
+          var p2  = a2 + Math.PI / 2;
+          var hw2 = 9 * (1 - t) + 2;
+          var tx2 = ex + Math.cos(a2) * reachC,        ty2 = ey + Math.sin(a2) * reachC;
+          var bx2 = ex + Math.cos(a2) * (inner * 0.7), by2 = ey + Math.sin(a2) * (inner * 0.7);
+          gfx.fillStyle(col, a * 0.7);
+          gfx.beginPath();
+          gfx.moveTo(tx2, ty2);
+          gfx.lineTo(bx2 + Math.cos(p2) * hw2, by2 + Math.sin(p2) * hw2);
+          gfx.lineTo(bx2 - Math.cos(p2) * hw2, by2 - Math.sin(p2) * hw2);
+          gfx.closePath();
+          gfx.fillPath();
+        }
+
+        // ── LAYERED SNAP RINGS — crisp + fast, distinct from the soft death rings.
+        gfx.lineStyle(4 * a + 1.5, 0xffffff, a * 0.95);
+        gfx.strokeCircle(ex, ey, reachW * 0.74);
+        gfx.lineStyle(2.5, col, a * 0.8);
+        gfx.strokeCircle(ex, ey, reachW * 0.92);
+        gfx.lineStyle(1.5, col, a * 0.4);
+        gfx.strokeCircle(ex, ey, reachW * 1.14);
+      },
+      onComplete: function () { gfx.destroy(); },
+    });
+  };
+
   M._beginBossDeath = function (ex, ey, opts) {
     opts = opts || {};
     if (!this._bossDeaths) this._bossDeaths = [];
@@ -197,11 +304,11 @@
     // Curse-Fountain / Cache pacing: every defeated boss counts.
     if (this._noteBossDefeat) this._noteBossDefeat();
 
-    // A small "locked-in" punch so the kill registers before the slow retract.
-    this._explode(ex, ey, [255, 255, 255], 16);
-    this._spawnWaveRing(ex, ey, { maxRadius: 70, color: opts.ringColor || 0xffffff, expandTime: 0.18 });
-    this.cameras.main.shake(120, 0.006);
-    this._triggerHitstop(C.HITSTOP_DUR);
+    // Coup de grâce — a sharp, particle-free "finisher" + heavy hitstop so the
+    // killing blow reads the instant it lands, well before the ~2 s retract →
+    // explosion. The death blast keeps the particle burst, so the two beats
+    // stay visually distinct.
+    this._bossKillStrike(ex, ey, opts);
 
     this._bossDeaths.push({
       x: ex, y: ey, t: 0, dur: C.BOSS_DEATH_RING_S,
