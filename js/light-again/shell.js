@@ -1627,20 +1627,18 @@
     }
     closeBtn.focus();
 
-    /* --- Keyboard: Escape is context-aware on the desktop build ---
-       Browser portfolio (no quit hook): Esc dismisses the modal as before —
-       standard "Escape closes the overlay" behaviour.
-       Desktop (.exe) build (window.__laQuit registered by the launcher):
-         • Help popup open      → close just the popup (innermost layer first).
-         • Live run playing      → PAUSE into the menu instead of tearing the
-           game down. An accidental Esc mid-fight must never kill the run, and
-           the old close→relaunch bounce was the desktop crash culprit.
-         • Menu / pause menu / game-over → quit the app cleanly (via __laQuit). */
+    /* --- Keyboard: Escape is context-aware (browser & desktop alike) ---
+         • Help popup open       → close just the popup (innermost layer first).
+         • Live run playing        → PAUSE into the menu, exactly like clicking
+           the in-game ⏸ button. An accidental Esc mid-fight must never kill the
+           run (this also avoided the old desktop close→relaunch crash bounce).
+         • Menu / pause menu / game-over → leave the game: the browser dismisses
+           the modal back to the page, the desktop (.exe) build quits the app
+           cleanly via __laQuit. (requestCloseGame picks the right one.) */
     overlayEl._onKeyDown = function (e) {
       if (e.key !== 'Escape') return;
       if (helpPopupEl) { closeHelpPopup(false); return; }
-      var isDesktop = (typeof window.__laQuit === 'function');
-      if (isDesktop && activeGame && !menuEl && !isLightAgainGameOverOpen() &&
+      if (activeGame && !menuEl && !isLightAgainGameOverOpen() &&
           typeof homeToggleFn === 'function') {
         homeToggleFn();   // pause the run + open the (pause) menu
         return;
