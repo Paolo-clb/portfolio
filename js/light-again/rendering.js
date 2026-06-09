@@ -991,12 +991,25 @@
         var kDt = dt || 0.016;
         this._killCounterPulse = Math.max(0, (this._killCounterPulse || 0) - kDt * 3.5);
         var kcInterval = this._bossKillInterval || C.BOSS_KILL_INTERVAL;
-        kcRatio = killsLeft / kcInterval;  // 1.0 just after a boss → 0.0 at the next one
-        kcColor = kcRatio <= 0.10 ? '#ff7733' : kcRatio <= 0.25 ? '#ffcc44' : '#6699bb';
-        kcText  = '☠ ' + killsLeft;   // ☠ kills-to-boss
-        kcBarA  = 0.72;
-        this._killCounterTxt.setScale(1.0 + (this._killCounterPulse || 0) * 0.22);
-        this._killCounterTxt.setAlpha(0.78 + (this._killCounterPulse || 0) * 0.22);
+        var dimP = (this._dimTransition && this._dimFractureProgress) ? this._dimFractureProgress() : 0;
+        this._dimCounterJitter = dimP;
+        if (this._dimTransition) {
+          // FRACTURE RAMP: the counter reads the fixed 1000-kill window and visibly
+          // CORRUPTS — rift-tinted, throbbing + jittering harder as the tear deepens.
+          kcRatio = killsLeft / (C.DIM_FRACTURE_KILLS || 1000);
+          kcColor = dimP > 0.75 ? '#ff5df0' : dimP > 0.40 ? '#e24dff' : '#b06dff';
+          kcText  = '☠ ' + killsLeft;
+          kcBarA  = 0.85;
+          this._killCounterTxt.setScale(1.0 + Math.sin(this.gameTime * 20) * 0.06 * dimP + (this._killCounterPulse || 0) * 0.18);
+          this._killCounterTxt.setAlpha(0.82 + 0.18 * Math.abs(Math.sin(this.gameTime * 7)));
+        } else {
+          kcRatio = killsLeft / kcInterval;  // 1.0 just after a boss → 0.0 at the next one
+          kcColor = kcRatio <= 0.10 ? '#ff7733' : kcRatio <= 0.25 ? '#ffcc44' : '#6699bb';
+          kcText  = '☠ ' + killsLeft;   // ☠ kills-to-boss
+          kcBarA  = 0.72;
+          this._killCounterTxt.setScale(1.0 + (this._killCounterPulse || 0) * 0.22);
+          this._killCounterTxt.setAlpha(0.78 + (this._killCounterPulse || 0) * 0.22);
+        }
       }
       // Guard setText/setColor behind a last-value cache: both re-rasterise the
       // text canvas, and kcText ('☠ ' + killsLeft) only changes on a kill while
@@ -1010,7 +1023,12 @@
         this._lastKcColor = kcColor;
         this._killCounterTxt.setColor(kcColor);
       }
-      this._killCounterTxt.setPosition(w - _upMarginR, iy - 34);
+      var _kcJx = 0, _kcJy = 0;
+      if (this._dimTransition) {
+        var _jA = 2 + 6 * (this._dimCounterJitter || 0);   // glitch shudder, harder as the tear deepens
+        _kcJx = (Math.random() - 0.5) * _jA; _kcJy = (Math.random() - 0.5) * _jA;
+      }
+      this._killCounterTxt.setPosition(w - _upMarginR + _kcJx, iy - 34 + _kcJy);
       this._killCounterTxt.setVisible(true);
 
       // Thin progress bar aligned to counter right edge
@@ -1018,7 +1036,7 @@
       var pbW   = 100;
       var pbX   = w - _upMarginR - pbW;
       var pbY   = iy - 20;
-      var pbCol = bossAlive ? 0xff3344 : (kcRatio <= 0.10 ? 0xff7733 : kcRatio <= 0.25 ? 0xffcc44 : 0x3366aa);
+      var pbCol = bossAlive ? 0xff3344 : this._dimTransition ? 0xe24dff : (kcRatio <= 0.10 ? 0xff7733 : kcRatio <= 0.25 ? 0xffcc44 : 0x3366aa);
       this.hudGfx.fillStyle(pbCol, 0.10);
       this.hudGfx.fillRect(pbX, pbY, pbW, 3);
       this.hudGfx.fillStyle(pbCol, kcBarA);

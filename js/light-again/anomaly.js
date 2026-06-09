@@ -136,6 +136,7 @@
     // threshold. No new event while ANY boss is alive, mid death-animation, during
     // the tutorial, a draft, or the post-boss board-clear. The HUD shows the count.
     if (this._tutorialActive) return;
+    if (this._dimPortalActive) return;   // mid portal cinematic → it spawns the team itself
     if (this._anyBossAlive()) return;
     if (this._bossDeaths && this._bossDeaths.length) return;   // a boss is mid death-anim
     if (!this.p || this.p.state === 'DEAD') return;
@@ -153,16 +154,29 @@
     var NUM  = M._BOSS_TYPES.length;
     var size = Math.max(2, Math.min(this._bossTeamSize || 2, NUM));
     var team = this._drawBossTeam(size);
+
+    // The FIRST team arrives through the PORTAL cinematic (board swept → vortex
+    // engulfs → emerge in the altered dimension WITH the team). Subsequent teams
+    // spawn directly into the already-fractured world.
+    if (this._dimTransition && this._beginDimPortal) {
+      this._dimPendingTeam     = team;
+      this._dimPendingTeamSize = size;
+      this._beginDimPortal();
+      return;
+    }
+
+    this._spawnTeamNow(team);
+    this._bossTeamSize = Math.min(size + 1, NUM);
+  };
+
+  /* Spawn a drawn team around the player (fanned out so entrances don't stack). */
+  M._spawnTeamNow = function (team) {
     var base = Math.random() * TAU;
     for (var i = 0; i < team.length; i++) {
-      // Fan members out evenly around the player (+ a little jitter) so their
-      // cinematic entrances don't all stack on the same spot.
       var ang  = base + (i / team.length) * TAU + (Math.random() - 0.5) * 0.4;
       var dist = 720 + Math.random() * 220;
       this._spawnBossOfType(team[i], { angle: ang, dist: dist });
     }
-    // Next team is one bigger, up to the cap.
-    this._bossTeamSize = Math.min(size + 1, NUM);
   };
 
   /* Keep every team boss inside a live Anomaly firewall (spec: "un boss qui
@@ -195,15 +209,25 @@
     }
   };
 
-  /* DEBUG (KeyR): unlock team mode + drop the kill gate so the very next frame's
-     _maybeSpawnAnomaly fires a real TEAM. No-op while a boss / death-anim is live. */
+  /* DEBUG (KeyR): drive the whole end-game sequence for testing. First press (not
+     yet fractured) ARMS a SHORT fracture ramp so the counter corruption + the map
+     tearing open are quick to watch; once that ramp/the dimension is reached, a
+     press drops the gate so the next TEAM spawns (+ the entry snap the first time).
+     No-op while a boss / death-anim / draft is live. */
   M._forceBossTeam = function () {
     if (!this.p || this.p.state === 'DEAD') return;
     if (this._anyBossAlive() || (this._bossDeaths && this._bossDeaths.length)) return;
     if (this._bossDraftPending || this._upgradeDraftOpen || this._upSlowMoPhase) return;
     if (!this._bossTypesDefeated) this._bossTypesDefeated = {};
     for (var i = 0; i < M._BOSS_TYPES.length; i++) this._bossTypesDefeated[M._BOSS_TYPES[i]] = true;
-    this._bossKillThreshold = this.totalKills;   // gate met → team spawns next frame
+    if (this._dimFractured || this._dimTransition) {
+      this._bossKillThreshold = this.totalKills;   // already ramping / in the dimension → team next frame
+    } else {
+      // Arm a short ramp so the fracture build-up + snap are testable fast.
+      this._dimTransition      = true;
+      this._fractureStartKills = this.totalKills;
+      this._bossKillThreshold  = this.totalKills + 30;
+    }
   };
 
   /* ================================================================

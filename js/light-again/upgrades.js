@@ -63,6 +63,12 @@
     // tracks which types have fallen (real runs only; tutorial kills don't count).
     this._bossTeamSize      = 2;
     this._bossTypesDefeated = {};
+    // FRACTURED DIMENSION run-state (visual refs live in _initDimension):
+    //  _dimTransition — the 1000-kill ramp window (cracks growing) is active;
+    //  _dimFractured  — we've entered the altered dimension (persists for the run).
+    this._dimTransition      = false;
+    this._dimFractured       = false;
+    this._fractureStartKills = 0;
     this._bossDraftPending  = false;   // suppresses enemy spawns from boss death until the draft closes
     this._draftPicksRemaining = 0;     // boss kill grants BOSS_DRAFT_PICKS sequential picks
     this._upgradeDraftOpen     = false;
@@ -89,6 +95,16 @@
   /* Advance the kill counter for the NEXT boss. Called on boss death so kills
      scored DURING a boss fight don't shorten the next gap (counter "pauses"). */
   M._advanceBossThreshold = function () {
+    // FRACTURED DIMENSION gate: the instant every boss type has been beaten once,
+    // the first team is gated behind a fixed DIM_FRACTURE_KILLS ramp (BOTH modes)
+    // — the counter reads 1000 and the map tears open as it counts down. Armed once.
+    if (!this._dimFractured && !this._dimTransition &&
+        this._allBossTypesDefeated && this._allBossTypesDefeated()) {
+      this._dimTransition      = true;
+      this._fractureStartKills = this.totalKills;
+      this._bossKillThreshold  = this.totalKills + C.DIM_FRACTURE_KILLS;
+      return;
+    }
     if (window.__laGameMode === 'hardcore') {
       this._bossKillInterval += C.BOSS_KILL_INTERVAL_HC_STEP;   // 100 → 200 → 300 …
     }

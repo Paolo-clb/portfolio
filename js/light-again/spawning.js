@@ -34,6 +34,11 @@
     for (i = 0; i < C.BAG_T1; i++) bag.push(1);
     for (i = 0; i < C.BAG_T2; i++) bag.push(2);
     for (i = 0; i < C.BAG_T3; i++) bag.push(3);
+    // FRACTURED DIMENSION: T4 snipers join the rotation + a harder generator mix.
+    if (this._dimFractured) {
+      for (i = 0; i < (C.BAG_T4_DIM || 0); i++) bag.push(4);
+      for (i = 0; i < (C.BAG_T3_DIM || 0); i++) bag.push(3);
+    }
     return bag;
   };
 

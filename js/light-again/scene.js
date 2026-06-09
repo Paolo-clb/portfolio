@@ -482,6 +482,7 @@
       this._initGigaBruiser();
       this._initMirror();
       this._initSnake();
+      this._initDimension();
       this._initDigitalTree();
       this._initCurseFount();
       this._initDataHighways();
@@ -720,6 +721,7 @@
         if (self._clearMirror)      self._clearMirror(true);
         if (self._clearSnake)       self._clearSnake(true);
         if (self._clearBossDeaths)  self._clearBossDeaths();
+        if (self._clearDimension)   self._clearDimension();
         if (self._clearDigitalTree) self._clearDigitalTree(true);
         if (self._clearFairy)       self._clearFairy();
         if (self._clearCurseFount)  self._clearCurseFount(true);
@@ -896,9 +898,9 @@
       var pS60 = pDt * 60;
       var pMs  = pDt * 1000;
 
-      // Anomaly intro cinematic: freeze BOTH the world AND the player (the
-      // boss itself is driven by real-time inside _updateAnomaly).
-      if (this._anomalyIntroActive) {
+      // Anomaly intro / dimension PORTAL cinematics: freeze BOTH the world AND the
+      // player (each is driven on real time inside its own branch below).
+      if (this._anomalyIntroActive || this._dimPortalActive) {
         sDt = 0; s60 = 0; ms  = 0;
         pDt = 0; pS60 = 0; pMs = 0;
       }
@@ -940,7 +942,7 @@
         }
       }
 
-      if (ms < 0.001 && pMs < 0.001 && !this._anomalyIntroActive) {
+      if (ms < 0.001 && pMs < 0.001 && !this._anomalyIntroActive && !this._dimPortalActive) {
         this._decayGhosts(dt);
         // While the fairy is reviving, the ship is "dead" (hidden) — don't let
         // the hitstop frame flicker it back on; the revive owns its rendering.
@@ -962,6 +964,21 @@
         this._updateWaveRings(dt);
         this._updateCondemnedDeathRings(dt);
         this._updateHiveBeams(dt);
+        this._renderPlayer();
+        this._renderEnemies();
+        this._renderProjectiles(dt);
+        this._renderHUD(dt);
+        return;
+      }
+
+      // Dimension PORTAL cinematic: the world is frozen while the vortex sweeps the
+      // board, engulfs the player and carries the run into the altered dimension
+      // (which it then enters + spawns the first team). Driven on REAL dt.
+      if (this._dimPortalActive) {
+        this._decayGhosts(dt);
+        this._updateDimPortal(dt);
+        this._updateWaveRings(dt);
+        this._updateDimension(dt);
         this._renderPlayer();
         this._renderEnemies();
         this._renderProjectiles(dt);
@@ -1183,7 +1200,7 @@
       // Natural spawns pause while the anomaly's quarantine barrier is up, and
       // during the tutorial (which curates its own lesson environments) — except
       // the final sandbox step, where the real wheel-paced spawner is the lesson.
-      if (this.spawnTimer > -999000 && !this._anomalyBarrierActive && !this._bossDraftPending && (!this._tutorialActive || this._tutSandboxStep)) {
+      if (this.spawnTimer > -999000 && !this._anomalyBarrierActive && !this._bossDraftPending && !this._dimPortalActive && (!this._tutorialActive || this._tutSandboxStep)) {
         this.spawnTimer += ms;
         var _sandbox = (window.__laGameMode === 'sandbox');
         // Sandbox: steady one-by-one stream, paced live by the mouse wheel.
@@ -1204,6 +1221,7 @@
       // (all run on real time so they stay smooth through hitstop / The World).
       this._updateClearWave(dt);
       this._updateBossDeaths(dt);
+      this._updateDimension(dt);   // fractured-dimension rifts + palette drift (real dt, visual)
       this._updateSpeedUi(dt);
 
       this._shieldAngle += sDt * 1.8;

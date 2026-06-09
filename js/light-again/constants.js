@@ -86,7 +86,7 @@
     DETONATION_HITSTOP: 120,
     IFRAMES_DUR:   800,
     SPAWN_DIST:      650,
-    MAX_ENEMIES:     1000,
+    MAX_ENEMIES:     700,
 
     /* ---- Steve skin: enchanted-netherite dash-attack animation ---- */
     NETH_FRAMES: 60,   // frames in the spritesheet (5 cols × 12 rows)
@@ -210,6 +210,14 @@
     BOSS_KILL_INTERVAL_HC_STEP:  100,    // hardcore: gap grows by this each boss
     BOSS_KILL_SCORE:             10000,  // base points a boss awards on death (×combo)
     BOSS_DEATH_RING_S:           2.0,    // seconds of the stylish ring-retract death animation before a boss explodes
+    /* ---- FRACTURED DIMENSION ----
+       Once EVERY boss type has been beaten once, the first team is gated behind a
+       fixed 1000-kill "fracture" ramp (BOTH modes) during which the map visibly
+       tears open; the first team's arrival snaps the run into the altered dimension
+       (corrupted palette + T4 enemies join the spawn bag from then on). */
+    DIM_FRACTURE_KILLS:          1000,   // kills from "all bosses beaten" → first team (the fracture ramp)
+    BAG_T4_DIM:                  1,      // T4 snipers added to each spawn bag while fractured (~7% — a rare, dangerous shot)
+    BAG_T3_DIM:                  1,      // extra T3 generators added to each bag while fractured (slightly harder mix)
     BOSS_HINT_DELAY_S:           40,     // sandbox: seconds fighting a FIRST-time boss before its weakness tooltip pops
     BOSS_HINT_LIFE_S:            22,     // seconds the weakness tooltip stays on screen before auto-fading
     UPGRADE_REROLLS_START: 1,     // rerolls the run begins with (+1 earned per boss kill)
@@ -700,6 +708,8 @@
                                      //   target that drifted off-screen, before it self-destructs only when no enemy is left near
     CORE_CRUSH_PAD:          8,      // extra slack on the crush hit-test (core radius + enemy half + this)
     CORE_BRUISER_DMG:        3,      // damage a ricochet deals to an unshielded tier-3 bruiser body
+    CORE_BOSS_HITS:          2,      // a launched core sweeping a boss deals it this many dash-attacks (≈ the prism), ONCE per boss per launch
+    CORE_BOSS_REACH:         60,     // px slack (added to boss size + core body) for the "the core swept a boss" test
     CORE_EXP_RADIUS:         300,    // final detonation blast radius (px) — base; per-level via CORE_EXP_BY_LVL
     /* Per-upgrade-level scaling (index by level 1-3; [0] = safe fallback = Lv1).
        Lv1 is deliberately WEAKER than the old fixed core (fewer bounces, slower,

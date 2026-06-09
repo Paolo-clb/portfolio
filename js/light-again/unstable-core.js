@@ -29,7 +29,11 @@
                   player's view (it'll chase a target that drifts off-screen, then comes
                   back to one in-view), CRUSHING every lesser enemy it ploughs through.
                   It does NOT bounce off the far world walls (that just flung it off
-                  screen). Bosses live outside this.enemies, so it never sees them.
+                  screen). Bosses live outside this.enemies, so the billiard never
+                  steers at or ricochets off them — but, like the Prism, the core
+                  STILL damages a boss its body sweeps over (≈ CORE_BOSS_HITS dash-
+                  attacks, ONCE per boss per launch — see _coreHitBosses); it just
+                  ploughs straight through and keeps billiarding off the lesser enemies.
      5. DETONATE— after CORE_MAX_BOUNCES ricochets it explodes. ONLY when no enemy is
                   left anywhere near does it coast a short beat (CORE_FIZZLE_DUR) and blow
                   up where it is — it never flies off into the void. The WHOLE rampage's
@@ -228,6 +232,7 @@
       seed: Math.random() * 1000,
       trail: [], trailT: 0,
       target: null, hitList: [], fizzle: false, fizzleT: 0, firstLeg: false,
+      bossHit: [], snakeHit: [],                       // boss instances / snake segs already struck THIS launch (dedup)
       scoreAccum: 0,                                   // per-core running tally for ITS launched rampage
     };
     this._cores.push(c);
@@ -327,6 +332,8 @@
     c.trail    = [];
     c.trailT   = 0;
     c.hitList  = [];            // bruisers already struck this launch (never re-bounce them)
+    c.bossHit  = [];            // boss instances already struck this launch (dedup per instance)
+    c.snakeHit = [];            // snake segments already carved this launch (dedup per segment)
     c.fizzle   = false;
     c.fizzleT  = 0;
     c.firstLeg = true;          // the aimed opening shot — flies DEAD STRAIGHT, no homing yet
@@ -437,6 +444,10 @@
     // ---- Core-on-core: plough into a still-dormant core → propel it away, ricochet
     //      off it (re-aiming at another enemy so the rampage carries on). ----
     this._coreVsDormantCores(c);
+
+    // ---- Bosses: damage any boss the core body sweeps over (≈ the Prism). The core
+    //      does NOT bounce off them — it ploughs through and keeps its enemy billiard. ----
+    this._coreHitBosses(c);
 
     // ---- Missed opening shot: reached the screen edge with nothing struck → self-destruct ----
     // (Only the straight first leg; once bouncing it deliberately chases off-screen targets.)
@@ -606,6 +617,8 @@
       o.trail    = [];
       o.trailT   = 0;
       o.hitList  = [];
+      o.bossHit  = [];
+      o.snakeHit = [];
       o.fizzle   = false;
       o.fizzleT  = 0;
       o.firstLeg = true;
@@ -634,6 +647,103 @@
       if (vn > 0) { c.vx -= 2 * vn * nx; c.vy -= 2 * vn * ny; }
       this._coreRedirect(c, o.x, o.y);              // chain to another enemy (keeps the rampage alive)
       return;                                       // one core-on-core hit per frame
+    }
+  };
+
+  /* ================================================================
+     BOSS DAMAGE — bosses live OUTSIDE this.enemies, so the billiard never targets
+     or ricochets off them. But, like the Prism's strike, a LAUNCHED core STILL
+     damages a boss its body sweeps over: ONCE per boss INSTANCE per launch
+     (c.bossHit / c.snakeHit), worth ≈ CORE_BOSS_HITS dash-attacks. It ploughs
+     straight through (no deflection) and keeps billiarding off the lesser enemies.
+     ================================================================ */
+  M._coreHitBosses = function (c) {
+    // Single-body bosses (a team can field several giga / mirror): point the cursor
+    // at each so its native damage handler acts on the right instance — same trick
+    // the prism uses in _prismHitBosses.
+    var GL = this._gigaList;
+    if (GL) for (var gi = 0; gi < GL.length; gi++) { this._gigaBruiser = GL[gi]; this._coreMaybeHitBoss('giga', GL[gi], C.GBR_SIZE, c); }
+    var ML = this._mirrorList;
+    if (ML) for (var mi = 0; mi < ML.length; mi++) { this._mirror = ML[mi]; this._coreMaybeHitBoss('mirror', ML[mi], C.MIR_SIZE, c); }
+    this._coreMaybeHitBoss('anomaly', this._anomaly, C.ANO_SIZE, c);
+    // Serpent(s): carve each segment the core body sweeps (once per launch).
+    this._coreCarveSnake(c);
+  };
+
+  /* Land the core's boss hit if its body overlaps the boss and it hasn't struck this
+     instance yet this launch. The boss's own damage handler supplies its hit flash;
+     we add a core-flavoured ember burst so the contact reads clearly. */
+  M._coreMaybeHitBoss = function (key, b, size, c) {
+    if (!b || b.dead) return;
+    if (c.bossHit.indexOf(b) >= 0) return;            // dedup per INSTANCE this launch
+    var reach = (size || 60) + c.radius + C.CORE_BOSS_REACH;
+    var dx = b.x - c.x, dy = b.y - c.y;
+    if (dx * dx + dy * dy >= reach * reach) return;
+    c.bossHit.push(b);
+    this._coreDealBossHit(key, b);
+    // Core-flavoured ember burst (each boss's own handler supplies its hit flash/shake).
+    this._spawnWaveRing(c.x, c.y, { maxRadius: 150, color: HOT, expandTime: 0.32 });
+    this._explode(c.x, c.y, [255, 150, 40],  18);
+    this._explode(c.x, c.y, [255, 240, 200], 10);
+  };
+
+  /* Apply each boss's per-hit damage through its native model — mirrors the prism's
+     _prismDealTriple (the Mirror still loses a single orb, never an instakill). */
+  M._coreDealBossHit = function (key, b) {
+    var hits = C.CORE_BOSS_HITS;
+    if (key === 'giga') {
+      // 1 dash would break the shield; the rest chip the body. Unshielded → full hits.
+      if (b.shielded) {
+        this._breakGigaShield();
+        if (this._gigaBruiser && !this._gigaBruiser.shielded) this._damageGigaBruiser(C.GBR_DASH_DMG * (hits - 1));
+      } else {
+        this._damageGigaBruiser(C.GBR_DASH_DMG * hits);
+      }
+    } else if (key === 'mirror') {
+      // Exactly ONE strike — like a dash-attack / torpedo: removes a single shield orb
+      // (or lands the finishing blow if it had none). No instakill-from-full.
+      this._damageMirror(1);
+    } else if (key === 'anomaly') {
+      // Only vulnerable while its barrier is down (BARRIER phase). 1 dash = 2 HP.
+      var a = this._anomaly;
+      if (a && !a.dead && a.phase === 'BARRIER' && !a.shielded) {
+        a.hp -= hits * 2;
+        a._hitFlash = 1.0;
+        this._explode(a.x, a.y, [255, 60, 60], 18);
+        this._explode(a.x, a.y, [255, 255, 255], 8);
+        this.cameras.main.shake(70, 0.008);
+        if (a.hp <= 0) this._killAnomaly();
+      }
+    }
+  };
+
+  /* Serpent(s): carve every body segment the core body sweeps, ONCE per launch
+     (c.snakeHit) and only by SNAKE_DASH_DMG each — a dash-attack's worth, so the
+     core chips the snake instead of one-shotting it (mirrors _prismCarveSnake). */
+  M._coreCarveSnake = function (c) {
+    var SL = this._snakeList;
+    if (!SL || !SL.length || !this._damageSnakeSegment) return;
+    var reach = c.radius + C.CORE_BOSS_REACH, r2 = reach * reach;
+    for (var sIdx = 0; sIdx < SL.length; sIdx++) {
+      var s = SL[sIdx];
+      if (!s || s.dead || s.spawnPhase === 'EMERGE') continue;
+      this._snake = s;
+      var hits = [];
+      for (var i = 0; i < s.worms.length; i++) {
+        var segs = s.worms[i].segs;
+        for (var j = 0; j < segs.length; j++) {
+          var sg = segs[j];
+          if (sg._dead || c.snakeHit.indexOf(sg) >= 0) continue;
+          var dx = sg.x - c.x, dy = sg.y - c.y;
+          if (dx * dx + dy * dy < r2) hits.push(sg);
+        }
+      }
+      // Apply after collecting (damage can split/mutate the worm arrays).
+      for (var h = 0; h < hits.length; h++) {
+        if (!this._snake || this._snake.dead) break;
+        c.snakeHit.push(hits[h]);
+        this._damageSnakeSegment(hits[h], C.SNAKE_DASH_DMG, { explosion: true });
+      }
     }
   };
 
