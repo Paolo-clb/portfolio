@@ -213,7 +213,7 @@
     if (ownBatch) this._endBatch();
 
     // Chip serpent segments around the blast (throttled, like every explosion).
-    if (this._snake && !this._snake.dead) this._damageSnakeAoe(x, y, R, C.SNAKE_AOE_DMG);
+    this._damageAllSnakesAoe(x, y, R, C.SNAKE_AOE_DMG);
 
     // FX — allied cyan, distinct from the red delayed explosion and cyan nuke.
     this._explode(x, y, [120, 220, 255], prominent ? 46 : 26);

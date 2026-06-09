@@ -209,6 +209,7 @@
     BOSS_KILL_INTERVAL_HC_START: 100,    // hardcore: kills to the FIRST boss
     BOSS_KILL_INTERVAL_HC_STEP:  100,    // hardcore: gap grows by this each boss
     BOSS_KILL_SCORE:             10000,  // base points a boss awards on death (×combo)
+    BOSS_DEATH_RING_S:           2.0,    // seconds of the stylish ring-retract death animation before a boss explodes
     BOSS_HINT_DELAY_S:           40,     // sandbox: seconds fighting a FIRST-time boss before its weakness tooltip pops
     BOSS_HINT_LIFE_S:            22,     // seconds the weakness tooltip stays on screen before auto-fading
     UPGRADE_REROLLS_START: 1,     // rerolls the run begins with (+1 earned per boss kill)

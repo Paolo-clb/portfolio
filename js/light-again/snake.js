@@ -67,49 +67,61 @@
      INIT / CLEANUP
      ================================================================ */
   M._initSnake = function () {
-    this._snake = null;
+    this._snake     = null;   // cursor: the instance currently being processed
+    this._snakeList = [];     // ALL live Serpents (teams can field several)
   };
 
-  M._clearSnake = function (_silent) {
-    var s = this._snake;
-    this._snake = null;
+  /* Live venom outlives the snake renderer, so once NO serpent remains we sweep
+     it: spare parried hatchlings (yours) by revealing their default shard +
+     dropping the tag, and silently drop the rest. While other serpents are still
+     alive their renderer keeps drawing this venom, so we skip the sweep then. */
+  M._sweepSnakeVenom = function () {
+    var prj = this.projectiles;
+    if (!prj) return;
+    for (var pi = prj.length - 1; pi >= 0; pi--) {
+      var pr = prj[pi];
+      if (!pr.snakeSpit) continue;
+      if (pr.isReflected) {
+        if (pr.spr) { pr.spr.setVisible(true); pr.spr.setTint(0x66ffff); }
+        pr.snakeSpit = false;
+        continue;
+      }
+      this._destroyProjectile(pr);
+      prj.splice(pi, 1);
+    }
+  };
+
+  /* Destroy ONE serpent's sprites + drop it from the live list. The venom sweep
+     only fires once the LAST serpent is gone (surviving worms keep their venom). */
+  M._clearOneSnake = function (s, _silent) {
     if (!s) return;
     if (s.gfx)   s.gfx.destroy();
     if (s.fxGfx) s.fxGfx.destroy();
-    // Safety sweep for live venom that would outlive the boss. The serpent
-    // renderer dies with it, so spare parried hatchlings (yours) by revealing
-    // their default shard + dropping the tag, and silently drop the rest.
-    // _killSnake already runs a richer (FX-laden) sweep before calling us, so on
-    // the death path this no-ops; it matters for the direct _clearSnake(true)
-    // callers (tutorial relaunch, shutdown) that would otherwise leave invisible
-    // but still-active venom able to keep striking the player.
-    var prj = this.projectiles;
-    if (prj) {
-      for (var pi = prj.length - 1; pi >= 0; pi--) {
-        var pr = prj[pi];
-        if (!pr.snakeSpit) continue;
-        if (pr.isReflected) {
-          if (pr.spr) { pr.spr.setVisible(true); pr.spr.setTint(0x66ffff); }
-          pr.snakeSpit = false;
-          continue;
-        }
-        this._destroyProjectile(pr);
-        prj.splice(pi, 1);
-      }
-    }
+    var L = this._snakeList;
+    if (L) { var i = L.indexOf(s); if (i >= 0) L.splice(i, 1); }
+    if (this._snake === s) this._snake = (L && L.length) ? L[0] : null;
+    if (!L || L.length === 0) this._sweepSnakeVenom();
+  };
+
+  /* Clear ALL Serpents (scene shutdown / restart / tutorial purge). */
+  M._clearSnake = function (_silent) {
+    var L = this._snakeList;
+    if (L) { while (L.length) this._clearOneSnake(L[0], _silent); }
+    else this._sweepSnakeVenom();
+    this._snake = null;
   };
 
   /* ================================================================
      SPAWN — emerge from a rift in the player's field of view
      ================================================================ */
-  M._spawnSnake = function () {
-    if (this._snake || this._anomaly || this._gigaBruiser || this._mirror) return;
+  M._spawnSnake = function (opts) {
     if (!this.p || this.p.state === 'DEAD') return;
+    opts = opts || {};
 
     var p = this.p, cam = this.cameras.main;
     var view = cam.worldView, viewMin = Math.min(view.width, view.height);
-    var dist = Math.max(C.SNAKE_HEAD_SIZE * 4, viewMin * 0.34);
-    var ang  = p.angle;
+    var dist = opts.dist != null ? opts.dist : Math.max(C.SNAKE_HEAD_SIZE * 4, viewMin * 0.34);
+    var ang  = opts.angle != null ? opts.angle : p.angle;
     var hx = p.x + Math.cos(ang) * dist;
     var hy = p.y + Math.sin(ang) * dist;
 
@@ -157,7 +169,7 @@
     var fxGfx = this.add.graphics(); fxGfx.setDepth(33);
     fxGfx.setBlendMode(Phaser.BlendModes.ADD);
 
-    this._snake = {
+    var s = this._snake = {
       worms: [worm], dead: false,
       spawnPhase: 'EMERGE', introT: 0,
       gfx: gfx, fxGfx: fxGfx, splitFx: [],
@@ -170,6 +182,9 @@
     this._explode(hx, hy, [120, 255, 150], 26);
     this._explode(hx, hy, [255, 255, 255], 12);
     this.cameras.main.shake(150, 0.007);
+
+    if (!this._snakeList) this._snakeList = [];
+    this._snakeList.push(s);
   };
 
   /* Set segMaxHp + speed from the worm's current length. fresh=true also fills
@@ -884,10 +899,11 @@
     }
     if (ownBatch) this._endBatch();
 
-    // Chip nearby serpent segments (throttled), sparing the directly-hit one.
-    if (this._snake && !this._snake.dead) {
+    // Chip nearby serpent segments on EVERY serpent (throttled), sparing the
+    // directly-hit one (its iframe is set before the sweep).
+    if (this._snakeList && this._snakeList.length) {
       if (hitSeg) hitSeg.aoeIframe = C.SNAKE_AOE_IFRAME;
-      this._damageSnakeAoe(x, y, r, C.SNAKE_AOE_DMG);
+      this._damageAllSnakesAoe(x, y, r, C.SNAKE_AOE_DMG);
     }
 
     // Cyan "tamed" blast, ring drawn at the true AoE radius so the area is legible.
@@ -1128,38 +1144,26 @@
     var ex = s._lastX != null ? s._lastX : this.p.x;
     var ey = s._lastY != null ? s._lastY : this.p.y;
 
-    this._explode(ex, ey, [120, 255, 150], 60);
-    this._explode(ex, ey, [180, 255, 200], 44);
-    this._explode(ex, ey, [40, 200, 100],  32);
-    this._explode(ex, ey, [255, 255, 255], 28);
-    this._spawnWaveRing(ex, ey, { maxRadius: 360, color: 0xffffff, expandTime: 0.34 });
-    this._spawnWaveRing(ex, ey, { maxRadius: 260, color: 0x5dff9b, expandTime: 0.26 });
-    this._spawnWaveRing(ex, ey, { maxRadius: 160, color: 0x33ff88, expandTime: 0.20 });
-    this.cameras.main.flash(280, 120, 255, 160);
-    this.cameras.main.shake(300, 0.020);
-    this._triggerHitstop(C.DETONATION_HITSTOP);
-
-    // Sweep the serpent's live venom so a dead boss can't keep tagging the
-    // player. Parried hatchlings are SPARED (they're yours) — but the serpent
-    // renderer dies with the boss, so reveal their default shard sprite (tinted
-    // cyan) and drop the snakeSpit tag so they finish out as normal reflects.
-    for (var pi = this.projectiles.length - 1; pi >= 0; pi--) {
-      var pr = this.projectiles[pi];
-      if (!pr.snakeSpit) continue;
-      if (pr.isReflected) {
-        if (pr.spr) { pr.spr.setVisible(true); pr.spr.setTint(0x66ffff); }
-        pr.snakeSpit = false;
-        continue;
-      }
-      this._explode(pr.x, pr.y, [120, 255, 150], 6);
-      this._destroyProjectile(pr);
-      this.projectiles.splice(pi, 1);
-    }
-
-    this._clearSnake(true);
-
-    // Unified aftermath: green board-clear shockwave + score + power-up + 3-pick draft.
-    this._bossDefeatSequence(ex, ey, { label: 'SERPENT SLAIN', color: '#5dff9b', glow: '#33ff88', ringColor: 0x5dff9b, expCol: [120, 255, 150] });
+    // Remove THIS serpent at once (its venom is swept by _clearOneSnake only once
+    // NO serpent remains — surviving team worms keep theirs). The big green burst
+    // fires at the end of the ring-retract.
+    this._clearOneSnake(s, true);
+    this._beginBossDeath(ex, ey, {
+      type: 'snake', label: 'SERPENT SLAIN',
+      color: '#5dff9b', glow: '#33ff88', ringColor: 0x5dff9b, coreColor: 0x33ff88, expCol: [120, 255, 150],
+      explode: function (x, y) {
+        this._explode(x, y, [120, 255, 150], 60);
+        this._explode(x, y, [180, 255, 200], 44);
+        this._explode(x, y, [40, 200, 100],  32);
+        this._explode(x, y, [255, 255, 255], 28);
+        this._spawnWaveRing(x, y, { maxRadius: 360, color: 0xffffff, expandTime: 0.34 });
+        this._spawnWaveRing(x, y, { maxRadius: 260, color: 0x5dff9b, expandTime: 0.26 });
+        this._spawnWaveRing(x, y, { maxRadius: 160, color: 0x33ff88, expandTime: 0.20 });
+        this.cameras.main.flash(280, 120, 255, 160);
+        this.cameras.main.shake(300, 0.020);
+        this._triggerHitstop(C.DETONATION_HITSTOP);
+      },
+    });
   };
 
   /* ================================================================

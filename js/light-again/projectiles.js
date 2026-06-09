@@ -168,9 +168,15 @@
       }
 
       if (pr.isReflected) {
-        // Reflected projectiles also carve the serpent's body segments (head is
-        // intangible). A direct segment hit consumes the projectile.
-        if (this._snake && !this._snake.dead && this._snakeReflectedHit(pr)) {
+        // Reflected projectiles also carve EACH serpent's body segments (heads are
+        // intangible). A direct segment hit on any of them consumes the projectile.
+        var _rsl = this._snakeList, _rsHit = false;
+        if (_rsl) for (var _rsj = 0; _rsj < _rsl.length; _rsj++) {
+          if (_rsl[_rsj].dead) continue;
+          this._snake = _rsl[_rsj];
+          if (this._snakeReflectedHit(pr)) { _rsHit = true; break; }
+        }
+        if (_rsHit) {
           if (pr._twPending) this._twResolvePending();
           this._destroyProjectile(pr);
           this.projectiles.splice(i, 1);
@@ -227,7 +233,7 @@
               }
               if (pOwnBatch) this._endBatch();
               // Smash shockwave also chips serpent segments around it (throttled).
-              if (this._snake && !this._snake.dead) this._damageSnakeAoe(pr.x, pr.y, smashAoe, C.SNAKE_AOE_DMG);
+              this._damageAllSnakesAoe(pr.x, pr.y, smashAoe, C.SNAKE_AOE_DMG);
               this._explode(pr.x, pr.y, [170, 68, 255], 30);
               this._explode(pr.x, pr.y, [255, 255, 255], 15);
               this._explode(pr.x, pr.y, [200, 120, 255], 10);
@@ -290,7 +296,7 @@
             // SNAKE venom has a UNIQUE parry: it bursts into a fan of tamed cyan
             // hatchling serpents instead of bouncing back as one shard. The
             // original bolt is consumed; _snakeParrySplit spawns the hatchlings.
-            if (pr.snakeSpit && this._snake && !this._snake.dead && this._snakeParrySplit) {
+            if (pr.snakeSpit && this._snakeList && this._snakeList.length && this._snakeParrySplit) {
               this._snakeParrySplit(pr);
               if (pr._twPending) this._twResolvePending();
               this._destroyProjectile(pr);

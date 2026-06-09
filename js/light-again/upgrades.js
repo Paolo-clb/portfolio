@@ -57,6 +57,12 @@
     var hardcore = (window.__laGameMode === 'hardcore');
     this._bossKillInterval  = hardcore ? C.BOSS_KILL_INTERVAL_HC_START : C.BOSS_KILL_INTERVAL;
     this._bossKillThreshold = this._bossKillInterval;
+    // BOSS TEAMS: once every distinct boss type has been beaten at least once, the
+    // next boss event spawns a TEAM — 2, then 3, then 4 … capped at the number of
+    // distinct boss types. _bossTeamSize is the size of the NEXT team; _bossTypesDefeated
+    // tracks which types have fallen (real runs only; tutorial kills don't count).
+    this._bossTeamSize      = 2;
+    this._bossTypesDefeated = {};
     this._bossDraftPending  = false;   // suppresses enemy spawns from boss death until the draft closes
     this._draftPicksRemaining = 0;     // boss kill grants BOSS_DRAFT_PICKS sequential picks
     this._upgradeDraftOpen     = false;
@@ -74,7 +80,7 @@
 
   /* ================================================================
      CHECK TRIGGER — kept as a no-op. Upgrades no longer come from a kill
-     threshold; they're awarded ONLY by killing bosses (see _bossDefeatSequence).
+     threshold; they're awarded ONLY by killing bosses (see _bossBoardClear).
      Boss SPAWNS are now driven by the kill counter (see _maybeSpawnAnomaly), and
      The World is offered on a boss kill once every upgrade is maxed.
      ================================================================ */

@@ -68,44 +68,154 @@
   /* ================================================================
      NATURAL SPAWN — rare, gated, works in BOTH modes (driven from update)
      ================================================================ */
-  /* Boss "bag" — draw without replacement so the three bosses cycle in a
-     shuffled order (never the same one twice until the bag empties + refills).
-     Keeps boss variety high run-to-run. */
+  /* The canonical list of distinct boss types. Adding a new self-contained boss?
+     Add its type key here (plus its usual spawn/update/clear wiring) and the team
+     system scales automatically: team size caps at the number of types, and the
+     "beaten every boss once" gate counts against this length. */
+  M._BOSS_TYPES = ['anomaly', 'gigaBruiser', 'mirror', 'snake'];
+
+  /* Boss "bag" — draw without replacement so the bosses cycle in a shuffled order
+     (never the same one twice until the bag empties + refills). Used only in the
+     SOLO phase (before every type has been beaten once). */
   M._drawBossFromBag = function () {
     if (!this._bossBag || this._bossBag.length === 0) {
-      this._bossBag = ['anomaly', 'gigaBruiser', 'mirror', 'snake'];
+      this._bossBag = M._BOSS_TYPES.slice();
     }
     var i = (Math.random() * this._bossBag.length) | 0;  // random remaining = shuffled draw
     return this._bossBag.splice(i, 1)[0];
   };
 
+  /* Is ANY mini-boss currently alive (across every per-type list + the anomaly)? */
+  M._anyBossAlive = function () {
+    return !!(this._anomaly ||
+              (this._gigaList   && this._gigaList.length) ||
+              (this._mirrorList && this._mirrorList.length) ||
+              (this._snakeList  && this._snakeList.length));
+  };
+
+  /* Has every distinct boss type fallen at least once this run? (Unlocks teams.) */
+  M._allBossTypesDefeated = function () {
+    var d = this._bossTypesDefeated || {};
+    for (var i = 0; i < M._BOSS_TYPES.length; i++) {
+      if (!d[M._BOSS_TYPES[i]]) return false;
+    }
+    return true;
+  };
+
+  /* Draw a team of `n` boss types WITH replacement (duplicates allowed — even all
+     the same), EXCEPT the Anomaly which is capped at one per team (its barrier /
+     quarantine doesn't stack). */
+  M._drawBossTeam = function (n) {
+    var team = [], anomalyUsed = false;
+    var nonAno = [];
+    for (var k = 0; k < M._BOSS_TYPES.length; k++) {
+      if (M._BOSS_TYPES[k] !== 'anomaly') nonAno.push(M._BOSS_TYPES[k]);
+    }
+    for (var i = 0; i < n; i++) {
+      var t = M._BOSS_TYPES[(Math.random() * M._BOSS_TYPES.length) | 0];
+      if (t === 'anomaly' && (anomalyUsed || nonAno.length === 0)) {
+        t = nonAno.length ? nonAno[(Math.random() * nonAno.length) | 0] : 'anomaly';
+      }
+      if (t === 'anomaly') anomalyUsed = true;
+      team.push(t);
+    }
+    return team;
+  };
+
+  /* Spawn ONE boss of the given type at an optional placement (team members fan
+     out around the player via opts.angle/opts.dist). */
+  M._spawnBossOfType = function (type, opts) {
+    if      (type === 'gigaBruiser') this._spawnGigaBruiser(opts);
+    else if (type === 'mirror')      this._spawnMirror(opts);
+    else if (type === 'snake')       this._spawnSnake(opts);
+    else                             this._spawnAnomaly(opts);
+  };
+
   M._maybeSpawnAnomaly = function (ms) {
-    // Bosses are now KILL-COUNT gated (the old time-roll is gone): a boss spawns
-    // once totalKills reaches the boss threshold. Only one boss alive at a time;
-    // none during the tutorial, mid-draft, or while the post-boss board-clear is
-    // still resolving. The HUD counter shows kills-until-next-boss.
+    // Bosses are KILL-COUNT gated: an event fires once totalKills reaches the boss
+    // threshold. No new event while ANY boss is alive, mid death-animation, during
+    // the tutorial, a draft, or the post-boss board-clear. The HUD shows the count.
     if (this._tutorialActive) return;
-    if (this._anomaly || this._gigaBruiser || this._mirror || this._snake) return;
+    if (this._anyBossAlive()) return;
+    if (this._bossDeaths && this._bossDeaths.length) return;   // a boss is mid death-anim
     if (!this.p || this.p.state === 'DEAD') return;
     if (this._upgradeDraftOpen || this._upSlowMoPhase || this._bossDraftPending) return;
     if (this.totalKills < (this._bossKillThreshold || Infinity)) return;
 
-    var which = this._drawBossFromBag();
-    if      (which === 'gigaBruiser') this._spawnGigaBruiser();
-    else if (which === 'mirror')      this._spawnMirror();
-    else if (which === 'snake')       this._spawnSnake();
-    else                              this._spawnAnomaly();
+    // SOLO phase — one boss from the shuffled bag — until every type has been
+    // beaten once. Then escalate into TEAMS: 2, then 3, then 4 … capped at the
+    // number of distinct boss types.
+    if (!this._allBossTypesDefeated()) {
+      this._spawnBossOfType(this._drawBossFromBag());
+      return;
+    }
+
+    var NUM  = M._BOSS_TYPES.length;
+    var size = Math.max(2, Math.min(this._bossTeamSize || 2, NUM));
+    var team = this._drawBossTeam(size);
+    var base = Math.random() * TAU;
+    for (var i = 0; i < team.length; i++) {
+      // Fan members out evenly around the player (+ a little jitter) so their
+      // cinematic entrances don't all stack on the same spot.
+      var ang  = base + (i / team.length) * TAU + (Math.random() - 0.5) * 0.4;
+      var dist = 720 + Math.random() * 220;
+      this._spawnBossOfType(team[i], { angle: ang, dist: dist });
+    }
+    // Next team is one bigger, up to the cap.
+    this._bossTeamSize = Math.min(size + 1, NUM);
+  };
+
+  /* Keep every team boss inside a live Anomaly firewall (spec: "un boss qui
+     apparaît avec l'anomalie reste dans sa zone"). Mirrors the enemy clamp in
+     enemies.js: clamp the body (or each serpent head) back to the barrier edge
+     and bleed off any outward velocity so it doesn't keep ramming the wall. */
+  M._confineBossesToAnomaly = function () {
+    var a = this._anomaly;
+    if (!a || !this._anomalyBarrierActive || a.phase === 'INTRO') return;
+    var bx = a.bx, by = a.by, R = a.R;
+    var clamp = function (obj, half) {
+      var dx = obj.x - bx, dy = obj.y - by, lim = R - half;
+      if (lim < 0) lim = 0;
+      var d2 = dx * dx + dy * dy;
+      if (d2 <= lim * lim) return;
+      var d = Math.sqrt(d2) || 1, nx = dx / d, ny = dy / d;
+      obj.x = bx + nx * lim; obj.y = by + ny * lim;
+      if (obj.vx != null) { var vd = obj.vx * nx + obj.vy * ny; if (vd > 0) { obj.vx -= vd * nx; obj.vy -= vd * ny; } }
+    };
+    var GL = this._gigaList;   if (GL) for (var i = 0; i < GL.length; i++) clamp(GL[i], C.GBR_SIZE * 1.2);
+    var ML = this._mirrorList; if (ML) for (var j = 0; j < ML.length; j++) clamp(ML[j], C.MIR_SIZE * 1.2);
+    var SL = this._snakeList;
+    if (SL) for (var k = 0; k < SL.length; k++) {
+      var s = SL[k]; if (!s.worms) continue;
+      for (var w = 0; w < s.worms.length; w++) {
+        var worm = s.worms[w], hd = { x: worm.hx, y: worm.hy };
+        clamp(hd, C.SNAKE_HEAD_SIZE * 1.4);
+        worm.hx = hd.x; worm.hy = hd.y;
+      }
+    }
+  };
+
+  /* DEBUG (KeyR): unlock team mode + drop the kill gate so the very next frame's
+     _maybeSpawnAnomaly fires a real TEAM. No-op while a boss / death-anim is live. */
+  M._forceBossTeam = function () {
+    if (!this.p || this.p.state === 'DEAD') return;
+    if (this._anyBossAlive() || (this._bossDeaths && this._bossDeaths.length)) return;
+    if (this._bossDraftPending || this._upgradeDraftOpen || this._upSlowMoPhase) return;
+    if (!this._bossTypesDefeated) this._bossTypesDefeated = {};
+    for (var i = 0; i < M._BOSS_TYPES.length; i++) this._bossTypesDefeated[M._BOSS_TYPES[i]] = true;
+    this._bossKillThreshold = this.totalKills;   // gate met → team spawns next frame
   };
 
   /* ================================================================
      SPAWN — create the entity off in the distance (debug + natural)
      ================================================================ */
-  M._spawnAnomaly = function () {
-    if (this._anomaly || this._gigaBruiser || this._mirror || this._snake) return;
+  M._spawnAnomaly = function (opts) {
+    if (this._anomaly) return;   // only ever one anomaly (its quarantine can't stack)
     if (!this.p || this.p.state === 'DEAD') return;
+    opts = opts || {};
 
-    var ang  = Math.random() * TAU;
-    var dist = 820;
+    var ang  = opts.angle != null ? opts.angle : Math.random() * TAU;
+    var dist = opts.dist  != null ? opts.dist  : 820;
     var aSp = LA.clampDisc(this.p.x + Math.cos(ang) * dist, this.p.y + Math.sin(ang) * dist, C.ANO_SIZE * 2);
     var x = aSp.x, y = aSp.y;
 
@@ -866,22 +976,27 @@
     a.dead = true;
     var ex = a.x, ey = a.y, R = a.R, bx = a.bx, by = a.by;
 
-    // RGB death burst + barrier collapse
-    this._explode(ex, ey, [255, 40, 40],  50);
-    this._explode(ex, ey, [40, 255, 40],  40);
-    this._explode(ex, ey, [60, 120, 255], 40);
-    this._explode(ex, ey, [255, 255, 255], 30);
-    this._spawnWaveRing(ex, ey, { maxRadius: R * 1.05, color: 0xffffff, expandTime: 0.30 });
-    this._spawnWaveRing(bx, by, { maxRadius: R,        color: 0xff2255, expandTime: 0.40 });
-    this.cameras.main.flash(280, 255, 255, 255);
-    this.cameras.main.shake(300, 0.020);
-    this._triggerHitstop(C.DETONATION_HITSTOP);
-
     this._clearAnomaly(true);
-    this._anomalyBarrierActive = false;   // barrier gone (spawns stay held by _bossDraftPending)
+    // Barrier gone → any confined team boss is freed. Spawns stay held only if
+    // this was the LAST boss (set by _beginBossDeath via _bossDraftPending).
+    this._anomalyBarrierActive = false;
 
-    // Unified aftermath (the board is already empty — the wave just plays for uniformity).
-    this._bossDefeatSequence(ex, ey, { label: 'ANOMALY PURGED', color: '#ff66cc', glow: '#ff66cc', ringColor: 0xff2255, expCol: [255, 80, 180] });
+    this._beginBossDeath(ex, ey, {
+      type: 'anomaly', label: 'ANOMALY PURGED',
+      color: '#ff66cc', glow: '#ff66cc', ringColor: 0xff2255, coreColor: 0xff44aa, expCol: [255, 80, 180],
+      explode: function (x, y) {
+        // RGB death burst + barrier collapse
+        this._explode(x, y, [255, 40, 40],  50);
+        this._explode(x, y, [40, 255, 40],  40);
+        this._explode(x, y, [60, 120, 255], 40);
+        this._explode(x, y, [255, 255, 255], 30);
+        this._spawnWaveRing(x, y,   { maxRadius: R * 1.05, color: 0xffffff, expandTime: 0.30 });
+        this._spawnWaveRing(bx, by, { maxRadius: R,        color: 0xff2255, expandTime: 0.40 });
+        this.cameras.main.flash(280, 255, 255, 255);
+        this.cameras.main.shake(300, 0.020);
+        this._triggerHitstop(C.DETONATION_HITSTOP);
+      },
+    });
   };
 
   /* ================================================================

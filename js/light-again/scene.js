@@ -294,25 +294,30 @@
       this.hudGfx.setScrollFactor(0);
       this.hudGfx.setDepth(100);
 
-      // Top-left HUD stack: FPS, then live enemy count + survival time below it.
-      this.fpsTxt = this.add.text(8, 6, '', {
+      // Top HUD stats — a HORIZONTAL row to the right of the music visualizer
+      // (which sits in the top-left corner): FPS · enemy count · survival time,
+      // vertically centred (originY .5) on the visualizer's middle (y ~54).
+      this.fpsTxt = this.add.text(114, 54, '', {
         fontFamily: 'monospace', fontSize: '15px', fontStyle: 'bold', color: '#00ff88',
         stroke: '#000814', strokeThickness: 3,
       });
+      this.fpsTxt.setOrigin(0, 0.5);
       this.fpsTxt.setScrollFactor(0);
       this.fpsTxt.setDepth(101);
 
-      this._enemyCountTxt = this.add.text(8, 27, '', {
+      this._enemyCountTxt = this.add.text(194, 54, '', {
         fontFamily: 'monospace', fontSize: '18px', fontStyle: 'bold', color: '#3a78a0',
         stroke: '#000814', strokeThickness: 3,
       });
+      this._enemyCountTxt.setOrigin(0, 0.5);
       this._enemyCountTxt.setScrollFactor(0);
       this._enemyCountTxt.setDepth(101);
 
-      this._timeTxt = this.add.text(8, 53, '', {
+      this._timeTxt = this.add.text(274, 54, '', {
         fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', color: '#3a78a0',
         stroke: '#000814', strokeThickness: 3,
       });
+      this._timeTxt.setOrigin(0, 0.5);
       this._timeTxt.setScrollFactor(0);
       this._timeTxt.setDepth(101);
 
@@ -611,6 +616,12 @@
             self._spawnSniperAt(snP.x, snP.y);
           }
         }
+        // Cheat: unlock team mode + force the next boss event to be a full TEAM now
+        // (tests duplicates, anomaly-zone confinement and the team board-clear).
+        if (ev.code === 'KeyR' && !ev.repeat) {
+          ev.preventDefault();
+          if (self._forceBossTeam) self._forceBossTeam();
+        }
 
       });
       this.input.keyboard.on('keyup', function (ev) {
@@ -708,6 +719,7 @@
         if (self._clearGigaBruiser) self._clearGigaBruiser(true);
         if (self._clearMirror)      self._clearMirror(true);
         if (self._clearSnake)       self._clearSnake(true);
+        if (self._clearBossDeaths)  self._clearBossDeaths();
         if (self._clearDigitalTree) self._clearDigitalTree(true);
         if (self._clearFairy)       self._clearFairy();
         if (self._clearCurseFount)  self._clearCurseFount(true);
@@ -1127,14 +1139,23 @@
       this._updateProjectiles(sDt, pDt);
       this._checkCollisions();
       this._checkStarPickup();
+      // Anomaly is single-slot (cap 1) and carries the boss-spawn / team gate.
       this._updateAnomaly(ms, pMs, dt);
       this._checkAnomalyCollision();
-      this._updateGigaBruiser(ms, pMs, dt);
-      this._checkGigaBruiserCollision();
-      this._updateMirror(ms, pMs, dt);
-      this._checkMirrorCollision();
-      this._updateSnake(ms, pMs, dt);
-      this._checkSnakeCollision();
+      // The other bosses can arrive in TEAMS (duplicates allowed). Iterate each
+      // type's live list, pointing the cursor (this._X) at the instance being
+      // processed. Snapshot the list since a boss can leave it mid-update (death).
+      var _gl = this._gigaList ? this._gigaList.slice() : null;
+      if (_gl) for (var _gi = 0; _gi < _gl.length; _gi++) { this._gigaBruiser = _gl[_gi]; this._updateGigaBruiser(ms, pMs, dt); this._checkGigaBruiserCollision(); }
+      this._gigaBruiser = (this._gigaList && this._gigaList.length) ? this._gigaList[0] : null;
+      var _ml = this._mirrorList ? this._mirrorList.slice() : null;
+      if (_ml) for (var _mi = 0; _mi < _ml.length; _mi++) { this._mirror = _ml[_mi]; this._updateMirror(ms, pMs, dt); this._checkMirrorCollision(); }
+      this._mirror = (this._mirrorList && this._mirrorList.length) ? this._mirrorList[0] : null;
+      var _sl = this._snakeList ? this._snakeList.slice() : null;
+      if (_sl) for (var _si = 0; _si < _sl.length; _si++) { this._snake = _sl[_si]; this._updateSnake(ms, pMs, dt); this._checkSnakeCollision(); }
+      this._snake = (this._snakeList && this._snakeList.length) ? this._snakeList[0] : null;
+      // Any boss sharing the arena with a live Anomaly stays inside its firewall.
+      this._confineBossesToAnomaly();
       this._updateBossArrow(dt);  // persistent guidance chevron toward the active boss
       this._updateBossHint(dt);   // sandbox: first-encounter boss weakness tooltip (real dt)
       this._updateDigitalTree(dt);
@@ -1179,8 +1200,10 @@
         }
       }
 
-      // Clear Board shockwave + sandbox speed slider (both run on real time)
+      // Clear Board shockwave + boss death-retract anims + sandbox speed slider
+      // (all run on real time so they stay smooth through hitstop / The World).
       this._updateClearWave(dt);
+      this._updateBossDeaths(dt);
       this._updateSpeedUi(dt);
 
       this._shieldAngle += sDt * 1.8;

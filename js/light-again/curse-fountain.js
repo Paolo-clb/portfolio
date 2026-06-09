@@ -133,7 +133,7 @@
   };
 
   /* Count a defeated boss toward the spawn gates that pace off boss kills. Called
-     from the unified _bossDefeatSequence (every boss routes through it). Tutorial
+     from the unified _beginBossDeath (every boss routes through it). Tutorial
      kills are ignored — the real run re-inits these counters from scratch.
        • _fountBossKills — resets to 0 on each consumed fountain (the rising gate).
        • _bossesDefeated — cumulative for the whole run (never reset); gates the
@@ -149,7 +149,8 @@
      ================================================================ */
   M._maybeSpawnFount = function (dt) {
     if (this._tutorialActive) return;
-    if (this._anomaly || this._gigaBruiser || this._mirror || this._snake) return;
+    if (this._anyBossAlive ? this._anyBossAlive() : (this._anomaly || this._gigaBruiser || this._mirror || this._snake)) return;
+    if (this._bossDeaths && this._bossDeaths.length) return;   // a boss is mid death-retract
     if (!this.p || this.p.state === 'DEAD') return;
     // Mid-draft (boss reward or a fountain offer): hold — never drop a queued respawn.
     if (this._upgradeDraftOpen || this._upSlowMoPhase || this._bossDraftPending) return;
@@ -272,7 +273,7 @@
      UPDATE — boss edge-detection, spawn gate, then tick the live one
      ================================================================ */
   M._updateCurseFount = function (dt) {
-    var bossAlive = !!(this._anomaly || this._gigaBruiser || this._mirror || this._snake);
+    var bossAlive = this._anyBossAlive ? this._anyBossAlive() : !!(this._anomaly || this._gigaBruiser || this._mirror || this._snake);
     // Rising edge: a boss just appeared → a live fountain is forced away.
     if (bossAlive && !this._fountBossSeen && this._fount) this._dismissFountForBoss();
     // Falling edge: the boss is gone → owe a respawn if one was hidden for it.

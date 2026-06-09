@@ -606,44 +606,53 @@
 
   /* Bosses live OUTSIDE this.enemies — damage them through their own entry points. */
   M._prismHitBosses = function (pr) {
-    this._prismCarveSnake(pr);   // serpent: carve like a single dash-attack (no one-shot)
-    // Single-body bosses: a one-time hit when an arrow passes through them.
-    this._prismMaybeHitBody('giga',    this._gigaBruiser, C.GBR_SIZE, pr);
-    this._prismMaybeHitBody('mirror',  this._mirror,      C.MIR_SIZE, pr);
-    this._prismMaybeHitBody('anomaly', this._anomaly,     C.ANO_SIZE, pr);
+    this._prismCarveSnake(pr);   // serpent(s): carve like a single dash-attack (no one-shot)
+    // Single-body bosses (a team can field several giga / mirror): a one-time hit
+    // per INSTANCE as an arrow passes through it. Point the cursor at each so its
+    // native damage handler (_breakGigaShield / _damageMirror) acts on the right one.
+    var GL = this._gigaList;
+    if (GL) for (var gi = 0; gi < GL.length; gi++) { this._gigaBruiser = GL[gi]; this._prismMaybeHitBody('giga', GL[gi], C.GBR_SIZE, pr); }
+    var ML = this._mirrorList;
+    if (ML) for (var mi = 0; mi < ML.length; mi++) { this._mirror = ML[mi]; this._prismMaybeHitBody('mirror', ML[mi], C.MIR_SIZE, pr); }
+    this._prismMaybeHitBody('anomaly', this._anomaly, C.ANO_SIZE, pr);
   };
 
-  /* Serpent: carve every body segment the trio physically sweeps, but ONCE per
+  /* Serpent(s): carve every body segment the trio physically sweeps, but ONCE per
      strike (pr.snakeHit) and only by SNAKE_DASH_DMG each — exactly one dash-attack's
      worth, so a long strike chips the snake instead of one-shotting it. */
   M._prismCarveSnake = function (pr) {
-    var s = this._snake;
-    if (!s || s.dead || s.spawnPhase === 'EMERGE' || !this._damageSnakeSegment) return;
+    var SL = this._snakeList;
+    if (!SL || !SL.length || !this._damageSnakeSegment) return;
     var reach = pr.killR * (this._blastMult || 1) + 20, r2 = reach * reach;   // cursedBlast curse
-    var hits = [];
-    for (var i = 0; i < s.worms.length; i++) {
-      var segs = s.worms[i].segs;
-      for (var j = 0; j < segs.length; j++) {
-        var sg = segs[j];
-        if (sg._dead || pr.snakeHit.indexOf(sg) >= 0) continue;
-        for (var k = 0; k < pr.arrows.length; k++) {
-          var a = pr.arrows[k];
-          var dx = sg.x - a.x, dy = sg.y - a.y;
-          if (dx * dx + dy * dy < r2) { hits.push(sg); break; }
+    for (var sIdx = 0; sIdx < SL.length; sIdx++) {
+      var s = SL[sIdx];
+      if (!s || s.dead || s.spawnPhase === 'EMERGE') continue;
+      this._snake = s;
+      var hits = [];
+      for (var i = 0; i < s.worms.length; i++) {
+        var segs = s.worms[i].segs;
+        for (var j = 0; j < segs.length; j++) {
+          var sg = segs[j];
+          if (sg._dead || pr.snakeHit.indexOf(sg) >= 0) continue;   // segs are unique objects across worms/snakes
+          for (var k = 0; k < pr.arrows.length; k++) {
+            var a = pr.arrows[k];
+            var dx = sg.x - a.x, dy = sg.y - a.y;
+            if (dx * dx + dy * dy < r2) { hits.push(sg); break; }
+          }
         }
       }
-    }
-    // Apply after collecting (damage can split/mutate the worm arrays).
-    for (var h = 0; h < hits.length; h++) {
-      if (!this._snake || this._snake.dead) break;
-      pr.snakeHit.push(hits[h]);
-      this._damageSnakeSegment(hits[h], C.SNAKE_DASH_DMG, { explosion: true });
+      // Apply after collecting (damage can split/mutate the worm arrays).
+      for (var h = 0; h < hits.length; h++) {
+        if (!this._snake || this._snake.dead) break;
+        pr.snakeHit.push(hits[h]);
+        this._damageSnakeSegment(hits[h], C.SNAKE_DASH_DMG, { explosion: true });
+      }
     }
   };
 
   M._prismMaybeHitBody = function (key, b, size, pr) {
     if (!b || b.dead) return;
-    if (pr.bossHit.indexOf(key) >= 0) return;
+    if (pr.bossHit.indexOf(b) >= 0) return;   // dedup per INSTANCE (duplicates share a key)
     var reach = (size || 60) + C.PRISM_BOSS_REACH;
     var near = false;
     for (var j = 0; j < pr.arrows.length; j++) {
@@ -652,7 +661,7 @@
       if (dx * dx + dy * dy < reach * reach) { near = true; break; }
     }
     if (!near) return;
-    pr.bossHit.push(key);
+    pr.bossHit.push(b);
     this._prismDealTriple(key, b);
   };
 

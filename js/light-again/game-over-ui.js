@@ -9,6 +9,10 @@
   LA.sceneMethods._showGameOverScreen = function () {
     if (document.getElementById('_la-go-overlay')) return;
 
+    // Visualizer: the run is dead and the music switches to the game-over track —
+    // full-brightness menu look + artist label (distinct context from the home menu).
+    if (window.LAViz) window.LAViz.toMenu({ muffled: false, context: 'gameover' });
+
     var canvas    = this.game.canvas;
     var container = canvas.parentElement;
     var playerScore = this.score;
@@ -220,6 +224,7 @@
     function doReplay(mode) {
       clearGameOverHostFlag();
       overlay.remove();
+      if (window.LAViz) window.LAViz.toGame();   // game-over → replay: in-game look
       document.removeEventListener('keydown', onKey);
       window.__laGameMode = mode;
       if (typeof window.__laOnModeChange === 'function') window.__laOnModeChange(mode);

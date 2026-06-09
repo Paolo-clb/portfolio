@@ -56,9 +56,12 @@
   <!-- Custom cursor halo (cyan; lights up when an attack/click will land) -->
   <script src="desktop-cursor.js"></script>
 
-  <!-- Launch: open the game immediately. The × (top-right) quits the app; Escape
-       (or any other dismissal) bounces back to the mode-select menu instead of a
-       blank window. -->
+  <!-- Launch: open the game immediately. The × (top-right) quits the app. Escape
+       is context-aware (handled in the game shell via window.__laQuit registered
+       below): it pauses a live run into the menu, and from a menu / pause menu /
+       game-over it quits the app. The observer below is only a safety net — if the
+       overlay ever vanishes some other way, re-open the game instead of a blank
+       window. -->
   <script>
     (function () {
       function launch() {
@@ -75,6 +78,10 @@
         } catch (e) { /* fall through */ }
         try { window.close(); } catch (e2) { /* ignore */ }
       }
+      // Let the game shell quit the app directly. Its presence also flags the
+      // "desktop build" to shell.js, which then makes Escape pause a live run
+      // (instead of closing) and only quit from a menu / pause menu / game-over.
+      window.__laQuit = quit;
       function ready(fn) {
         if (document.readyState === 'complete') fn();
         else window.addEventListener('load', fn);
@@ -93,7 +100,9 @@
           }
         }, true);
 
-        // Escape / other dismissals remove the overlay → bounce back to the menu.
+        // Safety net only: Escape now pauses or quits (window.__laQuit) without
+        // removing the overlay. But if the overlay ever disappears another way,
+        // re-open the game rather than leaving a blank window.
         var reopening = false;
         new MutationObserver(function () {
           if (reopening) return;

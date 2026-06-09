@@ -695,7 +695,7 @@
     this._triggerHitstop(C.DETONATION_HITSTOP);
 
     // Chip a serpent caught in the blast, consistent with the nuke / delayed exp.
-    if (this._snake && !this._snake.dead) this._damageSnakeAoe(x, y, R, C.SNAKE_AOE_DMG);
+    this._damageAllSnakesAoe(x, y, R, C.SNAKE_AOE_DMG);
 
     this._retireCore(c);   // free this slot → its own 15 s respawn chrono
   };

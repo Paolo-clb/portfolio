@@ -163,36 +163,173 @@
   };
 
   /* ==========================================================================
-     BOSS DEFEAT — uniform aftermath shared by all four mini-bosses.
-     A stylish boss-coloured shockwave erupts from the boss and CLEARS the board;
-     the boss is worth BOSS_KILL_SCORE and every enemy swept by the wave is worth
-     its tier value — all multiplied by the combo HELD at the kill (but neither
-     the boss nor the clear feeds the combo, and the combo RESETS afterwards). The
-     cumulative points show in the boss kill banner. Then the arrow "powers up"
-     and the boss-reward draft (3 picks, or The World once maxed) opens. Natural
-     spawns stay suppressed until the player finishes choosing.
-     ========================================================================== */
-  M._bossDeathShockwave = function (x, y, ringColor, expCol) {
-    var cm = this.comboMultiplier || 1;
-    var total = C.BOSS_KILL_SCORE * cm;          // boss base reward ×combo
+     BOSS DEFEAT — a staged, uniform death shared by all mini-bosses.
 
-    var cam   = this.cameras.main;
-    var zoom  = cam.zoom || 1;
+     On the lethal hit the boss is removed at once (no more attacks) and a stylish
+     ~2 s RING-RETRACT plays: a boss-coloured ring constricts onto a charging core
+     where the boss fell, then it EXPLODES. At the explosion the boss bursts, fires
+     its own (non-clearing) shockwave and banks BOSS_KILL_SCORE ×combo.
+
+     Bosses can now arrive in TEAMS. Killing a NON-final team member plays all of
+     the above WITHOUT clearing the board. Only the FINAL boss of the event runs
+     the board-clear (every enemy swept worth its tier value ×combo), resets the
+     combo, advances the kill counter and opens the single reward draft. `isLast`
+     is decided the instant the boss dies — after it has left its list — so it is
+     robust whatever the kill order.
+     ========================================================================== */
+
+  /* Lethal hit → queue the death animation. Call AFTER the boss has removed itself
+     from its live list (so _anyBossAlive reflects the remaining team). */
+  M._beginBossDeath = function (ex, ey, opts) {
+    opts = opts || {};
+    if (!this._bossDeaths) this._bossDeaths = [];
+    var isLast = !this._anyBossAlive();
+
+    // Every distinct boss type beaten once unlocks (and then grows) teams. Real
+    // runs only — tutorial kills must not count toward the gate.
+    if (!this._tutorialActive && opts.type) {
+      if (!this._bossTypesDefeated) this._bossTypesDefeated = {};
+      this._bossTypesDefeated[opts.type] = true;
+    }
+    // The final boss of an event holds ALL spawns through the retract → clear →
+    // draft. Non-final deaths leave the fight (and natural spawns) running.
+    if (isLast) this._bossDraftPending = true;
+    // Curse-Fountain / Cache pacing: every defeated boss counts.
+    if (this._noteBossDefeat) this._noteBossDefeat();
+
+    // A small "locked-in" punch so the kill registers before the slow retract.
+    this._explode(ex, ey, [255, 255, 255], 16);
+    this._spawnWaveRing(ex, ey, { maxRadius: 70, color: opts.ringColor || 0xffffff, expandTime: 0.18 });
+    this.cameras.main.shake(120, 0.006);
+    this._triggerHitstop(C.HITSTOP_DUR);
+
+    this._bossDeaths.push({
+      x: ex, y: ey, t: 0, dur: C.BOSS_DEATH_RING_S,
+      ringColor: opts.ringColor || 0xffffff,
+      coreColor: opts.coreColor || opts.ringColor || 0xffffff,
+      isLast: isLast, opts: opts, exploded: false,
+      gfx: null, spin: 0,
+    });
+  };
+
+  /* Per-frame driver (REAL dt, like the clear-wave) — advances every death anim,
+     redraws the retracting ring, then explodes + resolves the aftermath. */
+  M._updateBossDeaths = function (dt) {
+    var arr = this._bossDeaths;
+    if (!arr || !arr.length) return;
+    for (var i = arr.length - 1; i >= 0; i--) {
+      var d = arr[i];
+      d.t += dt;
+      var u = d.dur > 0 ? Math.min(1, d.t / d.dur) : 1;
+      this._drawBossDeathRing(d, u);
+      if (!d.exploded && d.t >= d.dur) {
+        d.exploded = true;
+        if (d.gfx) { d.gfx.destroy(); d.gfx = null; }
+        arr.splice(i, 1);
+        this._bossExplode(d);
+      }
+    }
+  };
+
+  /* The retract visual: a constricting boss-coloured ring + sparks spiralling
+     inward onto a white-hot charging core that swells as the ring closes. */
+  M._drawBossDeathRing = function (d, u) {
+    var g = d.gfx;
+    if (!g) { g = this.add.graphics(); g.setDepth(36); g.setBlendMode(Phaser.BlendModes.ADD); d.gfx = g; }
+    g.clear();
+    var TAU2 = Math.PI * 2, x = d.x, y = d.y, col = d.ringColor, core = d.coreColor;
+    var inEase = Math.pow(u, 1.7);                 // radius collapse accelerates inward
+    var rr     = 240 * (1 - inEase) + 14;          // outer ring radius
+    var spin   = d.spin + u * 7.0;
+    var alpha  = 0.35 + 0.6 * u;                   // brightens as it tightens
+
+    // Two broken rings rotating opposite-ish → a "constricting iris" read.
+    var rset = [ { r: rr, w: 5, a: alpha, sp: spin }, { r: rr * 1.5, w: 2.5, a: alpha * 0.5, sp: -spin * 0.8 } ];
+    for (var ri = 0; ri < rset.length; ri++) {
+      var R = rset[ri].r, segs = 5, gap = 0.42;
+      g.lineStyle(rset[ri].w, col, rset[ri].a);
+      for (var s = 0; s < segs; s++) {
+        var a0 = rset[ri].sp + (s / segs) * TAU2;
+        g.beginPath();
+        g.arc(x, y, R, a0, a0 + (TAU2 / segs) * (1 - gap), false);
+        g.strokePath();
+      }
+    }
+    // Sparks riding the ring inward.
+    for (var k = 0; k < 10; k++) {
+      var sa = -spin * 1.3 + (k / 10) * TAU2;
+      var sr = rr * (0.62 + 0.42 * Math.cos(u * Math.PI + k));
+      g.fillStyle(0xffffff, alpha);
+      g.fillCircle(x + Math.cos(sa) * sr, y + Math.sin(sa) * sr, 1.6 + 2.2 * u);
+    }
+    // Charging core (peaks just before the blast).
+    var coreR = 6 + 26 * u * u;
+    g.fillStyle(core, 0.3 + 0.5 * u);  g.fillCircle(x, y, coreR * 1.7);
+    g.fillStyle(0xffffff, 0.45 + 0.5 * u); g.fillCircle(x, y, coreR * (0.5 + 0.4 * u));
+  };
+
+  /* End of the retract: the boss-specific burst, then the aftermath. */
+  M._bossExplode = function (d) {
+    if (!this._upgradeLevels || !this.p) return;   // scene torn down mid-anim
+    var ex = d.x, ey = d.y, opts = d.opts;
+    if (typeof opts.explode === 'function') opts.explode.call(this, ex, ey);
+    var bossPts = this._bossScorePop(ex, ey, opts, d.isLast);
+    if (d.isLast) this._bossBoardClear(ex, ey, opts, bossPts);
+  };
+
+  /* Per-boss "onde de choc" + big score. Banks BOSS_KILL_SCORE ×combo and fires a
+     boss-coloured shockwave that knocks back but does NOT clear the board. The
+     non-final banner shows the boss's own score; the final boss's grand-total
+     banner is shown by _bossBoardClear instead. */
+  M._bossScorePop = function (ex, ey, opts, isLast) {
+    var pts = C.BOSS_KILL_SCORE * (this.comboMultiplier || 1);
+    this.score += pts;
+    var ringColor = opts.ringColor || 0xffffff;
+    this._spawnWaveRing(ex, ey, { maxRadius: 340, color: ringColor, expandTime: 0.44 });
+    this._spawnWaveRing(ex, ey, { maxRadius: 190, color: 0xffffff,  expandTime: 0.32 });
+    this._applyShockwave(ex, ey, C.SHOCKWAVE_RADIUS * 2.4, C.SHOCKWAVE_FORCE, C.SHOCKWAVE_STUN);
+    if (!isLast) {
+      this._bossKillBanner(ex, ey - 56, (opts.label || 'BOSS DOWN') + '  +' + pts,
+                           opts.color || '#ffffff', opts.glow || opts.color);
+    }
+    return pts;
+  };
+
+  /* FINAL boss only: the improved board-clearing shockwave (every enemy swept
+     worth its tier ×combo), combo reset, kill-counter advance and the single team
+     reward draft. `bossPts` was already banked by _bossScorePop. */
+  M._bossBoardClear = function (ex, ey, opts, bossPts) {
+    var cm = this.comboMultiplier || 1;
+    var ringColor = opts.ringColor || 0xffffff;
+    var expCol = opts.expCol || [255, 255, 255];
+
+    var cam = this.cameras.main, zoom = cam.zoom || 1;
     var reach = Math.sqrt(cam.width * cam.width + cam.height * cam.height) * 0.5 / zoom + 480;
     var waveSpeed = reach / 0.55;
-    this._spawnWaveRing(x, y, { maxRadius: reach,        color: ringColor, expandTime: 0.55 });
-    this._spawnWaveRing(x, y, { maxRadius: reach * 0.55, color: 0xffffff,  expandTime: 0.42 });
 
-    expCol = expCol || [255, 255, 255];
+    // Layered clear shockwave: boss-coloured front, white mid, an inner pulse and
+    // a trailing echo ring — bigger and richer than a single-boss FX.
+    this._spawnWaveRing(ex, ey, { maxRadius: reach,        color: ringColor, expandTime: 0.55 });
+    this._spawnWaveRing(ex, ey, { maxRadius: reach * 0.72, color: 0xffffff,  expandTime: 0.46 });
+    this._spawnWaveRing(ex, ey, { maxRadius: reach * 0.42, color: ringColor, expandTime: 0.34 });
+    var self0 = this;
+    this.time.delayedCall(150, function () {
+      if (self0._spawnWaveRing && self0._upgradeLevels) {
+        self0._spawnWaveRing(ex, ey, { maxRadius: reach * 0.9, color: ringColor, expandTime: 0.5 });
+      }
+    });
+    cam.flash(220, (ringColor >> 16) & 255, (ringColor >> 8) & 255, ringColor & 255);
+    cam.shake(360, 0.016);
+
+    var total = bossPts;
     for (var i = this.enemies.length - 1; i >= 0; i--) {
-      var e  = this.enemies[i];
+      var e = this.enemies[i];
       e._dead = true;   // keep the removal invariant (homing projectiles test _dead)
       var bp = e.tier === 3 ? 100 : e.tier === 4 ? C.T4_SCORE : e.tier === 2 ? 30 : 10;
       total += bp * cm;
       this.totalKills++;
-      // Stagger the burst by distance so it reads as the wave passing through.
-      var dxe = e.x - x, dye = e.y - y;
-      var dd  = Math.sqrt(dxe * dxe + dye * dye);
+      var dxe = e.x - ex, dye = e.y - ey;
+      var dd = Math.sqrt(dxe * dxe + dye * dye);
       var delay = Math.round(dd / waveSpeed * 1000);
       (function (sc, px, py, col, ms) {
         if (ms < 30) { sc._explode(px, py, col, 12); sc._explode(px, py, [255, 255, 255], 5); }
@@ -214,28 +351,17 @@
       this.projectiles.splice(pi, 1);
     }
 
-    this.score += total;
-    // Big banked score, but combo is NOT incremented — and it resets now.
-    this.comboMultiplier = 1;
-    this.comboTimer = 0;
-    this._comboPulse = 0;
-    return total;
-  };
+    this.score += (total - bossPts);   // bossPts already banked by _bossScorePop
+    // Combo banked but not fed by the clear; it resets now.
+    this.comboMultiplier = 1; this.comboTimer = 0; this._comboPulse = 0;
 
-  M._bossDefeatSequence = function (x, y, opts) {
-    opts = opts || {};
-    var total = this._bossDeathShockwave(x, y, opts.ringColor || 0xffffff, opts.expCol);
+    // Grand-total banner (boss + everything the wave cleared).
+    this._bossKillBanner(ex, ey - 56, (opts.label || 'BOSS DOWN') + '  +' + total,
+                         opts.color || '#ffffff', opts.glow || opts.color);
 
-    // Banner shows the cumulative points (boss + everything the wave cleared).
-    var label = (opts.label || 'BOSS DOWN') + '  +' + total;
-    this._bossKillBanner(x, y - 56, label, opts.color || '#ffffff', opts.glow || opts.color);
-
-    // Hold natural spawns until the draft resolves; advance the boss kill counter
-    // so kills made DURING the fight don't shorten the gap to the next boss.
-    this._bossDraftPending = true;
+    // Advance the kill counter for the next event (so kills made during the fight
+    // don't shorten the gap), then the single reward draft for the whole team.
     this._advanceBossThreshold();
-    // Curse-Fountain pacing: this boss counts toward the next fountain's gate.
-    if (this._noteBossDefeat) this._noteBossDefeat();
 
     var self = this;
     // Beat 1 (~0.56s): the arrow surges with power once the wave has swept through.
@@ -246,19 +372,32 @@
     // Beat 2 (~1.32s): the reward draft (3 picks, or The World once everything is maxed).
     this.time.delayedCall(1320, function () {
       if (!self._upgradeLevels) return;
-      // If the player DIED in the ~1.3s window after the boss kill, this timer
-      // still fires — and nothing else cancels it. Without this guard the reward
-      // draft pops a pause + overlay ON TOP of the game-over screen. Bail (and
-      // release the spawn-suppression flag), symmetric to the tutorial guard.
       if (!self.p || self.p.state === 'DEAD') { self._bossDraftPending = false; return; }
-      // A tutorial relaunch (? button) within this window soft-resets the draft
-      // state but can't cancel this timer — bail so we don't pop a draft over the
-      // lesson (and drop the spawn-suppression flag the tutorial defuse also clears).
       if (self._tutorialActive) { self._bossDraftPending = false; return; }
       if (self._upgradeDraftOpen || self._upSlowMoPhase) return;
       self._rerollsAvailable = (self._rerollsAvailable || 0) + 1;  // boss reward: +1 reroll
       self._beginBossUpgradeDraft();
     });
+  };
+
+  /* Tear down any in-progress death-anim Graphics (scene shutdown / restart). */
+  M._clearBossDeaths = function () {
+    var arr = this._bossDeaths;
+    if (!arr) return;
+    for (var i = 0; i < arr.length; i++) { if (arr[i].gfx) arr[i].gfx.destroy(); }
+    arr.length = 0;
+  };
+
+  /* AoE chip for EVERY live serpent (explosions can catch several at once). */
+  M._damageAllSnakesAoe = function (x, y, R, dmg) {
+    var L = this._snakeList;
+    if (!L || !L.length || !this._damageSnakeAoe) return;
+    for (var i = L.length - 1; i >= 0; i--) {
+      var s = L[i];
+      if (!s || s.dead) continue;
+      this._snake = s;
+      this._damageSnakeAoe(x, y, R, dmg);
+    }
   };
 
   M._floatScore = function (wx, wy, pts, tier) {
@@ -705,7 +844,7 @@
 
     // The nuke also chips any serpent segments in range — throttled so the
     // frequent storm of nukes only nibbles the worm instead of vaporising it.
-    if (this._snake && !this._snake.dead) this._damageSnakeAoe(ex, ey, detRadius, C.SNAKE_AOE_DMG);
+    this._damageAllSnakesAoe(ex, ey, detRadius, C.SNAKE_AOE_DMG);
 
     // Star spawn: detonation killed ≥ STAR_DETO_THRESH enemies
     if (detoKills >= C.STAR_DETO_THRESH) {
@@ -907,7 +1046,7 @@
     this._applyShockwave(x, y, radius, C.SHOCKWAVE_FORCE, C.SHOCKWAVE_STUN);
 
     // Delayed explosions chip serpent segments too — same throttled AoE.
-    if (this._snake && !this._snake.dead) this._damageSnakeAoe(x, y, radius, C.SNAKE_AOE_DMG);
+    this._damageAllSnakesAoe(x, y, radius, C.SNAKE_AOE_DMG);
 
     // Visuals — ring matches the warning circle's red color. The local burst +
     // wave ring always play (they're centered on the blast, not screen-wide).

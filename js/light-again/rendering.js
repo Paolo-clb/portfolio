@@ -669,12 +669,14 @@
 
     this.hudGfx.clear();
 
-    // ---- Glassy HUD backplates (behind the text) — keep the monospace counters
-    //      legible over the busy PCB / camera flashes, matching the DOM pop-ups. ----
+    // ---- Glassy HUD backplate (behind the text) — keep the monospace counters
+    //      legible over the busy PCB / camera flashes, matching the DOM pop-ups.
+    //      Horizontal strip to the right of the corner music visualizer, behind
+    //      the FPS / enemies / time row. ----
     this.hudGfx.fillStyle(0x06091a, 0.40);
-    this.hudGfx.fillRoundedRect(4, 3, 92, 74, 8);
+    this.hudGfx.fillRoundedRect(108, 39, 224, 30, 9);
     this.hudGfx.lineStyle(1, c.cyan, 0.16);
-    this.hudGfx.strokeRoundedRect(4, 3, 92, 74, 8);
+    this.hudGfx.strokeRoundedRect(108, 39, 224, 30, 9);
     var scPlateH = this.comboMultiplier > 1 ? 74 : 38;
     this.hudGfx.fillStyle(0x06091a, 0.30);
     this.hudGfx.fillRoundedRect(cx - 62, 8, 124, scPlateH, 9);
@@ -950,7 +952,10 @@
     // ---- Boss-spawn counter (kills until the next boss) / DANGER while a boss
     //      is on the field. Bosses are the only upgrade source now. ----
     if (!this._upgradeDraftOpen && !this._tutorialActive) {
-      var bossAlive = !!(this._anomaly || this._gigaBruiser || this._mirror || this._snake);
+      // DANGER while ANY boss (team member) is alive OR mid death-retract, so the
+      // counter stays paused across a whole team event until the reward draft.
+      var bossAlive = (this._anyBossAlive ? this._anyBossAlive() : !!(this._anomaly || this._gigaBruiser || this._mirror || this._snake))
+                   || !!(this._bossDeaths && this._bossDeaths.length);
 
       if (!this._killCounterTxt) {
         this._killCounterTxt = this.add.text(0, 0, '', {

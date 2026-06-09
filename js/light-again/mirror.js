@@ -102,11 +102,13 @@
   }
 
   /* ================================================================ */
-  M._initMirror = function () { this._mirror = null; };
+  M._initMirror = function () {
+    this._mirror     = null;   // cursor: the instance currently being processed
+    this._mirrorList = [];     // ALL live Mirrors (teams can field several)
+  };
 
-  M._clearMirror = function (_silent) {
-    var mir = this._mirror;
-    this._mirror = null;
+  /* Destroy ONE instance's sprites + drop it from the live list. */
+  M._clearOneMirror = function (mir, _silent) {
     if (!mir) return;
     if (mir.spr)       mir.spr.destroy();
     if (mir.glowSpr)   mir.glowSpr.destroy();
@@ -139,14 +141,24 @@
         if (sh.reflected && sh._dashAtkId && this._paradeFlushIfDone) this._paradeFlushIfDone(sh._dashAtkId);
       }
     }
+    var L = this._mirrorList;
+    if (L) { var li = L.indexOf(mir); if (li >= 0) L.splice(li, 1); }
+    if (this._mirror === mir) this._mirror = (L && L.length) ? L[0] : null;
+  };
+
+  /* Clear ALL Mirrors (scene shutdown / restart / tutorial purge). */
+  M._clearMirror = function (_silent) {
+    var L = this._mirrorList;
+    if (L) { while (L.length) this._clearOneMirror(L[0], _silent); }
+    this._mirror = null;
   };
 
   /* ================================================================
      SPAWN — emerges out of the player, then peels off into ROAM.
      ================================================================ */
-  M._spawnMirror = function () {
-    if (this._mirror || this._anomaly || this._gigaBruiser || this._snake) return;
+  M._spawnMirror = function (opts) {
     if (!this.p || this.p.state === 'DEAD') return;
+    opts = opts || {};
     var p = this.p;
 
     var glowSpr = this.add.image(p.x, p.y, '_ar_cyan');
@@ -173,10 +185,11 @@
     var shotGfx = this.add.graphics(); shotGfx.setDepth(23); shotGfx.setBlendMode(Phaser.BlendModes.ADD);
     var shieldGfx = this.add.graphics(); shieldGfx.setDepth(34); shieldGfx.setBlendMode(Phaser.BlendModes.ADD);
 
-    // Spawn drifting away from the player so it visibly "peels off".
-    var outAng = Math.random() * TAU;
+    // Spawn drifting away from the player so it visibly "peels off". A team spawn
+    // passes an angle so each rival peels off in its own direction.
+    var outAng = opts.angle != null ? opts.angle : Math.random() * TAU;
 
-    this._mirror = {
+    var mir = this._mirror = {
       x: p.x, y: p.y, vx: 0, vy: 0,
       angle: outAng,
       orbs: C.MIR_SHIELD_ORBS, orbsMax: C.MIR_SHIELD_ORBS,
@@ -214,6 +227,9 @@
     this._explode(p.x, p.y, [255, 255, 255], 18);
     this._explode(p.x, p.y, [255, 70, 180], 12);
     this.cameras.main.flash(120, 255, 150, 220);
+
+    if (!this._mirrorList) this._mirrorList = [];
+    this._mirrorList.push(mir);
   };
 
   /* ================================================================
@@ -1301,19 +1317,21 @@
     mir.dead = true;
     var ex = mir.x, ey = mir.y;
 
-    this._explode(ex, ey, [255, 70, 180], 54);
-    this._explode(ex, ey, [180, 96, 255], 36);
-    this._explode(ex, ey, [255, 255, 255], 28);
-    this._spawnWaveRing(ex, ey, { maxRadius: 260, color: BODY_COL, expandTime: 0.30 });
-    this._spawnWaveRing(ex, ey, { maxRadius: 150, color: 0xffffff, expandTime: 0.22 });
-    this.cameras.main.flash(240, 255, 90, 200);
-    this.cameras.main.shake(240, 0.016);
-    this._triggerHitstop(C.DETONATION_HITSTOP);
-
-    this._clearMirror(true);
-
-    // Unified aftermath: magenta board-clear shockwave + score + power-up + 3-pick draft.
-    this._bossDefeatSequence(ex, ey, { label: 'RIVAL DOWN', color: '#ff8ad0', glow: '#ff8ad0', ringColor: BODY_COL, expCol: [255, 90, 200] });
+    this._clearOneMirror(mir, true);
+    this._beginBossDeath(ex, ey, {
+      type: 'mirror', label: 'RIVAL DOWN',
+      color: '#ff8ad0', glow: '#ff8ad0', ringColor: BODY_COL, coreColor: 0xff3aa0, expCol: [255, 90, 200],
+      explode: function (x, y) {
+        this._explode(x, y, [255, 70, 180], 54);
+        this._explode(x, y, [180, 96, 255], 36);
+        this._explode(x, y, [255, 255, 255], 28);
+        this._spawnWaveRing(x, y, { maxRadius: 260, color: BODY_COL, expandTime: 0.30 });
+        this._spawnWaveRing(x, y, { maxRadius: 150, color: 0xffffff, expandTime: 0.22 });
+        this.cameras.main.flash(240, 255, 90, 200);
+        this.cameras.main.shake(240, 0.016);
+        this._triggerHitstop(C.DETONATION_HITSTOP);
+      },
+    });
   };
 
   /* ================================================================

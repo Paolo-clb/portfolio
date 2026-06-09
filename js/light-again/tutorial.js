@@ -265,6 +265,7 @@
     if (this._clearGigaBruiser) this._clearGigaBruiser(true);
     if (this._clearMirror) this._clearMirror(true);
     if (this._clearSnake) this._clearSnake(true);
+    if (this._clearBossDeaths) this._clearBossDeaths();   // and any in-progress boss death-anim
     if (this._clearCurseFount) this._clearCurseFount(true);   // also drop a live Curse Fountain
     if (this._clearDataHighways) this._clearDataHighways(true); // and any live Data Highway
     if (this._clearCacheZone) this._clearCacheZone(true);     // and any live Cache Zone (also lifts enemy rage)

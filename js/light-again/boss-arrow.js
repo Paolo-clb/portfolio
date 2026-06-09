@@ -30,25 +30,28 @@
      For the Serpent (which can split into several worms) we aim at the head of
      the NEAREST worm so the guide always leads to the closest threat. */
   M._bossArrowTarget = function (p) {
-    var g = this._gigaBruiser;
-    if (g && !g.dead) return { x: g.x, y: g.y, col: 0x9933ff };   // purple
-
-    var mir = this._mirror;
-    if (mir && !mir.dead) return { x: mir.x, y: mir.y, col: 0xff3aa0 };   // magenta
-
-    var s = this._snake;
-    if (s && !s.dead && s.worms && s.worms.length) {
-      var best = null, bd = Infinity;
-      for (var i = 0; i < s.worms.length; i++) {
-        var w = s.worms[i];
+    // Teams can field several bosses at once — point at the NEAREST arrow-bearing
+    // one (the Anomaly is excluded: it owns a transient pointer of its own).
+    var best = null, bd = Infinity;
+    var consider = function (x, y, col) {
+      var dx = x - p.x, dy = y - p.y, d2 = dx * dx + dy * dy;
+      if (d2 < bd) { bd = d2; best = { x: x, y: y, col: col }; }
+    };
+    var GL = this._gigaList;
+    if (GL) for (var gi = 0; gi < GL.length; gi++) { var g = GL[gi]; if (g && !g.dead) consider(g.x, g.y, 0x9933ff); }   // purple
+    var ML = this._mirrorList;
+    if (ML) for (var mi = 0; mi < ML.length; mi++) { var m = ML[mi]; if (m && !m.dead) consider(m.x, m.y, 0xff3aa0); }   // magenta
+    var SL = this._snakeList;
+    if (SL) for (var si = 0; si < SL.length; si++) {
+      var s = SL[si];
+      if (!s || s.dead || !s.worms) continue;
+      for (var wi = 0; wi < s.worms.length; wi++) {
+        var w = s.worms[wi];
         if (!w.segs || !w.segs.length) continue;   // a fully-cleared worm has no head
-        var dx = w.hx - p.x, dy = w.hy - p.y, d2 = dx * dx + dy * dy;
-        if (d2 < bd) { bd = d2; best = w; }
+        consider(w.hx, w.hy, 0x33ff88);   // green → leads to the closest worm head
       }
-      if (best) return { x: best.hx, y: best.hy, col: 0x33ff88 };   // green
     }
-
-    return null;
+    return best;
   };
 
   /* ---- per-frame driver (called from scene.update) ---- */

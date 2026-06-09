@@ -132,6 +132,8 @@
     }
     clearPauseState(); // entering play → button shows ⏸, never a stale ▶
     updateMenuBtn();
+    // Visualizer: switch to the in-game look (artist label hidden, music un-muffled).
+    if (window.LAViz) window.LAViz.toGame();
   }
 
   /* Build the hardcore-unlock progress panel (enemy kill checklist) */
@@ -453,6 +455,11 @@
     // Resumable only if we came from a LIVE run — a dead game-over run restarts fresh.
     var resumable = fromActiveGame && !wasGameOver;
     menuResumable = resumable;   // the ▶ toggle resumes only when this is true
+
+    // Visualizer: a live paused run behind the menu ⇒ same track keeps playing
+    // but low-passed (muffled). Otherwise it's a fresh menu / game-over track at
+    // full brightness. The artist label shows in both cases (a menu is up).
+    if (window.LAViz) window.LAViz.toMenu({ muffled: resumable });
     var sbActive = resumable && currentMode === 'sandbox';
     var hcActive = resumable && currentMode === 'hardcore';
     var activeBadge = '<div class="la-ms-active-badge">' + (fr ? 'En cours' : 'In progress') + '</div>';
@@ -619,6 +626,7 @@
       dismissModeMenu(true);   // instant — no fading scrim over the resumed run
       clearPauseState();
       if (activeGame && typeof activeGame.resume === 'function') activeGame.resume();
+      if (window.LAViz) window.LAViz.toGame();   // un-muffle, back to the in-game look
     }
     // Each card "Resumes" the CURRENT run when the menu was opened from that same
     // mode; otherwise it (re)starts that mode. From the launch menu it starts fresh.
@@ -1583,6 +1591,7 @@
           dismissModeMenu(true);   // instant — no fading scrim over the resumed run
           clearPauseState();
           activeGame.resume();
+          if (window.LAViz) window.LAViz.toGame();   // un-muffle, back to the in-game look
         }
         return;
       }
@@ -1600,6 +1609,11 @@
     document.body.appendChild(overlayEl);
     document.body.style.overflow = 'hidden';
 
+    // Music visualizer (audio-reactive sphere) — persistent now-playing widget,
+    // lives in the modal so it survives every overlay. mount() starts the test
+    // track; showModeMenu / startWithMode / game-over drive its state below.
+    if (window.LAViz) window.LAViz.mount(modal);
+
     /* --- Animate in (force reflow first) --- */
     void overlayEl.offsetHeight;
     overlayEl.classList.add('modal-overlay--open');
@@ -1613,12 +1627,25 @@
     }
     closeBtn.focus();
 
-    /* --- Keyboard: Escape closes help popup first, then game --- */
+    /* --- Keyboard: Escape is context-aware on the desktop build ---
+       Browser portfolio (no quit hook): Esc dismisses the modal as before —
+       standard "Escape closes the overlay" behaviour.
+       Desktop (.exe) build (window.__laQuit registered by the launcher):
+         • Help popup open      → close just the popup (innermost layer first).
+         • Live run playing      → PAUSE into the menu instead of tearing the
+           game down. An accidental Esc mid-fight must never kill the run, and
+           the old close→relaunch bounce was the desktop crash culprit.
+         • Menu / pause menu / game-over → quit the app cleanly (via __laQuit). */
     overlayEl._onKeyDown = function (e) {
-      if (e.key === 'Escape') {
-        if (helpPopupEl) { closeHelpPopup(false); }
-        else { closeLightAgain(); }
+      if (e.key !== 'Escape') return;
+      if (helpPopupEl) { closeHelpPopup(false); return; }
+      var isDesktop = (typeof window.__laQuit === 'function');
+      if (isDesktop && activeGame && !menuEl && !isLightAgainGameOverOpen() &&
+          typeof homeToggleFn === 'function') {
+        homeToggleFn();   // pause the run + open the (pause) menu
+        return;
       }
+      requestCloseGame();
     };
     document.addEventListener('keydown', overlayEl._onKeyDown);
 
@@ -1660,6 +1687,15 @@
      MODAL — close
      ================================================================ */
 
+  // Close the game "for real". The desktop (.exe) build registers a quit hook
+  // (window.__laQuit) that closes the OS window; the browser portfolio has no
+  // hook, so we just dismiss the modal back to the page. Escape funnels through
+  // here once it has decided the game should actually close (vs. pause).
+  function requestCloseGame() {
+    if (typeof window.__laQuit === 'function') { window.__laQuit(); return; }
+    closeLightAgain();
+  }
+
   function closeLightAgain() {
     if (!overlayEl) return;
 
@@ -1669,6 +1705,9 @@
 
     // Stop the gamepad menu loop + drop any lingering focus ring.
     stopPadLoop();
+
+    // Tear down the music visualizer (stops the audio + rAF, drops the DOM).
+    if (window.LAViz) window.LAViz.unmount();
 
     // Close help popup immediately (whole modal is exiting — no animation needed)
     closeHelpPopup(true);

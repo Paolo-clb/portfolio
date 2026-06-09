@@ -32,17 +32,27 @@
      INIT / CLEANUP
      ================================================================ */
   M._initGigaBruiser = function () {
-    this._gigaBruiser = null;
+    this._gigaBruiser = null;   // cursor: the instance currently being processed
+    this._gigaList    = [];     // ALL live Giga Bruisers (teams can field several)
   };
 
-  M._clearGigaBruiser = function (_silent) {
-    var g = this._gigaBruiser;
-    this._gigaBruiser = null;
+  /* Destroy ONE instance's sprites + drop it from the live list. */
+  M._clearOneGigaBruiser = function (g, _silent) {
     if (!g) return;
     if (g.gfx)         g.gfx.destroy();
     if (g.shieldGfx)   g.shieldGfx.destroy();
     if (g.fractureGfx) g.fractureGfx.destroy();
     if (g.spawnFxGfx)  g.spawnFxGfx.destroy();
+    var L = this._gigaList;
+    if (L) { var i = L.indexOf(g); if (i >= 0) L.splice(i, 1); }
+    if (this._gigaBruiser === g) this._gigaBruiser = (L && L.length) ? L[0] : null;
+  };
+
+  /* Clear ALL Giga Bruisers (scene shutdown / restart / tutorial purge). */
+  M._clearGigaBruiser = function (_silent) {
+    var L = this._gigaList;
+    if (L) { while (L.length) this._clearOneGigaBruiser(L[0], _silent); }
+    this._gigaBruiser = null;
   };
 
   /* ================================================================
@@ -51,18 +61,19 @@
      right where the player is looking via a slow cinematic (_gigaBruiser
      TickArrival) — intangible until it has fully formed.
      ================================================================ */
-  M._spawnGigaBruiser = function () {
-    if (this._gigaBruiser || this._anomaly || this._mirror || this._snake) return;
+  M._spawnGigaBruiser = function (opts) {
     if (!this.p || this.p.state === 'DEAD') return;
+    opts = opts || {};
 
     var p   = this.p;
     var cam = this.cameras.main;
     // Appear directly in the player's field of view: out in front of where the
     // ship is facing, far enough not to overlap but comfortably on-screen.
+    // A team spawn passes an explicit angle so members fan out around the player.
     var view    = cam.worldView;
     var viewMin = Math.min(view.width, view.height);
-    var dist    = Math.max(C.GBR_SIZE * 4, viewMin * 0.36);
-    var ang     = p.angle;
+    var dist    = opts.dist != null ? opts.dist : Math.max(C.GBR_SIZE * 4, viewMin * 0.36);
+    var ang     = opts.angle != null ? opts.angle : p.angle;
     var x = p.x + Math.cos(ang) * dist;
     var y = p.y + Math.sin(ang) * dist;
     // Clamp to the intersection of (visible rect − margin) and (disc arena),
@@ -86,7 +97,7 @@
     var spawnFxGfx  = this.add.graphics(); spawnFxGfx.setDepth(24);
     spawnFxGfx.setBlendMode(Phaser.BlendModes.ADD);
 
-    this._gigaBruiser = {
+    var g = this._gigaBruiser = {
       x: x, y: y, vx: 0, vy: 0,
       hp: C.GBR_HP, hpMax: C.GBR_HP,
       angle: 0,
@@ -125,6 +136,9 @@
     this._explode(x, y, [187, 0, 255], 12);
     this._explode(x, y, [255, 180, 255], 8);
     this.cameras.main.shake(120, 0.005);
+
+    if (!this._gigaList) this._gigaList = [];
+    this._gigaList.push(g);
   };
 
   /* ================================================================
@@ -1151,22 +1165,26 @@
     g.dead = true;
     var ex = g.x, ey = g.y;
 
-    // Big death burst — purple core with white shrapnel, red embers
-    this._explode(ex, ey, [255, 80, 80],   60);
-    this._explode(ex, ey, [255, 180, 255], 44);
-    this._explode(ex, ey, [120, 0, 200],   32);
-    this._explode(ex, ey, [255, 255, 255], 28);
-    this._spawnWaveRing(ex, ey, { maxRadius: C.GBR_SIZE * 5.5, color: 0xffffff, expandTime: 0.34 });
-    this._spawnWaveRing(ex, ey, { maxRadius: C.GBR_SIZE * 3.8, color: 0xff66ff, expandTime: 0.26 });
-    this._spawnWaveRing(ex, ey, { maxRadius: C.GBR_SIZE * 2.4, color: 0x9933ff, expandTime: 0.20 });
-    this.cameras.main.flash(280, 255, 200, 255);
-    this.cameras.main.shake(300, 0.020);
-    this._triggerHitstop(C.DETONATION_HITSTOP);
-
-    this._clearGigaBruiser(true);
-
-    // Unified aftermath: boss-coloured board-clear shockwave + score + power-up + 3-pick draft.
-    this._bossDefeatSequence(ex, ey, { label: 'GIGA BRUISER', color: '#ff66ff', glow: '#ff66ff', ringColor: 0xff66ff, expCol: [255, 150, 255] });
+    // Remove THIS instance at once (no more attacks); _beginBossDeath then sees
+    // whether any team-mate remains. The big burst fires at the end of the retract.
+    this._clearOneGigaBruiser(g, true);
+    this._beginBossDeath(ex, ey, {
+      type: 'gigaBruiser', label: 'GIGA BRUISER',
+      color: '#ff66ff', glow: '#ff66ff', ringColor: 0xff66ff, coreColor: 0x9933ff, expCol: [255, 150, 255],
+      explode: function (x, y) {
+        // Big death burst — purple core with white shrapnel, red embers
+        this._explode(x, y, [255, 80, 80],   60);
+        this._explode(x, y, [255, 180, 255], 44);
+        this._explode(x, y, [120, 0, 200],   32);
+        this._explode(x, y, [255, 255, 255], 28);
+        this._spawnWaveRing(x, y, { maxRadius: C.GBR_SIZE * 5.5, color: 0xffffff, expandTime: 0.34 });
+        this._spawnWaveRing(x, y, { maxRadius: C.GBR_SIZE * 3.8, color: 0xff66ff, expandTime: 0.26 });
+        this._spawnWaveRing(x, y, { maxRadius: C.GBR_SIZE * 2.4, color: 0x9933ff, expandTime: 0.20 });
+        this.cameras.main.flash(280, 255, 200, 255);
+        this.cameras.main.shake(300, 0.020);
+        this._triggerHitstop(C.DETONATION_HITSTOP);
+      },
+    });
   };
 
   /* ================================================================

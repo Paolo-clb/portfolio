@@ -369,11 +369,13 @@ body.hero-in-view .light-again-btn {
 
 .light-again-modal {
   position: relative;
-  /* Near-fullscreen with breathing room */
+  /* Fill the viewport (minus the overlay's ~1rem frame) on web — the old
+     1600x900 cap left big empty borders on large screens (e.g. 27"). This
+     matches the desktop app, which runs full-window. */
   width: 100%;
   height: 100%;
-  max-width: min(1600px, calc(100vw - 2rem));
-  max-height: min(900px, calc(100vh - 2rem));
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
   /* Opaque background for maximum game contrast */
   background: #08080f;
   border: 1px solid rgba(242, 162, 133, 0.12);
@@ -911,4 +913,118 @@ body.hero-in-view .light-again-btn {
 [data-theme="nature"] .light-again-help-nav {
   background: rgba(5, 10, 3, 0.97);
   border-top-color: rgba(42, 69, 34, 0.28);
+}
+
+/* ============================================================
+   Music visualizer — audio-reactive sphere (now playing)
+   Pinned top-left, just right of the FPS / enemies / time stats, in the
+   SAME spot across the in-game HUD, pause menu and game-over (it lives in
+   .light-again-modal, above the menu / game-over scrims). The sphere is
+   canvas-drawn and audio-reactive (see music-visualizer.js), themed via
+   LA.getColors().cyan (cyan on light/dark, mint on nature) which JS mirrors
+   into --la-viz-color. CSS only does layout + the artist label + glyph.
+   ============================================================ */
+.la-viz {
+  position: absolute;
+  left: 8px;             /* top-left corner; stats sit horizontally to its right */
+  top: 6px;
+  z-index: 78;           /* above menus(60) / help(70), below close + loader(80) */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  -webkit-appearance: none;
+          appearance: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .3s ease, transform .3s ease;
+}
+.la-viz__canvas {
+  display: block;
+  pointer-events: none;
+  transition: filter .35s ease, opacity .35s ease;
+}
+.la-viz:hover .la-viz__canvas { filter: brightness(1.12); }
+
+/* in-game - a bit more visible than before but kept semi-transparent + with
+   tamed brightness so it never takes over (full on hover to click it) */
+.la-viz--game .la-viz__canvas { opacity: .58; filter: brightness(.8); }
+.la-viz--game:hover .la-viz__canvas { opacity: 1; filter: brightness(1.05); }
+
+/* play / pause glyph, centred over the sphere */
+.la-viz__glyph {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--la-viz-size, 86px);
+  height: var(--la-viz-size, 86px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+.la-viz__glyph::before {
+  content: "";
+  position: absolute;
+  width: 44%;
+  height: 44%;
+  border-radius: 50%;
+  background: rgba(2, 6, 14, 0.55);
+  -webkit-backdrop-filter: blur(2px);
+          backdrop-filter: blur(2px);
+}
+.la-viz__glyph svg {
+  position: relative;
+  width: 24%;
+  height: 24%;
+  fill: #fff;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+}
+.la-viz__glyph-play { display: none; }
+.la-viz:hover .la-viz__glyph,
+.la-viz:focus-visible .la-viz__glyph { opacity: 1; }
+.la-viz:focus-visible { outline: none; }
+
+/* artist label - shown ONLY when a menu is up (menu / muffled), hidden in play */
+.la-viz__artist {
+  max-width: 7rem;
+  margin-top: 1px;
+  font-family: monospace;
+  font-size: calc(.62rem * var(--la-ui-scale, 1));
+  font-weight: 700;
+  letter-spacing: .08em;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--la-viz-color, #5fe8ff);
+  text-shadow: 0 0 8px rgba(120, 230, 255, 0.45), 0 1px 2px rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity .3s ease, transform .3s ease;
+  pointer-events: none;
+}
+.la-viz__artist::before { content: "\266A "; opacity: .8; }
+.la-viz--menu .la-viz__artist,
+.la-viz--muffled .la-viz__artist { opacity: .92; transform: translateY(0); }
+
+/* stopped - sphere dimmed, play icon shown */
+.la-viz--stopped .la-viz__canvas { filter: brightness(.55) saturate(.6); opacity: .8; }
+.la-viz--stopped .la-viz__glyph { opacity: 1; }
+.la-viz--stopped .la-viz__glyph-pause { display: none; }
+.la-viz--stopped .la-viz__glyph-play { display: block; }
+
+/* muffled (game paused) - "filtered": mainly GREYED OUT (desaturated + dimmed)
+   with just a light blur, so it's clear the sound is affected (audio is also
+   low-passed) without being too fuzzy. */
+.la-viz--muffled .la-viz__canvas { filter: blur(0.8px) saturate(.32) brightness(.7); }
+
+@media (max-width: 768px) {
+  .la-viz { left: 6px; top: 2px; }
 }
