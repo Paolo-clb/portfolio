@@ -356,6 +356,39 @@ body.la-modal-open .hero__nav {
   outline-offset: 3px;
 }
 
+/* Secondary CTA — "Download the game" (outline, pairs with the solid Play) */
+.la-preview__download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.3rem;
+  border: 1px solid var(--pp-line);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--clr-primary);
+  background: var(--pp-fill);
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition),
+              box-shadow var(--transition), border-color var(--transition);
+}
+
+.la-preview__download svg { width: 17px; height: 17px; }
+
+.la-preview__download:hover {
+  background: var(--pp-glow);
+  border-color: var(--clr-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--pp-glow);
+}
+
+.la-preview__download:focus-visible {
+  outline: 2px solid var(--pp-line);
+  outline-offset: 3px;
+}
+
 /* Desktop-only note shown instead of the Play button on mobile */
 .la-preview__desktop-note {
   display: inline-flex;
@@ -395,4 +428,239 @@ body.la-modal-open .hero__nav {
   .hero__nav:focus-visible { width: 38px; }
   .hero__nav__label { font-size: 0.6rem; letter-spacing: 0.12em; }
   .hero__nav__chevron { width: 15px; height: 15px; }
+}
+
+/* ============================================================
+   "Download the game" popup
+   Same surface treatment as the portfolio's weak-device / music pop-ups
+   (dark glass card, fade-in overlay) but accents derive from --clr-primary,
+   so it follows the active theme with no per-theme overrides. Appended to
+   <body> (outside .hero), so the accents are re-declared on the overlay.
+   ============================================================ */
+
+.la-dl-popup-overlay {
+  --dl-line:      color-mix(in srgb, var(--clr-primary) 50%, transparent);
+  --dl-fill:      color-mix(in srgb, var(--clr-primary) 12%, transparent);
+  --dl-fill-soft: color-mix(in srgb, var(--clr-primary) 7%,  transparent);
+  --dl-glow:      color-mix(in srgb, var(--clr-primary) 22%, transparent);
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(16, 15, 24, 0.5);
+  -webkit-backdrop-filter: blur(calc(6px * var(--blur-factor, 1)));
+  backdrop-filter: blur(calc(6px * var(--blur-factor, 1)));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.la-dl-popup-overlay--visible { opacity: 1; }
+
+.la-dl-popup {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: rgba(27, 26, 39, 0.92);
+  border: 1px solid rgba(191, 153, 160, 0.18);
+  border-radius: calc(var(--radius) * 2);
+  -webkit-backdrop-filter: blur(calc(12px * var(--blur-factor, 1)));
+  backdrop-filter: blur(calc(12px * var(--blur-factor, 1)));
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35),
+              inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  padding: 1.9rem 1.8rem 1.6rem;
+  text-align: center;
+  transform: translateY(20px) scale(0.96);
+  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.la-dl-popup-overlay--visible .la-dl-popup {
+  transform: translateY(0) scale(1);
+}
+
+[data-theme="dark"] .la-dl-popup {
+  background: rgba(26, 0, 51, 0.92);
+  border-color: rgba(63, 81, 181, 0.22);
+}
+
+[data-theme="nature"] .la-dl-popup {
+  background: rgba(21, 34, 16, 0.92);
+  border-color: rgba(42, 69, 34, 0.22);
+}
+
+.la-dl-popup__close {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--clr-border);
+  color: var(--clr-text-muted);
+  cursor: pointer;
+  transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
+}
+
+.la-dl-popup__close svg { width: 16px; height: 16px; }
+
+.la-dl-popup__close:hover {
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+  transform: rotate(90deg);
+}
+
+.la-dl-popup__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.26rem 0.7rem;
+  border-radius: 99px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--clr-primary);
+  background: var(--dl-fill);
+  border: 1px solid var(--dl-line);
+}
+
+.la-dl-popup__badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--clr-primary);
+  box-shadow: 0 0 7px var(--clr-primary);
+}
+
+.la-dl-popup__icon {
+  margin: 0.9rem 0 0.5rem;
+  color: var(--clr-primary);
+}
+
+.la-dl-popup__icon svg { width: 34px; height: 34px; }
+
+.la-dl-popup__title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--clr-text);
+  margin-bottom: 0.5rem;
+}
+
+.la-dl-popup__intro {
+  font-size: var(--fs-base);
+  color: var(--clr-text-muted);
+  line-height: 1.55;
+  margin-bottom: 0.9rem;
+}
+
+.la-dl-popup__tech {
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--clr-text-muted);
+  text-align: left;
+  padding: 0.7rem 0.85rem;
+  border-left: 2px solid var(--dl-line);
+  background: var(--dl-fill-soft);
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 0.2rem;
+}
+
+.la-dl-popup__tech b { color: var(--clr-text); font-weight: 600; }
+
+.la-dl-popup__choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 1.2rem 0 1rem;
+}
+
+.la-dl-popup__choice {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-align: left;
+  text-decoration: none;
+  padding: 0.8rem 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--clr-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--clr-text);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.la-dl-popup__choice:hover,
+.la-dl-popup__choice:focus-visible {
+  outline: none;
+  background: var(--dl-fill);
+  border-color: var(--clr-primary);
+  transform: translateY(-1px);
+}
+
+.la-dl-popup__choice-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  background: var(--dl-fill);
+  border: 1px solid var(--dl-line);
+  color: var(--clr-primary);
+}
+
+.la-dl-popup__choice-icon svg { width: 20px; height: 20px; }
+
+.la-dl-popup__choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.la-dl-popup__choice-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--clr-text);
+}
+
+.la-dl-popup__choice-desc {
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--clr-text-muted);
+}
+
+.la-dl-popup__choice-arrow {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--clr-text-muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.la-dl-popup__choice-arrow svg { width: 18px; height: 18px; }
+
+.la-dl-popup__choice:hover .la-dl-popup__choice-arrow,
+.la-dl-popup__choice:focus-visible .la-dl-popup__choice-arrow {
+  color: var(--clr-primary);
+  transform: translateX(3px);
+}
+
+.la-dl-popup__note {
+  font-size: 0.74rem;
+  font-style: italic;
+  color: var(--clr-text-muted);
+  line-height: 1.45;
+  margin: 0;
 }

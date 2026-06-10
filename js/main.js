@@ -1346,7 +1346,7 @@ function initCursorHalo() {
   }
 
   // ---- hover on interactive elements ----
-  var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay, .music-popup-overlay, .weak-popup-overlay, .anim-toggle__track, .anim-toggle';
+  var interactiveSelector = 'a, button, input, textarea, select, [role="button"], .project-card, .skill-item, .nav__link, .btn, .typing-game__text, .music-player__playlist-item, .music-player__volume-icon, .typing-game__ai-opt, .typing-game__settings-option, .zen-popup-overlay, .modal-overlay, .music-popup-overlay, .weak-popup-overlay, .la-dl-popup-overlay, .anim-toggle__track, .anim-toggle';
   var modalAllowedSelector = 'button, .modal__close, a, .btn';
 
   document.addEventListener('mouseover', function (e) {
@@ -1454,6 +1454,10 @@ function initCursorHalo() {
       // Weak device warning popup: same pattern
       if (e.target.closest('.weak-popup-overlay') && e.target.closest('.weak-popup') &&
           !e.target.closest('button, a')) return;
+      // Light Again download popup: backdrop clickable (closes); inside the card
+      // only the close button + the two download choices are hoverable
+      if (e.target.closest('.la-dl-popup-overlay') && e.target.closest('.la-dl-popup') &&
+          !e.target.closest('button, a, .la-dl-popup__choice')) return;
       halo.classList.add('cursor-halo--hover');
     }
   }, { passive: true });
@@ -1506,7 +1510,8 @@ function initCursorHalo() {
              node.classList.contains('modal-overlay') ||
              node.classList.contains('skill-overlay') ||
              node.classList.contains('music-popup-overlay') ||
-             node.classList.contains('weak-popup-overlay'))) {
+             node.classList.contains('weak-popup-overlay') ||
+             node.classList.contains('la-dl-popup-overlay'))) {
           halo.classList.remove('cursor-halo--hover');
           // Clean up game-mode state when the light-again modal is removed from DOM
           if (node.classList.contains('light-again-overlay')) {

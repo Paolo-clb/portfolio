@@ -94,16 +94,28 @@
      Light Again — preview slide
      ================================================================ */
 
+  // Secondary CTA — opens the "download the game" popup (the native desktop
+  // build). Shown alongside Play on desktop and the desktop-note on mobile.
+  function downloadCtaHtml() {
+    return '<button type="button" class="la-preview__download">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>' +
+      '</svg>' + t('laPreviewDownload') + '</button>';
+  }
+
   function ctaHtml(mobile) {
+    var primary;
     if (mobile) {
-      return '<span class="la-preview__desktop-note">' +
+      primary = '<span class="la-preview__desktop-note">' +
         '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
           '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>' +
         '</svg>' + t('laPreviewDesktopOnly') + '</span>';
+    } else {
+      primary = '<button type="button" class="la-preview__play">' +
+        '<svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>' +
+        t('laPreviewPlay') + '</button>';
     }
-    return '<button type="button" class="la-preview__play">' +
-      '<svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>' +
-      t('laPreviewPlay') + '</button>';
+    return primary + downloadCtaHtml();
   }
 
   function buildLightAgainPreview(host) {
@@ -141,6 +153,11 @@
       }
     }
 
+    // Download button — wired on every rebuild (the element is recreated each
+    // time). Present on both mobile and desktop; the popup explains the build.
+    var dlBtn = host.querySelector('.la-preview__download');
+    if (dlBtn) dlBtn.addEventListener('click', openDownloadPopup);
+
     // Wire the placeholder video (the element is recreated on every rebuild).
     // It fades in once it actually plays, revealing the gradient placeholder
     // underneath whenever it's paused (animations off, slide hidden, modal open).
@@ -166,6 +183,118 @@
     } else if (!laVideo.paused) {
       laVideo.pause();
     }
+  }
+
+  /* ================================================================
+     Light Again — "Download the game" popup
+     Same look + behaviour as the portfolio's other pop-ups (weak-device /
+     music): fade-in overlay, backdrop + Escape + × close, focus trap. The two
+     choices are native <a download> links pointing straight at the committed
+     build artifacts, so picking one starts the download and closes the popup.
+     ================================================================ */
+
+  // Build artifacts committed to the repo (desktop/ Tauri build output).
+  var DL_EXE   = 'assets/downloads/Light-Again.exe';
+  var DL_SETUP = 'assets/downloads/Light-Again-Setup.exe';
+
+  // Small local createElement (the global one from main.js if present, else a
+  // tiny fallback) — keeps this IIFE self-contained.
+  function ce(tag, cls, txt) {
+    if (typeof createElement === 'function') return createElement(tag, cls, txt);
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (txt) e.textContent = txt;
+    return e;
+  }
+
+  function buildDownloadChoice(href, fileName, iconSvg, name, desc) {
+    var a = document.createElement('a');
+    a.className = 'la-dl-popup__choice';
+    a.href = href;
+    a.setAttribute('download', fileName);
+    a.innerHTML =
+      '<span class="la-dl-popup__choice-icon">' + iconSvg + '</span>' +
+      '<span class="la-dl-popup__choice-text">' +
+        '<span class="la-dl-popup__choice-name">' + name + '</span>' +
+        '<span class="la-dl-popup__choice-desc">' + desc + '</span>' +
+      '</span>' +
+      '<span class="la-dl-popup__choice-arrow">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
+      '</span>';
+    return a;
+  }
+
+  function openDownloadPopup() {
+    if (document.querySelector('.la-dl-popup-overlay')) return; // no stacking
+
+    var overlay = ce('div', 'la-dl-popup-overlay');
+    var popup = ce('div', 'la-dl-popup');
+    popup.setAttribute('role', 'dialog');
+    popup.setAttribute('aria-modal', 'true');
+    popup.setAttribute('aria-label', t('laDownloadTitle'));
+
+    var closeBtn = ce('button', 'la-dl-popup__close');
+    closeBtn.type = 'button';
+    closeBtn.setAttribute('aria-label', t('laDownloadClose'));
+    closeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
+    var badge = ce('span', 'la-dl-popup__badge', t('laDownloadBadge'));
+
+    var icon = ce('div', 'la-dl-popup__icon');
+    icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
+    var title = ce('h3', 'la-dl-popup__title', t('laDownloadTitle'));
+    var intro = ce('p', 'la-dl-popup__intro', t('laDownloadIntro'));
+
+    var tech = ce('p', 'la-dl-popup__tech');
+    tech.innerHTML = '<b>' + t('laDownloadTechLabel') + '</b> — ' + t('laDownloadTech');
+
+    var exeIcon   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>';
+    var setupIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><polyline points="8 6 12 10 16 6"/><rect x="3" y="13" width="18" height="8" rx="2"/></svg>';
+
+    var choices = ce('div', 'la-dl-popup__choices');
+    var exeChoice   = buildDownloadChoice(DL_EXE,   'Light Again.exe',       exeIcon,   t('laDownloadExeName'),   t('laDownloadExeDesc'));
+    var setupChoice = buildDownloadChoice(DL_SETUP, 'Light Again Setup.exe', setupIcon, t('laDownloadSetupName'), t('laDownloadSetupDesc'));
+    choices.appendChild(exeChoice);
+    choices.appendChild(setupChoice);
+
+    var note = ce('p', 'la-dl-popup__note', t('laDownloadNote'));
+
+    popup.appendChild(closeBtn);
+    popup.appendChild(badge);
+    popup.appendChild(icon);
+    popup.appendChild(title);
+    popup.appendChild(intro);
+    popup.appendChild(tech);
+    popup.appendChild(choices);
+    popup.appendChild(note);
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    // Force reflow then animate in (same pattern as the weak-device popup)
+    overlay.offsetHeight;
+    overlay.classList.add('la-dl-popup-overlay--visible');
+
+    var trapCleanup = (typeof trapFocus === 'function') ? trapFocus(overlay) : null;
+    closeBtn.focus();
+
+    var closed = false;
+    function close() {
+      if (closed) return;
+      closed = true;
+      if (trapCleanup) { trapCleanup(); trapCleanup = null; }
+      document.removeEventListener('keydown', onKey);
+      overlay.classList.remove('la-dl-popup-overlay--visible');
+      overlay.addEventListener('transitionend', function () { overlay.remove(); }, { once: true });
+    }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+
+    document.addEventListener('keydown', onKey);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    closeBtn.addEventListener('click', close);
+    // Picking either build starts the native download AND closes the popup.
+    exeChoice.addEventListener('click', close);
+    setupChoice.addEventListener('click', close);
   }
 
   // Builds the content for a given slide (only Light Again needs JS today)
