@@ -47,6 +47,7 @@
     this._dimCamCM = null;      // CAMERA colour-matrix → recolours the whole frame
     this._dimCracks   = null;
     this._dimBuilt    = false;
+    this._dimFloorTexOn = false;  // create() just rebuilt the floor with '_pcb'
     this._dimShimmerT = 0;
     this._dimFlashT   = 0;       // 0..1 flare boost (entry snap)
     this._dimCrackFade = 1;      // 1 while rifts show; decays to 0 after the snap
@@ -106,18 +107,56 @@
     if (cam.postFX) this._dimCamCM = cam.postFX.addColorMatrix();   // recolours EVERYTHING
     this._dimCracks = this._dimGenCracks();
     this._dimBuilt  = true;
+    // A relaunch (tutorial → run) can rebuild the scene with _dimFractured
+    // already true — re-apply the altered floor lazily here.
+    if (this._dimFractured) this._dimApplyFloorTex(true);
+  };
+
+  /* ---- altered-dimension floor: swap the three PCB layers (+ aurora + bg)
+     to the dedicated violet tiles, and back. Idempotent. ---- */
+  M._dimApplyFloorTex = function (on) {
+    on = !!on;
+    if (this._dimFloorTexOn === on) return;
+    var tm = this.textures;
+    if (on && (!tm.exists('_pcbDim') || !tm.exists('_pcbDimGlow'))) return;
+    var cols = LA.getColors();
+    if (this.pcbDeep && this.pcbDeep.scene) {
+      this.pcbDeep.setTexture(on ? '_pcbDim' : '_pcb');
+      this.pcbDeep.setTint(on ? C.DIM_DEEP_TINT : (cols.deepTint || 0x21364f));
+    }
+    if (this.pcbTile && this.pcbTile.scene) this.pcbTile.setTexture(on ? '_pcbDim' : '_pcb');
+    if (this.pcbGlow && this.pcbGlow.scene) this.pcbGlow.setTexture(on ? '_pcbDimGlow' : '_pcbGlow');
+    if (this._nebulaTile && this._nebulaTile.scene)
+      this._nebulaTile.setTexture(on ? '_laNebulaDim' : '_laNebula');
+    if (this.cameras && this.cameras.main)
+      this.cameras.main.setBackgroundColor(on ? C.DIM_BG_COLOR : cols.bgColor);
+    this._dimFloorTexOn = on;
   };
 
   M._dimSetIdle = function () {
     if (this._dimCrackGfx)  this._dimCrackGfx.clear();
     if (this._dimPortalGfx) this._dimPortalGfx.clear();
+    this._dimApplyFloorTex(false);
     this._dimResetCM(this._dimBgCM); this._dimResetCM(this._dimGlowCM);
     this._dimResetCM(this._dimDeepCM); this._dimResetCM(this._dimCamCM);
   };
   M._dimResetCM = function (cm) { if (cm && cm.reset) cm.reset(); };
 
-  /* ---- palette: stronger on the floor (decor), moderate over the whole frame ---- */
+  /* ---- palette ----
+     RAMP: the normal floor is progressively hue-shifted (telegraph) and the
+     whole frame barely tinted.
+     FRACTURED: the floor swaps to the dedicated violet tiles (_pcbDim), which
+     carry the dimension's identity natively — so the floor matrices go idle
+     and the whole-frame grade softens (otherwise it would double-shift the
+     already-violet floor and drown the HUD). */
   M._dimApplyPalette = function (floorS, camS) {
+    if (this._dimFractured && this._dimFloorTexOn) {
+      this._dimResetCM(this._dimBgCM);
+      this._dimResetCM(this._dimGlowCM);
+      this._dimResetCM(this._dimDeepCM);
+      this._dimCM(this._dimCamCM, camS, 40, 0.18, 0.10);
+      return;
+    }
     this._dimCM(this._dimBgCM,   floorS,         150, 0.55, 0.22);
     this._dimCM(this._dimGlowCM, Math.min(1, floorS * 1.15), 150, 0.7, 0.18);
     this._dimCM(this._dimDeepCM, floorS * 0.75,  150, 0.5, 0.2);
@@ -364,6 +403,7 @@
     this._dimTransition = false;
     this._dimFractured  = true;
     if (!this._dimBuilt) this._dimBuild();
+    this._dimApplyFloorTex(true); // the floor itself becomes OTHER (violet fissured tiles)
     this._dimFlashT    = 1.0;     // rifts + palette flare
     this._dimCrackFade = 1.0;     // …then the rifts fade out over ~1.25s
 
@@ -404,6 +444,7 @@
 
   /* ---- teardown ---- */
   M._clearDimension = function () {
+    this._dimApplyFloorTex(false);
     if (this._dimCrackGfx)  { this._dimCrackGfx.destroy();  this._dimCrackGfx = null; }
     if (this._dimPortalGfx) { this._dimPortalGfx.destroy(); this._dimPortalGfx = null; }
     if (this._dimBannerTxt) { this._dimBannerTxt.destroy(); this._dimBannerTxt = null; }

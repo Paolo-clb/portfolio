@@ -136,7 +136,10 @@
     WALL_REBOUND_KICK:   13,     // extra inward impulse on an aggressive wall hit
     WALL_REBOUND_MAX:    60,     // cap on rebound speed so it can never run away
     WALL_FX_CD:          150,    // ms between wall-impact VFX bursts (anti-spam)
-    PCB_TILE:    256,
+    PCB_TILE:    512,    // bigger tile = the circuit pattern repeats 4× less often
+    /* ---- Fractured-dimension floor (semantic rift palette, theme-independent) ---- */
+    DIM_BG_COLOR:  0x0a0414,   // violet-black void replacing the theme bgColor
+    DIM_DEEP_TINT: 0x3a2a55,   // parallax deep-layer tint inside the dimension
     RUSHER_SPEED: 3.0,
     RUSHER_SIZE:  14,
     T2_SIZE:      16,
@@ -1044,6 +1047,8 @@
       pcbTrace: 0x643cdc, pcbTraceA: 0.22,
       pcbVia:   0x8c50ff, pcbViaA:   0.30,
       bgColor:  0x04040d,
+      deepTint: 0x21364f,
+      nebulaArr: [[80, 60, 200], [0, 170, 255]],
     };
     else if (theme === 'nature') _colorCache = {
       cyan:   0x50ffc8,  cyanArr: [80,255,200],
@@ -1052,6 +1057,8 @@
       pcbTrace: 0x1e7850, pcbTraceA: 0.22,
       pcbVia:   0x32b464, pcbViaA:   0.30,
       bgColor:  0x030801,
+      deepTint: 0x1b4030,
+      nebulaArr: [[30, 160, 90], [120, 220, 120]],
     };
     else _colorCache = {
       cyan:   0x00ffff,  cyanArr: [0,255,255],
@@ -1060,6 +1067,8 @@
       pcbTrace: 0xf2a285, pcbTraceA: 0.20,
       pcbVia:   0xf2a285, pcbViaA:   0.28,
       bgColor:  0x08080f,
+      deepTint: 0x21364f,
+      nebulaArr: [[230, 140, 110], [60, 120, 220]],
     };
     return _colorCache;
   };

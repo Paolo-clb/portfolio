@@ -950,7 +950,8 @@
     if (!g || !this._motes) return;
     var cam = this.cameras.main;
     var vL = cam.scrollX, vT = cam.scrollY, vW = cam.width, vH = cam.height, mg = 40;
-    var col = LA.getColors().pcbVia || 0x66ccff;
+    // Inside the fractured dimension the drifting specks turn rift-violet
+    var col = this._dimFloorTexOn ? 0xb070ff : (LA.getColors().pcbVia || 0x66ccff);
     var boost = 1 + Math.min(0.8, (this.comboMultiplier - 1) / 30);
     g.clear();
     for (var i = 0; i < this._motes.length; i++) {

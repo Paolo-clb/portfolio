@@ -105,6 +105,10 @@
     LA.buildLaserTex(tm, '_laser');     // T4 fast laser bolt
     LA.buildSparkTex(tm, '_spark');   // soft radial-gradient particle for the ADD emitters
     LA.buildPCBTex(tm, '_pcb', c);
+    LA.buildPCBDimTex(tm, '_pcbDim');   // fractured-dimension floor (theme-independent, built once)
+    LA.buildNebulaTex(tm, '_laNebula', c.nebulaArr || [c.cyanArr]);
+    if (!tm.exists('_laNebulaDim'))
+      LA.buildNebulaTex(tm, '_laNebulaDim', [[150, 70, 255], [226, 77, 255]]);
     LA.buildStarTex(tm, '_star');
     LA.buildAnomalyTex(tm, '_anomaly');
     LA.buildAnomalyProjTex(tm, '_anoproj');
@@ -115,10 +119,18 @@
     if (cur === this._texTheme) return;
     LA.resetColorCache();
     this._genTextures();
-    this.cameras.main.setBackgroundColor(LA.getColors().bgColor);
-    if (this.pcbDeep) this.pcbDeep.setTexture('_pcb');
-    if (this.pcbTile) this.pcbTile.setTexture('_pcb');
-    if (this.pcbGlow)  this.pcbGlow.setTexture('_pcbGlow');
+    // The fractured-dimension floor is theme-independent — when it's active,
+    // keep its textures / void bg and only refresh the regenerated assets.
+    if (!this._dimFloorTexOn) {
+      this.cameras.main.setBackgroundColor(LA.getColors().bgColor);
+      if (this.pcbDeep) {
+        this.pcbDeep.setTexture('_pcb');
+        this.pcbDeep.setTint(LA.getColors().deepTint || 0x21364f);
+      }
+      if (this.pcbTile) this.pcbTile.setTexture('_pcb');
+      if (this.pcbGlow)  this.pcbGlow.setTexture('_pcbGlow');
+      if (this._nebulaTile) this._nebulaTile.setTexture('_laNebula');
+    }
     this._drawVignette();
     for (var i = 0; i < this.enemies.length; i++) {
       var e = this.enemies[i];

@@ -88,8 +88,18 @@
       this.pcbDeep.setScrollFactor(0);
       this.pcbDeep.setDepth(-11);
       this.pcbDeep.setTileScale(1.7);
-      this.pcbDeep.setTint(0x21364f);
+      this.pcbDeep.setTint(LA.getColors().deepTint || 0x21364f);
       this.pcbDeep.setAlpha(0.55);
+
+      // Aurora layer: huge ultra-soft colour pools drifting between the circuit
+      // layers — breaks the flat darkness without competing with gameplay
+      // (ADD blend at very low alpha; slow autonomous drift + breathing).
+      this._nebulaTile = this.add.tileSprite(0, 0, cam.width, cam.height, '_laNebula');
+      this._nebulaTile.setOrigin(0, 0);
+      this._nebulaTile.setScrollFactor(0);
+      this._nebulaTile.setDepth(-10.5);
+      this._nebulaTile.setBlendMode(Phaser.BlendModes.ADD);
+      this._nebulaTile.setAlpha(0.07);
 
       this.pcbTile = this.add.tileSprite(0, 0, cam.width, cam.height, '_pcb');
       this.pcbTile.setOrigin(0, 0);
@@ -116,6 +126,7 @@
         // Background tiles cover the viewport — resize them here instead of every frame
         var rcam = self.cameras.main;
         if (self.pcbDeep) self.pcbDeep.setSize(rcam.width, rcam.height);
+        if (self._nebulaTile) self._nebulaTile.setSize(rcam.width, rcam.height);
         if (self.pcbTile) self.pcbTile.setSize(rcam.width, rcam.height);
         if (self.pcbGlow) self.pcbGlow.setSize(rcam.width, rcam.height);
       });
@@ -1253,6 +1264,13 @@
       this.pcbGlow.setAlpha(glowAlpha);
       this.pcbGlow.tilePositionX = cam.scrollX;
       this.pcbGlow.tilePositionY = cam.scrollY;
+
+      // Aurora drift — deep parallax + slow autonomous motion, breathing alpha
+      if (this._nebulaTile) {
+        this._nebulaTile.tilePositionX = cam.scrollX * 0.35 + t * 2.0;
+        this._nebulaTile.tilePositionY = cam.scrollY * 0.35 - t * 1.2;
+        this._nebulaTile.setAlpha(0.055 + 0.025 * Math.sin(t * 0.23) + 0.012 * Math.sin(t * 0.71));
+      }
 
       // --- Vignette combo intensity — pulsing urgency ---
       if (this._vignetteSprite) {
