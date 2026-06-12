@@ -4,6 +4,11 @@
    A cyclopean steel scope-lens that snipes from the far edge of the screen.
    Lives in this.enemies as tier 4 (2 HP, no shield). Its cycle:
 
+     REVEAL  spawn telegraph (normal spawns only): the eye opens VISIBLE but
+             harmless (no charge, no fire, still invincible) right where the
+             spawn-ring burst, so the appear FX never plays into thin air. Then
+             it re-cloaks and comes back to attack for real. (Anomaly-trapped
+             snipers skip this and open straight into CHARGE.)
      CLOAK   near-invisible + INVINCIBLE, slowly orbiting to a fresh far
              vantage. The World does NOT reveal it here.
      CHARGE  it materialises at a guaranteed on-screen vantage and an
@@ -114,6 +119,27 @@
     // glide → charge → fire). It is NOT permanently exposed — you clear it during
     // a charge window like anywhere else. The only special case is the spawn
     // (_spawnSniperAt), which materialises it OPEN so the vacuum-in is visible.
+
+    // REVEAL — the SPAWN telegraph (normal spawns only). The eye holds at its
+    // spawn spot and OPENS so it's plainly visible (no glide, no charge ramp, no
+    // fire — still invincible). When the window elapses it snaps shut via VANISH,
+    // re-cloaks, and only THEN runs its real cloak → charge → fire hunt.
+    if (e.snState === 'REVEAL') {
+      e._snIntangible = true;
+      e.vx *= 0.82; e.vy *= 0.82;
+      e.x += e.vx * sc60; e.y += e.vy * sc60;
+      e.angle = Math.atan2(p.y - e.y, p.x - e.x);   // the eye "looks at" the player
+      e.snAimAngle = e.angle;
+      e.snAppearT = Math.min(1, e.snAppearT + ms / C.T4_APPEAR_DUR);   // eyelid opens
+      e.snChargeT = 0;                                                 // no lock-on telegraph → reads as harmless
+      e.snTimer -= ms;
+      if (e.snTimer <= 0) {                          // telegraph done → close + slip into the cloak
+        e.snState = 'VANISH';
+        e.snTimer = C.T4_VANISH_DUR;
+      }
+      return;
+    }
+
     if (e.snState === 'CLOAK') {
       e._snIntangible = true;
       // GLIDE (never teleport) toward the next firing vantage, so a dash-MARKED
@@ -384,7 +410,7 @@
     e.spr.setAlpha(0);
     if (!g) return;
 
-    var appear = (st === 'CHARGE') ? (e.snAppearT || 0) : 1;
+    var appear = (st === 'CHARGE' || st === 'REVEAL') ? (e.snAppearT || 0) : 1;
     var vanish = (st === 'VANISH') ? Math.max(0, Math.min(1, e.snTimer / C.T4_VANISH_DUR)) : 1;
     var op    = Math.max(0, Math.min(1, Math.min(appear, vanish)));   // eyelid openness 0→1
     var chg   = e.snChargeT || 0;

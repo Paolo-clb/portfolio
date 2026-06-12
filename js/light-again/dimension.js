@@ -404,6 +404,21 @@
     this._dimFractured  = true;
     if (!this._dimBuilt) this._dimBuild();
     this._dimApplyFloorTex(true); // the floor itself becomes OTHER (violet fissured tiles)
+
+    // Re-skin any rushers already on the board to the warmer, more-orange dimension
+    // variant so the fracture lands consistently (new spawns already use it). texKey
+    // always updates; the live sprite is only swapped when it's showing its normal
+    // skin (a TW / mark gray swap restores from texKey when it ends → picks this up).
+    for (var ei = 0; ei < this.enemies.length; ei++) {
+      var re = this.enemies[ei];
+      if (re.tier !== 1 || re.texKey === '_enemy_dim') continue;
+      re.texKey = '_enemy_dim';
+      if (!re._twGrayed && !re._markGrayed) {
+        if (re.spr) re.spr.setTexture('_enemy_dim');
+        for (var ri = 0; ri < re.trSpr.length; ri++) re.trSpr[ri].setTexture('_enemy_dim');
+      }
+    }
+
     this._dimFlashT    = 1.0;     // rifts + palette flare
     this._dimCrackFade = 1.0;     // …then the rifts fade out over ~1.25s
 

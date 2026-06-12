@@ -620,6 +620,11 @@
     // Final barrier radius: contain every ring (+ margin), with the hard cap.
     a.R = Math.min(C.ANO_BARRIER_MAX, Math.max(minBarrierR, outerUsedR + 90));
 
+    // Sweep any Unstable Core / Prism caught inside the fresh quarantine — sealed
+    // behind the firewall it would be unreachable (mirrors the Greed plate / Cache
+    // Zone bailing when the barrier slams). Weapons elsewhere on the map are spared.
+    this._clearWeaponsInAnomalyZone(a.bx, a.by, a.R);
+
     // Count what actually landed in rings — slots outside the disc (player pinned
     // at the rim) can be skipped, so the raw queue length N would over-report.
     var placed = 0;
@@ -657,6 +662,45 @@
     this._explode(a.x, a.y, [255, 255, 255], 50);
     this._explode(a.x, a.y, [255, 60, 220], 36);
     this._explode(a.x, a.y, [80, 200, 255], 28);
+  };
+
+  /* Despawn every Unstable Core / Prism whose body overlaps the quarantine disc
+     (bx, by, R) the barrier just slammed around. They'd be sealed off and unusable
+     behind the firewall, so they go (a small pop, then the slot's normal respawn
+     chrono refills it once the anomaly is gone). New core/prism spawns are already
+     fully suspended for the whole anomaly fight, so nothing surfaces back inside. */
+  M._clearWeaponsInAnomalyZone = function (bx, by, R) {
+    var i, o, dx, dy, lim;
+    // Cores — overlap test on the containment field; _retireCore queues the respawn.
+    if (this._cores) {
+      for (i = this._cores.length - 1; i >= 0; i--) {
+        o = this._cores[i];
+        dx = o.x - bx; dy = o.y - by; lim = R + o.fieldR;
+        if (dx * dx + dy * dy >= lim * lim) continue;
+        this._explode(o.x, o.y, [150, 200, 255], 14);
+        if (this._retireCore) this._retireCore(o);
+      }
+    }
+    // Prisms — same test on the capture footprint. If one is mid-charge/strike it
+    // owns the ship: hand control back before it goes (a bonus Lv3 prism frees no slot).
+    if (this._prisms) {
+      for (i = this._prisms.length - 1; i >= 0; i--) {
+        o = this._prisms[i];
+        dx = o.x - bx; dy = o.y - by; lim = R + C.PRISM_TRIGGER_R;
+        if (dx * dx + dy * dy >= lim * lim) continue;
+        this._explode(o.x, o.y, [225, 240, 255], 14);
+        if (this.p && this.p.state === 'PRISM' && this._activePrism && this._activePrism() === o) {
+          var pp = this.p;
+          pp.state = 'MOVING';
+          pp.invincible = false; pp.invincTimer = 0; pp.dashInvinc = false;
+          pp.atkAvailable = true; pp.dashAvailable = true;
+          this._prismScoreAccum = 0;
+          this._prismChainScore = 0; this._prismChainCount = 0;
+          this._prismChainActive = false; this._prismFollowupOwed = false;
+        }
+        if (this._removePrism) this._removePrism(o, !o.bonus);
+      }
+    }
   };
 
   /* Update the 4-text glitch banner together — same base pos/scale/alpha,

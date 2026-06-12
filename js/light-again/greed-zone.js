@@ -131,9 +131,11 @@
     var H = C.GREED_HALF;
     var inset = H + 60;                            // keep the WHOLE plate in-bounds (disc backstop)
     // Per-feature minimum centre separation². The Cache Zone is the notable one
-    // (two big KotH zones must never overlap → radius-sum). The rest just keep the
-    // map events from crowding. Some features may be absent (parallel) → guarded.
-    var cacheSep = Math.max(C.MAP_FEATURE_MIN_SEP, H + (this._cache ? this._cache.zoneR : C.CACHE_ZONE_R) + 60);
+    // (two big KotH zones must never touch → use the plate's half-DIAGONAL so even a
+    // corner stays clear of the circle, plus the comfortable CACHE_GREED_GAP). The
+    // rest just keep the map events from crowding. Some features may be absent → guarded.
+    var cacheR   = this._cache ? this._cache.zoneR : C.CACHE_ZONE_R;
+    var cacheSep = Math.max(C.MAP_FEATURE_MIN_SEP, cacheR + H * Math.SQRT2 + C.CACHE_GREED_GAP);
     var fountSep = Math.max(C.MAP_FEATURE_MIN_SEP, H + C.CURSE_FOUNT_ZONE_R);
     var genSep2  = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
     var avoid = [

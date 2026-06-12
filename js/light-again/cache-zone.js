@@ -159,8 +159,10 @@
     // events from crowding. _core may be absent (a parallel feature) → guarded.
     var fountSep = Math.max(C.MAP_FEATURE_MIN_SEP, R + C.CURSE_FOUNT_ZONE_R);
     // The Greed platform is the other big KotH zone — they MAY coexist but must
-    // never overlap (radius-sum on the plate's half-side).
-    var greedSep = Math.max(C.MAP_FEATURE_MIN_SEP, R + C.GREED_HALF + 60);
+    // never touch. Use the plate's circumscribed radius (half-DIAGONAL, so even a
+    // corner pointed at the circle stays clear) plus a generous CACHE_GREED_GAP so
+    // the two always leave a comfortable corridor between them.
+    var greedSep = Math.max(C.MAP_FEATURE_MIN_SEP, R + C.GREED_HALF * Math.SQRT2 + C.CACHE_GREED_GAP);
     var genSep2  = C.MAP_FEATURE_MIN_SEP * C.MAP_FEATURE_MIN_SEP;
     var avoid = [
       [this._fount, fountSep * fountSep],

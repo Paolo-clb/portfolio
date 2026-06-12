@@ -182,6 +182,7 @@
     T4_CHARGE_DUR:       1150,   // ms of the visible, VULNERABLE charge before the shot
     T4_VANISH_DUR:       220,    // ms of the snap-shut fade back to cloak after firing
     T4_APPEAR_DUR:       240,    // ms fade-in pop when a charge begins
+    T4_REVEAL_DUR:       720,    // ms of the SPAWN telegraph — the eye opens VISIBLE (but harmless, no charge/fire) right where the spawn-ring burst, then re-cloaks and comes back to attack for real
     T4_DRIFT_SPD:        1.7,    // px/frame orbit speed while cloaked (legacy; glide below is used now)
     T4_GLIDE_RATE:       2.8,    // 1/s smooth-glide rate toward the next firing vantage while cloaked (NO teleport → a dash-marked eye is followable; gentle enough to track by eye)
     T4_ORBIT_RATE:       0.55,   // rad/s slow angular drift of the cloak orbit (variety)
@@ -652,6 +653,9 @@
        Self-contained on this._greed + two shared ADD graphics layers (ground + top).
        MAY coexist with the Cache Zone (kept spatially apart, never overlapping). */
     GREED_HALF:                  460,    // square half-side (px) — slightly bigger than the Cache circle (R 440)
+    CACHE_GREED_GAP:             280,    // px of CLEAR space kept between the Cache circle and the Greed plate when
+                                         // they coexist — separation = cacheR + GREED_HALF·√2 (square corner reach) + this,
+                                         // so the two big KotH zones never touch and always leave a comfortable corridor
     GREED_CORNER:                30,     // rounded-corner radius of the platform plate
     GREED_SCORE_MULT:            2,      // per-kill score ×this while standing on the platform
     GREED_IDLE_LIFE:             30000,  // ms an un-entered platform sits before it quietly dissolves

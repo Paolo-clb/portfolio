@@ -101,6 +101,10 @@
     LA.buildGrayscaleVariant(tm, '_shooter', '_shooter_gray');
     LA.buildGrayscaleVariant(tm, '_bruiser', '_bruiser_gray');
     LA.buildGrayscaleVariant(tm, '_sniper',  '_sniper_gray');
+    // Warm T1 rusher for the fractured dimension (texKey '_enemy_dim' at spawn) + its
+    // own TW grayscale twin, so every existing texKey-based swap path keeps working.
+    LA.buildWarmVariant(tm, '_enemy', '_enemy_dim', 0.30);
+    LA.buildGrayscaleVariant(tm, '_enemy_dim', '_enemy_dim_gray');
     LA.buildProjTex(tm, '_proj');
     LA.buildLaserTex(tm, '_laser');     // T4 fast laser bolt
     LA.buildSparkTex(tm, '_spark');   // soft radial-gradient particle for the ADD emitters

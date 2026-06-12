@@ -842,6 +842,26 @@
     tm.addCanvas(dstKey, oc);
   };
 
+  /* Warm/orange variant of an enemy texture — bleeds part of each pixel's RED into
+     its GREEN channel so a red sprite leans orange (multiply-tint can only darken,
+     so it can't do this — a baked variant is the clean way). Used for the T1 rusher
+     inside the fractured dimension. gBoost = how much red lifts green (0 = no shift). */
+  LA.buildWarmVariant = function (tm, srcKey, dstKey, gBoost) {
+    if (tm.exists(dstKey)) tm.remove(dstKey);
+    var srcCanvas = tm.get(srcKey).getSourceImage();
+    var W = srcCanvas.width, H = srcCanvas.height;
+    var oc = document.createElement('canvas');
+    oc.width = W; oc.height = H;
+    var ctx = oc.getContext('2d');
+    ctx.drawImage(srcCanvas, 0, 0);
+    var img = ctx.getImageData(0, 0, W, H), d = img.data;
+    for (var i = 0; i < d.length; i += 4) {
+      d[i + 1] = Math.min(255, d[i + 1] + d[i] * gBoost);   // G += R·gBoost → red shifts toward orange
+    }
+    ctx.putImageData(img, 0, 0);
+    tm.addCanvas(dstKey, oc);
+  };
+
 
   /* ---- The Anomaly: an unstable "amas de pixels" (glitch cluster) ----
      Pure-white blocky blob on transparent ground. Rendered three times at

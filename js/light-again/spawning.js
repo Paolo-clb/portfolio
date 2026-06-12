@@ -131,13 +131,15 @@
   };
 
   M._spawnRusherAt = function (ex, ey) {
-    var spr = this.add.image(ex, ey, '_enemy');
+    // In the fractured dimension the rusher wears its warmer, more-orange skin.
+    var tex = this._dimFractured ? '_enemy_dim' : '_enemy';
+    var spr = this.add.image(ex, ey, tex);
     spr.setBlendMode(Phaser.BlendModes.ADD);
     spr.setDepth(20);
 
     var trSpr = [], trData = [];
     for (var t = 0; t < this.ENEMY_TRAIL_N; t++) {
-      var ts = this.add.image(ex, ey, '_enemy');
+      var ts = this.add.image(ex, ey, tex);
       ts.setBlendMode(Phaser.BlendModes.ADD);
       ts.setDepth(15); ts.setVisible(false);
       trSpr.push(ts);
@@ -151,7 +153,7 @@
       stunTimer: 0, isMarked: false, markTimer: 0,
       trail: trData, trSpr: trSpr, _tw: 0, _tn: 0,
       tier: 1, fireCD: 0, chargeTimer: 0, isCharging: false,
-      texKey: '_enemy',
+      texKey: tex,
       _spawnAnimT: this._naturalSpawn ? 0.0 : 1.0,
     });
   };
@@ -248,6 +250,11 @@
     // NORMAL cloak/charge cycle inside the zone — it is NOT permanently exposed.
     var trapped = !!this._anomalyBarrierActive;
 
+    // A NORMAL spawn opens a brief REVEAL telegraph FIRST: the eye materialises
+    // VISIBLE (but harmless — no charge, no fire, still invincible) right where the
+    // spawn-ring burst, so the appear animation never plays into thin air. It then
+    // re-cloaks and comes back to attack for real (see sniper.js). Trapped snipers
+    // skip the telegraph and open straight into a charge.
     this.enemies.push({
       spr: spr, x: ex, y: ey, vx: 0, vy: 0,
       angle: 0, hp: C.T4_HP, size: C.T4_SIZE,
@@ -258,9 +265,9 @@
       texKey: '_sniper',
       scopeGfx: scopeGfx,
       // Sniper state machine (see sniper.js)
-      snState: trapped ? 'CHARGE' : 'CLOAK',
-      snTimer: trapped ? C.T4_CHARGE_DUR : C.T4_CLOAK_DUR * (0.4 + Math.random() * 0.3),
-      snChargeT: 0, snAppearT: trapped ? 1 : 0, snFireFlash: 0,   // trapped → eye OPEN at the teleport-in
+      snState: trapped ? 'CHARGE' : 'REVEAL',
+      snTimer: trapped ? C.T4_CHARGE_DUR : C.T4_REVEAL_DUR,
+      snChargeT: 0, snAppearT: trapped ? 1 : 0, snFireFlash: 0,   // trapped → eye OPEN at the teleport-in; reveal opens it over T4_APPEAR_DUR
       snOrbAng: null, snOrbDir: Math.random() < 0.5 ? -1 : 1, snAimAngle: 0,
       _snIntangible: !trapped,
       _spawnAnimT: 1.0,   // its own appear animation replaces the generic spawn pop
