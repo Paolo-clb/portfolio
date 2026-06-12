@@ -32,12 +32,15 @@
   var M   = LA.sceneMethods;
   var TAU = Math.PI * 2;
 
-  /* Palette — circuit-green with a near-white core (ADD blend everywhere). */
-  var TREE_GREEN  = 0x33ff99;
-  var TREE_CORE   = 0xccffe0;
-  var TREE_FRUIT  = 0x66ffd0;
-  var FAIRY_GREEN = 0x66ffcc;
-  var FAIRY_CORE  = 0xeafff4;
+  /* Palette — circuit-green with a near-white core (ADD blend everywhere). The
+     persistent-render functions shadow these with _dimUntint()'d locals so the tree
+     keeps its native green in the fractured dimension (these _BASE values stay the
+     true source; the momentary spawn/harvest rings use them straight). */
+  var TREE_GREEN_BASE  = 0x33ff99;
+  var TREE_CORE_BASE   = 0xccffe0;
+  var TREE_FRUIT_BASE  = 0x66ffd0;
+  var FAIRY_GREEN_BASE = 0x66ffcc;
+  var FAIRY_CORE_BASE  = 0xeafff4;
 
   function smooth(t) { return t * t * (3 - 2 * t); }      // smoothstep
 
@@ -216,7 +219,7 @@
     };
 
     // Sprout burst — a rift opens and the tree rises out of it.
-    this._spawnWaveRing(x, y, { maxRadius: 150, color: TREE_GREEN, expandTime: 0.42 });
+    this._spawnWaveRing(x, y, { maxRadius: 150, color: TREE_GREEN_BASE, expandTime: 0.42 });
     this._spawnWaveRing(x, y, { maxRadius: 90,  color: 0xffffff,   expandTime: 0.30 });
     this._explode(x, y, [80, 255, 170], 26);
     this._explode(x, y, [220, 255, 235], 14);
@@ -314,7 +317,7 @@
     t.phase = 'HARVEST';
     t.harvestT = 0;
     this._explode(t.x, t.canopyY, [120, 255, 200], 18);
-    this._spawnWaveRing(t.x, t.y, { maxRadius: 120, color: TREE_GREEN, expandTime: 0.34 });
+    this._spawnWaveRing(t.x, t.y, { maxRadius: 120, color: TREE_GREEN_BASE, expandTime: 0.34 });
     this.cameras.main.shake(120, 0.006);
     this._triggerHitstop(40);
     if (this._treePtrGfx) this._treePtrGfx.clear();    // guidance done
@@ -340,6 +343,15 @@
     var t = this._tree, g = this._treeGfx, gt = this.gameTime;
     g.clear();
     if (!t) return;
+
+    // Keep the tree's native green in the fractured dimension: shadow the palette with
+    // pre-compensated locals (identity outside the dimension). Every draw below uses
+    // these names, so the whole tree + canopy seeds stay on-hue.
+    var TREE_GREEN  = this._dimUntint(TREE_GREEN_BASE);
+    var TREE_CORE   = this._dimUntint(TREE_CORE_BASE);
+    var TREE_FRUIT  = this._dimUntint(TREE_FRUIT_BASE);
+    var FAIRY_GREEN = this._dimUntint(FAIRY_GREEN_BASE);
+    var FAIRY_CORE  = this._dimUntint(FAIRY_CORE_BASE);
 
     var grow = smooth(t.growT);
     var harv = t.phase === 'HARVEST' ? t.harvestT : 0;
@@ -478,7 +490,7 @@
     var px = p.x + Math.cos(pAng) * D;
     var py = p.y + Math.sin(pAng) * D;
     var pulse = 0.55 + 0.45 * Math.abs(Math.sin(gt * Math.PI * 3.2));
-    var col   = TREE_GREEN;
+    var col   = this._dimUntint(TREE_GREEN_BASE);
     var size  = 18;
 
     var nose = { x: Math.cos(pAng) * size,       y: Math.sin(pAng) * size };
@@ -529,7 +541,7 @@
     // Birth flourish + a clear callout.
     this._explode(x, y, [150, 255, 210], 30);
     this._explode(x, y, [235, 255, 245], 16);
-    this._spawnWaveRing(x, y, { maxRadius: 130, color: FAIRY_GREEN, expandTime: 0.4 });
+    this._spawnWaveRing(x, y, { maxRadius: 130, color: FAIRY_GREEN_BASE, expandTime: 0.4 });
     this._spawnWaveRing(x, y, { maxRadius: 70,  color: 0xffffff,    expandTime: 0.3 });
     this.cameras.main.flash(220, 90, 255, 170);
     this._floatLabel(this.p.x, this.p.y - 30, LA.laGoT('laFairyGained'), '#66ffcc');
@@ -600,6 +612,9 @@
     g.clear();
     if (!f) return;
     var flare = f.state === 'REVIVE';        // brighter/larger during the rescue
+    // Native fairy green in the fractured dimension (identity elsewhere).
+    var FAIRY_GREEN = this._dimUntint(FAIRY_GREEN_BASE);
+    var FAIRY_CORE  = this._dimUntint(FAIRY_CORE_BASE);
 
     // ---- Sparkle trail (oldest → newest) ----
     for (var i = 0; i < f.trail.length; i++) {
@@ -641,6 +656,8 @@
      `facing`. `wingAmt` (0→1) scales overall openness — used to "unfurl" the
      wings on the harvest seed. Reused by the harvest seed + the live fairy. */
   M._drawFairyWings = function (g, x, y, facing, wingAmt, gt, alpha) {
+    var FAIRY_GREEN = this._dimUntint(FAIRY_GREEN_BASE);   // native green in the fractured dimension
+    var FAIRY_CORE  = this._dimUntint(FAIRY_CORE_BASE);
     var wingPh = this._fairy ? this._fairy.wing : gt * 9;
     var flap = 0.4 + 0.6 * Math.abs(Math.sin(wingPh));   // 0=folded, 1=spread
     var perp = facing + Math.PI / 2;
@@ -762,7 +779,7 @@
       if (tt >= 1) {
         f.rev = 'REBUILD'; f.revT = 0;
         f.x = dxs; f.y = dys - 24;
-        this._spawnWaveRing(dxs, dys, { maxRadius: 120, color: FAIRY_GREEN, expandTime: 0.4 });
+        this._spawnWaveRing(dxs, dys, { maxRadius: 120, color: FAIRY_GREEN_BASE, expandTime: 0.4 });
         this._explode(dxs, dys, [150, 255, 210], 18);
       }
     } else if (f.rev === 'REBUILD') {
@@ -847,7 +864,7 @@
     var cam = this.cameras.main, zoom = cam.zoom || 1;
     var reach = Math.sqrt(cam.width * cam.width + cam.height * cam.height) * 0.5 / zoom + 640;
     this._spawnWaveRing(x, y, { maxRadius: reach,        color: 0x66ffcc,   expandTime: 0.52 });
-    this._spawnWaveRing(x, y, { maxRadius: reach * 0.82, color: FAIRY_GREEN, expandTime: 0.46 });
+    this._spawnWaveRing(x, y, { maxRadius: reach * 0.82, color: FAIRY_GREEN_BASE, expandTime: 0.46 });
     this._spawnWaveRing(x, y, { maxRadius: reach * 0.55, color: 0xffffff,   expandTime: 0.38 });
     cam.flash(380, 150, 255, 190);
     cam.shake(340, 0.02);

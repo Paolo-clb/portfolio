@@ -1015,7 +1015,9 @@
     var R   = C.WORLD_HALF;
     var TAU = Math.PI * 2;
     var t   = this.gameTime || 0;
-    var col = LA.getColors().cyan || 0x00ffff;   // theme-aware rim (matches the PCB palette)
+    // Theme-aware cyan rim normally; in the fractured dimension the wall turns violet
+    // (pre-compensated so the camera grade lands it on a true violet, not magenta).
+    var col = this._dimFloorTexOn ? this._dimUntint(0xb478ff) : (LA.getColors().cyan || 0x00ffff);
     var pulse = 0.5 + 0.5 * Math.sin(t * 1.7);
 
     g.clear();

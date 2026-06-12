@@ -469,10 +469,13 @@
     var x = f.x, y = f.y, H = f.half;
     var hot = 0.6 + 0.4 * Math.sin(gt * 3 + f.seed);
 
-    // The World: drain the mint palette to grey like the frozen board.
-    var col   = this._twActive ? this._twGray(C.GREED_TINT)  : C.GREED_TINT;
-    var fruit = this._twActive ? this._twGray(C.GREED_FRUIT) : C.GREED_FRUIT;
-    var hotc  = this._twActive ? this._twGray(C.GREED_HOT)   : C.GREED_HOT;
+    // The World: drain the mint palette to grey like the frozen board. Otherwise, in
+    // the fractured dimension, pre-compensate so the plate keeps its NATIVE mint
+    // instead of being hue-shifted by the camera grade (_dimUntint is identity
+    // elsewhere). Every greed colour funnels through these three, so this covers it all.
+    var col   = this._twActive ? this._twGray(C.GREED_TINT)  : this._dimUntint(C.GREED_TINT);
+    var fruit = this._twActive ? this._twGray(C.GREED_FRUIT) : this._dimUntint(C.GREED_FRUIT);
+    var hotc  = this._twActive ? this._twGray(C.GREED_HOT)   : this._dimUntint(C.GREED_HOT);
 
     // Alpha / size envelope (dissolve blooms outward + fades).
     var A = 1, Hmul = 1;

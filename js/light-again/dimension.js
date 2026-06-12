@@ -172,6 +172,32 @@
     cm.contrast(con * s, true);
   };
 
+  /* Pre-compensate a brand colour so the fractured-dimension CAMERA grade (the fixed
+     hue +40° / saturation +18% applied once the floor swaps) lands it back on its
+     TRUE colour. Graphics objects can't take their own postFX in this Phaser build,
+     so a few signature elements (the Greed plate, the fairy Tree, the violet rim)
+     pre-rotate their handful of brand colours each frame instead — cheap (a few ints,
+     NOT per-pixel; the GPU still does the recolour), and the camera matrix then undoes
+     the shift so they read native while the rest of the world stays graded. The maths
+     is the exact inverse of _dimCM(camCM, 1, 40, 0.18, …) — verified to round-trip.
+     Returns the colour untouched outside the fully-fractured dimension. */
+  M._dimUntint = function (color) {
+    if (!this._dimFloorTexOn) return color;
+    var r = (color >> 16) & 0xff, g = (color >> 8) & 0xff, b = color & 0xff;
+    // 1) inverse saturation — exact inverse of Phaser saturate(0.18)
+    var sx = 0.898, sy = 0.051;
+    var r1 = sx * r + sy * g + sy * b;
+    var g1 = sy * r + sx * g + sy * b;
+    var b1 = sy * r + sy * g + sx * b;
+    // 2) inverse hue rotation (−40°, Phaser's exact hue matrix)
+    var rad = -40 * Math.PI / 180, c = Math.cos(rad), s = Math.sin(rad);
+    var nr = (0.213 + c * 0.787 - s * 0.213) * r1 + (0.715 - c * 0.715 - s * 0.715) * g1 + (0.072 - c * 0.072 + s * 0.928) * b1;
+    var ng = (0.213 - c * 0.213 + s * 0.143) * r1 + (0.715 + c * 0.285 + s * 0.140) * g1 + (0.072 - c * 0.072 - s * 0.283) * b1;
+    var nb = (0.213 - c * 0.213 - s * 0.787) * r1 + (0.715 - c * 0.715 + s * 0.715) * g1 + (0.072 + c * 0.928 + s * 0.072) * b1;
+    var cl = function (v) { return v < 0 ? 0 : v > 255 ? 255 : v | 0; };
+    return (cl(nr) << 16) | (cl(ng) << 8) | cl(nb);
+  };
+
   /* ================================================================
      CRACK GEOMETRY — world coords, jittered grid across the disc, CLIPPED to the
      disc so rifts never spill onto the wall/void. Generated once; revealed by
