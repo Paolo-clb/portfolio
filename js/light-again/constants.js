@@ -332,6 +332,7 @@
     ANO_PROJ_ACCEL_REFL: 2.8,    // even more once reflected — they pick up the pace
     ANO_PROJ_RADIUS:     4,      // tiny hitbox (vs PROJ_RADIUS 7)
     ANO_PROJ_SEP:        22,     // swarm spacing — repel each other so they don't stack
+    ANO_PROJ_EMIT:       240,    // ms: muzzle-emission flash when a swarm is fired (shows where they come from)
     /* ---- Intro cinematic timings (real-time ms) ---- */
     ANO_INTRO_STOP:      650,    // time-stop flash duration (ms)
     ANO_INTRO_RAISE:     1300,   // barrier expansion duration (ms)

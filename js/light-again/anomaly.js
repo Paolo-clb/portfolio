@@ -309,6 +309,7 @@
       bx: x, by: y, R: C.ANO_BARRIER_RADIUS, barrierT: 0,
       lasers: [], laserCD: C.ANO_LASER_CD * 0.8,
       projCD: C.ANO_PROJ_CD * 1.1,
+      emit: null,                        // transient muzzle-emission flash for a fired swarm
       panicT: 0,
       chargeT: 0,                         // 0→1 energy charge while visible in WANDER
       _hitFlash: 0, _shieldHitT: 0,
@@ -430,6 +431,7 @@
 
     this._clampAnomalyToWorld(a);   // never leave the arena → always reachable
     this._updateAnomalyLasers(sMs);
+    if (a.emit) { a.emit.t += sMs; if (a.emit.t >= a.emit.dur) a.emit = null; }
     this._updateAnomalyTrail(a, dt);
     this._renderAnomaly(dt, pMs);
   };
@@ -933,12 +935,20 @@
     var baseAng = Math.atan2(p.y - a.y, p.x - a.x);
     // Spawn the swarm fanned around the player heading; each projectile homes
     // from there with a high turn rate so the swarm really sticks to the player.
+    var angs = [];
     for (var i = 0; i < n; i++) {
       var t = n > 1 ? (i / (n - 1) - 0.5) : 0;
       var ang = baseAng + t * 1.4 + (Math.random() - 0.5) * 0.25;
       this._spawnAnomalyProjectile(a.x, a.y, ang);
+      angs.push(ang);
     }
-    this._explode(a.x, a.y, [255, 255, 255], 6);
+    // Stylish muzzle emission: a chromatic rupture at the body + a fan of streaks
+    // along each projectile's heading, so the swarm visibly EJECTS from the boss
+    // (drawn in _renderAnomaly, ticked in the update). Cyan/magenta to match its
+    // RGB-split glitch identity.
+    a.emit = { t: 0, dur: C.ANO_PROJ_EMIT, angs: angs, len: C.ANO_SIZE * 3.0 };
+    this._explode(a.x, a.y, [120, 255, 255], 8);
+    this._explode(a.x, a.y, [255, 90, 220], 6);
   };
 
   M._spawnAnomalyProjectile = function (ex, ey, angle) {
@@ -1348,6 +1358,79 @@
         // Muzzle flash on the body
         lg.fillStyle(0xffffff, 0.6 * flick);
         lg.fillCircle(ox, oy, bw * 0.7);
+      }
+    }
+
+    /* ---- Glitch tethers: keep every live (un-parried) homing bolt visibly WIRED
+       to the body, so the swarm always reads as the Anomaly's and each bolt can be
+       traced straight back to its source. A parried bolt (isReflected) is yours now
+       → its tether drops. Energy pulses crawl from the body outward to sell the
+       origin; the link fades with distance so a far swarm stays uncluttered. */
+    var tProjs = this.projectiles;
+    for (var tpi = 0; tpi < tProjs.length; tpi++) {
+      var tpr = tProjs[tpi];
+      if (!tpr.glitch || tpr.isReflected) continue;
+      var ttx = tpr.x - a.x, tty = tpr.y - a.y;
+      var tlen = Math.sqrt(ttx * ttx + tty * tty);
+      if (tlen < 6) continue;
+      var tFade = Math.max(0.14, 1 - tlen / (C.ANO_BARRIER_RADIUS * 1.3));
+      var ttCy = this._twActive ? this._twGray(0x33ffff) : 0x33ffff;
+      var ttMg = this._twActive ? this._twGray(0xff33cc) : 0xff33cc;
+      var ttWh = this._twActive ? this._twGray(0xffffff) : 0xffffff;
+      var tflk = 0.6 + 0.4 * Math.sin(gt * 26 + tpi * 1.7);   // per-bolt flicker
+      // Chromatic-split twin lines + a thin white core (mirrors the body's ghosting)
+      lg.lineStyle(3, ttCy, 0.09 * tFade * tflk);
+      lg.beginPath(); lg.moveTo(a.x - 2, a.y); lg.lineTo(tpr.x - 2, tpr.y); lg.strokePath();
+      lg.lineStyle(3, ttMg, 0.09 * tFade * tflk);
+      lg.beginPath(); lg.moveTo(a.x + 2, a.y); lg.lineTo(tpr.x + 2, tpr.y); lg.strokePath();
+      lg.lineStyle(1, ttWh, 0.30 * tFade * tflk);
+      lg.beginPath(); lg.moveTo(a.x, a.y); lg.lineTo(tpr.x, tpr.y); lg.strokePath();
+      // Two energy pulses flowing FROM the body toward the bolt (reinforces origin)
+      for (var tk = 0; tk < 2; tk++) {
+        var tpulse = (gt * 0.8 + tpi * 0.37 + tk * 0.5) % 1;
+        lg.fillStyle(ttWh, 0.55 * tFade);
+        lg.fillCircle(a.x + ttx * tpulse, a.y + tty * tpulse, 2.0);
+      }
+    }
+
+    /* ---- Projectile-swarm muzzle emission (drawn on the laser layer) ----
+       A brief chromatic rupture at the body plus a fan of streaks down each
+       projectile's launch heading, so the homing swarm clearly reads as ejected
+       FROM the Anomaly instead of just "appearing". */
+    if (a.emit) {
+      var ep = a.emit.t / a.emit.dur;                 // 0 → 1 over its short life
+      if (ep < 1) {
+        var efade = (1 - ep) * (1 - ep);              // ease-out fade
+        var egrow = Math.min(1, ep / 0.30);           // streaks shoot out fast, then hold
+        var eox = a.x, eoy = a.y;
+        // Keep cyan/magenta/white, greyed only while The World freezes the boss.
+        var eCy = this._twActive ? this._twGray(0x66ffff) : 0x66ffff;
+        var eMg = this._twActive ? this._twGray(0xff66dd) : 0xff66dd;
+        var eWh = this._twActive ? this._twGray(0xffffff) : 0xffffff;
+        var eCoreR = C.ANO_SIZE * (0.6 + 0.7 * (1 - Math.min(1, ep / 0.45)));
+        // Chromatic core rupture — cyan / magenta split around a white-hot centre
+        lg.fillStyle(eCy, 0.22 * efade); lg.fillCircle(eox - 4, eoy, eCoreR);
+        lg.fillStyle(eMg, 0.22 * efade); lg.fillCircle(eox + 4, eoy, eCoreR);
+        lg.fillStyle(eWh, 0.60 * efade); lg.fillCircle(eox, eoy, eCoreR * 0.45);
+        // Expanding shock ring (also split)
+        var eRingR = eCoreR + ep * 80;
+        lg.lineStyle(2.5, eCy, 0.55 * efade); lg.strokeCircle(eox, eoy, eRingR);
+        lg.lineStyle(1.5, eMg, 0.40 * efade); lg.strokeCircle(eox, eoy, eRingR * 0.85);
+        // Muzzle streaks along each fired projectile's heading
+        for (var ei = 0; ei < a.emit.angs.length; ei++) {
+          var ea = a.emit.angs[ei];
+          var edx = Math.cos(ea), edy = Math.sin(ea);
+          var eLen = a.emit.len * egrow * (0.8 + Math.random() * 0.4);
+          var ebx0 = eox + edx * eCoreR * 0.3, eby0 = eoy + edy * eCoreR * 0.3;
+          var ebx1 = eox + edx * eLen,         eby1 = eoy + edy * eLen;
+          lg.lineStyle(5, eCy, 0.18 * efade);
+          lg.beginPath(); lg.moveTo(ebx0 - 2, eby0); lg.lineTo(ebx1 - 2, eby1); lg.strokePath();
+          lg.lineStyle(5, eMg, 0.18 * efade);
+          lg.beginPath(); lg.moveTo(ebx0 + 2, eby0); lg.lineTo(ebx1 + 2, eby1); lg.strokePath();
+          lg.lineStyle(2, eWh, 0.75 * efade);
+          lg.beginPath(); lg.moveTo(ebx0, eby0); lg.lineTo(ebx1, eby1); lg.strokePath();
+          lg.fillStyle(eWh, 0.85 * efade); lg.fillCircle(ebx1, eby1, 2.6);
+        }
       }
     }
 
