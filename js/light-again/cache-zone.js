@@ -436,6 +436,12 @@
       col = this._twGray(col);
       COL_RED = this._twGray(COL_RED); COL_RB = this._twGray(COL_RB);
       COL_CB  = this._twGray(COL_CB);  COL_HOT = this._twGray(COL_HOT);
+    } else if (this._dimFloorTexOn) {
+      // In the fractured dimension, pre-compensate for the camera grade so the cache
+      // keeps its true violet/red/cyan (and so the rage auras below read native).
+      col = this._dimUntint(col);
+      COL_RED = this._dimUntint(COL_RED); COL_RB = this._dimUntint(COL_RB);
+      COL_CB  = this._dimUntint(COL_CB);  COL_HOT = this._dimUntint(COL_HOT);
     }
 
     // Alpha / radius envelope (success blooms outward + fades; timeout shrinks + fades).
@@ -591,8 +597,10 @@
         // (coherent with the cyan mark flicker) so marked enemies stay readable and
         // clearly distinct from plain RED raged ones — red used to bury the mark.
         var marked = !!e.isMarked;
-        var glowC  = marked ? 0x36e0ff : COL_RED;
-        var tipC   = marked ? 0x9af6ff : 0xff7733;
+        // COL_RED is already dimension-compensated above; the raw mark-cyan / rage-orange
+        // literals get the same treatment so a raged enemy reads native in the dimension.
+        var glowC  = marked ? this._dimUntint(0x36e0ff) : COL_RED;
+        var tipC   = marked ? this._dimUntint(0x9af6ff) : this._dimUntint(0xff7733);
 
         // Fuming inner glow — very faint, just a hint of heat.
         tg.fillStyle(glowC, 0.035 * beat * fade);

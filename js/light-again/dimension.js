@@ -187,7 +187,13 @@
       this._dimResetCM(this._dimBgCM);
       this._dimResetCM(this._dimGlowCM);
       this._dimResetCM(this._dimDeepCM);
-      this._dimCM(this._dimCamCM, camS, 40, 0.18, 0.10);
+      // The World OWNS the frame while it's active (its own greyscale on the floor +
+      // grey enemy textures): drop the dimension's whole-frame hue-shift so TW and its
+      // gold/red effects read in their TRUE colours, not the violet dimension grade.
+      // _dimUntint also goes identity under TW (below), so every untinted element
+      // (core/prism/HUD/tree) stays native too. Restored next frame when TW ends.
+      if (this._twActive) this._dimResetCM(this._dimCamCM);
+      else this._dimCM(this._dimCamCM, camS, 40, 0.18, 0.10);
       return;
     }
     this._dimCM(this._dimBgCM,   floorS,         150, 0.55, 0.22);
@@ -215,7 +221,9 @@
      is the exact inverse of _dimCM(camCM, 1, 40, 0.18, …) — verified to round-trip.
      Returns the colour untouched outside the fully-fractured dimension. */
   M._dimUntint = function (color) {
-    if (!this._dimFloorTexOn) return color;
+    // Identity outside the fully-fractured dimension, AND while The World is active
+    // (the camera grade is dropped during TW, so there's nothing to pre-compensate).
+    if (!this._dimFloorTexOn || this._twActive) return color;
     var r = (color >> 16) & 0xff, g = (color >> 8) & 0xff, b = color & 0xff;
     // 1) inverse saturation — exact inverse of Phaser saturate(0.18)
     var sx = 0.898, sy = 0.051;
@@ -391,14 +399,14 @@
      PORTAL CINEMATIC — fired when the counter hits zero (world frozen via
      scene.update). Every enemy still ON SCREEN becomes a staring dimension EYE; a
      colossal eye then forms over the player, OPENS (the small eyes blink out as it
-     does), glares, and BLINKS SHUT — and the instant its lids fully close we're in
-     the altered dimension as the first team spawns.
+     does) and immediately BLINKS SHUT — and the instant its lids fully close we're
+     in the altered dimension as the first team spawns.
 
-     Timeline (seconds): FORM 0–0.5 (eye a shut slit, small eyes staring) → OPEN
-     0.5–1.35 (lids part, small eyes implode) → STARE 1.35–2.05 (wide, pupil dilates)
-     → CLOSE 2.05–2.95 (lids shut → engulf flash → teleport).
+     Timeline (seconds): FORM 0–0.5 (shut slit, small eyes staring) → OPEN 0.5–1.35
+     (lids part, small eyes implode) → CLOSE 1.35–2.2 (lids shut at the SAME speed as
+     they opened — no hold open → engulf flash → teleport). A symmetric blink.
      ================================================================ */
-  var FORM_END = 0.5, OPEN_END = 1.35, STARE_END = 2.05, CLOSE_END = 2.95;
+  var FORM_END = 0.5, OPEN_END = 1.35, CLOSE_END = 2.2;   // open span == close span (0.85s each)
 
   M._beginDimPortal = function () {
     if (this._dimPortalActive) return;
@@ -479,11 +487,14 @@
     // 2) the great eye (screen space, over the player)
     var cam = this.cameras.main, cx = this._dimPortalCX, cy = this._dimPortalCY;
     var W = cam.width, H = cam.height, diag = Math.sqrt(W * W + H * H);
+    // LINEAR up then LINEAR down, equal spans → the lids open and close at the SAME
+    // constant speed and reverse instantly at full-open (no dwell). An eased peak
+    // (easeOut→easeIn) would stall at zero velocity = a brief "held open" beat, which
+    // is exactly what we don't want here.
     var openFrac;
     if (t < FORM_END) openFrac = 0;
-    else if (t < OPEN_END) openFrac = easeOut((t - FORM_END) / (OPEN_END - FORM_END));
-    else if (t < STARE_END) openFrac = 1;
-    else if (t < CLOSE_END) openFrac = 1 - easeIn((t - STARE_END) / (CLOSE_END - STARE_END));
+    else if (t < OPEN_END) openFrac = (t - FORM_END) / (OPEN_END - FORM_END);
+    else if (t < CLOSE_END) openFrac = 1 - (t - OPEN_END) / (CLOSE_END - OPEN_END);
     else openFrac = 0;
     this._dimDrawBigEye(g, t, openFrac);
 
@@ -541,7 +552,7 @@
 
     // 4. Iris + dilating pupil-core + reticle ticks (the T4 lens, dimension-grown).
     if (openFrac > 0.12) {
-      var dilate = 0.4 + 0.6 * (t > STARE_END ? 1 : easeOut(clamp01((t - OPEN_END) / 0.7)));
+      var dilate = 0.4 + 0.6 * openFrac;   // pupil dilates as it opens, contracts as it shuts
       var ri = Math.min(hw * 0.5, ho * 0.92);
       g.lineStyle(ri * 0.42, RIFT_HALO, 0.45 * openFrac);  // iris annulus (dark centre = pupil under ADD)
       g.strokeCircle(cx, cy, ri * 0.68);

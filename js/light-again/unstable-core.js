@@ -60,14 +60,20 @@
   /* Palette — volatile orange/amber plasma (hot) contained by a cool cyan field.
      Deliberately distinct from cyan (player), magenta (mirror/dash-atk), green
      (tree) and enemy-red so the core always reads as its own thing. */
-  var HOT      = 0xff8a3c;   // core orange
-  var HOTCORE  = 0xffd8a0;   // warm near-white
-  var EMBER    = 0xff5a1e;   // deep ember
-  var WHITE    = 0xffffff;
-  var FIELD    = 0x66ddff;   // containment field cyan
-  var FIELDHOT = 0xccf4ff;   // field bright edge
-  var TW_GOLD  = 0xffc832;   // The World theme gold (matches the stasis wave / golden orbs)
-  var TW_GOLD2 = 0xffe06e;   // brighter gold accent
+  // BASE palette (the true colours). The mutable working copies below are re-derived
+  // from these every render frame so the core keeps its OWN colours in the fractured
+  // dimension (pre-compensated for the camera grade via _dimUntint — the core is a
+  // SLOW-MO World effect, never greyed, so it must read native there too).
+  var HOT_B = 0xff8a3c, HOTCORE_B = 0xffd8a0, EMBER_B = 0xff5a1e, WHITE_B = 0xffffff,
+      FIELD_B = 0x66ddff, FIELDHOT_B = 0xccf4ff, TW_GOLD_B = 0xffc832, TW_GOLD2_B = 0xffe06e;
+  var HOT      = HOT_B;      // core orange
+  var HOTCORE  = HOTCORE_B;  // warm near-white
+  var EMBER    = EMBER_B;    // deep ember
+  var WHITE    = WHITE_B;
+  var FIELD    = FIELD_B;    // containment field cyan
+  var FIELDHOT = FIELDHOT_B; // field bright edge
+  var TW_GOLD  = TW_GOLD_B;  // The World theme gold (matches the stasis wave / golden orbs)
+  var TW_GOLD2 = TW_GOLD2_B; // brighter gold accent
 
   /* Trace a regular n-gon path (caller strokes/fills). */
   function polyPath(g, x, y, r, n, rot) {
@@ -836,6 +842,13 @@
     if (!g) return;
     g.clear();
     if (!this._cores || !this._cores.length) return;
+
+    // Pre-compensate the palette for the fractured-dimension camera grade so the core
+    // reads in its true orange/cyan there (identity outside the dimension / under TW).
+    HOT = this._dimUntint(HOT_B); HOTCORE = this._dimUntint(HOTCORE_B);
+    EMBER = this._dimUntint(EMBER_B); WHITE = this._dimUntint(WHITE_B);
+    FIELD = this._dimUntint(FIELD_B); FIELDHOT = this._dimUntint(FIELDHOT_B);
+    TW_GOLD = this._dimUntint(TW_GOLD_B); TW_GOLD2 = this._dimUntint(TW_GOLD2_B);
 
     var view = this.cameras.main.worldView;
     for (var i = 0; i < this._cores.length; i++) {

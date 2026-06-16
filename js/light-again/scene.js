@@ -65,9 +65,16 @@
       // go solid. Wrapping the instance method here keeps every existing
       // cameras.main.flash(...) call site guarded without touching them.
       var _camFlash = cam.flash;
-      cam.flash = function () {
+      var _flashK   = (C.FLASH_INTENSITY != null) ? C.FLASH_INTENSITY : 1;
+      cam.flash = function (duration, red, green, blue, force, callback, context) {
         if (self.scene && !self.scene.isActive()) return cam;
-        return _camFlash.apply(cam, arguments);
+        // Globally DAMP every screen flash in one place: scale the RGB uniformly so
+        // each flash gets gentler while keeping its hue AND its intensity proportion
+        // relative to the others (a full-white 255 flash and a dim 120 one both ×K).
+        red   = (red   == null ? 255 : red)   * _flashK;
+        green = (green == null ? 255 : green) * _flashK;
+        blue  = (blue  == null ? 255 : blue)  * _flashK;
+        return _camFlash.call(cam, duration, red, green, blue, force, callback, context);
       };
 
       // A paused scene keeps RENDERING (only its update stops), so a flash that
@@ -532,9 +539,17 @@
           var oy = self.p.y + (Math.random() - 0.5) * 200;
           self._spawnStar(ox, oy);
         }
+        // Cheat: grant a full BOSS reward — the 3-pick draft (BOSS_DRAFT_PICKS) plus
+        // +1 reroll — exactly as if a boss had just been defeated (spawns paused via
+        // _bossDraftPending, like a real boss draft; cleared when the draft closes).
         if (ev.code === 'KeyK' && !ev.repeat) {
           ev.preventDefault();
-          self._beginUpgradeSlowMo();
+          if (!self._upgradeDraftOpen && !self._upSlowMoPhase && !self._bossDraftPending &&
+              self.p && self.p.state !== 'DEAD' && !self._tutorialActive) {
+            self._rerollsAvailable = (self._rerollsAvailable || 0) + 1;   // boss reward: +1 reroll
+            self._bossDraftPending = true;                                // suppress spawns during the draft
+            self._beginBossUpgradeDraft();
+          }
         }
         // Cheat: force-spawn The Anomaly mini-boss (works in both modes)
         if (ev.code === 'KeyG' && !ev.repeat) {

@@ -52,19 +52,26 @@
   /* Spectral palette — a refraction prism splits white light into the rainbow.
      Deliberately multi-hued so the prism never reads as any single-colour system
      (orange core, magenta dash-atk, cyan player, gold The World, green tree…). */
-  var SPECTRUM = [0xff2e4d, 0xff7a1e, 0xffe23a, 0x37e05a, 0x2fd9ff, 0x3a6bff, 0xb152ff];
+  // BASE rainbow + accents (true colours). The working `SPECTRUM` / accent vars below
+  // are re-derived from these each render frame so the prism keeps its real chromatic
+  // identity in the fractured dimension (pre-compensated for the camera grade via
+  // _dimUntint — the prism is a SLOW-MO World effect, never greyed → must read native).
+  var SPECTRUM_BASE = [0xff2e4d, 0xff7a1e, 0xffe23a, 0x37e05a, 0x2fd9ff, 0x3a6bff, 0xb152ff];
+  var SPECTRUM = SPECTRUM_BASE.slice();
   var SPECTRUM_RGB = [];
   for (var _si = 0; _si < SPECTRUM.length; _si++) {
     var _c = SPECTRUM[_si];
     SPECTRUM_RGB.push([(_c >> 16) & 255, (_c >> 8) & 255, _c & 255]);
   }
-  var WHITE    = 0xffffff;
-  var ICE      = 0xcde9ff;   // cool white-blue (charged light)
-  var TW_GOLD  = 0xffc832;   // The World theme gold
-  var TW_GOLD2 = 0xffe06e;
-  var CHROMA_C = 0x9ffcff;   // centre arrow aura (the real ship)
-  var CHROMA_R = 0xff3a5a;   // red-shifted phantom (chromatic aberration)
-  var CHROMA_B = 0x3a86ff;   // blue-shifted phantom
+  var WHITE_B = 0xffffff, ICE_B = 0xcde9ff, TW_GOLD_B = 0xffc832, TW_GOLD2_B = 0xffe06e,
+      CHROMA_C_B = 0x9ffcff, CHROMA_R_B = 0xff3a5a, CHROMA_B_B = 0x3a86ff;
+  var WHITE    = WHITE_B;
+  var ICE      = ICE_B;      // cool white-blue (charged light)
+  var TW_GOLD  = TW_GOLD_B;  // The World theme gold
+  var TW_GOLD2 = TW_GOLD2_B;
+  var CHROMA_C = CHROMA_C_B; // centre arrow aura (the real ship)
+  var CHROMA_R = CHROMA_R_B; // red-shifted phantom (chromatic aberration)
+  var CHROMA_B = CHROMA_B_B; // blue-shifted phantom
 
   /* Trace a rotated ship-arrow path (same proportions as the player texture:
      tip +s, wings ±0.55s at -0.6s, inner notch -0.25s). Caller fills/strokes. */
@@ -775,6 +782,13 @@
     if (!g) return;
     g.clear();
     if (!this._prisms || !this._prisms.length) return;
+
+    // Pre-compensate the palette for the fractured-dimension camera grade so the prism's
+    // rainbow + chroma read true there (identity outside the dimension / under TW).
+    for (var _k = 0; _k < SPECTRUM_BASE.length; _k++) SPECTRUM[_k] = this._dimUntint(SPECTRUM_BASE[_k]);
+    WHITE = this._dimUntint(WHITE_B); ICE = this._dimUntint(ICE_B);
+    TW_GOLD = this._dimUntint(TW_GOLD_B); TW_GOLD2 = this._dimUntint(TW_GOLD2_B);
+    CHROMA_C = this._dimUntint(CHROMA_C_B); CHROMA_R = this._dimUntint(CHROMA_R_B); CHROMA_B = this._dimUntint(CHROMA_B_B);
 
     var view = this.cameras.main.worldView;
     var pad  = C.PRISM_TRIGGER_R + 140;

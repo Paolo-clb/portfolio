@@ -180,12 +180,31 @@
     this._bossTeamSize = Math.min(size + 1, NUM);
   };
 
-  /* Spawn a drawn team around the player (fanned out so entrances don't stack). */
+  /* Clamp a desired spawn point into the player's current VIEW (minus a body margin)
+     ∩ the arena disc, so a boss ALWAYS materialises on-screen where the player can see
+     it arrive. (The Giga + Snake already do this in-line; the Anomaly shares it now.) */
+  M._clampSpawnInView = function (x, y, margin) {
+    var view = this.cameras.main.worldView, m = C.WORLD_HALF;
+    var loX = Math.max(view.x + margin, -m), hiX = Math.min(view.right  - margin, m);
+    var loY = Math.max(view.y + margin, -m), hiY = Math.min(view.bottom - margin, m);
+    if (loX > hiX) loX = hiX = (view.x + view.right)  / 2;
+    if (loY > hiY) loY = hiY = (view.y + view.bottom) / 2;
+    x = Math.min(hiX, Math.max(loX, x));
+    y = Math.min(hiY, Math.max(loY, y));
+    var c = LA.clampDisc(x, y, margin);
+    return { x: c.x, y: c.y };
+  };
+
+  /* Spawn a drawn team around the player — evenly fanned at a VIEW-relative distance so
+     every member arrives ON-SCREEN and they spread out around the player instead of
+     stacking or dropping off-camera (each boss also clamps itself to the view too). */
   M._spawnTeamNow = function (team) {
+    var view = this.cameras.main.worldView;
+    var viewMin = Math.min(view.width, view.height);
     var base = Math.random() * TAU;
     for (var i = 0; i < team.length; i++) {
       var ang  = base + (i / team.length) * TAU + (Math.random() - 0.5) * 0.4;
-      var dist = 720 + Math.random() * 220;
+      var dist = viewMin * (0.36 + Math.random() * 0.08);
       this._spawnBossOfType(team[i], { angle: ang, dist: dist });
     }
   };
@@ -221,10 +240,10 @@
   };
 
   /* DEBUG (KeyR): drive the whole end-game sequence for testing. First press (not
-     yet fractured) ARMS a SHORT fracture ramp so the counter corruption + the map
-     tearing open are quick to watch; once that ramp/the dimension is reached, a
-     press drops the gate so the next TEAM spawns (+ the entry snap the first time).
-     No-op while a boss / death-anim / draft is live. */
+     yet fractured) ARMS the FULL fracture ramp (the real 1000-kill window, so the
+     counter reads 1000 and counts down exactly like a live run); once that ramp/the
+     dimension is reached, a press drops the gate so the next TEAM spawns (+ the entry
+     snap the first time). No-op while a boss / death-anim / draft is live. */
   M._forceBossTeam = function () {
     if (!this.p || this.p.state === 'DEAD') return;
     if (this._anyBossAlive() || (this._bossDeaths && this._bossDeaths.length)) return;
@@ -234,10 +253,11 @@
     if (this._dimFractured || this._dimTransition) {
       this._bossKillThreshold = this.totalKills;   // already ramping / in the dimension → team next frame
     } else {
-      // Arm a short ramp so the fracture build-up + snap are testable fast.
+      // Arm the full 1000-kill ramp (same window as a real run) so the counter starts
+      // at 1000 and the fracture builds up over a genuine play-through.
       this._dimTransition      = true;
       this._fractureStartKills = this.totalKills;
-      this._bossKillThreshold  = this.totalKills + 30;
+      this._bossKillThreshold  = this.totalKills + (C.DIM_FRACTURE_KILLS || 1000);
     }
   };
 
@@ -250,8 +270,12 @@
     opts = opts || {};
 
     var ang  = opts.angle != null ? opts.angle : Math.random() * TAU;
-    var dist = opts.dist  != null ? opts.dist  : 820;
-    var aSp = LA.clampDisc(this.p.x + Math.cos(ang) * dist, this.p.y + Math.sin(ang) * dist, C.ANO_SIZE * 2);
+    // View-relative default (toward the screen edge) so the anomaly lands ON-SCREEN
+    // around the player — the old fixed 820 px routinely dropped it off-camera. Then
+    // clamp to the view ∩ disc so you always see exactly where it materialised.
+    var aView = this.cameras.main.worldView;
+    var dist  = opts.dist != null ? opts.dist : Math.min(aView.width, aView.height) * 0.42;
+    var aSp   = this._clampSpawnInView(this.p.x + Math.cos(ang) * dist, this.p.y + Math.sin(ang) * dist, C.ANO_SIZE * 2);
     var x = aSp.x, y = aSp.y;
 
     var self = this;

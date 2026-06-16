@@ -88,6 +88,10 @@
     IFRAMES_DUR:   800,
     SPAWN_DIST:      650,
     MAX_ENEMIES:     700,
+    // Global screen-flash damping (0..1): every cam.flash() RGB is scaled by this in
+    // one place (scene.js wrapper), so all flashes get gentler while keeping their hue
+    // AND their intensity proportions relative to each other. 1 = original strength.
+    FLASH_INTENSITY: 0.5,
 
     /* ---- Steve skin: enchanted-netherite dash-attack animation ---- */
     NETH_FRAMES: 60,   // frames in the spritesheet (5 cols × 12 rows)
@@ -355,8 +359,8 @@
     GBR_DASH_DMG:        3,       // damage from a dash-attack on the unshielded body
     GBR_ATK_DMG:         1,       // damage from a base attack on the unshielded body
     GBR_SHIELD_RESPAWN:  3500,    // ms before the shield comes back after a break
-    GBR_SPAWN_CD:        3500,    // ms between bruiser-swarm spawns (same as T3)
-    GBR_SWARM_SIZE:      4,       // bruisers per swarm
+    GBR_SPAWN_CD:        4600,    // ms between bruiser-swarm spawns (nerfed from 3500 — a bit more breathing room)
+    GBR_SWARM_SIZE:      3,       // bruisers per swarm (nerfed from 4)
     GBR_TRIGGER_RANGE:   380,     // player distance below which the boss stops approaching
     GBR_APPROACH_SPD:    1.6,     // px/frame approach speed while wandering toward the player
     GBR_REBOUND_IMP:     22,      // knockback impulse on the player when dash-atk breaks shield
