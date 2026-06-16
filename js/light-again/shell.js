@@ -557,6 +557,7 @@
       // cosmetic pickaxe skin (unlocked alongside hardcore mode as a reward).
       '<div class="la-ms-opts">' +
         '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-bigtext-cb"><span>' + (fr ? 'Gros texte' : 'Large text') + '</span></label>' +
+        '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-noflash-cb"><span>' + (fr ? 'Désactiver les flashs' : 'Disable flashes') + '</span></label>' +
         (unlocked ? '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-steve-cb"><span>I am Steve</span></label>' : '') +
       '</div>' +
       // Tip in normal flow at the bottom of the panel (mentions seeing upgrades). Kept
@@ -605,6 +606,22 @@
       bigTextCb.addEventListener('change', function () {
         laModal.classList.toggle('la-big-text', bigTextCb.checked);
         try { localStorage.setItem('la_big_text', bigTextCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
+      });
+    }
+
+    // "Désactiver les flashs": accessibility toggle (off by default) that swallows
+    // every screen flash via the central cam.flash wrapper in scene.js. The state
+    // lives on window.__laNoFlash (which the wrapper reads) and is mirrored to
+    // localStorage for the next session.
+    var noFlashCb = menuEl.querySelector('#_la-ms-noflash-cb');
+    if (noFlashCb) {
+      var noFlash = false;
+      try { noFlash = (localStorage.getItem('la_no_flash') === '1'); } catch (e) { /* ignore */ }
+      noFlashCb.checked = noFlash;
+      window.__laNoFlash = noFlash;
+      noFlashCb.addEventListener('change', function () {
+        window.__laNoFlash = noFlashCb.checked;
+        try { localStorage.setItem('la_no_flash', noFlashCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
       });
     }
 

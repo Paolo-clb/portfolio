@@ -66,7 +66,15 @@
       // cameras.main.flash(...) call site guarded without touching them.
       var _camFlash = cam.flash;
       var _flashK   = (C.FLASH_INTENSITY != null) ? C.FLASH_INTENSITY : 1;
+      // "Désactiver les flashs" accessibility setting (OFF by default): when on,
+      // every screen flash is swallowed entirely. The truth lives on
+      // window.__laNoFlash (kept in sync by the menu / game-over checkboxes) and
+      // is seeded here from localStorage so it's honoured even if the player
+      // never opens the menu where the toggle lives. Re-read on every scene
+      // create() so it stays correct across restarts.
+      try { window.__laNoFlash = (localStorage.getItem('la_no_flash') === '1'); } catch (e) { /* ignore */ }
       cam.flash = function (duration, red, green, blue, force, callback, context) {
+        if (window.__laNoFlash) return cam;
         if (self.scene && !self.scene.isActive()) return cam;
         // Globally DAMP every screen flash in one place: scale the RGB uniformly so
         // each flash gets gentler while keeping its hue AND its intensity proportion

@@ -173,6 +173,10 @@
           '<input type="checkbox" id="_la-go-bigtext" style="width:14px;height:14px;margin:0;accent-color:#5fe0cf;cursor:pointer">' +
           '<span>' + t('laGoBigText') + '</span>' +
         '</label>' +
+        '<label id="_la-go-noflash-wrap" style="' + optLabel + '">' +
+          '<input type="checkbox" id="_la-go-noflash" style="width:14px;height:14px;margin:0;accent-color:#5fe0cf;cursor:pointer">' +
+          '<span>' + t('laGoNoFlash') + '</span>' +
+        '</label>' +
         '<label id="_la-go-steve-wrap" style="' + optLabel + '">' +
           '<input type="checkbox" id="_la-go-steve" style="width:14px;height:14px;margin:0;accent-color:#5fe0cf;cursor:pointer">' +
           '<span>I am Steve</span>' +
@@ -194,6 +198,21 @@
       bigTextCb.addEventListener('change', function () {
         laModal.classList.toggle('la-big-text', bigTextCb.checked);
         try { localStorage.setItem('la_big_text', bigTextCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
+      });
+    }
+
+    // ----- Wire "Désactiver les flashs" toggle (same source as the pause menu) -----
+    // Off by default; when on, window.__laNoFlash makes the central cam.flash
+    // wrapper (scene.js) swallow every screen flash. Mirrored to localStorage.
+    var noFlashCb = panel.querySelector('#_la-go-noflash');
+    if (noFlashCb) {
+      var noFlash = false;
+      try { noFlash = (localStorage.getItem('la_no_flash') === '1'); } catch (e) { /* ignore */ }
+      noFlashCb.checked = noFlash;
+      window.__laNoFlash = noFlash;
+      noFlashCb.addEventListener('change', function () {
+        window.__laNoFlash = noFlashCb.checked;
+        try { localStorage.setItem('la_no_flash', noFlashCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
       });
     }
 
