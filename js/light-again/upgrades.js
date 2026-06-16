@@ -412,6 +412,13 @@
     var lvl = choiceEntry.level;
     this._upgradeLevels[id] = lvl;
 
+    // Map weapons adapt LIVE: a freshly-drafted Noyau / Prisme card upgrades the
+    // dormant fixtures already on the map to their new level immediately, so they
+    // "grow into" their improved version when the draft closes (instead of keeping
+    // their old level until they respawn).
+    if (id === 'core'  && this._resyncCoreLevels)  this._resyncCoreLevels();
+    if (id === 'prism' && this._resyncPrismLevels) this._resyncPrismLevels();
+
     for (var i = this._upgradePool.length - 1; i >= 0; i--) {
       var e = this._upgradePool[i];
       if (e.id === id && e.level === lvl) {

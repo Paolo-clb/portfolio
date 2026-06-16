@@ -251,6 +251,29 @@
     return c;
   };
 
+  /* Re-level every DORMANT core sitting on the map to the CURRENT upgrade level.
+     Called from _applyUpgrade the instant a Noyau card is drafted, so the cores
+     you can already see grow into their improved version (bigger body + field,
+     stronger billiard flight) right away instead of keeping their stale level
+     until they respawn. Mid-flight cores are skipped — they detonate within a
+     second and the next one spawns at the new level anyway. */
+  M._resyncCoreLevels = function () {
+    if (!this._cores || !this._cores.length) return;
+    var lvl = (this._upgradeLevels && this._upgradeLevels.core) || 1;
+    for (var i = 0; i < this._cores.length; i++) {
+      var c = this._cores[i];
+      if (c.phase !== 'DORMANT' || c.lvl === lvl) continue;
+      c.lvl         = lvl;
+      c.radius      = C.CORE_BODY_BY_LVL[lvl];
+      c.fieldR      = C.CORE_FIELD_BY_LVL[lvl];
+      c.maxBounces  = C.CORE_BOUNCES_BY_LVL[lvl];
+      c.launchSpeed = C.CORE_SPEED_BY_LVL[lvl];
+      c.expRadius   = C.CORE_EXP_BY_LVL[lvl];
+      // Brief "level-up" pulse so the growth reads on screen when the draft closes.
+      this._spawnWaveRing(c.x, c.y, { maxRadius: c.fieldR * 1.6, color: FIELD, expandTime: 0.34 });
+    }
+  };
+
   /* ================================================================
      UPDATE — spawn gate, tick the live core, render. Called from update()
      with dt = real seconds, sDt = WORLD seconds (frozen during The World).

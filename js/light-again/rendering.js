@@ -893,8 +893,14 @@
     this._renderUpgradeHUD(cx, h, dt);
 
     // ---- The World icon (bottom HUD, after upgrade icons) ----
+    // While the tutorial holds the loadout suspended, The World reads as unlocked-
+    // but-disabled: show it GREYED (like the upgrade/curse icons) if it was unlocked
+    // before the lesson, so the player knows it's coming back.
+    var twSaved = this._tutGreyLoadout();
     if (this._twUnlocked) {
-      this._renderTheWorldIcon(h);
+      this._renderTheWorldIcon(h, false);
+    } else if (twSaved && twSaved.twUnlocked) {
+      this._renderTheWorldIcon(h, true);
     } else if (this._twIconTxt) {
       this._twIconTxt.setAlpha(0); // hide when not yet unlocked
     }
@@ -911,6 +917,11 @@
   var _upDotR     = 2.5;
   var _upMarginR  = 16;
   var _upMarginB  = 16;
+  // Muted steel palette for the GREYED loadout shown during the tutorial (the live
+  // loadout is suspended/zeroed then — see _tutSuspendUpgrades — so we redraw the
+  // saved snapshot in this disabled grey instead of letting the icons vanish).
+  var _greyBorder = 0x5b6675;
+  var _greyGlyph  = 0x8893a3;
 
   /* ---- Shared upgrade-icon PLACEHOLDER (HUD canvas twin of LA.ICON_PLACEHOLDER_SVG) ----
      Real per-upgrade art is coming; until then every icon surface (draft, HUD,
@@ -959,9 +970,20 @@
     else this._drawIconPlaceholder(cx, cy, size, color, alpha);
   };
 
+  // During the tutorial the live loadout is suspended (zeroed by _tutSuspendUpgrades),
+  // so its HUD icons would just vanish. This returns the saved snapshot when a real
+  // loadout was suspended, so the HUD can redraw it GREYED — a clear "you still have
+  // these, but they're switched off for the lesson and come back at the end" cue.
+  // null in normal play and in a fresh tutorial with no loadout to grey.
+  M._tutGreyLoadout = function () {
+    return (this._tutorialActive && this._tutUpgradesSuspended && this._tutSavedUpgrades)
+      ? this._tutSavedUpgrades : null;
+  };
+
   M._renderUpgradeHUD = function (cx, h, dt) {
     if (!this._upgradeLevels) return;
-    var lvls = this._upgradeLevels;
+    var tutSaved = this._tutGreyLoadout();          // non-null ⇒ draw the saved loadout greyed
+    var lvls = tutSaved ? tutSaved.levels : this._upgradeLevels;
     var w    = this.cameras.main.width;
     var iy   = h - _upMarginB - _upIconSize - _upDotR * 2 - 6;
 
@@ -1089,7 +1111,7 @@
     }
     var curses = this._hudCurses || (this._hudCurses = []);
     curses.length = 0;
-    var tcz = this._takenCurses || {};
+    var tcz = tutSaved ? (tutSaved.takenCurses || {}) : (this._takenCurses || {});
     for (var ci = 0; ci < _curseOrder.length; ci++) {
       if (tcz[_curseOrder[ci]]) curses.push(_curseOrder[ci]);
     }
@@ -1106,8 +1128,15 @@
       // Border color: cyan=Lv1, gold=Lv2, violet=Lv3 (capstone). Pre-compensated for
       // the fractured-dimension camera grade (identity elsewhere) so the HUD icons keep
       // their true cyan/gold/violet — this one value drives the border, glyph and dots.
-      var borderCol = this._dimUntint(lvl >= 3 ? 0xb478ff : (lvl >= 2 ? 0xffc832 : 0x00ffff));
-      var borderA   = lvl >= 3 ? 0.82 : (lvl >= 2 ? 0.75 : 0.60);
+      // GREYED while the tutorial holds the loadout suspended (disabled, restored after).
+      var borderCol, borderA;
+      if (tutSaved) {
+        borderCol = this._dimUntint(_greyBorder);
+        borderA   = 0.42;
+      } else {
+        borderCol = this._dimUntint(lvl >= 3 ? 0xb478ff : (lvl >= 2 ? 0xffc832 : 0x00ffff));
+        borderA   = lvl >= 3 ? 0.82 : (lvl >= 2 ? 0.75 : 0.60);
+      }
 
       // Icon background — rounded, glassy (coherent with the draft cards' radius)
       this.hudGfx.fillStyle(0x080a1c, 0.88);
@@ -1124,16 +1153,16 @@
       // Inner icon — shared placeholder (real per-upgrade art TBD)
       var dotCx = ix + _upIconSize / 2;
       var dotCy = iy + _upIconSize / 2;
-      this._drawUpgradeIcon(id, dotCx, dotCy, 28, borderCol, 0.9);
+      this._drawUpgradeIcon(id, dotCx, dotCy, 28, tutSaved ? this._dimUntint(_greyGlyph) : borderCol, tutSaved ? 0.5 : 0.9);
 
-      // Progression dots below icon
+      // Progression dots below icon (dimmer too while greyed)
       var dotsY  = iy + _upIconSize + 5;
       var maxLvl = LA.UPGRADES[id].maxLvl;
       var dotsW  = maxLvl * (_upDotR * 2 + 3) - 3;
       var dotsX  = dotCx - dotsW / 2;
       for (var d = 0; d < maxLvl; d++) {
         var dx = dotsX + d * (_upDotR * 2 + 3) + _upDotR;
-        this.hudGfx.fillStyle(d < lvl ? borderCol : 0xffffff, d < lvl ? 0.92 : 0.18);
+        this.hudGfx.fillStyle(d < lvl ? borderCol : 0xffffff, d < lvl ? (tutSaved ? 0.5 : 0.92) : 0.18);
         this.hudGfx.fillCircle(dx, dotsY, _upDotR);
       }
     }
@@ -1142,22 +1171,27 @@
     // upgrades. The colour matches the Curse Fountain (0xd11e74 / hot-pink core
     // 0xff66bf) so curses read as "rose magenta", clearly distinct from The
     // World's red icon to their left.
-    var curseStroke = this._dimUntint(0xd11e74), curseGlyph = this._dimUntint(0xff66bf);
+    // Rose-magenta normally; muted steel while the tutorial holds them suspended.
+    var curseStroke = this._dimUntint(tutSaved ? _greyBorder : 0xd11e74);
+    var curseGlyph  = this._dimUntint(tutSaved ? _greyGlyph  : 0xff66bf);
+    var curseBordA  = tutSaved ? 0.42 : 0.80;
+    var curseGlyphA = tutSaved ? 0.5  : 0.9;
     for (var ck = 0; ck < curses.length; ck++) {
       var cix = w - _upMarginR - (acquired.length + curses.length - ck) * (_upIconSize + _upGap) + _upGap;
       this.hudGfx.fillStyle(0x16061c, 0.90);
       this.hudGfx.fillRoundedRect(cix, iy, _upIconSize, _upIconSize, 9);
       this.hudGfx.lineStyle(4, curseStroke, 0.16);
       this.hudGfx.strokeRoundedRect(cix, iy, _upIconSize, _upIconSize, 9);
-      this.hudGfx.lineStyle(2, curseStroke, 0.80);
+      this.hudGfx.lineStyle(2, curseStroke, curseBordA);
       this.hudGfx.strokeRoundedRect(cix, iy, _upIconSize, _upIconSize, 9);
       // Per-curse art (glassHeart / dashRage / cursedBlast), tinted fountain magenta.
-      this._drawUpgradeIcon(curses[ck], cix + _upIconSize / 2, iy + _upIconSize / 2, 28, curseGlyph, 0.9);
+      this._drawUpgradeIcon(curses[ck], cix + _upIconSize / 2, iy + _upIconSize / 2, 28, curseGlyph, curseGlyphA);
     }
   };
 
-  /* ---- The World icon — tri-state: ready / active / cooldown (greyed) ---- */
-  M._renderTheWorldIcon = function (h) {
+  /* ---- The World icon — tri-state: ready / active / cooldown (greyed). When
+         `grey` is set it's drawn fully disabled (tutorial: unlocked but suspended). ---- */
+  M._renderTheWorldIcon = function (h, grey) {
     var w    = this.cameras.main.width;
     var lvls = this._upgradeLevels || {};
 
@@ -1169,6 +1203,21 @@
     var gt    = this.gameTime || 0;
     var dotCx = ix + _upIconSize / 2;
     var dotCy = iy + _upIconSize / 2;
+
+    if (grey) {
+      // Tutorial: The World is unlocked but suspended — fully greyed, matching the
+      // greyed upgrade/curse icons, so it reads as "there, disabled, back at the end".
+      this.hudGfx.fillStyle(0x10141c, 0.85);
+      this.hudGfx.fillRoundedRect(ix, iy, _upIconSize, _upIconSize, 9);
+      this.hudGfx.lineStyle(2, this._dimUntint(_greyBorder), 0.42);
+      this.hudGfx.strokeRoundedRect(ix, iy, _upIconSize, _upIconSize, 9);
+      if (this._twIconTxt) this._twIconTxt.setAlpha(0);
+      this._drawUpgradeIcon('theWorld', dotCx, dotCy, 30, this._dimUntint(_greyGlyph), 0.5);
+      this.hudGfx.fillStyle(this._dimUntint(_greyBorder), 0.4);
+      this.hudGfx.fillCircle(dotCx, iy + _upIconSize + 5, _upDotR);
+      return;
+    }
+
     var active = this._twActive;
     var onCD   = !active && this._twCooldown > 0;
     var ready  = !active && !onCD;

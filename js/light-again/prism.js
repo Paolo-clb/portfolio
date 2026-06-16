@@ -310,6 +310,27 @@
     return pr;
   };
 
+  /* Re-level every DORMANT prism on the map to the CURRENT upgrade level. Called
+     from _applyUpgrade the instant a Prisme card is drafted so the prisms you can
+     already see adopt their improved strike tuning (reach / fan width / kill
+     radius, and the L2+ empowered look) right away instead of keeping their stale
+     level until respawn. A prism mid-charge or mid-strike is skipped — it resolves
+     in a moment and the next one spawns at the new level anyway. */
+  M._resyncPrismLevels = function () {
+    if (!this._prisms || !this._prisms.length) return;
+    var lvl = (this._upgradeLevels && this._upgradeLevels.prism) || 1;
+    for (var i = 0; i < this._prisms.length; i++) {
+      var pr = this._prisms[i];
+      if (pr.phase !== 'DORMANT' || pr.lvl === lvl) continue;
+      pr.lvl        = lvl;
+      pr.strikeDist = C.PRISM_DIST_BY_LVL[lvl];
+      pr.fanLateral = C.PRISM_FAN_BY_LVL[lvl];
+      pr.killR      = C.PRISM_KILL_BY_LVL[lvl];
+      // Brief spectral pulse so the upgrade reads on screen when the draft closes.
+      this._spawnWaveRing(pr.x, pr.y, { maxRadius: 120, color: SPECTRUM[4], expandTime: 0.34 });
+    }
+  };
+
   /* ================================================================
      UPDATE — spawn gate, tick the live prism, render. Called from update() with
      dt = real seconds, sDt = WORLD seconds (frozen during The World / hitstop).

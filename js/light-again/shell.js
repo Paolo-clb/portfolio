@@ -1179,6 +1179,15 @@
     return !!(host && host.dataset && host.dataset.laGameover === '1');
   }
 
+  // True while a "Loading…" splash is up — the initial start, a scene restart, or
+  // a tutorial launch (both loaders covered). Used to swallow Escape / pause
+  // toggles that would otherwise open the menu over the loader while the scene is
+  // still booting (incoherent, and it races the not-yet-ready scene).
+  function isLightAgainLoading() {
+    return !!(document.getElementById('_la-loading') ||
+              document.getElementById('_la-restart-loading'));
+  }
+
   function closeHelpPopup(skipResume) {
     if (!helpPopupEl) return;
     // Detach the page-navigation keyboard listener (added in showHelpPopup)
@@ -1644,23 +1653,33 @@
     }
     closeBtn.focus();
 
-    /* --- Keyboard: Escape is context-aware (browser & desktop alike) ---
-         • Help popup open       → close just the popup (innermost layer first).
-         • Live run playing        → PAUSE into the menu, exactly like clicking
-           the in-game ⏸ button. An accidental Esc mid-fight must never kill the
-           run (this also avoided the old desktop close→relaunch crash bounce).
-         • Menu / pause menu / game-over → leave the game: the browser dismisses
-           the modal back to the page, the desktop (.exe) build quits the app
-           cleanly via __laQuit. (requestCloseGame picks the right one.) */
+    /* --- Keyboard: Escape is context-aware (browser & desktop differ) ---
+         • Help popup open    → close just the popup (innermost layer first).
+         • Loading splash up  → do NOTHING (start / restart / tutorial launch):
+           opening the menu over a "Loading…" screen is incoherent and races the
+           scene that's still booting.
+         • DESKTOP (.exe, flagged by window.__laQuit): Escape NEVER quits the app
+           (the × button / OS chrome does that). A live run OR the game-over screen
+           opens the pause/home menu; once that menu is up a further Escape is
+           swallowed — so Escape always lands on the menu, never closes the game.
+         • BROWSER: a live run PAUSES into the menu (an accidental Esc mid-fight
+           must never kill the run); from a menu / game-over it dismisses the modal
+           back to the portfolio page (requestCloseGame — no __laQuit hook). */
     overlayEl._onKeyDown = function (e) {
       if (e.key !== 'Escape') return;
       if (helpPopupEl) { closeHelpPopup(false); return; }
-      if (activeGame && !menuEl && !isLightAgainGameOverOpen() &&
+      if (isLightAgainLoading()) return;
+      var isDesktop = typeof window.__laQuit === 'function';
+      // Open the menu from a live run (both builds) and — on desktop only — from
+      // the game-over screen too, so desktop Escape always lands on the menu.
+      if (activeGame && !menuEl &&
+          (isDesktop || !isLightAgainGameOverOpen()) &&
           typeof homeToggleFn === 'function') {
-        homeToggleFn();   // pause the run + open the (pause) menu
+        homeToggleFn();   // pause the run (or leave game-over) + open the menu
         return;
       }
-      requestCloseGame();
+      if (isDesktop) return;   // desktop: in the menu (or anywhere else) → never quit
+      requestCloseGame();      // browser: dismiss the modal back to the page
     };
     document.addEventListener('keydown', overlayEl._onKeyDown);
 
