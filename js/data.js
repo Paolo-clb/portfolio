@@ -1006,51 +1006,9 @@ const SKILL_GROUPS = [
  */
 const MUSIC = [
   {
-    title: 'Sunflower',
-    artist: 'Post Malone, Swae Lee',
-    cover: 'assets/images/Sunflower.jpg',
-    src: 'assets/music/Sunflower.mp3',
-  },
-  {
-    title: 'On Melancholy Hill',
-    artist: 'Gorillaz',
-    cover: 'assets/images/Melancholy.jpg',
-    src: 'assets/music/Melancholy.mp3',
-  },
-    {
-    title: 'The Line',
-    artist: 'Twenty One Pilots',
-    cover: 'assets/images/TheLine.jpg',
-    src: 'assets/music/TheLine.mp3',
-  },
-    {
-    title: 'Let You Down',
-    artist: 'Dawid Podsiadło',
-    cover: 'assets/images/LetYouDown.jpg',
-    src: 'assets/music/LetYouDown.mp3',
-  },
-      {
-    title: 'Sneaky Driver',
-    artist: 'Bill Kiley',
-    cover: 'assets/images/SneakyDriver.jpg',
-    src: 'assets/music/SneakyDriver.mp3',
-  },
-        {
-    title: 'Iris',
-    artist: 'Forhill',
-    cover: 'assets/images/Iris.jpg',
-    src: 'assets/music/Iris.mp3',
-  },
-    {
-    title: 'Fleur Solitaire',
-    artist: 'LÜNE, Veyko',
-    cover: 'assets/images/FleurSolitaire.jpg',
-    src: 'assets/music/FleurSolitaire.mp3',
-  },
-      {
-    title: 'Pyxis',
-    artist: 'HOME',
-    cover: 'assets/images/Pyxis.jpg',
-    src: 'assets/music/Pyxis.mp3',
+    title: 'BloomChill',
+    artist: 'anonyme',
+    cover: 'assets/images/BloomChill.png',
+    src: 'assets/music/BloomChill.mp3',
   },
 ];

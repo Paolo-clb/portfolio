@@ -27,9 +27,9 @@
 (function () {
   'use strict';
 
-  // ---- Test track (swap for meowelle's track later) -----------------------
-  // artist is always shown as "meowelle" per the brief; src is just for testing.
-  var TEST_TRACK = { src: 'assets/music/Pyxis.mp3', artist: 'meowelle' };
+  // ---- Track (swap for meowelle's final track later) ----------------------
+  // artist is always shown as "meowelle" per the brief.
+  var TEST_TRACK = { src: 'assets/music/BloomChill.mp3', artist: 'anonyme' };
 
   var SIZE = 96;          // widget px (canvas is square; sphere + glow + pulse fit inside)
 
