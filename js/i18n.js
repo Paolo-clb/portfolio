@@ -32,6 +32,9 @@ window.SITE_I18N = {
     detailIndividual: 'Travail individuel',
     detailTech: 'Techniques et savoir-faire acquis',
     detailChallenges: 'Défis rencontrés',
+    detailPreview: 'Aperçu de l\'application',
+    detailViewLive: 'Voir le site en ligne',
+    detailViewCode: 'Code source',
 
     // Skills
     viewAllSkills: 'Voir toutes les compétences',
@@ -286,6 +289,9 @@ window.SITE_I18N = {
     detailIndividual: 'Individual contribution',
     detailTech: 'Technical skills acquired',
     detailChallenges: 'Challenges encountered',
+    detailPreview: 'Application preview',
+    detailViewLive: 'View live site',
+    detailViewCode: 'Source code',
 
     // Skills
     viewAllSkills: 'View all skills',

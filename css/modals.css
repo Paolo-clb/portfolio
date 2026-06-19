@@ -490,6 +490,102 @@
   opacity: 0.7;
 }
 
+/* ==========================================================================
+   "Contain" image treatment — logos / non-16:9 artwork
+   The <img> is shown in full (object-fit: contain) over a blurred, scaled-up
+   backdrop of itself, filling the 16:9 frame instead of letterboxing it.
+   Opt-in via project `imageFit: 'contain'` (see js/main.js).
+   ========================================================================== */
+.project-card__image,
+.detail-modal__image {
+  position: relative;
+}
+
+.project-card__image--contain,
+.detail-modal__image--contain {
+  overflow: hidden;
+  background: rgba(20, 19, 30, 0.4);
+  /* Keep the backdrop/img z-index juggling self-contained so it never
+     interferes with the modal's sticky close button. */
+  isolation: isolate;
+}
+
+.project-card__image--contain img,
+.detail-modal__image--contain img {
+  position: relative;
+  z-index: 1;
+  object-fit: contain;
+}
+
+.project-card__image-backdrop,
+.detail-modal__image-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(26px) saturate(1.15);
+  transform: scale(1.3);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Inline, theme-aware SVG cover (recolors with the site theme) */
+.project-card__image--svg svg,
+.detail-modal__image--svg svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+
+/* ==========================================================================
+   Aperçu de l'application — in-app screenshot with caption
+   ========================================================================== */
+.detail-modal__apercu {
+  margin: 0.75rem 0 0;
+}
+
+.detail-modal__apercu-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius);
+  border: 1px solid rgba(191, 153, 160, 0.18);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+}
+
+.detail-modal__apercu-caption {
+  margin-top: 0.6rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--clr-text-muted);
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Action links — live demo / source code buttons
+   ========================================================================== */
+.detail-modal__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: -0.25rem 0 1.5rem;
+}
+
+.detail-modal__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  font-size: 0.92rem;
+  padding: 0.6rem 1.25rem;
+}
+
+.detail-modal__link-icon {
+  flex-shrink: 0;
+}
+
 /* Scrollbar styling for detail modal */
 .detail-modal::-webkit-scrollbar {
   width: 6px;
@@ -578,6 +674,10 @@
   border-bottom-color: rgba(63, 81, 181, 0.15);
 }
 
+[data-theme="dark"] .detail-modal__apercu-img {
+  border-color: rgba(63, 81, 181, 0.22);
+}
+
 [data-theme="dark"] .detail-modal::-webkit-scrollbar-thumb {
   background: rgba(63, 81, 181, 0.25);
 }
@@ -654,6 +754,10 @@
 
 [data-theme="nature"] .detail-modal__image {
   border-bottom-color: rgba(42, 69, 34, 0.15);
+}
+
+[data-theme="nature"] .detail-modal__apercu-img {
+  border-color: rgba(42, 69, 34, 0.22);
 }
 
 [data-theme="nature"] .detail-modal::-webkit-scrollbar-thumb {

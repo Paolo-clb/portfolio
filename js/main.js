@@ -65,13 +65,33 @@ function trapFocus(overlayEl) {
 window.__trapFocus = trapFocus;
 
 // ---------------------------------------------------------------------------
-// Build a single project card element
+// Optional "contain" image treatment.
+// For logos or non-16:9 artwork, show the whole image (object-fit: contain)
+// over a blurred, scaled-up backdrop of itself, so the 16:9 frame is filled
+// edge-to-edge instead of being letterboxed with empty bars.
+// Opt-in per project via `imageFit: 'contain'`.
 // ---------------------------------------------------------------------------
-function buildProjectCard(project) {
-  const card = createElement('article', 'project-card');
+function applyContainImage(imgWrap, project, baseClass) {
+  if (project.imageFit !== 'contain') return;
+  imgWrap.classList.add(baseClass + '--contain');
+  const backdrop = createElement('div', baseClass + '-backdrop');
+  backdrop.style.backgroundImage = 'url("' + project.image + '")';
+  imgWrap.appendChild(backdrop);
+}
 
-  // Image
-  const imgWrap = createElement('div', 'project-card__image');
+// ---------------------------------------------------------------------------
+// Fill a project's image frame: inline a theme-aware SVG cover when the project
+// declares one (so it recolors with the site theme), otherwise the raster image
+// (with the optional "contain" treatment). Returns nothing; mutates imgWrap.
+// ---------------------------------------------------------------------------
+function fillProjectImage(imgWrap, project, baseClass) {
+  const cover = project.cover && window.PROJECT_COVERS && window.PROJECT_COVERS[project.cover];
+  if (cover) {
+    imgWrap.classList.add(baseClass + '--svg');
+    imgWrap.innerHTML = cover;
+    return;
+  }
+  applyContainImage(imgWrap, project, baseClass);
   const img = document.createElement('img');
   img.src = project.image;
   img.alt = dataField(project, 'title');
@@ -80,6 +100,17 @@ function buildProjectCard(project) {
   img.width = 800;
   img.height = 450;
   imgWrap.appendChild(img);
+}
+
+// ---------------------------------------------------------------------------
+// Build a single project card element
+// ---------------------------------------------------------------------------
+function buildProjectCard(project) {
+  const card = createElement('article', 'project-card');
+
+  // Image
+  const imgWrap = createElement('div', 'project-card__image');
+  fillProjectImage(imgWrap, project, 'project-card__image');
 
   // Body
   const body = createElement('div', 'project-card__body');
@@ -260,14 +291,7 @@ function openProjectDetail(index) {
 
   // Hero image
   const imgWrap = createElement('div', 'detail-modal__image');
-  const img = document.createElement('img');
-  img.src = project.image;
-  img.alt = dataField(project, 'title');
-  img.loading = 'lazy';
-  img.decoding = 'async';
-  img.width = 800;
-  img.height = 450;
-  imgWrap.appendChild(img);
+  fillProjectImage(imgWrap, project, 'detail-modal__image');
   modal.appendChild(imgWrap);
 
   // Content
@@ -279,6 +303,27 @@ function openProjectDetail(index) {
   var tagList = dataField(project, 'tags');
   tagList.forEach((t) => tags.appendChild(createElement('span', 'tag', t)));
   content.appendChild(tags);
+
+  // Action links (optional) — live demo / source code, opened in a new tab.
+  // URLs are language-agnostic; the label comes from the link `type`.
+  if (Array.isArray(project.links) && project.links.length) {
+    const linksWrap = createElement('div', 'detail-modal__links');
+    const EXT_ICON = '<svg class="detail-modal__link-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+    project.links.forEach((lnk) => {
+      if (!lnk || !lnk.url) return;
+      const isLive = lnk.type !== 'code';
+      const a = document.createElement('a');
+      a.href = lnk.url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.className = 'btn ' + (isLive ? 'btn--primary' : 'btn--outline') + ' detail-modal__link';
+      const labelSpan = createElement('span', null, siteT(isLive ? 'detailViewLive' : 'detailViewCode'));
+      a.appendChild(labelSpan);
+      a.insertAdjacentHTML('beforeend', EXT_ICON);
+      linksWrap.appendChild(a);
+    });
+    content.appendChild(linksWrap);
+  }
 
   // Overview / Description
   var overview = dataDetailField(project, 'overview');
@@ -348,6 +393,26 @@ function openProjectDetail(index) {
     const chP = createElement('p', 'detail-modal__text');
     chP.innerHTML = challenges;
     content.appendChild(chP);
+  }
+
+  // Aperçu de l'application (optional in-app screenshot with caption)
+  var apercu = dataDetailField(project, 'apercu');
+  if (apercu && apercu.image) {
+    content.appendChild(createElement('h3', 'detail-modal__subtitle', siteT('detailPreview')));
+    const figure = createElement('figure', 'detail-modal__apercu');
+    const aImg = document.createElement('img');
+    aImg.src = apercu.image;
+    aImg.alt = apercu.caption || dataField(project, 'title');
+    aImg.loading = 'lazy';
+    aImg.decoding = 'async';
+    aImg.className = 'detail-modal__apercu-img';
+    // If the screenshot file isn't in place yet, hide the figure gracefully
+    aImg.onerror = function () { figure.style.display = 'none'; };
+    figure.appendChild(aImg);
+    if (apercu.caption) {
+      figure.appendChild(createElement('figcaption', 'detail-modal__apercu-caption', apercu.caption));
+    }
+    content.appendChild(figure);
   }
 
   modal.appendChild(content);

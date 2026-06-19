@@ -10,6 +10,451 @@
 
 const PROJECTS = [
   {
+    title: 'Mini-Golf de Crolles : Refondre et enrichir une application (stage)',
+    description: 'Stage de 8 semaines : reprise et refonte d\'une application web (React/TypeScript) pour un mini-golf immersif — migration du back-end vers Supabase, sécurité, performances et nombreuses nouvelles fonctionnalités. Déployée en production.',
+    image: 'assets/images/home-stage.png',
+    tags: ['React', 'TypeScript', 'Supabase', 'PWA'],
+    links: [
+      { url: 'https://app.minigolfcrolles.fr/', type: 'live' },
+    ],
+    en: {
+      title: 'Mini-Golf de Crolles: Rebuild and Extend a Web App (internship)',
+      description: 'An 8-week internship: taking over and rebuilding an existing web app (React/TypeScript) for an immersive mini-golf — back-end migrated to Supabase, security, performance and many new features. Deployed in production.',
+      tags: ['React', 'TypeScript', 'Supabase', 'PWA'],
+      details: {
+        overview: 'An <em>8-week internship</em> (April–June 2026) carried out in a <em>team of three</em> at the <em>Mini-Golf de Crolles</em>, an immersive indoor mini-golf venue (BUT2 Computer Science, IUT2 Grenoble). The venue already had a <em>React / TypeScript</em> web app — but it only recorded scores and suffered from serious quality, security and performance issues. Our mission was to <em>take over this existing app and rebuild it</em>: we migrated the back-end from <em>Firebase to Supabase</em> (PostgreSQL), starting from a blank database at the owner\'s request, then delivered the full feature set he wanted — game flow, statistics, gamification, a social layer, customer reviews and a complete administration area — while drastically improving security, performance and code quality. The app ships as an installable <em>PWA</em>, deployed in production. (I use "we" for the team\'s collective work and "I" for my personal contribution.)',
+        competences: [
+          {
+            title: 'Developing applications',
+            items: [
+              'Reverse-engineer an existing React / TypeScript codebase',
+              'Build a layered front-end architecture (contexts, a shared game engine, route guards)',
+              'Develop a broad set of features and accessible user interfaces',
+            ],
+          },
+          {
+            title: 'Optimizing applications',
+            items: [
+              'Rebuild the back-end (Firebase → Supabase) and move sensitive logic server-side',
+              'Improve performance (server-side aggregation, pagination, dedicated indexes, targeted realtime)',
+              'Set up a unit-test campaign (Vitest, 382 tests)',
+            ],
+          },
+          {
+            title: 'Managing information data',
+            items: [
+              'Design a relational schema and its security model (row-level security, RLS)',
+              'Model registered vs guest identities with capability-based authorization',
+            ],
+          },
+          {
+            title: 'Collaborating within an IT team',
+            items: [
+              'Work in a three-person team, versioned with Git (432 commits) and organized on Trello',
+              'Hold weekly meetings with the client to align the app with his vision',
+            ],
+          },
+        ],
+        objectifs: '• <em>Take over</em> an imperfect existing app, analyze it and rebuild it reliably<br>• <em>Migrate the back-end</em> to Supabase (PostgreSQL) for a sustainable cost model, better security and server-side tasks<br>• <em>Secure</em> the app (row-level security, sensitive logic moved server-side)<br>• Deliver the <em>full feature set</em> the owner wanted (gamification, social layer, reviews, complete back-office)<br>• <em>Ship</em> an installable, accessible PWA, deployed in production',
+        equipe: 'An 8-week internship (April–June 2026) carried out in a <em>team of three</em>: <em>Paolo Colombat</em>, Mathis and Thomas.\nClient: Kévin Cros (owner of the Mini-Golf de Crolles, JKL Events). IUT tutor: Laurent Bonnaud.\nThe work was collaborative and versioned with <em>Git</em> (432 commits), organized on Trello, split roughly 50% on-site / 50% remote, with a <em>weekly meeting</em> with the owner to align the app with his vision and test it in real conditions.',
+        travailIndividuel: 'Within the three-person team, my contribution was broad and cross-cutting. On the <em>foundations</em>, I led the reverse-engineering of the existing code and <em>factored the logic of the 18 holes</em> into a single game engine (<em>useGameLogic</em>), removing roughly <em>14,000 lines</em> of duplicated code.<br>On <em>game flow</em>, I implemented the fair playing order (Fisher-Yates shuffle, then frozen), the <em>staff validation</em> circuit for games (server-side decision, robust against reloads) and, above all, <em>fully anonymous play</em>: a visitor can play without an account, their writes being authorized "by capability" through a team secret checked by row-level security (<em>RLS</em>).<br>I also built much of the <em>experience</em>: immersive styling of the 3 worlds and the "course" page with its ranking animation (Mario-Kart style), a <em>levels, titles and animated "aura"</em> system (SVG), per-course records, the <em>social</em> layer (recovering guest games via a "claim" link, friends, customer reviews), real-time notifications, back-office moderation, light/dark theme and accessibility.<br>Finally, I set up the <em>unit-test campaign</em> (<em>Vitest</em>, 382 tests on the business logic) and a continuous <em>preview deployment</em> on Vercel.',
+        techDetails: [
+          'Back-end migration from Firebase/Firestore to Supabase (PostgreSQL), rebuilt on a blank database',
+          'Row-level security (RLS); sensitive logic moved server-side (RPC functions, triggers, Edge Functions)',
+          'Layered front-end architecture (React + TypeScript, Vite, Tailwind): 8 contexts, a useGameLogic engine, route guards',
+          'Registered / guest identity model (capability-based authorization via team secret / share token)',
+          'Back-office performance: server-side aggregation, pagination/sorting/search, dedicated indexes, targeted realtime',
+          'Unit testing with Vitest (382 tests), error monitoring (Sentry), installable PWA with offline mode',
+          'Deployment: Vercel (preview) then Hostinger (production); Deno Edge Functions (Resend emails, Web Push/VAPID)',
+        ],
+        challenges: 'The main difficulty was taking over an <em>imperfect existing codebase</em>: understanding it, then improving it without breaking anything. Our analysis led to a <em>structuring decision</em> — changing the technical foundation (Firebase → Supabase) mid-internship — which re-planned the whole project. Securing <em>anonymous play</em> was another challenge: letting guests write to the database without any session pushed us to a "capability-based" model, and a real flaw (the team secret was briefly readable by everyone) had to be closed by removing its read access and comparing it only inside a privileged server function. Finally, the <em>weekly dialogue with the owner</em> taught me to reformulate a client\'s needs and to explain technical options — and their limits — in plain language.',
+        apercu: {
+          image: 'assets/images/backoffice-stage.png',
+          caption: 'Administration back-office — dashboard, statistics and moderation',
+        },
+      },
+    },
+    details: {
+      overview: '<em>Stage de 8 semaines</em> (avril–juin 2026) réalisé en <em>équipe de trois</em> au <em>Mini-Golf de Crolles</em>, un mini-golf immersif en intérieur (BUT2 Informatique, IUT2 Grenoble). L\'établissement disposait déjà d\'une application web <em>React / TypeScript</em>, mais celle-ci se limitait à enregistrer les scores et présentait d\'importantes faiblesses de qualité, de sécurité et de performance. Notre mission a consisté à <em>reprendre cette application existante et à la refondre</em> : nous avons migré le back-end de <em>Firebase vers Supabase</em> (PostgreSQL), en repartant d\'une base vierge à la demande du gérant, puis livré l\'ensemble des fonctionnalités qu\'il souhaitait — déroulé de partie, statistiques, gamification, dimension sociale, avis clients et espace d\'administration complet — tout en améliorant nettement la sécurité, les performances et la qualité du code. L\'application est distribuée en <em>PWA</em> installable et déployée en production. (J\'emploie « nous » pour le travail collectif et « je » pour ma contribution personnelle.)',
+      competences: [
+        {
+          title: 'Réaliser un développement d\'application',
+          items: [
+            'Rétro-concevoir un code existant en React / TypeScript',
+            'Bâtir une architecture front en couches (contextes, moteur de jeu commun, gardes de routes)',
+            'Développer un large périmètre de fonctionnalités et des interfaces accessibles',
+          ],
+        },
+        {
+          title: 'Optimiser des applications',
+          items: [
+            'Reconstruire le back-end (Firebase → Supabase) et déporter la logique sensible côté serveur',
+            'Améliorer les performances (agrégation côté base, pagination, index dédiés, temps réel ciblé)',
+            'Mettre en place une campagne de tests unitaires (Vitest, 382 tests)',
+          ],
+        },
+        {
+          title: 'Gérer des données de l\'information',
+          items: [
+            'Concevoir un schéma relationnel et son modèle de sécurité (sécurité au niveau ligne, RLS)',
+            'Modéliser les identités inscrits / invités avec une autorisation « par capacité »',
+          ],
+        },
+        {
+          title: 'Collaborer au sein d\'une équipe informatique',
+          items: [
+            'Travailler en équipe de trois, versionnée sous Git (432 commits) et organisée sur Trello',
+            'Tenir un point hebdomadaire avec le client pour aligner l\'application sur sa vision',
+          ],
+        },
+      ],
+      objectifs: '• <em>Reprendre</em> une application existante imparfaite, l\'analyser et la refondre de manière fiable<br>• <em>Migrer le back-end</em> vers Supabase (PostgreSQL) pour un coût soutenable, une meilleure sécurité et des tâches serveur<br>• <em>Sécuriser</em> l\'application (sécurité au niveau ligne, logique sensible déportée côté serveur)<br>• Livrer l\'<em>ensemble des fonctionnalités</em> voulues par le gérant (gamification, social, avis, back-office complet)<br>• <em>Déployer</em> une PWA installable et accessible, mise en production',
+      equipe: 'Stage de 8 semaines (avril–juin 2026) mené en <em>équipe de trois</em> : <em>Paolo Colombat</em>, Mathis et Thomas.\nClient : Kévin Cros (gérant du Mini-Golf de Crolles, JKL Events). Tuteur IUT : Laurent Bonnaud.\nTravail collaboratif et versionné sous <em>Git</em> (432 commits), organisé sur Trello, réparti à environ 50 % en présentiel et 50 % en télétravail, avec un <em>point hebdomadaire</em> avec le gérant pour aligner l\'application sur sa vision et la tester en conditions réelles.',
+      travailIndividuel: 'Au sein de l\'équipe de trois, ma contribution a été large et transverse. Côté <em>fondations</em>, j\'ai mené la rétro-conception du code existant et <em>factorisé la logique des 18 trous</em> dans un moteur de jeu unique (<em>useGameLogic</em>), supprimant environ <em>14 000 lignes</em> de code dupliqué.<br>Sur le <em>déroulé d\'une partie</em>, j\'ai implémenté l\'ordre de passage équitable (mélange de Fisher-Yates, puis figé), le circuit de <em>validation des parties par le staff</em> (décision côté serveur, robuste au rechargement) et surtout le <em>jeu 100 % anonyme</em> : un visiteur peut jouer sans compte, ses écritures étant autorisées « par capacité » via un secret d\'équipe vérifié par la sécurité au niveau ligne (<em>RLS</em>).<br>J\'ai aussi réalisé une grande partie de l\'<em>expérience</em> : habillage immersif des 3 univers et page « parcours » avec son animation de classement (façon Mario Kart), système de <em>niveaux, titres et « aura »</em> animée (SVG), records par parcours, dimension <em>sociale</em> (récupération des parties d\'invité par lien « claim », amis, avis clients), notifications en temps réel, modération du back-office, thème clair/sombre et accessibilité.<br>Enfin, j\'ai mis en place la <em>campagne de tests unitaires</em> (<em>Vitest</em>, 382 tests sur la logique métier) et un <em>déploiement de test</em> continu sur Vercel.',
+      techDetails: [
+        'Migration du back-end de Firebase/Firestore vers Supabase (PostgreSQL), reconstruction sur base vierge',
+        'Sécurité au niveau ligne (RLS) ; logique sensible déportée côté serveur (fonctions RPC, triggers, Edge Functions)',
+        'Architecture front en couches (React + TypeScript, Vite, Tailwind) : 8 contextes, moteur useGameLogic, gardes de routes',
+        'Modèle d\'identité inscrits / invités (autorisation « par capacité » via secret d\'équipe / jeton de partage)',
+        'Performances du back-office : agrégation côté base, pagination/tri/recherche serveur, index dédiés, temps réel ciblé',
+        'Tests unitaires avec Vitest (382 tests), surveillance des erreurs (Sentry), PWA installable avec mode hors-ligne',
+        'Déploiement : Vercel (test) puis Hostinger (production) ; Edge Functions Deno (emails Resend, push Web Push/VAPID)',
+      ],
+      challenges: 'La principale difficulté était de reprendre un <em>code existant imparfait</em> : le comprendre, puis l\'améliorer sans rien casser. Notre analyse a mené à une <em>décision structurante</em> — changer le socle technique (Firebase → Supabase) en cours de stage — qui a redéfini tout le planning. Sécuriser le <em>jeu anonyme</em> fut un autre défi : autoriser des invités à écrire en base sans aucune session nous a conduits à un modèle « par capacité », et une vraie faille (le secret d\'équipe était un temps lisible par tous) a dû être corrigée en retirant son droit de lecture et en ne le comparant que dans une fonction serveur habilitée. Enfin, le <em>dialogue hebdomadaire avec le gérant</em> m\'a appris à reformuler les besoins d\'un client et à lui exposer, en langage clair, les options techniques et leurs limites.',
+      apercu: {
+        image: 'assets/images/backoffice-stage.png',
+        caption: 'Back-office d\'administration — tableau de bord, statistiques et modération',
+      },
+    },
+  },
+  {
+    title: 'Mon carnet de stage : Améliorer et optimiser une application existante',
+    description: 'Maintenance évolutive d\'une application existante (mobile Android + back-office Symfony + PostgreSQL) : qualité logicielle, refonte du back-end, tests automatisés et conteneurisation.',
+    image: 'assets/images/carnet de stage.png',
+    tags: ['Symfony', 'PHPUnit', 'Qualité logicielle', 'Docker'],
+    en: {
+      title: 'My Internship Logbook: Improve and Optimize an Existing App',
+      description: 'Evolutionary maintenance of an existing application (Android mobile + Symfony back-office + PostgreSQL): software quality, back-end overhaul, automated testing and containerization.',
+      tags: ['Symfony', 'PHPUnit', 'Software Quality', 'Docker'],
+      details: {
+        overview: 'Carried out by a <em>team of six</em> as part of <em>SAÉ S4</em> ("Developing a complex application", BUT2 Computer Science, IUT2 Grenoble), this project was an exercise in <em>evolutionary maintenance</em>: rather than building from scratch, the goal was to <em>evaluate and improve an existing application</em> — its design, ergonomics, performance and software quality — without adding new features. The application forms a complete ecosystem: an <em>Android</em> mobile app (Java / Retrofit), a <em>Symfony</em> web back-office (PHP / Twig / API Platform) and a <em>PostgreSQL</em> database. After a <em>reverse-engineering</em> phase, the work was organized around three axes: restructuring the data model (towards <em>3rd normal form</em>), optimizing the code (Symfony architecture, repositories, queries) and guaranteeing software quality (automated <em>tests</em> and an <em>ISO 25000</em> quality approach), with deployment hardened through <em>Docker</em> containerization.',
+        competences: [
+          {
+            title: 'Developing applications',
+            items: [
+              'Reverse-engineer and take ownership of an existing codebase (Symfony + Android)',
+              'Refactor a Symfony back-end to comply with the framework standards',
+              'Develop functional and unit tests (PHPUnit)',
+              'Improve accessible user interfaces (ergonomics, screen readers)',
+            ],
+          },
+          {
+            title: 'Optimizing applications',
+            items: [
+              'Analyze software quality methodically using the ISO 25000 (SQuaRE) standard',
+              'Restructure code: architecture, repositories and database queries',
+            ],
+          },
+          {
+            title: 'Managing information data',
+            items: [
+              'Redesign a data model to comply with 3rd normal form (3NF)',
+              'Reinforce data integrity (validation and uniqueness constraints)',
+            ],
+          },
+          {
+            title: 'Collaborating within an IT team',
+            items: [
+              'Work within a six-person team split into two sub-teams (web / mobile)',
+              'Coordinate through regular syncs and Git versioning',
+            ],
+          },
+        ],
+        objectifs: '• <em>Improve</em> an existing application without rebuilding it (evolutionary maintenance)<br>• <em>Evaluate</em> its quality — design, ergonomics, performance, software quality<br>• <em>Harden reliability</em> through automated tests and data-integrity constraints<br>• Improve <em>ergonomics and accessibility</em> (Bastien & Scapin criteria, ISO 25000)<br>• Ensure <em>portability</em> through Docker containerization',
+        equipe: 'Project team of <em>six</em> (Group 6), SAÉ S4 (4.REAL.01):\nYann Herbrecht, Elouan Clerger, <em>Paolo Colombat</em>, Mathieu Daniel, Quentin Lang, Octave Lejeune.\nThe team was split into <em>two sub-teams of three</em> — one on the <em>Symfony web back-office</em>, the other on the <em>Android mobile app</em> — with regular syncs to keep the solutions consistent. I worked on the <em>server / back-office</em> side and on the cross-cutting <em>quality</em> analysis.',
+        travailIndividuel: 'I led the <em>learnability</em> quality analysis (<em>ISO 25010</em>) of the mobile app: choosing and justifying the criterion, targeting the relevant <em>Bastien & Scapin</em> criteria (guidance, consistency, meaningful codes, error handling) and designing a dedicated <em>SUS</em> questionnaire.<br>On the <em>Symfony server</em> side, I carried out a code overhaul: adding <em>validation</em> (Asserts) and <em>uniqueness</em> constraints on the entities, cleaning up the <em>repositories</em> (removing <em>findAll()</em> overrides, migrating implicit DQL to the <em>QueryBuilder</em>) and improving the <em>forms</em> (explicit field typing, manual <em>required</em> control, accessible labels).<br>Finally, I built a <em>PHPUnit</em> test suite in strict isolation (mocks): <em>security</em> tests (LoginFormAuthenticator, CSRF, redirections — 100% coverage), behavioral tests of the offer controller, and tests of the import service (regex robustness), where I found and fixed a <em>date-parsing bug</em> (PHP read the day as a month) by forcing strict French parsing via <em>createFromFormat</em>.',
+        techDetails: [
+          'Reverse-engineering an existing app (Symfony / API Platform + Android / Retrofit + PostgreSQL)',
+          'Symfony entity overhaul: validation (Asserts) and uniqueness (UniqueEntity) constraints',
+          'Repository cleanup: removing findAll() overrides, migrating DQL to QueryBuilder',
+          'Form improvements: explicit typing, required control, accessible labels (screen readers)',
+          'PHPUnit tests in isolation (mocks): security, controller, import service; coverage report (PHPDBG)',
+          'ISO 25000 / SQuaRE quality approach: learnability, Bastien & Scapin criteria, SUS, Think Aloud',
+          'Project scope: 3NF data-model redesign and Docker containerization',
+        ],
+        challenges: 'Working on an <em>existing codebase</em> meant first understanding it, then improving it without breaking anything — the original back-end had business logic too tightly coupled to the controllers and a structure that did not follow Symfony standards. On the testing side, <em>instability in the test environment</em> (network mapping between the host and the Docker PostgreSQL containers) led us to a strict <em>isolation / mocks</em> strategy rather than end-to-end coverage. That choice paid off: a test on the import service surfaced a <em>date-parsing bug</em> — PHP read "15/04/2025" as a US-format date and tried to read a fifteenth month — fixed by forcing strict French parsing.',
+      },
+    },
+    details: {
+      overview: 'Réalisé en <em>équipe de six</em> dans le cadre de la <em>SAÉ S4</em> (« Développement d\'une application complexe », BUT2 Informatique, IUT2 Grenoble), ce projet relevait de la <em>maintenance évolutive</em> : plutôt que de repartir de zéro, il s\'agissait d\'<em>évaluer et d\'améliorer une application existante</em> — sa conception, son ergonomie, ses performances et sa qualité logicielle — sans ajouter de nouvelles fonctionnalités. L\'application forme un écosystème complet : une application mobile <em>Android</em> (Java / Retrofit), un back-office web <em>Symfony</em> (PHP / Twig / API Platform) et une base de données <em>PostgreSQL</em>. Après une phase de <em>rétroconception</em>, le travail s\'est organisé autour de trois axes : la restructuration du modèle de données (vers la <em>troisième forme normale</em>), l\'optimisation du code (architecture Symfony, repositories, requêtes) et la garantie de la qualité logicielle (<em>tests</em> automatisés et démarche qualité <em>ISO 25000</em>), avec une mise en fonctionnement fiabilisée par la <em>conteneurisation Docker</em>.',
+      competences: [
+        {
+          title: 'Réaliser un développement d\'application',
+          items: [
+            'Rétroconcevoir et s\'approprier un code existant (Symfony + Android)',
+            'Refondre un back-end Symfony pour le rendre conforme aux standards du framework',
+            'Développer des tests fonctionnels et unitaires (PHPUnit)',
+            'Améliorer des interfaces utilisateurs accessibles (ergonomie, lecteurs d\'écran)',
+          ],
+        },
+        {
+          title: 'Optimiser des applications',
+          items: [
+            'Analyser la qualité logicielle avec méthode via la norme ISO 25000 (SQuaRE)',
+            'Restructurer le code : architecture, repositories et requêtes de base de données',
+          ],
+        },
+        {
+          title: 'Gérer des données de l\'information',
+          items: [
+            'Re-concevoir un modèle de données conforme à la troisième forme normale (3FN)',
+            'Renforcer l\'intégrité des données (contraintes de validation et d\'unicité)',
+          ],
+        },
+        {
+          title: 'Collaborer au sein d\'une équipe informatique',
+          items: [
+            'Travailler dans une équipe de six répartie en deux sous-groupes (web / mobile)',
+            'Se coordonner par des points réguliers et le versioning Git',
+          ],
+        },
+      ],
+      objectifs: '• <em>Améliorer</em> une application existante sans tout refaire (maintenance évolutive)<br>• <em>Évaluer</em> sa qualité — conception, ergonomie, performance, qualité logicielle<br>• <em>Fiabiliser</em> l\'application par des tests automatisés et des contraintes d\'intégrité<br>• Améliorer l\'<em>ergonomie</em> et l\'<em>accessibilité</em> (critères de Bastien & Scapin, ISO 25000)<br>• Garantir la <em>portabilité</em> grâce à la conteneurisation Docker',
+      equipe: 'Équipe projet de <em>six</em> (Groupe 6), SAÉ S4 (4.REAL.01) :\nYann Herbrecht, Elouan Clerger, <em>Paolo Colombat</em>, Mathieu Daniel, Quentin Lang, Octave Lejeune.\nL\'équipe était répartie en <em>deux sous-groupes de trois</em> — l\'un sur le <em>back-office web Symfony</em>, l\'autre sur l\'<em>application mobile Android</em> — avec des points réguliers pour garder des solutions cohérentes. Je suis intervenu côté <em>serveur / back-office</em> et sur l\'analyse <em>qualité</em> transverse.',
+      travailIndividuel: 'J\'ai mené l\'analyse qualité de la <em>facilité d\'apprentissage</em> (<em>ISO 25010</em>) de l\'application mobile : choix et justification du critère, ciblage des critères de <em>Bastien & Scapin</em> pertinents (guidage, homogénéité/cohérence, signifiance des codes, gestion des erreurs) et conception d\'un questionnaire <em>SUS</em> dédié.<br>Côté <em>serveur Symfony</em>, j\'ai réalisé une refonte du code : ajout de contraintes de <em>validation</em> (Asserts) et d\'<em>unicité</em> sur les entités, nettoyage des <em>repositories</em> (suppression des surcharges de <em>findAll()</em>, passage du DQL implicite au <em>QueryBuilder</em>) et amélioration des <em>formulaires</em> (typage explicite, contrôle du <em>required</em>, labels accessibles).<br>Enfin, j\'ai mis en place une suite de tests <em>PHPUnit</em> en isolation (mocks) : tests de <em>sécurité</em> (LoginFormAuthenticator, CSRF, redirections — 100 % de couverture), tests comportementaux du contrôleur d\'offres et tests du service d\'import (robustesse des regex), où j\'ai découvert et corrigé un <em>bug d\'interprétation des dates</em> (PHP lisait le jour comme un mois) en forçant le format français via <em>createFromFormat</em>.',
+      techDetails: [
+        'Rétroconception d\'une application existante (Symfony / API Platform + Android / Retrofit + PostgreSQL)',
+        'Refonte des entités Symfony : contraintes de validation (Asserts) et d\'unicité (UniqueEntity)',
+        'Nettoyage des repositories : suppression des surcharges de findAll(), migration DQL → QueryBuilder',
+        'Amélioration des formulaires : typage explicite, contrôle du required, labels accessibles (lecteurs d\'écran)',
+        'Tests PHPUnit en isolation (mocks) : sécurité, contrôleur, service d\'import ; rapport de couverture (PHPDBG)',
+        'Démarche qualité ISO 25000 / SQuaRE : facilité d\'apprentissage, critères de Bastien & Scapin, SUS, Think Aloud',
+        'Périmètre projet : refonte du modèle de données en 3FN et conteneurisation Docker',
+      ],
+      challenges: 'Travailler sur un <em>code existant</em> impliquait d\'abord de le comprendre, puis de l\'améliorer sans rien casser — le back-end d\'origine présentait une logique métier trop liée aux contrôleurs et une arborescence non conforme aux standards Symfony. Côté tests, l\'<em>instabilité de l\'environnement</em> (mapping réseau entre la machine hôte et les conteneurs Docker PostgreSQL) nous a conduits à une stratégie d\'<em>isolation stricte</em> par mocks plutôt qu\'à des tests de bout en bout. Ce choix a payé : un test du service d\'import a révélé un <em>bug de traitement des dates</em> — PHP interprétait « 15/04/2025 » au format américain et tentait de lire un quinzième mois — corrigé en forçant l\'interprétation stricte au format français.',
+    },
+  },
+  {
+    title: 'SpeedSteamDle : Développer une interface web pour des API publiques',
+    description: 'Interface web monopage (Vanilla JS) au-dessus des API Steam et Speedrun.com : recherche d\'un jeu, joueurs connectés en temps réel, record du monde Any%, favoris et mini-jeu de duel.',
+    image: 'assets/images/speedsteamdle.png',
+    tags: ['Vanilla JS', 'API REST', 'MVC', 'Accessibilité'],
+    links: [
+      { url: 'https://malevolentmoksi.github.io/r4a10-tp-api-2026-colombpa-morelloe/', type: 'live' },
+    ],
+    en: {
+      title: 'SpeedSteamDle: Build a Web Interface for Public APIs',
+      description: 'A single-page Vanilla-JS interface over the Steam and Speedrun.com APIs: search a game, live player count, Any% world record, favorites and a duel mini-game.',
+      tags: ['Vanilla JS', 'REST API', 'MVC', 'Accessibility'],
+      details: {
+        overview: 'Built in a <em>pair</em> with Enzo Morello as part of the <em>TP-API</em> (module <em>R4.A.10</em> — client-side Web JavaScript, 2nd-year BUT in Computer Science, IUT2 Grenoble), <em>SpeedSteamDle</em> is a <em>single-page</em> web app acting as an interface to two public APIs: the <em>Steam API</em> (game search and live connected-player count) and the <em>Speedrun.com API</em> (Any% category world record). The user types a game name and the app cross-references both sources into a single result: banner, live players and the standing Any% record. Searches can be saved as <em>favorites</em> (LocalStorage), and a <em>"Steam Duel"</em> higher-or-lower mini-game reuses both APIs. The teaching constraint required <em>100% "Vanilla"</em> development (no framework, no PHP), hosted statically on <em>GitHub Pages</em>.',
+        competences: [
+          {
+            title: 'Developing applications',
+            items: [
+              'Design a communicating app consuming third-party REST APIs in AJAX (fetch)',
+              'Handle and process JSON data',
+              'Structure the code with the MVC pattern and split it into JavaScript modules',
+              'Develop an accessible user interface (ARIA, keyboard navigation)',
+            ],
+          },
+          {
+            title: 'Optimizing applications',
+            items: [
+              'Set up a serverless proxy (Cloudflare Worker) to solve CORS and quota issues',
+              'Optimize network calls (Promise.all parallelization, debounce, cache, timeout, fallback strategies)',
+            ],
+          },
+          {
+            title: 'Collaborating within an IT team',
+            items: [
+              'Work as a pair with Git / GitHub versioning',
+              'Continuously deploy via GitHub Pages',
+            ],
+          },
+        ],
+        objectifs: '• Provide a <em>simple, readable</em> interface over two heterogeneous APIs, <em>cross-referencing their data</em> (Steam game ↔ Speedrun.com record)<br>• Show only a <em>relevant subset</em> of information rather than the full API response<br>• Guarantee a <em>smooth experience</em> despite slow third-party APIs (visible loading, fallback, timeout)<br>• Polish <em>ergonomics</em> and <em>accessibility</em> (explicitly graded criteria)<br>• Persist <em>favorites</em> client-side, with no business back-end',
+        equipe: 'A <em>pair</em> project: Paolo Colombat & Enzo Morello.\nOrganized with <em>Git / GitHub</em> and a <em>Markdown to-do list</em>, prioritizing the <em>core features</em> of the brief and <em>accessibility</em> first, then a <em>bonus mini-game</em> once time allowed.\nWork was split <em>by feature</em> rather than by layer to limit integration friction, with continuous deployment via GitHub Pages.',
+        travailIndividuel: 'I set up the project\'s <em>modular architecture</em> (MVC in ES modules), and the <em>API-call system</em> was built together. Then, while Enzo focused on <em>accessibility</em>, ergonomics and <em>favorites</em>, I handled the <em>search bar</em>, <em>LocalStorage</em> persistence and the <em>"Steam Duel" bonus mini-game</em>.<br>I notably <em>reworked that mini-game in depth after the lab</em>: originally the duels did not chain, games could repeat and there was no streak system. I turned it into a real <em>game loop</em> — <em>automatic chaining</em> of duels, a <em>streak</em> with live win-rate, and <em>more reliable draws</em> (re-draw if a game has no active players, no Any% record, or in case of a tie). I also handled a <em>race condition</em>: a draw counter ignores the result of a stale request if the user switches mode during loading.',
+        techDetails: [
+          'MVC architecture in native JavaScript, split into ES modules (import/export), no framework',
+          'Consuming and orchestrating multiple REST APIs (Steam then Speedrun.com chained), JSON, JSDoc documentation',
+          'Working around CORS: public proxies with cascading fallback, then a self-hosted Cloudflare Worker (Wrangler)',
+          'Network optimizations: Promise.all, debounce + cache for autocomplete, 8 s timeout',
+          'String processing with regular expressions: result matching/scoring, category normalization, ISO 8601 duration conversion',
+          'LocalStorage persistence: favorites stored as a single JSON entry, deduplicated and normalized',
+          'Accessibility: ARIA (aria-live, aria-expanded), visually-hidden labels, focus trap in the modal, full keyboard support',
+        ],
+        challenges: 'The direct <em>Speedrun.com search</em> often failed: we used the <em>official title returned by Steam</em> as the source of truth, which made the two requests sequential. Repeated <em>CORS errors</em> on the Steam API were solved through an escalation — several public proxies with automatic fallback, then ultimately our <em>own Cloudflare Worker</em> to escape rate limits and flaky third-party proxies. <em>Inconsistent Speedrun.com categories</em> caused a subtle bug (HTTP 400 on Cuphead), fixed with a <em>per-game</em> filter when fetching categories. Finally, for lack of time, the mini-game relies on a <em>curated catalog of well-known games</em> rather than a fully random draw — an improvement already identified.',
+        apercu: {
+          image: 'assets/images/speedsteamdle-duel.png',
+          caption: '"Steam Duel" mini-game — chained duels and streak tracking',
+        },
+      },
+    },
+    details: {
+      overview: 'Réalisée en <em>binôme</em> avec Enzo Morello dans le cadre du <em>TP-API</em> (ressource <em>R4.A.10</em> — Compléments Web JavaScript, BUT2 Informatique, IUT2 Grenoble), <em>SpeedSteamDle</em> est une application web <em>monopage</em> qui sert d\'interface à deux API publiques : l\'<em>API Steam</em> (recherche de jeux et nombre de joueurs connectés en temps réel) et l\'<em>API Speedrun.com</em> (record du monde de la catégorie Any%). L\'utilisateur saisit le nom d\'un jeu et l\'application croise les deux sources dans un même résultat : bannière, joueurs actifs à l\'instant T et record Any% en vigueur. Les recherches peuvent être enregistrées en <em>favoris</em> (LocalStorage), et un mini-jeu <em>« Steam Duel »</em> de type higher-or-lower réutilise les deux API. La contrainte pédagogique imposait un développement <em>100 % « Vanilla »</em> (pas de framework, pas de PHP), hébergé en statique sur <em>GitHub Pages</em>.',
+      competences: [
+        {
+          title: 'Réaliser un développement d\'application',
+          items: [
+            'Concevoir une application communicante consommant des API REST tierces en AJAX (fetch)',
+            'Manipuler et traiter des données au format JSON',
+            'Structurer le code selon le patron MVC et le découper en modules JavaScript',
+            'Développer une interface utilisateur accessible (ARIA, navigation clavier)',
+          ],
+        },
+        {
+          title: 'Optimiser des applications',
+          items: [
+            'Mettre en place un proxy serverless (Cloudflare Worker) pour résoudre les problèmes de CORS et de quotas',
+            'Optimiser les appels réseau (parallélisation Promise.all, debounce, cache, timeout, stratégies de repli)',
+          ],
+        },
+        {
+          title: 'Collaborer au sein d\'une équipe informatique',
+          items: [
+            'Travailler en binôme avec versioning Git / GitHub',
+            'Déployer en continu via GitHub Pages',
+          ],
+        },
+      ],
+      objectifs: '• Offrir une interface <em>simple et lisible</em> au-dessus de deux API hétérogènes, en <em>croisant leurs données</em> (jeu Steam ↔ record Speedrun.com)<br>• N\'afficher qu\'un <em>sous-ensemble pertinent</em> d\'informations plutôt que toute la réponse de l\'API<br>• Garantir une <em>expérience fluide</em> malgré la lenteur des API tierces (chargement visible, repli, timeout)<br>• Soigner l\'<em>ergonomie</em> et l\'<em>accessibilité</em> (critères explicitement évalués)<br>• Persister les <em>favoris</em> côté client, sans aucun back-end métier',
+      equipe: 'Projet réalisé en <em>binôme</em> : Paolo Colombat & Enzo Morello.\nOrganisation sous <em>Git / GitHub</em> avec une <em>todo-list en Markdown</em>, en priorisant d\'abord les <em>fonctionnalités de base</em> du sujet et l\'<em>accessibilité</em>, puis un <em>mini-jeu bonus</em> une fois le temps disponible.\nRépartition <em>par fonctionnalité</em> plutôt que par couche, pour limiter les frictions à l\'assemblage, et déploiement continu via GitHub Pages.',
+      travailIndividuel: 'J\'ai mis en place l\'<em>architecture modulaire</em> du projet (MVC en modules ES), et le <em>système d\'appels aux API</em> a été développé à deux. Ensuite, pendant qu\'Enzo se concentrait sur l\'<em>accessibilité</em>, l\'ergonomie et les <em>favoris</em>, je me suis chargé de la <em>barre de recherche</em>, de la persistance <em>LocalStorage</em> et du <em>mini-jeu bonus « Steam Duel »</em>.<br>J\'ai surtout <em>retravaillé ce mini-jeu en profondeur après le TP</em> : à l\'origine, les duels ne s\'enchaînaient pas, les jeux pouvaient se répéter et il n\'existait pas de système de série. J\'en ai fait une véritable <em>boucle de jeu</em> — <em>enchaînement automatique</em> des duels, suivi d\'une <em>série</em> avec winrate en direct, et <em>fiabilisation du tirage</em> (re-tirage si un jeu n\'a pas de joueurs actifs, pas de record Any% ou en cas d\'égalité). J\'ai aussi géré une <em>condition de course</em> : un compteur de tirage ignore le résultat d\'une requête obsolète si l\'utilisateur change de mode pendant un chargement.',
+      techDetails: [
+        'Architecture MVC en JavaScript natif, découpée en modules ES (import/export), sans framework',
+        'Consommation et orchestration de plusieurs API REST (Steam puis Speedrun.com chaînés), JSON, documentation JSDoc',
+        'Contournement des restrictions CORS : proxies publics avec repli en cascade, puis Cloudflare Worker auto-hébergé (Wrangler)',
+        'Optimisations réseau : Promise.all, debounce + cache de l\'autocomplétion, timeout de 8 s',
+        'Traitement de chaînes par expressions régulières : matching / scoring des résultats, normalisation des catégories, conversion des durées ISO 8601',
+        'Persistance LocalStorage : favoris stockés en une seule entrée JSON, dédoublonnée et normalisée',
+        'Accessibilité : ARIA (aria-live, aria-expanded), labels masqués, focus trap dans la modale, support clavier complet',
+      ],
+      challenges: 'La <em>recherche Speedrun.com</em> directe échouait souvent : nous avons utilisé le <em>titre officiel renvoyé par Steam</em> comme source de vérité, rendant les deux requêtes séquentielles. Les <em>erreurs CORS</em> répétées sur l\'API Steam ont été résolues par une escalade de solutions — plusieurs proxies publics avec repli automatique, puis finalement notre <em>propre Cloudflare Worker</em> pour s\'affranchir des rate limits et des aléas des proxies tiers. Des <em>catégories Speedrun.com incohérentes</em> provoquaient un bug subtil (erreur HTTP 400 sur Cuphead), corrigé par un filtre <em>per-game</em> dès la récupération des catégories. Enfin, faute de temps, le mini-jeu s\'appuie sur un <em>catalogue curé de jeux connus</em> plutôt que sur un tirage 100 % aléatoire — une piste d\'amélioration déjà identifiée.',
+      apercu: {
+        image: 'assets/images/speedsteamdle-duel.png',
+        caption: 'Mini-jeu « Steam Duel » — duels enchaînés et suivi de la série',
+      },
+    },
+  },
+  {
+    title: 'Aidémé : Développer une application web pour les aidants familiaux',
+    description: 'Application web collaborative permettant à plusieurs aidants de coordonner le suivi d\'une même personne âgée dépendante — agenda, photos, documents et contacts centralisés.',
+    image: 'assets/images/aideme-logo.png',
+    imageFit: 'contain',
+    tags: ['React', 'PHP', 'SQL', 'Gestion de projet'],
+    en: {
+      title: 'Aidémé: Build a Web App for Family Caregivers',
+      description: 'A collaborative web app letting several caregivers coordinate the care of the same dependent elderly person — centralized calendar, photos, documents and contacts.',
+      tags: ['React', 'PHP', 'SQL', 'Project Management'],
+      details: {
+        overview: 'Built by a <em>team of six</em> (Team 08 "Aimédia"), <em>Aidémé</em> — a blend of the French "<em>Aider</em>" (to help) and "<em>Aimer</em>" (to love) — is a web app born from a simple observation: in France, <em>9.3 million people</em> care for a dependent relative and face a heavy, often invisible, mental load. Designed for family caregivers and professionals (nurses, home helpers) supporting elderly people losing autonomy (<em>GIR 3–4</em>, AGGIR scale), it centralizes the <em>calendar</em>, <em>photo album</em>, <em>documents</em> and <em>contacts</em> tied to the cared-for person.<br>Carried out as part of <em>SAÉ S3.01</em> (2nd-year BUT in Computer Science, IUT2 Grenoble), it relies on an <em>MVC client/server</em> architecture: a <em>React</em> (Vite) front-end talking to a <em>PHP</em> back-end (<em>DAO</em> pattern) backed by a relational database.',
+        competences: [
+          {
+            title: 'Developing applications',
+            items: [
+              'Design and build a communicating application (React client / PHP server)',
+              'Develop accessible user interfaces',
+              'Conduct tests and evaluate results (usability testing)',
+            ],
+          },
+          {
+            title: 'Managing information data',
+            items: [
+              'Design a relational database from a class diagram',
+              'Update and query the database via SQL (DAO / PDO layer)',
+            ],
+          },
+          {
+            title: 'Leading a project',
+            items: [
+              'Understand client and user needs (personas)',
+              'Set up project management tools and risk tracking',
+              'Identify stakeholders and development cycle phases',
+            ],
+          },
+          {
+            title: 'Collaborating within an IT team',
+            items: [
+              'Coordinate a six-person multidisciplinary team',
+              'Acquire interpersonal skills for teamwork',
+            ],
+          },
+        ],
+        objectifs: '• Make the caregivers\' "invisible work" <em>visible</em> and ease their <em>mental load</em><br>• <em>Centralize</em> and <em>coordinate</em> the care of one person across relatives and professionals<br>• Guarantee <em>accessibility</em> for users not always comfortable with technology (dark theme, dyslexia mode, high contrast, large text)<br>• Comply with <em>GDPR</em> for sensitive health data (<em>Article 9</em>: Privacy by Design, role-based access control)',
+        equipe: 'Project team 8 — "Aimédia" (6 members):\n<em>Project manager</em>: Paolo Colombat\n<em>Quality lead</em>: Jérémie Fauvet-Messat\n<em>Technical lead (back-end)</em>: Simon Krumb\n<em>UI/UX & accessibility lead</em>: Enzo Morello\n<em>Communication & documentation</em>: Macéo Guicherd-Callin\n<em>Network & systems</em>: Noam Bruchet-Joannon\nThe project ran in <em>three phases</em> (scoping and needs, design and architecture, development and testing), each validated by a written report and an oral defense before the teaching staff.',
+        travailIndividuel: 'As <em>project manager</em>, I handled team <em>coordination</em>, work <em>organization</em> and the <em>writing of the reports</em> delivered to the teaching staff at each phase. After a first deliverable judged too long and unprofessional, I <em>drove the switch from Google Docs to LaTeX</em>, which markedly improved the quality and consistency of our documents (a direct response to the "unprofessional deliverable" risk).<br>On the design side, I contributed to the <em>modeling</em> and the technical <em>organization</em> of the project. On the development side, I wrote several <em>DAO queries</em> and built the <em>Contacts page</em> used to assemble the team of caregivers and professionals around a cared-for person.<br>Finally, I ran <em>many "Think Aloud" tests</em> with a deliberately varied panel from my circle (relatives comfortable or not with computers, parents…), complemented by the <em>SUS</em> method, to validate usability for the widest possible audience.',
+        techDetails: [
+          'MVC client/server architecture: React (Vite) + PHP API, DAO pattern via PDO',
+          'Relational database design (class diagram → schema → SQL)',
+          'SQL queries and DAO layer development (CRUD operations)',
+          'Project management: milestones, risk tracking, Trello, Git / GitLab versioning',
+          'Professional report writing in LaTeX',
+          'Usability testing: "Think Aloud" method and SUS questionnaire on varied profiles',
+          'GDPR compliance: sensitive data (Art. 9), Privacy by Design, role-based access control',
+        ],
+        challenges: 'The <em>first deliverable</em>, too long and unprofessional, forced a change of method: a move to <em>LaTeX</em> and a new way of working. <em>Front/back integration</em> first suffered from a strict "Front" / "Back" split that caused friction when wiring the two together; the team then <em>pivoted to feature-based development</em>, which sped up production and strengthened cohesion. Setting up the <em>server</em> proved more complex than expected (an underestimated technical risk), and <em>inconsistent naming conventions</em> created technical debt we would have avoided by agreeing on those rules from the start.',
+        apercu: {
+          image: 'assets/images/aideme-home.png',
+          caption: 'Aidémé home page — desktop view, light theme',
+        },
+      },
+    },
+    details: {
+      overview: 'Réalisée en <em>équipe de six</em> (Team 08 « Aimédia »), <em>Aidémé</em> — contraction d\'« <em>Aider</em> » et d\'« <em>Aimer</em> » — est une application web née d\'un constat : en France, <em>9,3 millions de personnes</em> aident un proche dépendant et font face à une lourde charge mentale, souvent invisible. Pensée pour les aidants familiaux et les intervenants (infirmiers, aides à domicile) autour de personnes âgées en perte d\'autonomie (<em>GIR 3–4</em>, grille AGGIR), elle centralise au même endroit l\'<em>agenda</em>, le <em>catalogue photo</em>, les <em>documents</em> et les <em>contacts</em> liés à la personne aidée.<br>Menée dans le cadre de la <em>SAÉ S3.01</em> (BUT2 Informatique, IUT2 Grenoble), elle s\'appuie sur une architecture <em>client/serveur MVC</em> : un front-end <em>React</em> (Vite) communiquant via une API avec un back-end <em>PHP</em> (pattern <em>DAO</em>) adossé à une base de données relationnelle.',
+      competences: [
+        {
+          title: 'Réaliser un développement d\'application',
+          items: [
+            'Concevoir et développer une application communicante (client React / serveur PHP)',
+            'Développer des interfaces utilisateurs accessibles',
+            'Faire des essais et évaluer leurs résultats (tests d\'ergonomie)',
+          ],
+        },
+        {
+          title: 'Gérer des données de l\'information',
+          items: [
+            'Concevoir une base de données relationnelle à partir d\'un diagramme de classe',
+            'Mettre à jour et interroger la base via des requêtes SQL (couche DAO / PDO)',
+          ],
+        },
+        {
+          title: 'Conduire un projet',
+          items: [
+            'Appréhender les besoins du client et des utilisateurs (personas)',
+            'Mettre en place les outils de gestion de projet et le suivi des risques',
+            'Identifier les acteurs et les différentes phases d\'un cycle de développement',
+          ],
+        },
+        {
+          title: 'Collaborer au sein d\'une équipe informatique',
+          items: [
+            'Coordonner une équipe pluridisciplinaire de six personnes',
+            'Acquérir les compétences interpersonnelles pour travailler en équipe',
+          ],
+        },
+      ],
+      objectifs: '• Rendre <em>visible</em> le « travail invisible » des aidants et alléger leur <em>charge mentale</em><br>• <em>Centraliser</em> et <em>coordonner</em> le suivi d\'une personne aidée entre proches et intervenants<br>• Garantir l\'<em>accessibilité</em> à un public parfois peu à l\'aise avec le numérique (thème sombre, mode dyslexie, contraste élevé, gros texte)<br>• Respecter le <em>RGPD</em> pour des données de santé sensibles (<em>Article 9</em> : Privacy by Design, contrôle d\'accès par rôles)',
+      equipe: 'Équipe projet 8 — « Aimédia » (6 membres) :\n<em>Chef de projet</em> : Paolo Colombat\n<em>Responsable qualité</em> : Jérémie Fauvet-Messat\n<em>Référent technique (back-end)</em> : Simon Krumb\n<em>Responsable IHM & accessibilité</em> : Enzo Morello\n<em>Communication & documentation</em> : Macéo Guicherd-Callin\n<em>Réseau & système</em> : Noam Bruchet-Joannon\nProjet structuré en <em>trois phases</em> (cadrage et besoins, conception et architecture, développement et tests), chacune validée par un dossier et une soutenance devant les enseignants.',
+      travailIndividuel: '<em>Chef de projet</em>, je me suis chargé de la <em>coordination</em> de l\'équipe, de l\'<em>organisation</em> du travail et de la <em>rédaction des dossiers</em> rendus aux enseignants à chaque phase. À la suite d\'un premier rendu jugé trop long et peu professionnel, j\'ai <em>piloté la bascule de Google Docs vers LaTeX</em>, ce qui a nettement amélioré la qualité et l\'homogénéité de nos livrables (réponse directe au risque « rendu non professionnel »).<br>Côté conception, j\'ai contribué à la <em>modélisation</em> et à l\'<em>organisation technique</em> du projet. Côté développement, j\'ai réalisé plusieurs <em>requêtes DAO</em> et développé la <em>page Contacts</em> permettant de constituer l\'équipe d\'aidants et d\'intervenants autour d\'une personne aidée.<br>Enfin, j\'ai mené de <em>nombreux tests « Think Aloud »</em> auprès d\'un panel volontairement varié de mon entourage (proches initiés ou non à l\'informatique, parents…), complétés par la méthode <em>SUS</em>, afin de valider l\'ergonomie auprès du plus grand nombre.',
+      techDetails: [
+        'Architecture client/serveur MVC : React (Vite) + API PHP, pattern DAO via PDO',
+        'Conception d\'une base de données relationnelle (diagramme de classe → schéma → SQL)',
+        'Développement de requêtes SQL et de la couche DAO (opérations CRUD)',
+        'Gestion de projet : jalons, suivi des risques, Trello, versioning Git / GitLab',
+        'Rédaction de dossiers professionnels en LaTeX',
+        'Tests d\'ergonomie : méthode « Think Aloud » et questionnaire SUS sur profils variés',
+        'Conformité RGPD : données sensibles (Art. 9), Privacy by Design, contrôle d\'accès par rôles',
+      ],
+      challenges: 'Le <em>premier rendu</em>, trop long et peu professionnel, a imposé un changement de méthode : passage à <em>LaTeX</em> et nouvelle organisation de travail. L\'<em>intégration front/back</em> a d\'abord souffert d\'une séparation stricte « Front » / « Back » générant des frictions à l\'assemblage ; l\'équipe a alors <em>pivoté vers un développement par fonctionnalité</em> (feature-based), qui a accéléré la production et renforcé la cohésion. La <em>mise en place du serveur</em> s\'est révélée plus complexe que prévu (risque technique sous-estimé), et l\'<em>hétérogénéité des conventions de nommage</em> a engendré une dette technique que nous aurions évitée en fixant ces règles dès le départ.',
+      apercu: {
+        image: 'assets/images/aideme-home.png',
+        caption: 'Page d\'accueil d\'Aidémé — vue bureau, thème clair',
+      },
+    },
+  },
+  {
     title: 'Satablé : Concevoir une application de gestion de banquets',
     description: 'Développer une application JavaFX d\'organisation de banquets — gérer des événements, des invités, des menus et des plans de table.',
     image: 'assets/images/satable.jpg',
@@ -116,6 +561,7 @@ const PROJECTS = [
     title: 'Exploiter une base de données',
     description: 'Exploiter une base de données open data sur les accidents de la route — mener une démarche Data Science.',
     image: 'assets/images/background.jpg',
+    cover: 'db-explore',
     tags: ['PostgreSQL', 'SQL', 'Data Science', 'Visualisation'],
     en: {
       title: 'Exploit a Database',
@@ -201,6 +647,7 @@ const PROJECTS = [
     title: 'Concevoir une base de données',
     description: 'Concevoir et mettre en place une base de données complète pour le club de bowling SuperBall.',
     image: 'assets/images/background.jpg',
+    cover: 'db-design',
     tags: ['PostgreSQL', 'SQL', 'Merise', 'Conception BD'],
     en: {
       title: 'Design a Database',
@@ -258,6 +705,7 @@ const PROJECTS = [
     title: 'Comparer des approches algorithmiques',
     description: 'Développer des méthodes de classification automatique de dépêches — générer des lexiques par apprentissage et comparer avec K-NN.',
     image: 'assets/images/background.jpg',
+    cover: 'algorithms',
     tags: ['Java', 'Algorithmes', 'IA', 'IntelliJ'],
     en: {
       title: 'Compare Algorithmic Approaches',
