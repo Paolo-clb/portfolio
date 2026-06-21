@@ -1647,51 +1647,6 @@ function initScrollHint() {
   const hint = document.querySelector('.scroll-hint');
   if (!hint) return;
   const game = document.getElementById('typing-game');
-  const hero = document.querySelector('section.hero');
-
-  // Keep the scroll-hint clear of the intro buttons. The intro text length (and
-  // thus how far down the buttons sit) and the viewport height both vary, so we
-  // don't trust a fixed breakpoint: we measure the hint at its natural
-  // bottom-centre spot and, only if it actually overlaps the button group,
-  // park it just to the right of the group — vertically centred on it. This is
-  // future-proof against intro-text changes and screen sizes.
-  function alignWithBtn() {
-    var grp = hero && hero.querySelector('.typing-game__intro-btns');
-    var btn = hero && hero.querySelector('.typing-game__intro-btn--visible');
-    // No intro buttons on screen → restore the default bottom-centre position.
-    if (!grp && !btn) {
-      hint.style.top = '';
-      hint.style.bottom = '';
-      hint.style.left = '';
-      hint.style.transform = '';
-      return;
-    }
-    var ref = grp || btn;
-    // Reset to the natural position first, then measure whether it collides.
-    hint.style.top = '';
-    hint.style.bottom = '';
-    hint.style.left = '';
-    hint.style.transform = '';
-    var refRect = ref.getBoundingClientRect();
-    var hintRect = hint.getBoundingClientRect();
-    var margin = 14; // breathing room so they never visually touch
-    var overlapX = !(refRect.right + margin <= hintRect.left || hintRect.right + margin <= refRect.left);
-    var overlapY = !(refRect.bottom + margin <= hintRect.top || hintRect.bottom + margin <= refRect.top);
-    if (!overlapX || !overlapY) return; // natural spot is clear — leave it there
-
-    // Collides → move beside the group: vertically centred, a gap to its right,
-    // clamped to stay inside the hero.
-    var heroRect = hero.getBoundingClientRect();
-    var centerY = refRect.top + refRect.height / 2 - heroRect.top;
-    hint.style.top = (centerY - hint.offsetHeight / 2) + 'px';
-    hint.style.bottom = 'auto';
-    var gap = 24;
-    var leftPx = (refRect.right - heroRect.left) + gap;
-    var maxLeft = heroRect.width - hint.offsetWidth - 8;
-    if (leftPx > maxLeft) leftPx = maxLeft;
-    hint.style.left = leftPx + 'px';
-    hint.style.transform = 'none';
-  }
 
   function update() {
     var playing  = game && game.dataset.playing  === '1';
@@ -1704,17 +1659,13 @@ function initScrollHint() {
     } else {
       hint.classList.remove('scroll-hint--hidden');
     }
-    alignWithBtn();
   }
 
   window.addEventListener('scroll', update, { passive: true });
-  window.addEventListener('resize', alignWithBtn, { passive: true });
 
   if (game) {
     // Re-evaluate visibility on game state changes
     new MutationObserver(update).observe(game, { attributes: true, attributeFilter: ['data-playing', 'data-focused'] });
-    // Re-align when intro button gets/loses --visible class
-    new MutationObserver(alignWithBtn).observe(game, { subtree: true, attributes: true, attributeFilter: ['class'] });
   }
 }
 

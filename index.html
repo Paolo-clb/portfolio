@@ -125,13 +125,16 @@
     <!-- Hero Section — Personal projects carousel (Typing Game is the default slide) -->
     <section class="hero section" id="hero">
       <div class="container hero__content">
-        <h2 class="section__title">Paolo Colombat : <em>Typing Game</em></h2>
+        <h2 class="section__title">Paolo Colombat</h2>
         <!-- Personal-projects carousel. Edge nav tabs are injected by js/perso-projects.js.
              Slide visibility is handled in CSS (.hero__slide / --active) — no FOUC since
              css/perso-projects.css is loaded in <head>. -->
         <div class="hero__carousel" id="hero-carousel">
-          <div class="hero__slide hero__slide--active" data-project="typing">
+          <div class="hero__slide" data-project="typing" aria-hidden="true">
             <div class="typing-game" id="typing-game"></div>
+          </div>
+          <div class="hero__slide hero__slide--active" data-project="intro">
+            <div class="hero-intro" id="hero-intro"><!-- presentation typewriter, built by js/typing-game-intro.js --></div>
           </div>
           <div class="hero__slide" data-project="light-again" aria-hidden="true">
             <div class="la-preview" id="la-preview"><!-- built by js/perso-projects.js --></div>

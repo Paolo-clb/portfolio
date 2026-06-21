@@ -2457,8 +2457,9 @@ body::before,
     flex-shrink: 0;
   }
 
+  /* Hidden on mobile: it overlaps the centred intro/presentation slide text. */
   .scroll-hint {
-    bottom: 5rem;
+    display: none;
   }
 
   .cv-section__viewer iframe {

@@ -18,9 +18,12 @@
 (function () {
   'use strict';
 
-  /* ---- Project registry (order = carousel order) ---- */
+  /* ---- Project registry (order = carousel order, left → right) ----
+     The "intro" (presentation) slide sits in the middle and is the default:
+     the left arrow goes to the Typing Game, the right arrow to Light Again. */
   var PROJECTS = [
     { key: 'typing',      name: 'Typing Game',  type: 'typing' },
+    { key: 'intro',       name: 'Présentation', type: 'intro', nameKey: 'persoIntroName' },
     { key: 'light-again', name: 'Light Again',  type: 'light-again' },
   ];
 
@@ -57,8 +60,18 @@
   var lockedHtml = null;
   var titleObserver = null;
 
+  // Display name (lang-aware for slides that expose a nameKey, e.g. the intro)
+  function projName(proj) {
+    return proj.nameKey ? t(proj.nameKey) : proj.name;
+  }
   function projectTitleHtml(name) {
     return 'Paolo Colombat : <em>' + name + '</em>';
+  }
+  // The hero title for a given slide. The intro keeps the bare name (identical
+  // in FR/EN); the others get the "Paolo Colombat : <NAME>" form.
+  function titleHtmlFor(proj) {
+    if (proj.type === 'intro') return 'Paolo Colombat';
+    return projectTitleHtml(projName(proj));
   }
   function ensureObserver() {
     if (titleObserver || !('MutationObserver' in window)) return;
@@ -332,31 +345,32 @@
     return b;
   }
 
-  function setTab(el, show, proj) {
-    if (!show) { el.hidden = true; return; }
+  function setTab(el, proj) {
     el.hidden = false;
+    var name = projName(proj);
     var lbl = el.querySelector('.hero__nav__label');
-    if (lbl) lbl.textContent = proj.name;
-    el.setAttribute('aria-label', t('persoNavTo').replace('{name}', proj.name));
+    if (lbl) lbl.textContent = name;
+    el.setAttribute('aria-label', t('persoNavTo').replace('{name}', name));
     if (navReady) el.classList.add('hero__nav--ready');
   }
 
+  // The carousel loops: every slide always has a previous and next neighbour
+  // (wrapping at the ends), so an arrow is always shown on both sides.
   function updateNavTabs() {
     if (!navPrev || !navNext) return;
-    setTab(navPrev, current > 0, current > 0 ? PROJECTS[current - 1] : null);
-    setTab(navNext, current < PROJECTS.length - 1, current < PROJECTS.length - 1 ? PROJECTS[current + 1] : null);
+    var n = PROJECTS.length;
+    setTab(navPrev, PROJECTS[(current - 1 + n) % n]);
+    setTab(navNext, PROJECTS[(current + 1) % n]);
   }
 
   function positionNavTabs() {
-    if (!hero || !carousel || !navPrev || !navNext) return;
-    // Centre the tabs on the carousel content. The sticky launcher no longer
-    // collides here: it's hidden + pointer-events:none while the hero is on
-    // screen (see body.hero-in-view in css/light-again.css), and it only fades
-    // in once the user has scrolled far enough that these tabs have left the top.
-    var heroRect = hero.getBoundingClientRect();
-    var carRect = carousel.getBoundingClientRect();
-    var centerY = (carRect.top - heroRect.top) + carRect.height / 2;
-    var topPx = Math.max(76, centerY); // never ride up into the fixed header
+    if (!hero || !navPrev || !navNext) return;
+    // Anchor the tabs at a CONSTANT height measured from the hero's top (the
+    // tabs are position:absolute inside .hero). This keeps them at the exact
+    // same vertical spot whatever slide is shown — the carousel content height
+    // and even the hero title's line count (it wraps on mobile) vary per slide,
+    // so centring on live content made the arrows jump. A fixed offset doesn't.
+    var topPx = isMobile() ? 360 : 430;
     navPrev.style.top = topPx + 'px';
     navNext.style.top = topPx + 'px';
   }
@@ -384,14 +398,18 @@
 
   // instant=true restores a slide on load (no enter animation, no re-save)
   function go(index, dir, instant) {
-    if (index < 0 || index >= PROJECTS.length || index === current) return;
+    // Wrap around so the carousel loops (typing ↔ light-again at the ends)
+    var n = PROJECTS.length;
+    index = ((index % n) + n) % n;
+    if (index === current) return;
     var fromSlide = slideEls[current];
     var toSlide = slideEls[index];
     var proj = PROJECTS[index];
 
-    // Title: typing reclaims its own title; others lock ours in place
-    if (proj.type === 'typing') { unlockTitle(); refreshTypingTitle(); }
-    else { lockTitle(projectTitleHtml(proj.name)); }
+    // Title: each slide owns "Paolo Colombat : <NAME>" (intro keeps the bare
+    // name). We assert it and keep it via the MutationObserver, so the typing
+    // game writing its own (identical) title on rounds doesn't fight us.
+    lockTitle(titleHtmlFor(proj));
 
     // Swap visible slide
     if (fromSlide) {
@@ -421,6 +439,18 @@
     updateNavTabs();
     positionNavTabs();
     syncPreviewVideo();
+
+    // Hand keyboard focus to the typing game when its slide becomes active
+    // (desktop only — the mobile slide is a frozen showcase). preventScroll
+    // keeps the page from jumping while the user is still at the top.
+    if (proj.type === 'typing' && !isMobile() && !instant) {
+      var tg = document.getElementById('typing-game');
+      if (tg && tg.focus) {
+        setTimeout(function () {
+          try { tg.focus({ preventScroll: true }); } catch (e) { tg.focus(); }
+        }, 60);
+      }
+    }
   }
 
   // Restore the last-viewed project (persisted across visits). Runs after the
@@ -448,8 +478,9 @@
     for (var i = 0; i < PROJECTS.length; i++) if (PROJECTS[i].type === 'light-again') laIdx = i;
     if (laIdx >= 0 && slideEls[laIdx]) buildSlide(PROJECTS[laIdx], slideEls[laIdx]);
     updateNavTabs();
-    // Re-assert the locked title for the (lang-independent today) active project
-    if (lockedHtml != null) lockTitle(projectTitleHtml(PROJECTS[current].name));
+    // Re-assert the active slide's title in the new language (the intro title is
+    // the only lang-sensitive one today, but this stays correct regardless).
+    if (lockedHtml != null) lockTitle(titleHtmlFor(PROJECTS[current]));
     positionNavTabs();
   }
 
@@ -498,6 +529,10 @@
     navNext = makeTab('next');
     updateNavTabs();
 
+    // Assert the active slide's hero title (and attach the observer) so a later
+    // title write by the typing game can't leave a stale title on another slide.
+    lockTitle(titleHtmlFor(PROJECTS[current]));
+
     // Position once layout settles, and keep in sync with content/size changes
     positionNavTabs();
     if (window.requestAnimationFrame) requestAnimationFrame(positionNavTabs);
@@ -521,14 +556,9 @@
       requestAnimationFrame(function () { syncLauncherForHero(); scrollTick = false; });
     }, { passive: true });
 
-    // Reveal gating — mirrors the sticky launcher:
-    //  • mobile: show immediately (Light Again is a showcase there)
-    //  • desktop: once the typing game is activated (cookie / event)
-    if (isMobile() || getCookie('typing_game_activated') === '1') {
-      revealNav();
-    } else {
-      document.addEventListener('typinggameready', revealNav, { once: true });
-    }
+    // The hero is a 3-slide showcase now, so the arrows are always available —
+    // reveal them immediately on every device.
+    revealNav();
 
     // Re-open the last-viewed project (persistence across reloads)
     restoreSavedProject();

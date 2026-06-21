@@ -34,6 +34,9 @@
 .hero__slide {
   display: none;
   width: 100%;
+  /* Flex child of .hero__carousel — allow it to shrink to the viewport instead
+     of overflowing horizontally (e.g. the long intro text on phones). */
+  min-width: 0;
 }
 
 .hero__slide.hero__slide--active {
@@ -48,6 +51,36 @@
 
 .hero__slide--entering {
   animation: pp-slide-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ---- Intro / presentation slide (typewriter host) ----
+   Mirrors .typing-game's centring so the presentation text box sits like the
+   game does; the inner .typing-game__text--intro carries its own styling. */
+.hero-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Keep the presentation text within the viewport on narrow screens, and make
+   it smaller than the game text (it's prose, not a typing target) so the long
+   presentation takes less vertical room. */
+.hero-intro .typing-game__text--intro {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  font-size: 1.5rem;
+  line-height: 1.65;
+  min-height: 0;
+}
+
+@media (max-width: 768px) {
+  .hero-intro .typing-game__text--intro {
+    font-size: 1.12rem;
+    line-height: 1.32;
+  }
 }
 
 [data-animations="off"] .hero__slide--entering {

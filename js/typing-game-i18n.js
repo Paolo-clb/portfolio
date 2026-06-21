@@ -5,7 +5,7 @@
 
 window.TYPING_GAME_I18N = {
   fr: {
-    introText: 'Bienvenue sur mon portfolio ! Je suis Paolo Colombat, développeur full stack passionné, actuellement en 2ème année de BUT Informatique. Ici vous découvrirez mes compétences et mes projets personnels, dont deux jeux : un Typing Game pour tester votre vitesse de frappe, et Light Again, un jeu d\'arène plus casual. Bonne visite !',
+    introText: 'Bienvenue sur mon portfolio ! Je suis Paolo Colombat, développeur full stack passionné, actuellement en 2ème année de BUT Informatique. Au lycée, j\'ai suivi les spécialités NSI et Mathématiques, complétées par l\'option Mathématiques expertes, et obtenu mon baccalauréat avec mention bien. Ici vous découvrirez mes compétences et mes projets, professionnels comme personnels, dont deux jeux : un Typing Game pour tester votre vitesse de frappe, et Light Again, un jeu d\'arène plus casual. Bonne visite !',
     words: 'mots',
     wpmFinal: 'Words Per Minute',
     wordsFinal: 'Mots',
@@ -63,10 +63,11 @@ window.TYPING_GAME_I18N = {
     introPopupHint: 'Amusez-vous bien !',
     heroTitle: 'Paolo Colombat : Typing Game',
     heroTitleHTML: 'Paolo Colombat : <em>Typing Game</em>',
-    heroIntro: 'Paolo Colombat'
+    heroIntro: 'Paolo Colombat',
+    showcaseNote: 'Jouable sur ordinateur'
   },
   en: {
-    introText: 'Welcome to my portfolio! I\'m Paolo Colombat, a passionate full stack developer, currently in my 2nd year of a Computer Science degree. Here you\'ll discover my skills and my personal projects, including two games: a Typing Game to test your typing speed, and Light Again, a more casual arena game. Enjoy your visit!',
+    introText: 'Welcome to my portfolio! I\'m Paolo Colombat, a passionate full stack developer, currently in my 2nd year of a Computer Science degree. In high school I majored in Computer Science (NSI) and Mathematics, with the advanced "Expert Maths" option, and earned my baccalaureate with honours. Here you\'ll discover my skills and my projects, both professional and personal, including two games: a Typing Game to test your typing speed, and Light Again, a more casual arena game. Enjoy your visit!',
     words: 'words',
     wpmFinal: 'Words Per Minute',
     wordsFinal: 'Words',
@@ -124,6 +125,7 @@ window.TYPING_GAME_I18N = {
     introPopupHint: 'Have fun!',
     heroTitle: 'Paolo Colombat: Typing Game',
     heroTitleHTML: 'Paolo Colombat : <em>Typing Game</em>',
-    heroIntro: 'Paolo Colombat'
+    heroIntro: 'Paolo Colombat',
+    showcaseNote: 'Playable on desktop'
   }
 };

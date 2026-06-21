@@ -1544,6 +1544,29 @@
 
   /* ---- Intro typewriter — delegated to typing-game-intro.js module ---- */
 
+  // Mobile showcase — builds the game DOM and renders a sample round so the
+  // Typing Game slide is visible on phones, then freezes it (no physical
+  // keyboard there): the container is made non-focusable, the key listener is
+  // dropped, and a "playable on desktop" note is added.
+  function buildMobileShowcase() {
+    buildGameDOM();
+    startGame(true);
+    container.removeAttribute('tabindex');
+    if (container.blur) container.blur();
+    if (_keydownHandler) {
+      container.removeEventListener('keydown', _keydownHandler);
+      _keydownHandler = null;
+    }
+    container.classList.add('typing-game--showcase');
+    var note = document.createElement('div');
+    note.className = 'typing-game__showcase-note';
+    note.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/>' +
+      '<line x1="12" y1="17" x2="12" y2="21"/></svg> <span>' + t('showcaseNote') + '</span>';
+    container.appendChild(note);
+  }
+
   function buildGameDOM() {
     // Build inner DOM
     var navbar = buildNavbar();
@@ -1718,60 +1741,22 @@
       saveAiOptions: function () { saveAiOptions(); }
     });
 
-    // Create intro module (typing-game-intro.js)
+    // Create intro module (typing-game-intro.js) — now a standalone presentation
+    // slide rendered into #hero-intro, decoupled from the game itself.
     intro = window.createTypingGameIntro({
       t: t,
-      getContainer: function () { return container; },
-      getHeroTitle: function () { return heroTitleEl; },
-      setHeroTitle: function (el) { heroTitleEl = el; },
-      setIntroActive: function (v) { introActive = v; },
-      setIntroSeen: function (v) { introSeen = v; },
-      showInfoPopup: showInfoPopup,
-      unlockGame: unlockGame,
-      activateGame: activateGame,
-      buildGameDOM: function () { buildGameDOM(); },
-      startGame: function (force) { startGame(force); }
+      getContainer: function () { return document.getElementById('hero-intro'); },
+      markSeen: function () { unlockGame(); }
     });
 
     // Listen for site-wide language changes
     document.addEventListener('sitelangchange', function (e) {
       uiLang = e.detail && e.detail.lang || 'fr';
 
-      // If intro is active (typewriter running or finished but button not clicked yet)
-      if (introActive) {
-        var isSmartphone = window.matchMedia('(max-width: 600px) and (pointer: coarse)').matches;
-        container.innerHTML = '';
+      // Presentation slide always re-renders in the new language
+      intro.refreshLang();
 
-        if (introSeen) {
-          // Typewriter already finished — show static intro (don't replay animation)
-          introActive = false;
-          heroTitleEl = document.querySelector('#hero .section__title');
-          if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
-          if (isSmartphone) {
-            intro.buildSmartphoneStaticDOM();
-          } else {
-            intro.buildDesktopStaticDOM();
-          }
-        } else {
-          // Typewriter still running — restart in new language
-          intro.showIntro(isSmartphone);
-        }
-        return;
-      }
-
-      // Static intro displayed (no game DOM, no introActive)
-      if (!navbarEl) {
-        var staticText = container.querySelector('.typing-game__text--intro');
-        if (staticText) staticText.textContent = t('introText');
-        var typingBtn = container.querySelector('.typing-game__intro-btn--typing');
-        if (typingBtn) typingBtn.textContent = t('introBtnTyping');
-        var lightBtn = container.querySelector('.typing-game__intro-btn--light');
-        if (lightBtn) lightBtn.textContent = t('introBtnLight');
-        if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
-        return;
-      }
-
-      // Refresh visible UI text if the game DOM is built
+      // Refresh the game DOM if it's built (desktop game / mobile showcase)
       if (container && navbarEl) {
         var scrollY = window.pageYOffset;
         // Rebuild navbar to update all tooltips & labels
@@ -1781,7 +1766,6 @@
         // If AI is loading (popup or inline), only refresh navbar — don't reset the game
         // or destroy the inline loader (the fetch callback will finish normally)
         if (ai && (ai.isInlineActive() || ai.isLoading())) {
-          if (heroTitleEl && !introActive) heroTitleEl.innerHTML = t('heroTitleHTML');
           window.scrollTo(0, scrollY);
           return;
         }
@@ -1792,41 +1776,36 @@
       }
     });
 
-    // --- If game has never been unlocked: show intro typewriter ---
-    if (!isGameUnlocked()) {
-      // If weak-device animation flow is active, wait for it to finish before showing intro
-      if (window.__weakDeviceAnimFlowActive) {
-        document.addEventListener('weakDeviceAnimDone', function () {
-          intro.showIntro(isSmartphone);
-        }, { once: true });
-      } else {
-        intro.showIntro(isSmartphone);
-      }
-      return;
-    }
-
-    // --- Already unlocked ---
     heroTitleEl = document.querySelector('#hero .section__title');
 
-    // Smartphone always gets static text (no interactive game)
-    if (isSmartphone) {
-      if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
-      intro.buildSmartphoneStaticDOM();
-      return;
+    // --- Presentation slide: typewriter on first visit, static afterwards ---
+    if (!isGameUnlocked()) {
+      // Wait for the weak-device animation flow to finish before the typewriter
+      if (window.__weakDeviceAnimFlowActive) {
+        document.addEventListener('weakDeviceAnimDone', function () {
+          intro.showIntro();
+        }, { once: true });
+      } else {
+        intro.showIntro();
+      }
+    } else {
+      intro.buildStaticDOM();
     }
 
-    // Desktop: if game was fully activated before, go straight to game
-    if (isGameActivated()) {
-      if (heroTitleEl) heroTitleEl.innerHTML = t('heroTitleHTML');
+    // --- Typing Game slide ---
+    if (isSmartphone) {
+      // Visible but unplayable showcase (phones have no physical keyboard)
+      buildMobileShowcase();
+    } else {
       buildGameDOM();
       startGame(true);
-      document.dispatchEvent(new CustomEvent('typinggameready'));
-      return;
     }
 
-    // Desktop: unlocked (typewriter done) but not yet activated — show static intro + button
-    if (heroTitleEl) heroTitleEl.textContent = t('heroIntro');
-    intro.buildDesktopStaticDOM();
+    // The carousel + sticky Light Again launcher are available to everyone now
+    // (the hero is a showcase). Mark the game activated and announce readiness so
+    // the launcher injects and the nav arrows reveal on desktop too.
+    activateGame();
+    document.dispatchEvent(new CustomEvent('typinggameready'));
   }
 
   // Boot when DOM is ready

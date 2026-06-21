@@ -14,6 +14,32 @@
   position: relative;
 }
 
+/* ---- Mobile showcase (Typing Game slide on phones — visible but frozen) ---- */
+.typing-game--showcase {
+  cursor: default;
+}
+
+.typing-game__showcase-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1.1rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  background: rgba(27, 26, 39, 0.25);
+  border: 1px solid rgba(191, 153, 160, 0.12);
+}
+
+.typing-game__showcase-note svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+}
+
 /* Hover hint when game is not focused */
 .typing-game--blurred .typing-game__text {
   cursor: pointer;
