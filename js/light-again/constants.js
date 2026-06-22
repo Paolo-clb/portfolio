@@ -87,7 +87,7 @@
     BOSS_KILL_HITSTOP:  150,    // coup de grâce: heaviest freeze in the game, reserved for a boss's killing blow
     IFRAMES_DUR:   800,
     SPAWN_DIST:      650,
-    MAX_ENEMIES:     700,
+    MAX_ENEMIES:     500,
     // Global screen-flash damping (0..1): every cam.flash() RGB is scaled by this in
     // one place (scene.js wrapper), so all flashes get gentler while keeping their hue
     // AND their intensity proportions relative to each other. 1 = original strength.
