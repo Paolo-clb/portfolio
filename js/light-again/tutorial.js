@@ -597,8 +597,8 @@
         keys:  fr ? ['Clic gauche'] : ['Left click'],
         pad:   fr ? ['Gâchette droite'] : ['Right trigger'],
         desc:  fr
-          ? 'L’<span class="c-torp">attaque torpille</span> : ta flèche fonce vers le curseur. Vise l’éclaireur <span class="c-torp">▲</span> ! <b>⚠️ La rater</b> te laisse vulnérable (récupération).'
-          : 'The <span class="c-torp">torpedo attack</span>: your arrow shoots toward the cursor. Aim at the scout <span class="c-torp">▲</span>! <b>⚠️ Whiffing it</b> leaves you exposed (recovery).',
+          ? 'L’<span class="c-torp">attaque torpille</span> : ta flèche fonce vers le curseur. Vise l’éclaireur <span class="c-torp">▲</span> ! <b>⚠️ La rater</b> te laisse vulnérable (récupération). <span style="color:#c9bcff">🎮 En manette : vise avec le <b>stick droit</b> ; si tu ne t’en sers pas, l’attaque part dans ta <b>direction de déplacement</b>.</span>'
+          : 'The <span class="c-torp">torpedo attack</span>: your arrow shoots toward the cursor. Aim at the scout <span class="c-torp">▲</span>! <b>⚠️ Whiffing it</b> leaves you exposed (recovery). <span style="color:#c9bcff">🎮 On a pad: aim with the <b>right stick</b>; if you don’t use it, the attack fires in your <b>movement direction</b>.</span>',
         setup: function () { self._tutSpawnOne(1, 340); },
         // Must be a BASIC-attack kill — killing it another way (e.g. dash-attack) does NOT count.
         check: function () { return self._tutEvents.basicKill - d().basicKill0 >= 1; },
