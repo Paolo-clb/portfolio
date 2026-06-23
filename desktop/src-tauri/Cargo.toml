@@ -6,6 +6,13 @@ authors = ["Paolo Colombat"]
 edition = "2021"
 rust-version = "1.77.2"
 
+# Tauri 2 mobile compiles the app as a LIBRARY (the Android/iOS entry point links
+# against this lib via `cargo build --lib`). The desktop binary (main.rs) just
+# calls into it, so both targets share one code path.
+[lib]
+name = "light_again_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

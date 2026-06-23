@@ -1,8 +1,7 @@
 // Prevents an extra console window on Windows in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+// Desktop binary: just call into the shared library (which mobile uses too).
 fn main() {
-    tauri::Builder::default()
-        .run(tauri::generate_context!())
-        .expect("error while running Light Again");
+    light_again_lib::run()
 }

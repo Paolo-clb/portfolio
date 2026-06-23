@@ -49,7 +49,12 @@ $scriptBlock = ($matches | ForEach-Object { '  ' + $_.Value }) -join "`r`n"
 
 $template = Get-Content (Join-Path $launcher 'index.html') -Raw
 $out = $template.Replace('<!--LIGHT_AGAIN_SCRIPTS-->', $scriptBlock)
-Set-Content -Path (Join-Path $dist 'index.html') -Value $out -Encoding UTF8
+# Write UTF-8 WITHOUT a BOM. `Set-Content -Encoding UTF8` (Windows PowerShell 5.1)
+# prepends a BOM (EF BB BF); that leading BOM makes Tauri's HTML asset rewriter
+# (which re-parses index.html to inject its bootstrap) emit an EMPTY document on
+# Android — the WebView then shows a blank page. WriteAllText with UTF8Encoding($false)
+# avoids the BOM. (Desktop/WebView2 tolerated it; the Android asset loader did not.)
+[System.IO.File]::WriteAllText((Join-Path $dist 'index.html'), $out, (New-Object System.Text.UTF8Encoding($false)))
 
 $sizeMB = [math]::Round(((Get-ChildItem $dist -Recurse -File | Measure-Object Length -Sum).Sum / 1MB), 2)
 Write-Host "OK - dist built ($($matches.Count) game modules, $sizeMB MB) -> $dist" -ForegroundColor Green

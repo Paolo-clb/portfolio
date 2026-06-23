@@ -528,6 +528,7 @@
       this._initCore();
       this._initPrism();
       this._initGamepad();
+      this._initTouch();      // mobile on-screen controls (no-op on non-touch devices)
       this._initTutorial();
       this._resetBossHint();
 
@@ -676,11 +677,17 @@
 
       this._mouseX = cam.width / 2;
       this._mouseY = cam.height / 2;
+      // When the on-screen touch controls are active (mobile), the canvas ignores
+      // raw touch pointers — the joystick/buttons own all input (otherwise tapping
+      // the play area would aim/attack). Mouse pointers still work (hybrid devices).
+      var isTouchPtr = function (ptr) { return self._touchUI && (ptr.pointerType === 'touch' || ptr.wasTouch); };
       this.input.on('pointermove', function (ptr) {
+        if (isTouchPtr(ptr)) return;
         self._mouseX = ptr.x; self._mouseY = ptr.y;
         self._inputMode = 'mouse';   // mouse moved → it reclaims aiming from the pad
       });
       this.input.on('pointerdown', function (ptr) {
+        if (isTouchPtr(ptr)) return;
         if (ptr.leftButtonDown())   self._tryAttack();
         if (ptr.rightButtonDown())  self._tryDash();
         if (ptr.middleButtonDown()) self._tryTimeStop();
@@ -748,6 +755,7 @@
 
       this.events.once('shutdown', function () {
         window.__lightGameAtkReady = null;
+        if (self._destroyTouchUI) self._destroyTouchUI();   // tear down the mobile DOM controls (no stacking across restart)
         self._vignetteSprite = null;
         self._chromaFX = null;
         self._bloomFX = null;
@@ -889,6 +897,7 @@
       // Runs before _inputVec/facing below; its action calls re-use the mouse/
       // keyboard entry points, so their state guards apply unchanged.
       if (this.p && this._pollGamepad) this._pollGamepad();
+      if (this.p && this._pollTouch) this._pollTouch();   // mobile on-screen controls (after the pad poll → owns _padMove on touch)
 
       // Kick off the interactive tutorial once the loader has cleared. The flag
       // is armed by shell.js on first launch, the ? button, or a hardcore→sandbox

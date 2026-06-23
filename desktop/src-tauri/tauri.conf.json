@@ -5,7 +5,8 @@
   "identifier": "com.paolocolombat.lightagain",
   "build": {
     "frontendDist": "../dist",
-    "beforeBuildCommand": "powershell -ExecutionPolicy Bypass -File build-dist.ps1"
+    "beforeBuildCommand": "powershell -ExecutionPolicy Bypass -File build-dist.ps1",
+    "beforeDevCommand": "powershell -ExecutionPolicy Bypass -File build-dist.ps1"
   },
   "app": {
     "withGlobalTauri": true,

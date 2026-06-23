@@ -1077,3 +1077,112 @@ body.hero-in-view .light-again-btn {
 
 /* Honour the global "réduire les animations" preference */
 [data-animations="off"] .la-tip { transition: none; }
+
+/* ==========================================================================
+   Mobile on-screen TOUCH controls (js/light-again/touch-controls.js)
+   Built only on touch devices; overlays the canvas inside .light-again-canvas
+   so it inherits the theme tokens (--la-accent). Hidden by the JS while a menu
+   overlay is up. Landscape-first, but works in portrait too.
+   ========================================================================== */
+.la-touch {
+  position: absolute;
+  inset: 0;
+  z-index: 40;               /* above the canvas/HUD; menus sit higher AND the JS hides this during menus */
+  pointer-events: none;      /* children opt back in */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Left half = dynamic movement joystick zone (transparent, captures touches) */
+.la-touch__movezone {
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 50%; height: 82%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* Joystick base + nub — placed where the finger lands, hidden until then */
+.la-touch__stick {
+  position: absolute;
+  width: 132px; height: 132px;
+  margin: -66px 0 0 -66px;   /* centre on the (left,top) anchor set by JS */
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--la-accent, #5fe0cf) 55%, transparent);
+  background: radial-gradient(circle, color-mix(in srgb, var(--la-accent, #5fe0cf) 12%, transparent) 0%, transparent 70%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.la-touch__stick--on { opacity: 0.9; }
+.la-touch__nub {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 58px; height: 58px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--la-accent, #5fe0cf) 30%, rgba(10, 14, 22, 0.78));
+  border: 2px solid var(--la-accent, #5fe0cf);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--la-accent, #5fe0cf) 40%, transparent);
+}
+
+/* Right-side action button cluster */
+.la-touch__btns {
+  position: absolute;
+  right: calc(env(safe-area-inset-right, 0px) + 22px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 26px);
+  pointer-events: none;
+  width: 232px; height: 200px;
+}
+
+.la-touch__btn {
+  position: absolute;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  padding: 0; margin: 0;
+  pointer-events: auto;
+  touch-action: none;
+  color: var(--la-accent, #5fe0cf);
+  background: rgba(10, 14, 22, 0.55);
+  border: 2px solid color-mix(in srgb, var(--la-accent, #5fe0cf) 55%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--la-accent, #5fe0cf) 18%, transparent);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.la-touch__btn .la-touch__glyph { display: flex; }
+.la-touch__btn svg { width: 46%; height: 46%; }
+.la-touch__btn--press {
+  background: color-mix(in srgb, var(--la-accent, #5fe0cf) 26%, rgba(10, 14, 22, 0.55));
+  transform: scale(0.94);
+}
+
+/* Attack — biggest, bottom-right corner. Dash to its left. The World above dash. */
+.la-touch__atk  { right: 0;    bottom: 0;   width: 96px; height: 96px; }
+.la-touch__dash { right: 112px; bottom: 8px; width: 80px; height: 80px; }
+.la-touch__tw   { right: 96px;  bottom: 104px; width: 74px; height: 74px; }
+
+/* The World cooldown: a dark conic wedge sized by --cd (fraction REMAINING),
+   so it shrinks clockwise as the power recharges. Greyed while unavailable. */
+.la-touch__tw { position: absolute; overflow: hidden; }
+.la-touch__tw::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(rgba(4, 8, 14, 0.66) calc(var(--cd, 0) * 360deg), transparent 0deg);
+  pointer-events: none;
+}
+.la-touch__btn--cd { color: color-mix(in srgb, var(--la-accent, #5fe0cf) 45%, #6a7a86); border-color: rgba(120, 140, 150, 0.5); }
+.la-touch__cdtxt {
+  position: absolute; left: 0; right: 0; bottom: 6px;
+  text-align: center; font: 700 12px/1 monospace; color: #cfe8ff;
+  text-shadow: 0 1px 2px #000; pointer-events: none;
+}
+
+/* Portrait: drop the buttons a little and shrink the move-zone height so the
+   thumb sits comfortably; landscape (default above) is the primary target. */
+@media (orientation: portrait) {
+  .la-touch__movezone { height: 62%; }
+  .la-touch__btns { bottom: calc(env(safe-area-inset-bottom, 0px) + 40px); }
+}
