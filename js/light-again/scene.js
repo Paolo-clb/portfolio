@@ -1411,6 +1411,13 @@
             transparent: false,
             render: {
               powerPreference: 'high-performance',
+              // Antialias is OFF by default (fill-rate-bound ADD-blend game — the
+              // per-frame MSAA resolve costs more than the smooth edges are worth,
+              // biggest win on weak/integrated/mobile GPUs). The player can re-enable
+              // it via the "Anticrénelage" toggle (menu + game-over); that only sets
+              // localStorage, so it's read HERE at WebGL-context creation and takes
+              // effect on the next game launch (reopen). Trade-off: slightly jaggier edges.
+              antialias: (function () { try { return localStorage.getItem('la_antialias') === '1'; } catch (e) { return false; } })(),
             },
             scale: {
               mode: Phaser.Scale.RESIZE,

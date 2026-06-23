@@ -1028,3 +1028,52 @@ body.hero-in-view .light-again-btn {
 @media (max-width: 768px) {
   .la-viz { left: 6px; top: 2px; }
 }
+
+/* ==========================================================================
+   Custom hover tooltip (replaces native title= in Light Again)
+   Themed (follows --la-accent), and FAR more reactive than the OS tooltip:
+   ~90ms show delay + a quick fade/scale-in. Driven by data-la-tip + a single
+   delegated handler in shell.js (setupLaTooltips). pointer-events:none so it
+   never blocks clicks; appended inside .light-again-modal so the theme tokens
+   resolve. A small accent caret flips above/below depending on room.
+   ========================================================================== */
+.la-tip {
+  position: fixed;
+  z-index: 99999;
+  pointer-events: none;
+  max-width: 240px;
+  padding: calc(.42rem * var(--la-ui-scale, 1)) calc(.6rem * var(--la-ui-scale, 1));
+  font-family: monospace;
+  font-size: calc(.72rem * var(--la-ui-scale, 1));
+  line-height: 1.35;
+  letter-spacing: .01em;
+  text-align: center;
+  color: #eaf6ff;
+  background: rgba(10, 14, 22, 0.94);
+  border: 1px solid var(--la-accent, #5fe0cf);
+  border-radius: 9px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5),
+              0 0 16px color-mix(in srgb, var(--la-accent, #5fe0cf) 30%, transparent);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transform: translateY(5px) scale(0.95);
+  transition: opacity 0.12s ease, transform 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.la-tip--show { opacity: 1; transform: translateY(0) scale(1); }
+
+/* Accent caret — points down (tooltip above the target) by default, flips up
+   when the tooltip is placed below (.la-tip--below). */
+.la-tip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+}
+.la-tip:not(.la-tip--below)::after { top: 100%;    border-top-color: var(--la-accent, #5fe0cf); }
+.la-tip--below::after             { bottom: 100%; border-bottom-color: var(--la-accent, #5fe0cf); }
+
+/* Honour the global "réduire les animations" preference */
+[data-animations="off"] .la-tip { transition: none; }

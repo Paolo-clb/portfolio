@@ -177,6 +177,11 @@
           '<input type="checkbox" id="_la-go-noflash" style="width:14px;height:14px;margin:0;accent-color:#5fe0cf;cursor:pointer">' +
           '<span>' + t('laGoNoFlash') + '</span>' +
         '</label>' +
+        '<label id="_la-go-aa-wrap" style="' + optLabel + '">' +
+          '<input type="checkbox" id="_la-go-aa" style="width:14px;height:14px;margin:0;accent-color:#5fe0cf;cursor:pointer">' +
+          '<span>' + t('laGoAntialias') + '</span>' +
+          '<span class="la-aa-hint" data-la-tip="' + t('laGoAntialiasHint') + '" style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border:1px solid currentColor;border-radius:50%;font-size:9px;line-height:1;opacity:.55;cursor:help;flex-shrink:0">?</span>' +
+        '</label>' +
         '<label id="_la-go-steve-wrap" style="' + optLabel + '">' +
           '<input type="checkbox" id="_la-go-steve" style="width:14px;height:14px;margin:0;accent-color:#5fe0cf;cursor:pointer">' +
           '<span>I am Steve</span>' +
@@ -214,6 +219,21 @@
         window.__laNoFlash = noFlashCb.checked;
         try { localStorage.setItem('la_no_flash', noFlashCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
       });
+    }
+
+    // ----- Wire "Anticrénelage" (antialiasing) toggle -----
+    // OFF by default (perf). Persists to localStorage only; read by scene.js at
+    // WebGL-context creation, so it takes effect the next time the game is opened
+    // (a scene restart reuses the same context — full reopen needed to switch).
+    var aaCb = panel.querySelector('#_la-go-aa');
+    if (aaCb) {
+      try { aaCb.checked = (localStorage.getItem('la_antialias') === '1'); } catch (e) { /* ignore */ }
+      aaCb.addEventListener('change', function () {
+        try { localStorage.setItem('la_antialias', aaCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
+      });
+      // Clicking the "?" hint shouldn't toggle the checkbox — just show its tooltip.
+      var aaHint = panel.querySelector('#_la-go-aa-wrap .la-aa-hint');
+      if (aaHint) aaHint.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); });
     }
 
     // ----- Wire "I am Steve" skin toggle (applies on the next replay) -----

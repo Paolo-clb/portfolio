@@ -1467,7 +1467,7 @@ function initCursorHalo() {
         // toggle and the name input are non-button clickables → normal halo.
         stopLightGameHoverPoll();
         halo.classList.remove('cursor-halo--game');
-        if (e.target.closest('#_la-go-steve-wrap') || e.target.closest('#_la-go-bigtext-wrap') || e.target.closest('#_la-go-noflash-wrap') || e.target.closest('#_la-go-name')) {
+        if (e.target.closest('#_la-go-steve-wrap') || e.target.closest('#_la-go-bigtext-wrap') || e.target.closest('#_la-go-noflash-wrap') || e.target.closest('#_la-go-aa-wrap') || e.target.closest('#_la-go-name')) {
           halo.classList.add('cursor-halo--hover');
         } else {
           halo.classList.remove('cursor-halo--hover');

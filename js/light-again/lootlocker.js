@@ -62,7 +62,7 @@
       laUpAvailable: 'Amélioration disponible…', laUpShield: 'Shield', laUpShieldName: 'Shield', laUpShieldDesc1: '+1 emplacement de shield.', laUpShieldDesc2: '+1 emplacement de shield supplémentaire.', laUpTheWorldName: 'The World', laUpTheWorldDesc1: 'Le clic molette arrête le temps pendant 3 secondes. (Cooldown : 30s)', laDelayExp: 'Explosion Retardée',
       laGoPlay: 'Jouer', laModeSelectTitle: 'Mode de jeu', laModeSandboxDesc: 'Respawn à la mort · Score libre · Entraînement', laModeHardcoreDesc: 'Mort définitive · Classement mondial',
       laModeHardcoreLocked: 'Verrouillé', laModeBack: '← Reprendre', laMenuBtn: 'Menu', laGoSandboxBtn: 'Sandbox', laGoHardcoreBtn: 'Hardcore', laMenuReturnTitle: 'Retour au menu',
-      laModeUnlockHint: 'Élimine ces ennemis pour débloquer le mode Hardcore', laEnemyScout: 'Éclaireurs', laEnemyShooter: 'Tireurs', laEnemyBruiser: 'Mastodontes', laGoReplayPrompt: 'Rejouer en', laModeResume: 'Reprendre', laSpeed: 'Vitesse', laGoBigText: 'Gros texte', laGoNoFlash: 'Désactiver les flashs',
+      laModeUnlockHint: 'Élimine ces ennemis pour débloquer le mode Hardcore', laEnemyScout: 'Éclaireurs', laEnemyShooter: 'Tireurs', laEnemyBruiser: 'Mastodontes', laGoReplayPrompt: 'Rejouer en', laModeResume: 'Reprendre', laSpeed: 'Vitesse', laGoBigText: 'Gros texte', laGoNoFlash: 'Désactiver les flashs', laGoAntialias: 'Anticrénelage', laGoAntialiasHint: 'Redémarre le jeu pour appliquer · activé = un peu moins de perf',
     };
     var FB_EN = {
       laGoScore: 'Score', laGoBestCombo: 'Best combo', laGoKills: 'Enemies eliminated',
@@ -79,7 +79,7 @@
       laUpAvailable: 'Upgrade available…', laUpShield: 'Shield', laUpShieldName: 'Shield', laUpShieldDesc1: '+1 shield slot.', laUpShieldDesc2: '+1 additional shield slot.', laUpTheWorldName: 'The World', laUpTheWorldDesc1: 'Middle-click stops time for 3 seconds. (Cooldown: 30s)', laDelayExp: 'Delayed Explosion',
       laGoPlay: 'Play', laModeSelectTitle: 'Game mode', laModeSandboxDesc: 'Respawn on death · Free score · Practice', laModeHardcoreDesc: 'Permadeath · World leaderboard',
       laModeHardcoreLocked: 'Locked', laModeBack: '← Resume', laMenuBtn: 'Menu', laGoSandboxBtn: 'Sandbox', laGoHardcoreBtn: 'Hardcore', laMenuReturnTitle: 'Return to menu',
-      laModeUnlockHint: 'Eliminate these enemies to unlock Hardcore mode', laEnemyScout: 'Scouts', laEnemyShooter: 'Shooters', laEnemyBruiser: 'Bruisers', laGoReplayPrompt: 'Play again in', laModeResume: 'Resume', laSpeed: 'Speed', laGoBigText: 'Large text', laGoNoFlash: 'Disable flashes',
+      laModeUnlockHint: 'Eliminate these enemies to unlock Hardcore mode', laEnemyScout: 'Scouts', laEnemyShooter: 'Shooters', laEnemyBruiser: 'Bruisers', laGoReplayPrompt: 'Play again in', laModeResume: 'Resume', laSpeed: 'Speed', laGoBigText: 'Large text', laGoNoFlash: 'Disable flashes', laGoAntialias: 'Antialiasing', laGoAntialiasHint: 'Restart the game to apply · on = a bit less performance',
     };
     var lang = 'fr';
     try {

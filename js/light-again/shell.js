@@ -64,7 +64,7 @@
     menuBtnEl.innerHTML = onHome ? menuPlayIconSvg() : menuPauseIconSvg();
     var lbl = onHome ? t('lightAgainResume') : t('lightAgainPause');
     menuBtnEl.setAttribute('aria-label', lbl);
-    menuBtnEl.setAttribute('title', lbl);
+    menuBtnEl.setAttribute('data-la-tip', lbl);
   }
 
   function updateMenuBtn() {
@@ -558,6 +558,9 @@
       '<div class="la-ms-opts">' +
         '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-bigtext-cb"><span>' + (fr ? 'Gros texte' : 'Large text') + '</span></label>' +
         '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-noflash-cb"><span>' + (fr ? 'Désactiver les flashs' : 'Disable flashes') + '</span></label>' +
+        '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-aa-cb"><span>' + (fr ? 'Anticrénelage' : 'Antialiasing') + '</span>' +
+          '<span class="la-aa-hint" data-la-tip="' + (fr ? 'Redémarre le jeu pour appliquer · activé = un peu moins de perf' : 'Restart the game to apply · on = a bit less performance') + '" style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border:1px solid currentColor;border-radius:50%;font-size:9px;line-height:1;opacity:.55;cursor:help;flex-shrink:0;margin-left:.15rem">?</span>' +
+        '</label>' +
         (unlocked ? '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-steve-cb"><span>I am Steve</span></label>' : '') +
       '</div>' +
       // Tip in normal flow at the bottom of the panel (mentions seeing upgrades). Kept
@@ -623,6 +626,21 @@
         window.__laNoFlash = noFlashCb.checked;
         try { localStorage.setItem('la_no_flash', noFlashCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
       });
+    }
+
+    // "Anticrénelage" (antialiasing): OFF by default (perf). Checked → smoother
+    // vector edges. Unlike the others this can't change the LIVE WebGL context —
+    // it only persists to localStorage and is read by scene.js when the game is
+    // (re)created, so it takes effect the next time Light Again is opened.
+    var aaCb = menuEl.querySelector('#_la-ms-aa-cb');
+    if (aaCb) {
+      try { aaCb.checked = (localStorage.getItem('la_antialias') === '1'); } catch (e) { /* ignore */ }
+      aaCb.addEventListener('change', function () {
+        try { localStorage.setItem('la_antialias', aaCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
+      });
+      // Clicking the "?" hint shouldn't toggle the checkbox — just show its tooltip.
+      var aaHint = menuEl.querySelector('.la-aa-hint');
+      if (aaHint) aaHint.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); });
     }
 
     // Tutorial progress panel: Resume (from the saved step) / Restart (from 0).
@@ -1583,6 +1601,7 @@
     helpBtn.className = 'light-again-help-btn';
     helpBtn.textContent = '?';
     helpBtn.setAttribute('aria-label', t('lightAgainHelp'));
+    helpBtn.setAttribute('data-la-tip', t('lightAgainHelp'));
     helpBtn.addEventListener('click', function () { startTutorialFlow(0, false); });
 
     // Phaser container (Phaser creates its own canvas inside)
@@ -1603,7 +1622,7 @@
     menuBtnEl.className = 'light-again-help-btn light-again-menu-btn';
     menuBtnEl.innerHTML = menuPauseIconSvg();   // starts in the playing state ⇒ ⏸
     menuBtnEl.setAttribute('aria-label', t('lightAgainPause'));
-    menuBtnEl.setAttribute('title', t('lightAgainPause'));
+    menuBtnEl.setAttribute('data-la-tip', t('lightAgainPause'));
     menuBtnEl.style.display = 'none';
     // Pause / resume toggle:
     //  • Playing (⏸) → pause the run and open the home (mode-select) menu.
@@ -1802,7 +1821,80 @@
      BOOT
      ================================================================ */
 
+  /* ---------- Custom hover tooltip (reactive + themed; replaces native title=) ----------
+     One delegated handler for the whole game: any element carrying data-la-tip inside
+     a .light-again-modal gets a styled .la-tip (css/light-again.css) that pops after a
+     short ~90ms delay with a quick fade — far snappier and prettier than the OS title
+     tooltip. pointer-events:none so it never blocks clicks; the caret flips above/below. */
+  function setupLaTooltips() {
+    if (window.__laTipReady) return;   // global document listeners → wire once
+    window.__laTipReady = true;
+    var tip = null, showTimer = null, curEl = null;
+    function ensureTip() {
+      // Append to <body>, NOT the modal: .light-again-modal carries a transform,
+      // which makes it the containing block for a position:fixed child and offsets
+      // it (the "slightly too far right" bug). On <body> the fixed coords are true
+      // viewport coords, matching getBoundingClientRect exactly.
+      if (!tip || !tip.isConnected) {
+        tip = document.createElement('div');
+        tip.className = 'la-tip';
+        tip.setAttribute('role', 'tooltip');
+        document.body.appendChild(tip);
+      }
+      return tip;
+    }
+    function show(el) {
+      var tx = el.getAttribute('data-la-tip');
+      if (!tx) return;
+      var t = ensureTip(); if (!t) return;
+      t.textContent = tx;
+      // The tip lives on <body>, so the theme tokens it needs (accent colour + big-text
+      // scale, declared on .light-again-modal) won't inherit — copy them per show.
+      var modal = el.closest('.light-again-modal');
+      if (modal) {
+        var mcs = getComputedStyle(modal);
+        t.style.setProperty('--la-accent', (mcs.getPropertyValue('--la-accent').trim() || '#5fe0cf'));
+        t.style.setProperty('--la-ui-scale', (mcs.getPropertyValue('--la-ui-scale').trim() || '1'));
+      }
+      t.classList.remove('la-tip--below');
+      var r = el.getBoundingClientRect();
+      var tw = t.offsetWidth, th = t.offsetHeight, gap = 8;
+      var below = (r.top - th - gap) < 4;   // no room above → drop below (e.g. top-row HUD buttons)
+      if (below) t.classList.add('la-tip--below');
+      var left = r.left + r.width / 2 - tw / 2;
+      left = Math.max(6, Math.min(left, window.innerWidth - tw - 6));
+      var top = below ? (r.bottom + gap) : (r.top - th - gap);
+      t.style.left = Math.round(left) + 'px';
+      t.style.top = Math.round(top) + 'px';
+      requestAnimationFrame(function () { if (curEl === el) t.classList.add('la-tip--show'); });
+    }
+    function hide() {
+      if (showTimer) { clearTimeout(showTimer); showTimer = null; }
+      curEl = null;
+      if (tip) tip.classList.remove('la-tip--show');
+    }
+    document.addEventListener('mouseover', function (e) {
+      var el = e.target && e.target.closest && e.target.closest('[data-la-tip]');
+      if (!el || el === curEl) return;
+      if (!el.closest('.light-again-modal')) return;   // Light Again chrome only
+      curEl = el;
+      if (showTimer) clearTimeout(showTimer);
+      showTimer = setTimeout(function () { if (curEl === el) show(el); }, 90);
+    }, true);
+    document.addEventListener('mouseout', function (e) {
+      if (!curEl) return;
+      var el = e.target && e.target.closest && e.target.closest('[data-la-tip]');
+      if (el !== curEl) return;
+      if (e.relatedTarget && el.contains(e.relatedTarget)) return;   // moved within the same element
+      hide();
+    }, true);
+    document.addEventListener('click', hide, true);
+    window.addEventListener('scroll', hide, true);
+  }
+
   function boot() {
+    // Reactive themed tooltips for the whole game (replaces native title=).
+    setupLaTooltips();
     // Public launcher — lets the home "personal projects" carousel (perso-projects.js)
     // open the game from the Light Again preview slide, same as the sticky tab.
     window.__openLightAgain = openLightAgain;
@@ -1828,7 +1920,7 @@
       updateBtnText();
       if (overlayEl) {
         var hb = overlayEl.querySelector('.light-again-help-btn:not(.light-again-pause-btn):not(.light-again-menu-btn)');
-        if (hb) hb.setAttribute('aria-label', t('lightAgainHelp'));
+        if (hb) { hb.setAttribute('aria-label', t('lightAgainHelp')); hb.setAttribute('data-la-tip', t('lightAgainHelp')); }
         updateMenuBtnIcon();   // re-localise the pause/resume toggle's label
         updatePauseBtnUi(overlayEl.querySelector('.light-again-pause-btn'));
       }
