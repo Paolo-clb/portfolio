@@ -41,6 +41,7 @@
     this._anomalyIntroActive   = false;   // freezes player + world during the intro
     this._anomalyCooldownT    = 0;        // ms until a natural anomaly may appear
     this._anomalySpawnRollT   = 0;        // accumulates ms for the per-second roll
+    this._anoPendingTeam      = null;     // team bosses the anomaly summons when its zone activates
   };
 
   M._clearAnomaly = function (silent) {
@@ -48,6 +49,10 @@
     this._anomaly = null;
     this._anomalyBarrierActive = false;
     this._anomalyIntroActive   = false;
+    // Drop any not-yet-summoned team (the anomaly can only die AFTER it activated +
+    // summoned them, so this just prevents a stale leak on teardown; the anomaly's
+    // own death still triggers the board-clear/progression, so no soft-lock).
+    this._anoPendingTeam = null;
     if (!a) return;
     if (a.bannerR)    a.bannerR.destroy();
     if (a.bannerG)    a.bannerG.destroy();
@@ -199,6 +204,21 @@
      every member arrives ON-SCREEN and they spread out around the player instead of
      stacking or dropping off-camera (each boss also clamps itself to the view too). */
   M._spawnTeamNow = function (team) {
+    // If the Anomaly leads the team, IT brings the others in: spawn just the
+    // anomaly now and stash the rest, which it summons around its zone the moment
+    // it activates (real-time arrival, while it's invincible behind its shield —
+    // see _anomalySummonPendingTeam, called at the INTRO→BARRIER hand-off). This
+    // is why the team appears around the anomaly in the visible horde rather than
+    // fanned around the player up-front.
+    if (team.indexOf('anomaly') !== -1) {
+      var rest = [];
+      for (var r = 0; r < team.length; r++) if (team[r] !== 'anomaly') rest.push(team[r]);
+      this._spawnBossOfType('anomaly', {});
+      if (this._anomaly) { this._anoPendingTeam = rest.length ? rest : null; return; }
+      // Anomaly failed to materialise → fall through and spawn the rest normally.
+      team = rest;
+      if (!team.length) return;
+    }
     var view = this.cameras.main.worldView;
     var viewMin = Math.min(view.width, view.height);
     var base = Math.random() * TAU;
@@ -206,6 +226,27 @@
       var ang  = base + (i / team.length) * TAU + (Math.random() - 0.5) * 0.4;
       var dist = viewMin * (0.36 + Math.random() * 0.08);
       this._spawnBossOfType(team[i], { angle: ang, dist: dist });
+    }
+  };
+
+  /* The anomaly's wave bosses, summoned around its zone the instant it activates.
+     Time has just resumed, so each boss plays its normal arrival animation in real
+     time; they spread on a ring INSIDE the firewall, a clear distance from the
+     player and on-screen (the per-boss spawn fns clamp to view ∩ disc). The anomaly
+     stays invincible throughout (its shield holds while the vacuumed horde lives),
+     satisfying "wait, invincible, then fight" without freezing the boss arrivals. */
+  M._anomalySummonPendingTeam = function () {
+    var rest = this._anoPendingTeam;
+    this._anoPendingTeam = null;
+    if (!rest || !rest.length) return;
+    var a = this._anomaly;
+    var view = this.cameras.main.worldView;
+    var viewMin = Math.min(view.width, view.height);
+    var base = Math.random() * TAU;
+    for (var i = 0; i < rest.length; i++) {
+      var ang  = base + (i / rest.length) * TAU + (Math.random() - 0.5) * 0.3;
+      var dist = a ? Math.min(a.R * 0.55, viewMin * 0.42) : viewMin * 0.40;
+      this._spawnBossOfType(rest[i], { angle: ang, dist: dist });
     }
   };
 
@@ -837,6 +878,10 @@
         a.phase = 'BARRIER';
         a.introState = null;
         this._anomalyIntroActive = false;
+        // Zone is live + time has resumed → summon the team's other bosses around
+        // it now, so they arrive (real-time animation) in the visible horde while
+        // the anomaly stays invincible behind its shield.
+        this._anomalySummonPendingTeam();
       }
     }
   };

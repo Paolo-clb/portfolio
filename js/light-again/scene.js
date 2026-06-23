@@ -223,6 +223,10 @@
       this.ENEMY_TRAIL_N = 2;
       this.spawnTimer = 0;
       this.nextSpawnDelay = Phaser.Math.Between(C.HC_WAVE_GAP_MIN, C.HC_WAVE_GAP_MAX); // hardcore wave gap
+      // Hardcore wave size now ramps with BOSSES defeated (not enemy kills),
+      // smoothed here so each boss kill eases the spawn up instead of snapping
+      // (see _updateSpawnRamp / _hardcoreWaveSize). Starts at the base wave size.
+      this._spawnRampSize = C.HC_WAVE_BASE;
       this._enemyBag = null;               // rarity bag (rebuilt on first draw)
       this._sandboxRate = C.SANDBOX_RATE_DEFAULT; // mouse-wheel spawn speed (sandbox)
       this._spdUiTimer = 0;                // countdown for the speed slider visibility
@@ -360,6 +364,10 @@
       this.comboMultiplier = 1;
       this.comboTimer = 0;
       this._comboPulse = 0;
+      // Boss board-clear multiplier: the wave swept by a boss death is scored
+      // IGNORING the combo and instead ×this value, which starts at 2 and grows by
+      // 1 after every boss clear (×2 first boss, ×3 next, …). Reset each run (create).
+      this._bossClearMult = 2;
       this._batchScore = 0;
       this._batchLabel = '';
       this._batchActive = false;
@@ -955,21 +963,21 @@
         if (fps !== this._lastFps) {
           this._lastFps = fps;
           this.fpsTxt.setText(fps + ' FPS');
-          this.fpsTxt.setColor(fps >= 55 ? '#00ff88' : fps >= 30 ? '#ffcc00' : '#ff4444');
         }
-        // Live enemy count — colour bands scaled to C.MAX_ENEMIES (1000):
+        // Colours go through _setHudColor: it pre-compensates for the fractured
+        // dimension's camera grade so these top-left counters KEEP their normal
+        // colours there, and it caches the final string so setColor only fires on
+        // an actual change (no per-frame re-rasterise).
+        this._setHudColor(this.fpsTxt, fps >= 55 ? '#00ff88' : fps >= 30 ? '#ffcc00' : '#ff4444', '_fpsColC');
+        // Live enemy count — colour bands scaled to C.MAX_ENEMIES:
         // ≤ 40 % blue, 40–75 % amber, > 75 % red.
         var ec = this.enemies.length;
         if (ec !== this._lastEnemyCount) {
           this._lastEnemyCount = ec;
           this._enemyCountTxt.setText('▲ ' + ec);
-          var ecMax = C.MAX_ENEMIES;
-          this._enemyCountTxt.setColor(
-            ec > ecMax * 0.75 ? '#ff4444'
-            : ec > ecMax * 0.40 ? '#ffcc00'
-            : '#3a78a0'
-          );
         }
+        var ecMax = C.MAX_ENEMIES;
+        this._setHudColor(this._enemyCountTxt, ec > ecMax * 0.75 ? '#ff4444' : ec > ecMax * 0.40 ? '#ffcc00' : '#3a78a0', '_ecColC');
         // Survival time (real elapsed play time)
         var ts = Math.floor(this.gameTime);
         if (ts !== this._lastTimeSec) {
@@ -977,6 +985,7 @@
           var mm = Math.floor(ts / 60), ss = ts % 60;
           this._timeTxt.setText((mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss);
         }
+        this._setHudColor(this._timeTxt, '#3a78a0', '_timeColC');
       }
 
       if (ms < 0.001 && pMs < 0.001 && !this._anomalyIntroActive && !this._dimPortalActive) {
@@ -1263,6 +1272,7 @@
       this._updateClearWave(dt);
       this._updateBossDeaths(dt);
       this._updateDimension(dt);   // fractured-dimension rifts + palette drift (real dt, visual)
+      this._updateSpawnRamp(dt);   // ease the hardcore wave-size ramp toward its boss-count target
       this._updateSpeedUi(dt);
 
       this._shieldAngle += sDt * 1.8;
@@ -1314,7 +1324,10 @@
         var vigAmp  = vigPulseRatio * 0.42;
         // Pulse frequency: 1 Hz at x5, 5.5 Hz (rapid heartbeat) at x50
         var vigFreq = 1.0 + vigPulseRatio * 4.5;
-        var vigA = vigBase + vigAmp * Math.sin(this.gameTime * vigFreq * Math.PI * 2);
+        // During The World the combo is frozen, so freeze the pulse too: hold a
+        // steady darkening (base alpha, no sine blink) so the map edges don't
+        // flicker to the combo beat while time is stopped.
+        var vigA = this._twActive ? vigBase : (vigBase + vigAmp * Math.sin(this.gameTime * vigFreq * Math.PI * 2));
         this._vignetteSprite.setAlpha(Math.min(1.0, Math.max(0.30, vigA)));
       }
 
@@ -1351,6 +1364,23 @@
       this._renderProjectiles(dt);  // pass raw dt for frame-rate independent decay
       this._renderHUD(dt);
     },
+  };
+
+  /* Top-left HUD colour setter: pre-compensates the colour for the fractured
+     dimension's camera grade (via _dimUntint, identity outside it) so the FPS /
+     enemy / time counters keep their normal colours there, and caches the final
+     string per text so setColor (a texture re-rasterise) only fires on a real
+     change — including the one-off fractured-state transition. */
+  LA.sceneMethods._setHudColor = function (txt, hex, cacheKey) {
+    var out = hex;
+    if (this._dimFloorTexOn && this._dimUntint) {
+      var num = parseInt(hex.slice(1), 16);
+      var comp = this._dimUntint(num);
+      out = '#' + ('000000' + comp.toString(16)).slice(-6);
+    }
+    if (this[cacheKey] === out) return;
+    this[cacheKey] = out;
+    txt.setColor(out);
   };
 
   /* Merge all scene method mixins into the class definition */

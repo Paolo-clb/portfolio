@@ -433,6 +433,21 @@
       if (dist >= minDist && score > bestScore) { bestScore = score; best = { x: cx, y: cy }; }
     }
     var dest = best || fb || { x: (loX + hiX) / 2, y: (loY + hiY) / 2 };
+    // Inside an active Anomaly zone, keep the WHOLE teleport within the firewall:
+    // clamp the destination into the zone (a touch more inset than the confinement
+    // limit) so the Giga re-forms clearly inside instead of popping outside for a
+    // frame and getting yanked back. The implosion already happens at its current
+    // (confined) spot, so this makes the blink a→z stay in the zone.
+    var a = this._anomaly;
+    if (a && this._anomalyBarrierActive && a.phase !== 'INTRO') {
+      var adx = dest.x - a.bx, ady = dest.y - a.by;
+      var alim = a.R - C.GBR_SIZE * 1.3; if (alim < 0) alim = 0;
+      var ad2 = adx * adx + ady * ady;
+      if (ad2 > alim * alim) {
+        var ad = Math.sqrt(ad2) || 1;
+        dest = { x: a.bx + (adx / ad) * alim, y: a.by + (ady / ad) * alim };
+      }
+    }
     var dgc = LA.clampDisc(dest.x, dest.y, C.GBR_SIZE * 1.5);
     return { x: dgc.x, y: dgc.y };
   };

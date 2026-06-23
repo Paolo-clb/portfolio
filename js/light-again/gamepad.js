@@ -29,6 +29,7 @@
   var STICK_DEAD = 0.24;   // left-stick radial deadzone
   var AIM_DEAD   = 0.30;   // right-stick deflection needed to take over aim
   var TRIG_ON    = 0.5;    // analog trigger press threshold
+  var AUTOFIRE_CD = 160;   // ms between right-stick AUTO-fires (so a held stick can't out-click a human)
 
   // Standard-mapping button indices
   var BTN_LB = 4, BTN_RB = 5, BTN_LT = 6, BTN_RT = 7;
@@ -54,6 +55,7 @@
     // Edge-detection of the action buttons (fire on press, not while held).
     // dup/ddown = D-pad ↑/↓ (sandbox rate); face = any right-side face button (clear board).
     this._padPrev = { lt: false, rt: false, lb: false, rb: false, dup: false, ddown: false, face: false };
+    this._padAutoFireCd = 0;   // ms left before the next right-stick auto-fire (throttle)
     // On the first poll after a (re)start, pause/resume, or a closed menu overlay,
     // re-sync _padPrev to whatever is held instead of firing — so a button still
     // pressed from the click/tap that launched or un-paused the run can't instantly
@@ -118,6 +120,7 @@
       this._padMove.dx = lstick.x; this._padMove.dy = lstick.y;
       prev.lt = lt; prev.rt = rt; prev.lb = lb; prev.rb = rb;
       prev.dup = dup; prev.ddown = ddown; prev.face = face;
+      this._padAutoFireCd = AUTOFIRE_CD;   // don't auto-fire the instant a menu closes while the stick is held
       return;
     }
 
@@ -150,9 +153,27 @@
 
     // Edge-triggered actions (re-use the same entry points as mouse/keyboard, so
     // all their state guards — DEAD / cooldown / TW-locked — apply unchanged).
-    if (rt && !prev.rt) this._tryAttack();                       // torpedo, along aim
+    if (rt && !prev.rt) this._tryAttack();                       // torpedo, along aim (manual, as before)
     if (lt && !prev.lt) this._tryDash();                         // dash, along movement
     if ((lb && !prev.lb) || (rb && !prev.rb)) this._tryTimeStop(); // The World
+
+    // RIGHT-STICK = aim AND auto-fire. Deflecting the right stick faces the arrow
+    // that way (via the aim/cursor above) AND fires the basic attack, like aiming
+    // with the cursor and left-clicking. The auto-fire is THROTTLED to AUTOFIRE_CD
+    // so a held stick can't out-click a human (firing every available frame felt
+    // abusive). EXCEPTION: while DASHING, fire immediately (no throttle) so the
+    // dash-attack — dash with LT, then flick the stick — stays responsive. The RT
+    // button above is unthrottled (manual fire) for players who prefer it.
+    if (this._padAimActive) {
+      var padDashing = this.p && this.p.state === 'DASHING';
+      this._padAutoFireCd -= (this._frameDt || 0.016) * 1000;
+      if (padDashing || this._padAutoFireCd <= 0) {
+        this._tryAttack();
+        this._padAutoFireCd = AUTOFIRE_CD;
+      }
+    } else {
+      this._padAutoFireCd = 0;   // idle → the next deflection fires instantly (responsive first shot)
+    }
 
     // Sandbox-only controls (mirror the keyboard/wheel gates in scene.js):
     //  • D-pad ↑/↓ pace the spawn rate (like the mouse wheel) — sandbox only.

@@ -556,8 +556,8 @@
     CURSE_FOUNT_SPAWN_CHANCE:    0.085,  // per-eligible-second spawn roll (once the boss-kill gate is met)
     CURSE_FOUNT_BOSS_REQ_START:  1,      // bosses to defeat before the FIRST fountain may appear
     CURSE_FOUNT_BOSS_REQ_STEP:   1,      // +bosses required after each consumed fountain (1 → 2 → 3 …)
-    CURSE_FOUNT_SPAWN_DIST_MIN:  640,    // min spawn distance from the player (px)
-    CURSE_FOUNT_SPAWN_DIST_MAX:  1020,   // max spawn distance from the player (px)
+    CURSE_FOUNT_SPAWN_DIST_MIN:  800,    // min spawn distance from the player (px) — CENTRE; with ZONE_R 260 the mist EDGE then starts ~540px away (was ~380, felt too close)
+    CURSE_FOUNT_SPAWN_DIST_MAX:  1120,   // max spawn distance from the player (px)
     CURSE_FOUNT_ZONE_R:          260,    // mist-zone radius (≈ a no-upgrade dash-mark detonation)
     CURSE_FOUNT_TRIGGER_R:       100,    // step within this of the obelisk → the curse offer
     CURSE_FOUNT_SIZE:            64,     // obelisk scale (px)
@@ -600,7 +600,7 @@
     HIGHWAY_EXHAUST_ZONE:        270,    // px before+past the downstream mouth where enemies get launched out (anti-stack)
     HIGHWAY_EJECT_SPEED:         12,     // px/frame forward launch velocity enemies reach at the exhaust mouth
     HIGHWAY_EJECT_SPREAD:        3.6,    // px/frame lateral fan added at the mouth so they scatter, not single-file
-    HIGHWAY_SPAWN_NEAR_MIN:      160,    // the corridor passes at least this close to the player...
+    HIGHWAY_SPAWN_NEAR_MIN:      320,    // the corridor passes at least this close to the player (raised from 160 so it never opens right on top of you)...
     HIGHWAY_SPAWN_NEAR_MAX:      840,    // ...and at most this far, so it's discoverable without a pointer
     // Keep a new highway from forming ON a live map feature (Cache, Greed, Curse
     // Fountain, Unstable Core, Prism) or right on the player — and, reciprocally,

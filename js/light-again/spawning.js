@@ -74,9 +74,30 @@
     this._spawnTierAt(tier, pos.x, pos.y);
   };
 
-  /* ---- Hardcore: one burst wave; size grows with total kills ---- */
+  /* ---- Hardcore: one burst wave; size ramps with BOSSES defeated ----
+     The wave size now scales on the number of bosses defeated (not enemy kills):
+     it eases smoothly from HC_WAVE_BASE up to HC_WAVE_MAX as the boss TYPES fall,
+     reaching max by the time the fractured dimension begins. The live value is
+     `_spawnRampSize`, lerped each frame in _updateSpawnRamp so each boss kill
+     ramps the spawn up gently instead of snapping it. */
   M._hardcoreWaveSize = function () {
-    return Math.min(C.HC_WAVE_BASE + Math.floor(this.totalKills / C.HC_WAVE_PER), C.HC_WAVE_MAX);
+    return Math.min(Math.round(this._spawnRampSize || C.HC_WAVE_BASE), C.HC_WAVE_MAX);
+  };
+
+  // Ease _spawnRampSize toward its target (set by boss-kill progress). Called every
+  // frame on real dt so the ramp is smooth and frame-rate independent.
+  M._updateSpawnRamp = function (dt) {
+    var nTypes = (M._BOSS_TYPES && M._BOSS_TYPES.length) || 4;
+    var prog = Math.min(1, (this._bossesDefeated || 0) / nTypes);
+    var eased = prog * prog * (3 - 2 * prog);   // smoothstep
+    // Force full once actually inside the fractured dimension (a safety net — all
+    // boss types are beaten before it's entered, so it's already at/near max).
+    var target = this._dimFractured
+      ? C.HC_WAVE_MAX
+      : (C.HC_WAVE_BASE + (C.HC_WAVE_MAX - C.HC_WAVE_BASE) * eased);
+    if (this._spawnRampSize == null) this._spawnRampSize = C.HC_WAVE_BASE;
+    var k = 1 - Math.pow(0.5, dt / 0.6);        // ~0.6s half-life, frame-rate independent
+    this._spawnRampSize += (target - this._spawnRampSize) * k;
   };
 
   M._spawnHardcoreWave = function () {

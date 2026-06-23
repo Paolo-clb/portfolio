@@ -1072,22 +1072,28 @@ function initLangToggle() {
     tipTimer = setTimeout(function () {}, 200);
   });
 
-  btn.addEventListener('click', function () {
-    tipEl.classList.remove('lang-toggle__tooltip--visible');
-
-    // Toggle
-    siteLang = siteLang === 'fr' ? 'en' : 'fr';
+  // Shared language setter (used by the nav button AND, on the web build, by the
+  // Light Again home's own FR/EN toggle via window.__setSiteLang — the LA modal
+  // hides this nav while it's open). Keeps localStorage, <html lang>, the nav
+  // label and the whole portfolio DOM in sync.
+  function applySiteLang(lang) {
+    siteLang = (lang === 'en') ? 'en' : 'fr';
     localStorage.setItem(SITE_LANG_KEY, siteLang);
     document.documentElement.lang = siteLang;
-
     // Animate label swap
     label.classList.add('lang-toggle__label--swapping');
     setTimeout(function () {
       label.textContent = siteLang === 'fr' ? 'FR' : 'EN';
       label.classList.remove('lang-toggle__label--swapping');
     }, 200);
-
     updateSiteLanguage();
+  }
+  window.__setSiteLang = applySiteLang;
+  window.__getSiteLang = function () { return siteLang; };
+
+  btn.addEventListener('click', function () {
+    tipEl.classList.remove('lang-toggle__tooltip--visible');
+    applySiteLang(siteLang === 'fr' ? 'en' : 'fr');
   });
 }
 
@@ -1456,7 +1462,8 @@ function initCursorHalo() {
         stopLightGameHoverPoll();
         halo.classList.remove('cursor-halo--game');
         if (e.target.closest('.la-ms-card--enabled') || e.target.closest('.la-ms-steve') ||
-            e.target.closest('.la-ms-resume-btn') || e.target.closest('.la-lo-chip')) {
+            e.target.closest('.la-ms-resume-btn') || e.target.closest('.la-lo-chip') ||
+            e.target.closest('.la-ms-lang')) {
           halo.classList.add('cursor-halo--hover');
         } else {
           halo.classList.remove('cursor-halo--hover');

@@ -406,7 +406,9 @@
      worth its tier ×combo), combo reset, kill-counter advance and the single team
      reward draft. `bossPts` was already banked by _bossScorePop. */
   M._bossBoardClear = function (ex, ey, opts, bossPts) {
-    var cm = this.comboMultiplier || 1;
+    // Score the swept wave IGNORING the combo — use the per-boss clear multiplier
+    // (starts at 2, +1 each boss) so the bonus grows predictably with each boss.
+    var cm = this._bossClearMult || 2;
     var ringColor = opts.ringColor || 0xffffff;
     var expCol = opts.expCol || [255, 255, 255];
 
@@ -461,6 +463,8 @@
     this.score += (total - bossPts);   // bossPts already banked by _bossScorePop
     // Combo banked but not fed by the clear; it resets now.
     this.comboMultiplier = 1; this.comboTimer = 0; this._comboPulse = 0;
+    // Grow the per-boss clear multiplier for the NEXT boss clear (×2 → ×3 → …).
+    this._bossClearMult = (this._bossClearMult || 2) + 1;
 
     // Grand-total banner (boss + everything the wave cleared).
     this._bossKillBanner(ex, ey - 56, (opts.label || 'BOSS DOWN') + '  +' + total,

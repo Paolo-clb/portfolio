@@ -595,10 +595,10 @@
         title: fr ? 'Attaque Torpille' : 'Torpedo Attack',
         quest: fr ? 'Détruis l’éclaireur à l’attaque torpille' : 'Destroy the scout with the torpedo attack',
         keys:  fr ? ['Clic gauche'] : ['Left click'],
-        pad:   fr ? ['Gâchette droite'] : ['Right trigger'],
+        pad:   fr ? ['Stick droit', 'Gâchette droite'] : ['Right stick', 'Right trigger'],
         desc:  fr
-          ? 'L’<span class="c-torp">attaque torpille</span> : ta flèche fonce vers le curseur. Vise l’éclaireur <span class="c-torp">▲</span> ! <b>⚠️ La rater</b> te laisse vulnérable (récupération). <span style="color:#c9bcff">🎮 En manette : vise avec le <b>stick droit</b> ; si tu ne t’en sers pas, l’attaque part dans ta <b>direction de déplacement</b>.</span>'
-          : 'The <span class="c-torp">torpedo attack</span>: your arrow shoots toward the cursor. Aim at the scout <span class="c-torp">▲</span>! <b>⚠️ Whiffing it</b> leaves you exposed (recovery). <span style="color:#c9bcff">🎮 On a pad: aim with the <b>right stick</b>; if you don’t use it, the attack fires in your <b>movement direction</b>.</span>',
+          ? 'L’<span class="c-torp">attaque torpille</span> : ta flèche fonce vers le curseur. Vise l’éclaireur <span class="c-torp">▲</span> ! <b>⚠️ La rater</b> te laisse vulnérable (récupération). <span style="color:#c9bcff">🎮 En manette : le <b>stick droit</b> vise ET attaque (oriente-le vers la cible) ; la <b>gâchette droite</b> tire aussi.</span>'
+          : 'The <span class="c-torp">torpedo attack</span>: your arrow shoots toward the cursor. Aim at the scout <span class="c-torp">▲</span>! <b>⚠️ Whiffing it</b> leaves you exposed (recovery). <span style="color:#c9bcff">🎮 On a pad: the <b>right stick</b> aims AND fires (point it at the target); the <b>right trigger</b> fires too.</span>',
         setup: function () { self._tutSpawnOne(1, 340); },
         // Must be a BASIC-attack kill — killing it another way (e.g. dash-attack) does NOT count.
         check: function () { return self._tutEvents.basicKill - d().basicKill0 >= 1; },
@@ -610,10 +610,10 @@
         title: fr ? 'Vague' : 'Wave',
         quest: fr ? 'Enchaîne : élimine 5 éclaireurs à l’attaque' : 'Chain it: take out 5 scouts',
         keys:  fr ? ['Clic gauche  ×  spam'] : ['Left click  ×  spam'],
-        pad:   fr ? ['Gâchette droite  ×  spam'] : ['Right trigger  ×  spam'],
+        pad:   fr ? ['Stick droit (maintenu)'] : ['Hold right stick'],
         desc:  fr
-          ? '<b>Chaque kill réarme aussitôt ton attaque</b> : <b>spamme</b> l’<span class="c-torp">attaque torpille</span> à travers toute la vague d’éclaireurs <span class="c-torp">▲</span> sans temps mort !'
-          : '<b>Every kill instantly re-arms your attack</b> : <b>spam</b> the <span class="c-torp">torpedo attack</span> through the whole scout wave <span class="c-torp">▲</span> with no downtime!',
+          ? '<b>Chaque kill réarme aussitôt ton attaque</b> : <b>spamme</b> l’<span class="c-torp">attaque torpille</span> à travers toute la vague d’éclaireurs <span class="c-torp">▲</span> sans temps mort ! <span style="color:#c9bcff">🎮 En manette : <b>maintiens le stick droit</b> vers la vague pour enchaîner tout seul.</span>'
+          : '<b>Every kill instantly re-arms your attack</b> : <b>spam</b> the <span class="c-torp">torpedo attack</span> through the whole scout wave <span class="c-torp">▲</span> with no downtime! <span style="color:#c9bcff">🎮 On a pad: <b>hold the right stick</b> toward the wave to auto-chain.</span>',
         setup: function () { self._tutSpawnRing(1, 9, 320); },
         progress: function () { return Math.min(5, self._tutEvents.basicKill - d().basicKill0) + ' / 5'; },
         // Only basic-attack kills count toward the chain (teaches the reset-on-kill loop).
@@ -626,10 +626,10 @@
         title: fr ? 'Dash-Attaque' : 'Dash-Attack',
         quest: fr ? 'Touche l’éclaireur avec une dash-attaque' : 'Hit the scout with a dash-attack',
         keys:  fr ? ['Clic gauche  (pendant un dash)'] : ['Left click  (during a dash)'],
-        pad:   fr ? ['Gâchette droite  (pendant un dash)'] : ['Right trigger  (during a dash)'],
+        pad:   fr ? ['Dash, puis stick droit'] : ['Dash, then right stick'],
         desc:  fr
-          ? 'Clique pendant un <span class="c-dash">dash</span> : la <span class="c-datk">dash-attaque</span> est plus rapide, plus large, et traverse les ennemis. <b>⚠️ Récupération plus longue qu’une attaque ratée.'
-          : 'Click during a <span class="c-dash">dash</span>: the <span class="c-datk">dash-attack</span> is faster, wider, and pierces enemies. <b>⚠️ A longer recovery than a missed attack.',
+          ? 'Clique pendant un <span class="c-dash">dash</span> : la <span class="c-datk">dash-attaque</span> est plus rapide, plus large, et traverse les ennemis. <b>⚠️ Récupération plus longue qu’une attaque ratée.</b> <span style="color:#c9bcff">🎮 En manette : <b>dash</b> (gâchette gauche) puis pousse vite le <b>stick droit</b> vers la cible.</span>'
+          : 'Click during a <span class="c-dash">dash</span>: the <span class="c-datk">dash-attack</span> is faster, wider, and pierces enemies. <b>⚠️ A longer recovery than a missed attack.</b> <span style="color:#c9bcff">🎮 On a pad: <b>dash</b> (left trigger) then quickly push the <b>right stick</b> toward the target.</span>',
         setup: function () { self._tutSpawnOne(1, 360); },
         check: function () { return !!d().dashAtkHit; },
         maintain: function () { if (self._tutCountTier(1) === 0) self._tutSpawnOne(1, 360); },

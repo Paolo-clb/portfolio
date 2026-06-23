@@ -17,6 +17,9 @@
   var menuEl       = null;  // mode-select DOM overlay
   var menuBtnEl    = null;  // sandbox "Menu" header button
   var menuResumable = false; // true while the open home menu has a LIVE run to resume
+  // Last showModeMenu args — so a language change can rebuild the open menu in the
+  // new language (the menu text is baked at build time).
+  var _msLastContainer = null, _msLastFromActive = false;
 
   /* ---- Gamepad menu navigation (see the section near openLightAgain) ---- */
   var padRafId     = null;  // requestAnimationFrame handle for the menu-poll loop
@@ -304,6 +307,7 @@
 
   function showModeMenu(container, fromActiveGame) {
     if (menuEl) return;
+    _msLastContainer = container; _msLastFromActive = !!fromActiveGame;   // for language rebuilds
     // A game-over run is DEAD — capture that BEFORE tearing the screen down (the
     // teardown clears the flag), so the menu offers a fresh "Play" instead of a
     // "Resume" that would try to resume a dead scene and crash.
@@ -556,6 +560,9 @@
       // Options row: "Gros texte" (accessibility — always available) plus the
       // cosmetic pickaxe skin (unlocked alongside hardcore mode as a reward).
       '<div class="la-ms-opts">' +
+        // Language toggle — needed on desktop (the standalone build has no portfolio
+        // nav) and handy on web too (the nav is hidden while this fullscreen modal is up).
+        '<button type="button" id="_la-ms-lang" class="la-ms-lang" data-la-tip="' + (fr ? 'Changer la langue' : 'Change language') + '" style="display:inline-flex;align-items:center;gap:.3rem;padding:.18rem .6rem;font-family:inherit;font-size:calc(.72rem * var(--la-ui-scale,1));font-weight:700;letter-spacing:.05em;color:var(--la-accent,#5fe0cf);background:rgba(95,224,207,.08);border:1px solid var(--la-accent-line,rgba(95,224,207,.4));border-radius:99px;cursor:pointer">🌐 ' + (fr ? 'FR' : 'EN') + '</button>' +
         '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-bigtext-cb"><span>' + (fr ? 'Gros texte' : 'Large text') + '</span></label>' +
         '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-noflash-cb"><span>' + (fr ? 'Désactiver les flashs' : 'Disable flashes') + '</span></label>' +
         '<label class="la-ms-steve"><input type="checkbox" id="_la-ms-aa-cb"><span>' + (fr ? 'Anticrénelage' : 'Antialiasing') + '</span>' +
@@ -642,6 +649,26 @@
       var aaHint = menuEl.querySelector('.la-aa-hint');
       if (aaHint) aaHint.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); });
     }
+
+    // Language toggle (FR/EN). On the web build it routes through the portfolio's
+    // own setter (window.__setSiteLang) so the nav label + portfolio DOM stay in
+    // sync; on the standalone desktop build (no portfolio main.js) it drives the
+    // language itself (localStorage + <html lang> + the sitelangchange event). The
+    // sitelangchange listener below rebuilds this menu in the new language.
+    var langBtn = menuEl.querySelector('#_la-ms-lang');
+    if (langBtn) langBtn.addEventListener('click', function () {
+      var cur = '';
+      try { cur = localStorage.getItem('portfolio_lang') || ''; } catch (e) { /* ignore */ }
+      cur = (cur || document.documentElement.lang || 'fr').toLowerCase().slice(0, 2);
+      var next = cur === 'fr' ? 'en' : 'fr';
+      if (typeof window.__setSiteLang === 'function') {
+        window.__setSiteLang(next);
+      } else {
+        try { localStorage.setItem('portfolio_lang', next); } catch (e) { /* ignore */ }
+        document.documentElement.lang = next;
+        document.dispatchEvent(new CustomEvent('sitelangchange', { detail: { lang: next } }));
+      }
+    });
 
     // Tutorial progress panel: Resume (from the saved step) / Restart (from 0).
     // Both route through startTutorialFlow, which dismisses this menu and launches.
@@ -1926,6 +1953,13 @@
       }
       // Close help popup on lang change — will reopen with fresh language
       if (helpPopupEl) closeHelpPopup(true);
+      // Rebuild the mode-select home in the new language (its text is baked at build
+      // time). Re-uses the captured args; instant teardown so there's no flash.
+      if (menuEl && _msLastContainer) {
+        var c = _msLastContainer, fag = _msLastFromActive;
+        dismissModeMenu(true);
+        showModeMenu(c, fag);
+      }
     });
   }
 
