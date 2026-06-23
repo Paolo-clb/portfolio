@@ -25,7 +25,13 @@
       var cl = Math.sqrt(dx * dx + dy * dy);
       if (cl > 1) { dx /= cl; dy /= cl; }
     }
-    return { dx: dx, dy: dy };
+    // Reuse a single per-scene scratch object instead of allocating a fresh
+    // literal every call: every caller consumes the result immediately and never
+    // holds it across another _inputVec() call, so a shared mutable return is
+    // behavior-identical while removing one allocation per frame.
+    var out = this._inpVec || (this._inpVec = { dx: 0, dy: 0 });
+    out.dx = dx; out.dy = dy;
+    return out;
   };
 
   M._tryDash = function () {

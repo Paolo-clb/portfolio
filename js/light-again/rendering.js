@@ -376,10 +376,27 @@
 
   M._renderEnemies = function () {
     var gt = this.gameTime;
+    var _view = this.cameras.main.worldView;
+    var _vx0 = _view.x - 140, _vy0 = _view.y - 140;
+    var _vx1 = _view.x + _view.width + 140, _vy1 = _view.y + _view.height + 140;
     for (var i = 0; i < this.enemies.length; i++) {
       var e = this.enemies[i];
       e.spr.setPosition(e.x, e.y);
       e.spr.setRotation(e.angle);
+
+      // Viewport cull: fully off-screen enemies get no tint/scale/trail/shield
+      // redraw (all invisible work). Position is already synced above, so the
+      // frame it re-enters it is correct. On-screen output is pixel-identical.
+      // T4 snipers are EXEMPT: their marked ghost afterimage trail can extend
+      // ~140px back along the glide path (and the snGhost buffer is built during
+      // render), so culling them could erase/discontinue an on-screen trail.
+      // They are rare and _renderSniper already early-returns cheaply when cloaked.
+      if (e.tier !== 4 && (e.x < _vx0 || e.x > _vx1 || e.y < _vy0 || e.y > _vy1)) {
+        if (e.shieldGfx) e.shieldGfx.clear();
+        if (e.scopeGfx) e.scopeGfx.clear();
+        for (var _ct = 0; _ct < this.ENEMY_TRAIL_N; _ct++) e.trSpr[_ct].setVisible(false);
+        continue;
+      }
 
       // Time Stop: condemned enemies — red/crimson glow (distinct from cyan detonation mark)
       // Detonation-pending enemies also show this + a separate charging circle overlay
@@ -517,7 +534,7 @@
         if (sap < 0.25) e.spr.setTint(0xffffff);
       }
 
-      for (var t = 0; t < this.ENEMY_TRAIL_N; t++) e.trSpr[t].setVisible(false);
+      for (var t = e._tn; t < this.ENEMY_TRAIL_N; t++) e.trSpr[t].setVisible(false);
       for (var ti = 0; ti < e._tn; ti++) {
         var tr = e.trail[(e._tw - e._tn + ti) % this.ENEMY_TRAIL_N];
         var ts = e.trSpr[ti % this.ENEMY_TRAIL_N];

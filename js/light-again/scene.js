@@ -217,7 +217,10 @@
       this._ghostW = 0;
 
       this.enemies = [];
-      this.ENEMY_TRAIL_N = 4;
+      // Enemy motion-trail length. 2 (was 4) — halves the per-enemy ADD-blend
+      // ghost-draw fill cost (the dominant fill-rate lever during dense waves);
+      // every trail loop reads this.ENEMY_TRAIL_N so the whole pipeline adapts.
+      this.ENEMY_TRAIL_N = 2;
       this.spawnTimer = 0;
       this.nextSpawnDelay = Phaser.Math.Between(C.HC_WAVE_GAP_MIN, C.HC_WAVE_GAP_MAX); // hardcore wave gap
       this._enemyBag = null;               // rarity bag (rebuilt on first draw)
@@ -1071,10 +1074,14 @@
       this._applyHighwayFlow(pS60, pMs);
 
       if (p._wallFxCd > 0) p._wallFxCd -= pMs;
-      var wClamp = LA.clampDisc(p.x, p.y, C.SIZE * 1.5);
-      if (wClamp.hit) {
-        p.x = wClamp.x; p.y = wClamp.y;
-        this._applyAggressiveRebound(wClamp.nx, wClamp.ny);   // bounce off the map rim
+      // Inline radial clamp (identical to LA.clampDisc) — avoids a per-frame result-object allocation.
+      var wcLim = C.WORLD_HALF - C.SIZE * 1.5; if (wcLim < 0) wcLim = 0;
+      var wcD = Math.sqrt(p.x * p.x + p.y * p.y);
+      if (wcD > wcLim && wcD !== 0) {
+        var wcInv = 1 / wcD;
+        var wcNx = p.x * wcInv, wcNy = p.y * wcInv;
+        p.x = wcNx * wcLim; p.y = wcNy * wcLim;
+        this._applyAggressiveRebound(wcNx, wcNy);   // bounce off the map rim
       }
       }  // end if (!prismCtl) — prism.js drove the ship this frame
 
@@ -1196,13 +1203,13 @@
       // The other bosses can arrive in TEAMS (duplicates allowed). Iterate each
       // type's live list, pointing the cursor (this._X) at the instance being
       // processed. Snapshot the list since a boss can leave it mid-update (death).
-      var _gl = this._gigaList ? this._gigaList.slice() : null;
+      var _gl = (this._gigaList && this._gigaList.length) ? this._gigaList.slice() : null;
       if (_gl) for (var _gi = 0; _gi < _gl.length; _gi++) { this._gigaBruiser = _gl[_gi]; this._updateGigaBruiser(ms, pMs, dt); this._checkGigaBruiserCollision(); }
       this._gigaBruiser = (this._gigaList && this._gigaList.length) ? this._gigaList[0] : null;
-      var _ml = this._mirrorList ? this._mirrorList.slice() : null;
+      var _ml = (this._mirrorList && this._mirrorList.length) ? this._mirrorList.slice() : null;
       if (_ml) for (var _mi = 0; _mi < _ml.length; _mi++) { this._mirror = _ml[_mi]; this._updateMirror(ms, pMs, dt); this._checkMirrorCollision(); }
       this._mirror = (this._mirrorList && this._mirrorList.length) ? this._mirrorList[0] : null;
-      var _sl = this._snakeList ? this._snakeList.slice() : null;
+      var _sl = (this._snakeList && this._snakeList.length) ? this._snakeList.slice() : null;
       if (_sl) for (var _si = 0; _si < _sl.length; _si++) { this._snake = _sl[_si]; this._updateSnake(ms, pMs, dt); this._checkSnakeCollision(); }
       this._snake = (this._snakeList && this._snakeList.length) ? this._snakeList[0] : null;
       // Any boss sharing the arena with a live Anomaly stays inside its firewall.
@@ -1402,6 +1409,9 @@
             height: parentEl.clientHeight,
             backgroundColor: LA.getColors().bgColor,
             transparent: false,
+            render: {
+              powerPreference: 'high-performance',
+            },
             scale: {
               mode: Phaser.Scale.RESIZE,
               autoCenter: Phaser.Scale.CENTER_BOTH,

@@ -117,7 +117,7 @@
       } else {  // DIVE
         d.diveT += ms;
         var tg = d.target;
-        if (!tg || this.enemies.indexOf(tg) === -1) {
+        if (!tg || tg._dead) {   // O(1): _dead is set on every enemy-removal path (combat.js / curse-fountain.js)
           if (this._twActive) this._twDeferDroneDetonation(d);
           else this._droneDetonate(d);
           this._drones.splice(i, 1);
@@ -304,7 +304,8 @@
     if (!this._drones || !this._drones.length) return;
     var p  = this.p;
     var sz = C.DRONE_SIZE;
-    var verts = [[0, -sz], [sz * 0.7, 0], [0, sz], [-sz * 0.7, 0]];
+    var verts = M._renderDrones._verts ||
+      (M._renderDrones._verts = [[0, -sz], [sz * 0.7, 0], [0, sz], [-sz * 0.7, 0]]);
 
     for (var i = 0; i < this._drones.length; i++) {
       var d = this._drones[i];

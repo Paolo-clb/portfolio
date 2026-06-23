@@ -98,7 +98,8 @@
   M._updateDimension = function (dt) {
     if (!this._upgradeLevels) return;
     var active = this._dimTransition || this._dimFractured;
-    if (!active || this._tutorialActive) { if (this._dimBuilt) this._dimSetIdle(); return; }
+    if (!active || this._tutorialActive) { if (this._dimBuilt && !this._dimIsIdle) { this._dimIsIdle = true; this._dimSetIdle(); } return; }
+    this._dimIsIdle = false;
 
     if (!this._dimBuilt) this._dimBuild();
 
@@ -354,14 +355,12 @@
       var f = last - nWhole, a0 = pts[nWhole - 1], a1 = pts[nWhole];
       tip = { x: a0.x + (a1.x - a0.x) * f, y: a0.y + (a1.y - a0.y) * f };
     }
-    var passes = [
-      { col: halo, w: 15 * wMul * zw, a: bright * 0.16 },
-      { col: body, w: 6.0 * wMul * zw, a: bright * 0.5 },
-      { col: core, w: 2.0 * wMul * zw, a: bright * 0.95 },
-    ];
-    for (var pz = 0; pz < passes.length; pz++) {
-      var ps = passes[pz];
-      g.lineStyle(ps.w, ps.col, Math.min(1, ps.a));
+    var pCol, pW, pA, pz;
+    for (pz = 0; pz < 3; pz++) {
+      if (pz === 0)      { pCol = halo; pW = 15 * wMul * zw; pA = bright * 0.16; }
+      else if (pz === 1) { pCol = body; pW = 6.0 * wMul * zw; pA = bright * 0.5; }
+      else               { pCol = core; pW = 2.0 * wMul * zw; pA = bright * 0.95; }
+      g.lineStyle(pW, pCol, Math.min(1, pA));
       g.beginPath(); g.moveTo(pts[0].x, pts[0].y);
       var v = 1;
       for (; v < nWhole && v < pts.length; v++) g.lineTo(pts[v].x, pts[v].y);

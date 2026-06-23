@@ -746,16 +746,13 @@
     if (newCm > this.bestCombo) this.bestCombo = newCm;
     this._comboPulse = 1.0;
 
-    // Shield acquisition via combo milestones
-    var shieldMilestones = [10];
-    for (var sm = 0; sm < shieldMilestones.length; sm++) {
-      var ms = shieldMilestones[sm];
-      if (prevCm < ms && newCm >= ms && this.playerShields < this.MAX_SHIELDS) {
-        this.playerShields++;
-        var shLabel = 'Combo X' + ms + ' : +1 SHIELD';
-        this._floatLabel(this.p.x, this.p.y - 30, shLabel, '#00ffff');
-        this.cameras.main.flash(180, 0, 220, 255);
-      }
+    // Shield acquisition via combo milestone (single threshold)
+    var ms = 10;
+    if (prevCm < ms && newCm >= ms && this.playerShields < this.MAX_SHIELDS) {
+      this.playerShields++;
+      var shLabel = 'Combo X' + ms + ' : +1 SHIELD';
+      this._floatLabel(this.p.x, this.p.y - 30, shLabel, '#00ffff');
+      this.cameras.main.flash(180, 0, 220, 255);
     }
 
     if (ctx.core) {

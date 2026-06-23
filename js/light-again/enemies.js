@@ -24,6 +24,7 @@
 
     for (var i = 0; i < en.length; i++) {
       var a = en[i];
+      var massA = a.tier === 3 ? 6.0 : a.tier === 4 ? 3.0 : a.tier === 2 ? 2.5 : 1.0;
       for (var j = i + 1; j < en.length; j++) {
         var b = en[j];
         if (b.x - a.x > C.SEPARATION_RADIUS) break;
@@ -34,7 +35,6 @@
           var ov = (C.SEPARATION_RADIUS - sd) / C.SEPARATION_RADIUS;
           var fx = (sdx / sd) * C.SEPARATION_FORCE * ov * sc60;
           var fy = (sdy / sd) * C.SEPARATION_FORCE * ov * sc60;
-          var massA = a.tier === 3 ? 6.0 : a.tier === 4 ? 3.0 : a.tier === 2 ? 2.5 : 1.0;
           var massB = b.tier === 3 ? 6.0 : b.tier === 4 ? 3.0 : b.tier === 2 ? 2.5 : 1.0;
           var total = massA + massB;
           a.vx += fx * (massB / total); a.vy += fy * (massB / total);
@@ -318,11 +318,16 @@
       }
       // World border clamp LAST (radial) — wins over barrier so enemies never
       // leak out of the disc when the firewall extends past it.
-      var ec = LA.clampDisc(e.x, e.y, eMargin);
-      if (ec.hit) {
-        e.x = ec.x; e.y = ec.y;
-        var evd = e.vx * ec.nx + e.vy * ec.ny;   // velocity into the wall
-        if (evd > 0) { e.vx -= ec.nx * evd * (1 + BOUNCE); e.vy -= ec.ny * evd * (1 + BOUNCE); }
+      // Inline radial clamp (identical to LA.clampDisc) — avoids allocating a
+      // result object per enemy per frame (a major GC-stutter source at high counts).
+      var ecLim = C.WORLD_HALF - eMargin; if (ecLim < 0) ecLim = 0;
+      var ecD = Math.sqrt(e.x * e.x + e.y * e.y);
+      if (ecD > ecLim && ecD !== 0) {
+        var ecInv = 1 / ecD;
+        var ecNx = e.x * ecInv, ecNy = e.y * ecInv;
+        e.x = ecNx * ecLim; e.y = ecNy * ecLim;
+        var evd = e.vx * ecNx + e.vy * ecNy;   // velocity into the wall
+        if (evd > 0) { e.vx -= ecNx * evd * (1 + BOUNCE); e.vy -= ecNy * evd * (1 + BOUNCE); }
       }
     }
   };

@@ -543,21 +543,19 @@
      does it reach OFF-screen (detection range) as a last resort, rather than fizzling —
      so it self-destructs only when there's genuinely no enemy left anywhere near. */
   M._coreAcquire = function (c, opts) {
-    var self = this;
-    function pick(margin, tier) {
-      return self._corePickTargetTier(c, {
-        dirX: opts.dirX, dirY: opts.dirY, farFrom: opts.farFrom,
-        excludeList: opts.excludeList, margin: margin,
-      }, tier);
-    }
+    var o = this._coreAcqOpts || (this._coreAcqOpts = { dirX: 0, dirY: 0, farFrom: null, excludeList: null, margin: 0 });
+    o.dirX = opts.dirX; o.dirY = opts.dirY; o.farFrom = opts.farFrom; o.excludeList = opts.excludeList;
     // Primary — ON-SCREEN, tier-first, inset-preferred within each tier.
     for (var tier = 3; tier >= 1; tier--) {
-      var best = pick(-C.CORE_VIEW_INSET, tier) || pick(0, tier);
+      o.margin = -C.CORE_VIEW_INSET;
+      var best = this._corePickTargetTier(c, o, tier);
+      if (!best) { o.margin = 0; best = this._corePickTargetTier(c, o, tier); }
       if (best) return best;
     }
     // Last resort — chain to a just-off-screen enemy (still tier-first) before giving up.
     for (var t2 = 3; t2 >= 1; t2--) {
-      var b2 = pick(C.CORE_DETECT_MARGIN, t2);
+      o.margin = C.CORE_DETECT_MARGIN;
+      var b2 = this._corePickTargetTier(c, o, t2);
       if (b2) return b2;
     }
     return null;

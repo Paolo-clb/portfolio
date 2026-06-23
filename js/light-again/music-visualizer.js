@@ -382,11 +382,26 @@
   }
 
   var lastTs = 0;
+  // During an ACTIVE run the sphere is a tiny background HUD widget the player
+  // isn't watching, yet its canvas-2D draw (hundreds of arc fills + 2 radial
+  // gradients + shadowBlur strokes) ran every frame, contending with the Phaser
+  // WebGL frame on the main thread/GPU. Throttle it to ~20fps while playing
+  // (state==='game') via a dt accumulator: it still animates at real-time speed,
+  // just redraws far less often (imperceptible on a 96px widget). Menus / pause /
+  // game-over stay full-rate so the sphere is buttery where the player looks at it.
+  var GAME_DRAW_INTERVAL = 1 / 20;
+  var _drawAcc = 0;
   function loop(ts) {
     if (!el) return;
     var dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0.016;
     lastTs = ts;
-    draw(dt);
+    if (state === 'game') {
+      _drawAcc += dt;
+      if (_drawAcc >= GAME_DRAW_INTERVAL) { draw(Math.min(0.05, _drawAcc)); _drawAcc = 0; }
+    } else {
+      _drawAcc = 0;
+      draw(dt);
+    }
     rafId = requestAnimationFrame(loop);
   }
   function startLoop() {

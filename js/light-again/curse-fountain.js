@@ -591,21 +591,27 @@
     // ---------- BASIN NEON (ADD) — roiling rim, swirling arcs, embers ----------
     // Perturbed rim ring: a closed path whose radius wobbles with angle + time.
     var N = 64, rimGlow = (0.5 + 0.5 * hot);
-    function rimAt(k) {
-      var ang = (k / N) * TAU;
-      var wob = 1 + 0.06 * Math.sin(ang * 3 + gt * 1.6 + f.seed)
-                  + 0.04 * Math.sin(ang * 7 - gt * 2.1)
-                  + 0.05 * surge * Math.sin(ang * 5 + gt * 6);
-      return { ax: x + Math.cos(ang) * R * wob, ay: y + Math.sin(ang) * R * wob };
+    // Sample the perturbed rim ONCE into reused scratch arrays (no per-point
+    // object allocs, wobble sin/cos computed once), then stroke both passes from
+    // the cached points — bit-identical floats to the previous two rimAt() walks.
+    var rimX = this._fountRimX || (this._fountRimX = []);
+    var rimY = this._fountRimY || (this._fountRimY = []);
+    for (var rk = 0; rk < N; rk++) {
+      var rAng = (rk / N) * TAU;
+      var rWob = 1 + 0.06 * Math.sin(rAng * 3 + gt * 1.6 + f.seed)
+                   + 0.04 * Math.sin(rAng * 7 - gt * 2.1)
+                   + 0.05 * surge * Math.sin(rAng * 5 + gt * 6);
+      rimX[rk] = x + Math.cos(rAng) * R * rWob;
+      rimY[rk] = y + Math.sin(rAng) * R * rWob;
     }
     // soft outer glow then a crisp magenta edge
     ng.lineStyle(7 * grow, F_MAGENTA, 0.10 * bodyA * rimGlow);
     ng.beginPath();
-    for (var k0 = 0; k0 <= N; k0++) { var pA = rimAt(k0 % N); if (k0 === 0) ng.moveTo(pA.ax, pA.ay); else ng.lineTo(pA.ax, pA.ay); }
+    for (var k0 = 0; k0 <= N; k0++) { var i0 = k0 % N; if (k0 === 0) ng.moveTo(rimX[i0], rimY[i0]); else ng.lineTo(rimX[i0], rimY[i0]); }
     ng.strokePath();
     ng.lineStyle(2.2 * grow, F_MAGENTA, (0.5 + 0.4 * surge) * bodyA * rimGlow);
     ng.beginPath();
-    for (var k1 = 0; k1 <= N; k1++) { var pB = rimAt(k1 % N); if (k1 === 0) ng.moveTo(pB.ax, pB.ay); else ng.lineTo(pB.ax, pB.ay); }
+    for (var k1 = 0; k1 <= N; k1++) { var i1 = k1 % N; if (k1 === 0) ng.moveTo(rimX[i1], rimY[i1]); else ng.lineTo(rimX[i1], rimY[i1]); }
     ng.strokePath();
 
     // Rotating inner mist arcs (the swirl), three radii / speeds.

@@ -84,8 +84,11 @@
         } else {
           if (pr.homeTarget && pr.homeTarget._dead) pr.homeTarget = null;   // O(1): _dead is set by every enemy-removal path
           if (!pr.homeTarget) {
-            // Build the exclusion set of enemies already locked by sibling shots
-            var ex2 = [];
+            // Build the exclusion set of enemies already locked by sibling shots.
+            // Reuse one scratch array (reset via length=0) instead of allocating it
+            // per projectile per frame — keeps GC quiet in this hot loop.
+            var ex2 = this._homeExcl || (this._homeExcl = []);
+            ex2.length = 0;
             for (var ej = 0; ej < this.projectiles.length; ej++) {
               var pp2 = this.projectiles[ej];
               if (pp2 !== pr && pp2.homing && pp2.isReflected && pp2.homeTarget) ex2.push(pp2.homeTarget);

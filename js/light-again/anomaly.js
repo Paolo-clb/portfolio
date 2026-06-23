@@ -447,7 +447,8 @@
     a.trailTick += dt;
     if (a.trailTick < 0.03) return;
     a.trailTick = 0;
-    a.trailHist[a.trailW % a.trailHist.length] = { x: a.x, y: a.y };
+    var _slot = a.trailHist[a.trailW % a.trailHist.length];
+    _slot.x = a.x; _slot.y = a.y;
     a.trailW++;
   };
 
