@@ -320,7 +320,7 @@
     // Tier 2: x25+ Warp/Barrel distortion PostFX
     if (cm >= 25) {
       var chromaStr = Math.min(8, (cm - 25) * 0.15 + 1);
-      if (!this._chromaFX && this.cameras.main.postFX) {
+      if (!this._chromaFX && this.cameras.main.postFX && !this._laMobile) {
         this._chromaFX = this.cameras.main.postFX.addBarrel(1.0);
       }
       if (this._chromaFX) {

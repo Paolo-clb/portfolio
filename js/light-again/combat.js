@@ -384,12 +384,14 @@
     if (d.isLast) this._bossBoardClear(ex, ey, opts, bossPts);
   };
 
-  /* Per-boss "onde de choc" + big score. Banks BOSS_KILL_SCORE ×combo and fires a
-     boss-coloured shockwave that knocks back but does NOT clear the board. The
-     non-final banner shows the boss's own score; the final boss's grand-total
-     banner is shown by _bossBoardClear instead. */
+  /* Per-boss "onde de choc" + big score. Banks BOSS_KILL_SCORE × the per-boss
+     multiplier (×2, ×3, … — the SAME growing multiplier the board-clear uses for
+     the swept enemies, NOT the combo) and fires a boss-coloured shockwave that
+     knocks back but does NOT clear the board. The non-final banner shows the
+     boss's own score; the final boss's grand-total banner is shown by
+     _bossBoardClear instead. */
   M._bossScorePop = function (ex, ey, opts, isLast) {
-    var pts = C.BOSS_KILL_SCORE * (this.comboMultiplier || 1);
+    var pts = C.BOSS_KILL_SCORE * (this._bossClearMult || 2);
     this.score += pts;
     var ringColor = opts.ringColor || 0xffffff;
     this._spawnWaveRing(ex, ey, { maxRadius: 340, color: ringColor, expandTime: 0.44 });

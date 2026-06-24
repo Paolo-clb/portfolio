@@ -1619,7 +1619,11 @@
     closeBtn.className = 'modal__close';
     closeBtn.textContent = '\u00D7'; // ×
     closeBtn.setAttribute('aria-label', t('closeLbl'));
-    closeBtn.addEventListener('click', closeLightAgain);
+    // requestCloseGame quits the app on desktop/mobile (window.__laQuit) and just
+    // dismisses the modal back to the portfolio in the browser. (On the packaged
+    // app the launcher also intercepts × in the capture phase; this is the
+    // in-shell fallback so the × always closes "for real".)
+    closeBtn.addEventListener('click', requestCloseGame);
 
     // Help button (?) — left of close. Launches the interactive tutorial from
     // the start (the static reference popup stays reachable from inside it).
@@ -1915,7 +1919,27 @@
       if (e.relatedTarget && el.contains(e.relatedTarget)) return;   // moved within the same element
       hide();
     }, true);
-    document.addEventListener('click', hide, true);
+    // Touch has no hover, so a tap on an INFORMATIONAL hint (a non-button carrying
+    // data-la-tip — e.g. the "?" beside Anticrénelage) toggles its tooltip instead
+    // of doing nothing. Buttons keep their normal tap action. preventDefault stops a
+    // hint that sits inside a <label> from also toggling that label's checkbox.
+    var _tipTouch = !!window.__laMobile || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    document.addEventListener('click', function (e) {
+      if (_tipTouch) {
+        var el = e.target && e.target.closest && e.target.closest('[data-la-tip]');
+        if (el && el.tagName !== 'BUTTON' && el.closest('.light-again-modal')) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (curEl === el && tip && tip.classList.contains('la-tip--show')) { hide(); return; }
+          if (showTimer) clearTimeout(showTimer);
+          curEl = el;
+          show(el);
+          showTimer = setTimeout(hide, 4200);   // auto-dismiss so it never lingers
+          return;
+        }
+      }
+      hide();
+    }, true);
     window.addEventListener('scroll', hide, true);
   }
 

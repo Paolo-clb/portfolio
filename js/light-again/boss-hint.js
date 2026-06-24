@@ -99,6 +99,19 @@
       /* thin life bar that drains over the tooltip's lifetime */
       '#_la-boss-hint .la-bh-life{position:absolute;left:0;bottom:0;height:3px;width:100%;transform-origin:left center;' +
         'background:var(--bh-col);box-shadow:0 0 10px var(--bh-col-glow);opacity:.85}',
+
+      /* Mobile (touch): the card must never eat the whole — short, esp. landscape —
+         screen. Force a compact scale for the hint subtree, which ALSO tames the
+         "Gros texte" (--la-ui-scale 1.3) blow-up that made it full-screen, and tuck
+         it just above the on-screen buttons. */
+      '@media (pointer: coarse){#_la-boss-hint{--la-ui-scale:.85;width:min(500px,94%);' +
+        'bottom:max(4.2rem,calc(env(safe-area-inset-bottom) + 0.6rem));padding:.7rem .9rem .8rem;' +
+        'border-radius:12px}}',
+      /* Portrait: the dash / attack / The-World buttons live bottom-right and the
+         joystick bottom-left, so a bottom-anchored card sits right on them. Pin the
+         card to the TOP instead (just under the score HUD), clear of every control. */
+      '@media (pointer: coarse) and (orientation: portrait){#_la-boss-hint{' +
+        'top:max(4.8rem,calc(env(safe-area-inset-top) + 4.6rem));bottom:auto;width:min(440px,92%)}}',
     ].join('');
     document.head.appendChild(st);
   }

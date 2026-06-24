@@ -170,7 +170,7 @@
     spr.setTint(BODY_COL); spr.setScale(BASE_SCL);
     // Reactive magenta bloom on the rival itself — a real duelist presence,
     // unmistakably its own thing vs the player's cyan arrow. (WebGL-only → guard.)
-    if (spr.preFX) spr.preFX.addGlow(BODY_COL, 4, 0, false, 0.1, 10);
+    if (spr.preFX && !this._laMobile) spr.preFX.addGlow(BODY_COL, 4, 0, false, 0.1, 10);
 
     // Afterimage pool for the dash / dodge streaks (tinted per use).
     var ghosts = [];

@@ -74,7 +74,10 @@
         if (typeof window.__openLightAgain === 'function') window.__openLightAgain();
       }
       // Quit the whole app — used by the × button (no OS title bar in fullscreen).
-      function quit() {
+      // Preferred path: the Rust `quit_app` command (app.exit(0)) — reliable on
+      // desktop AND Android, where closing the WebView window alone may not end the
+      // activity. Falls back to the window-close JS API, then window.close().
+      function fallbackQuit() {
         try {
           var T = window.__TAURI__;
           if (T && T.window) {
@@ -83,6 +86,17 @@
           }
         } catch (e) { /* fall through */ }
         try { window.close(); } catch (e2) { /* ignore */ }
+      }
+      function quit() {
+        var T = window.__TAURI__;
+        if (T && T.core && typeof T.core.invoke === 'function') {
+          try {
+            var p = T.core.invoke('quit_app');
+            if (p && typeof p.catch === 'function') p.catch(fallbackQuit);
+            return;
+          } catch (e) { /* fall through */ }
+        }
+        fallbackQuit();
       }
       // Let the game shell quit the app directly (used by the × button). Its
       // presence also flags the "desktop build" to shell.js, which then makes
@@ -97,13 +111,18 @@
         launch();
 
         // × quits. Intercept in the CAPTURE phase so we run BEFORE the game's own
-        // close handler (which would otherwise just reopen the menu).
+        // close handler (which would otherwise just reopen the menu). Play the
+        // button's spin-shut animation FIRST, then quit (matches the .is-closing
+        // CSS) so the tap reads as a deliberate close, not an instant glitch.
         document.addEventListener('click', function (e) {
           var x = e.target.closest && e.target.closest('.modal__close');
           if (x && x.closest('.light-again-overlay')) {
             e.stopImmediatePropagation();
             e.preventDefault();
-            quit();
+            if (x.__laClosing) return;        // ignore repeat taps mid-animation
+            x.__laClosing = true;
+            x.classList.add('is-closing');
+            setTimeout(quit, 240);
           }
         }, true);
 

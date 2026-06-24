@@ -188,9 +188,14 @@
       this.playerSpr = this.add.image(0, 0, '_ar_cyan');
       this.playerSpr.setBlendMode(Phaser.BlendModes.ADD);
       this.playerSpr.setDepth(30);
+      // Mobile/touch GPUs (notably some Android WebViews) misrender Phaser's FX
+      // pipeline (preFX/postFX) as opaque QUADS — the player's glow showed up as a
+      // big square. Skip the FX-pipeline glow/bloom on touch devices (the ADD-blend
+      // glows that make up most of the look render fine); it's also a perf win.
+      this._laMobile = !!window.__laMobile || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
       // Reactive bloom on the arrow itself — _renderPlayer drives its strength +
       // colour by state and combo. preFX is WebGL-only, so guard it.
-      if (this.playerSpr.preFX) {
+      if (this.playerSpr.preFX && !this._laMobile) {
         this._playerGlow = this.playerSpr.preFX.addGlow(0x9fefff, 2, 0, false, 0.1, 10);
       }
 
@@ -534,7 +539,7 @@
 
       cam.setBackgroundColor(LA.getColors().bgColor);
 
-      if (cam.postFX) {
+      if (cam.postFX && !this._laMobile) {
         this._bloomFX = cam.postFX.addBloom(0xffffff, 1, 1, 0.6, 1.4, 4);
       }
 
@@ -1289,9 +1294,35 @@
 
       var cam = this.cameras.main;
       var camS60 = this._twActive ? pS60 : s60;
-      var cA = 1 - Math.pow(1 - C.CAM_LERP, camS60);
-      cam.scrollX += (p.x - cam.width  / 2 - cam.scrollX) * cA;
-      cam.scrollY += (p.y - cam.height / 2 - cam.scrollY) * cA;
+
+      // --- Camera lead (mobile) ---------------------------------------------
+      // On the small mobile FOV a PC-tuned dash/attack/prism "teleports" you into
+      // the fog of war. Aim the camera slightly AHEAD of the ship along its REAL
+      // motion so the arrival zone is revealed before you get there. Derived from
+      // the per-frame displacement (captures dash, attack, dash-attack, prism
+      // strike, highway carry — every motion source), lightly smoothed, capped to
+      // a fraction of the view, and the follow speeds up while leading hard so the
+      // arrival zone shows in time. Mobile-only: desktop's larger FOV doesn't have
+      // this problem and the lead would disturb a feel that already works.
+      var pStep = pS60 > 0.0001 ? pS60 : 1;
+      var dvx = (p.x - (this._camPrevX == null ? p.x : this._camPrevX)) / pStep;
+      var dvy = (p.y - (this._camPrevY == null ? p.y : this._camPrevY)) / pStep;
+      this._camPrevX = p.x; this._camPrevY = p.y;
+      // Kill teleport spikes (respawn / Giga TP / prism capture) so they can't yank the cam.
+      if (dvx >  60) dvx =  60; else if (dvx < -60) dvx = -60;
+      if (dvy >  60) dvy =  60; else if (dvy < -60) dvy = -60;
+      this._camVX = (this._camVX || 0) * 0.6 + dvx * 0.4;   // ~3-frame ramp, jitter-free
+      this._camVY = (this._camVY || 0) * 0.6 + dvy * 0.4;
+      var leadStr = this._laMobile ? 5.0 : 0;               // world px of lead per (px/frame)
+      var leadX = this._camVX * leadStr, leadY = this._camVY * leadStr;
+      var leadMax = Math.min(cam.width, cam.height) / (cam.zoom || 1) * 0.28;
+      var leadMag = Math.sqrt(leadX * leadX + leadY * leadY);
+      var leadRatio = leadMax > 0 ? Math.min(1, leadMag / leadMax) : 0;
+      if (leadMag > leadMax && leadMag > 0) { var lcl = leadMax / leadMag; leadX *= lcl; leadY *= lcl; }
+
+      var cA = 1 - Math.pow(1 - (C.CAM_LERP + leadRatio * 0.10), camS60);
+      cam.scrollX += (p.x + leadX - cam.width  / 2 - cam.scrollX) * cA;
+      cam.scrollY += (p.y + leadY - cam.height / 2 - cam.scrollY) * cA;
 
       this.pcbTile.tilePositionX = cam.scrollX;
       this.pcbTile.tilePositionY = cam.scrollY;

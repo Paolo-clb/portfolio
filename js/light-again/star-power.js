@@ -82,7 +82,7 @@
     spr.setBlendMode(Phaser.BlendModes.ADD);
     spr.setDepth(45);
     spr.setScale(baseScale);
-    if (spr.postFX) spr.postFX.addGlow(mega ? 0xff44ff : 0xbb44ff, mega ? 10 : 6, 0, false, 0.12, mega ? 22 : 16);
+    if (spr.postFX && !this._laMobile) spr.postFX.addGlow(mega ? 0xff44ff : 0xbb44ff, mega ? 10 : 6, 0, false, 0.12, mega ? 22 : 16);
 
     // Mega (Cache-Zone reward): a quick "burst-spawn" pop so it reads as ejected
     // from the zone core, settling to its resting scale (the pulse waits for it).

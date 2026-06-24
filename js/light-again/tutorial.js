@@ -376,6 +376,7 @@
   M._tutEndMode = function () {
     this._tutorialActive = false;
     this._tutSandboxStep = false;
+    if (this._tutGlowTouch) this._tutGlowTouch(null);   // drop any mobile control highlight
     this._tutEnemiesFrozen = false;
     this._tutBurstT = 0;
     window.__laTutorialActive = false;
@@ -570,6 +571,11 @@
         desc:  fr
           ? 'Bienvenue ! <b>Bouge</b> dans la direction des touches.'
           : 'Welcome! <b>Move</b> in the key direction.',
+        mkeys: ['Joystick'],
+        glow:  'move',
+        mdesc: fr
+          ? 'Bienvenue ! Pose ton doigt sur la gauche et <b>déplace le joystick</b>.'
+          : 'Welcome! Touch the left side and <b>move with the joystick</b>.',
         setup: function () { d().moveT = 0; },
         check: function (dt) {
           var inp = self._inputVec();
@@ -587,6 +593,11 @@
         desc:  fr
           ? 'Le <span class="c-dash">dash</span> te propulse dans ta direction, avec une brève invincibilité.'
           : 'The <span class="c-dash">dash</span> launches you in your direction, with brief invincibility.',
+        mkeys: fr ? ['Bouton dash'] : ['Dash button'],
+        glow:  'dash',
+        mdesc: fr
+          ? 'Le <span class="c-dash">dash</span> te propulse dans ta direction, avec une brève invincibilité. Appuie sur le <b>bouton dash</b>.'
+          : 'The <span class="c-dash">dash</span> launches you forward with brief invincibility. Tap the <b>dash button</b>.',
         check: function () { return !!d().dashed; },
       },
 
@@ -599,6 +610,11 @@
         desc:  fr
           ? 'L’<span class="c-torp">attaque torpille</span> : ta flèche fonce vers le curseur. Vise l’éclaireur <span class="c-torp">▲</span> ! <b>⚠️ La rater</b> te laisse vulnérable (récupération). <span style="color:#c9bcff">🎮 En manette : le <b>stick droit</b> vise ET attaque (oriente-le vers la cible) ; la <b>gâchette droite</b> tire aussi.</span>'
           : 'The <span class="c-torp">torpedo attack</span>: your arrow shoots toward the cursor. Aim at the scout <span class="c-torp">▲</span>! <b>⚠️ Whiffing it</b> leaves you exposed (recovery). <span style="color:#c9bcff">🎮 On a pad: the <b>right stick</b> aims AND fires (point it at the target); the <b>right trigger</b> fires too.</span>',
+        mkeys: fr ? ['Bouton attaque'] : ['Attack button'],
+        glow:  'atk',
+        mdesc: fr
+          ? 'L’<span class="c-torp">attaque torpille</span> : ta flèche fonce vers ta visée. Sur mobile, <b>tu vises là où tu te déplaces</b> — dirige-toi vers l’éclaireur <span class="c-torp">▲</span> et appuie sur <b>attaque</b> ! <b>⚠️ La rater</b> te laisse vulnérable.'
+          : 'The <span class="c-torp">torpedo attack</span>: your arrow shoots where you aim. On mobile <b>you aim where you move</b> — head toward the scout <span class="c-torp">▲</span> and tap <b>attack</b>! <b>⚠️ Whiffing</b> leaves you exposed.',
         setup: function () { self._tutSpawnOne(1, 340); },
         // Must be a BASIC-attack kill — killing it another way (e.g. dash-attack) does NOT count.
         check: function () { return self._tutEvents.basicKill - d().basicKill0 >= 1; },
@@ -614,6 +630,11 @@
         desc:  fr
           ? '<b>Chaque kill réarme aussitôt ton attaque</b> : <b>spamme</b> l’<span class="c-torp">attaque torpille</span> à travers toute la vague d’éclaireurs <span class="c-torp">▲</span> sans temps mort ! <span style="color:#c9bcff">🎮 En manette : <b>maintiens le stick droit</b> vers la vague pour enchaîner tout seul.</span>'
           : '<b>Every kill instantly re-arms your attack</b> : <b>spam</b> the <span class="c-torp">torpedo attack</span> through the whole scout wave <span class="c-torp">▲</span> with no downtime! <span style="color:#c9bcff">🎮 On a pad: <b>hold the right stick</b> toward the wave to auto-chain.</span>',
+        mkeys: fr ? ['Bouton attaque (maintenu)'] : ['Hold attack'],
+        glow:  'atk',
+        mdesc: fr
+          ? '<b>Chaque kill réarme aussitôt ton attaque</b> : <b>maintiens le bouton d’attaque</b> (tir auto) à travers toute la vague d’éclaireurs <span class="c-torp">▲</span> !'
+          : '<b>Every kill re-arms your attack</b> : <b>hold the attack button</b> (autofire) through the whole scout wave <span class="c-torp">▲</span>!',
         setup: function () { self._tutSpawnRing(1, 9, 320); },
         progress: function () { return Math.min(5, self._tutEvents.basicKill - d().basicKill0) + ' / 5'; },
         // Only basic-attack kills count toward the chain (teaches the reset-on-kill loop).
@@ -630,6 +651,11 @@
         desc:  fr
           ? 'Clique pendant un <span class="c-dash">dash</span> : la <span class="c-datk">dash-attaque</span> est plus rapide, plus large, et traverse les ennemis. <b>⚠️ Récupération plus longue qu’une attaque ratée.</b> <span style="color:#c9bcff">🎮 En manette : <b>dash</b> (gâchette gauche) puis pousse vite le <b>stick droit</b> vers la cible.</span>'
           : 'Click during a <span class="c-dash">dash</span>: the <span class="c-datk">dash-attack</span> is faster, wider, and pierces enemies. <b>⚠️ A longer recovery than a missed attack.</b> <span style="color:#c9bcff">🎮 On a pad: <b>dash</b> (left trigger) then quickly push the <b>right stick</b> toward the target.</span>',
+        mkeys: fr ? ['Dash + attaque'] : ['Dash + attack'],
+        glow:  ['dash', 'atk'],
+        mdesc: fr
+          ? 'Appuie sur <b>attaque pendant un dash</b> : la <span class="c-datk">dash-attaque</span> est plus rapide, plus large, et traverse les ennemis. <b>⚠️ Récupération plus longue.</b>'
+          : 'Tap <b>attack during a dash</b>: the <span class="c-datk">dash-attack</span> is faster, wider, and pierces enemies. <b>⚠️ Longer recovery.</b>',
         setup: function () { self._tutSpawnOne(1, 360); },
         check: function () { return !!d().dashAtkHit; },
         maintain: function () { if (self._tutCountTier(1) === 0) self._tutSpawnOne(1, 360); },
@@ -644,6 +670,11 @@
         desc:  fr
           ? '<span class="c-dash">Dashe</span> À TRAVERS un ennemi pour le <span class="c-mark">marquer</span> (étincelles bleues), puis vise-le à l’<span class="c-torp">attaque torpille</span> → <span class="c-shield">NUKE</span> de zone ! (⚠️ Pas avec la dash-attaque.)'
           : '<span class="c-dash">Dash</span> THROUGH an enemy to <span class="c-mark">mark</span> it (blue sparks), then <span class="c-torp">torpedo-attack</span> it → AoE <span class="c-shield">NUKE</span>! (⚠️ Not the dash-attack.)',
+        mkeys: fr ? ['Dash → attaque'] : ['Dash → attack'],
+        glow:  ['dash', 'atk'],
+        mdesc: fr
+          ? '<span class="c-dash">Dashe</span> À TRAVERS un ennemi pour le <span class="c-mark">marquer</span> (étincelles bleues), puis vise-le à l’<span class="c-torp">attaque</span> → <span class="c-shield">NUKE</span> de zone ! (⚠️ Pas la dash-attaque.)'
+          : '<span class="c-dash">Dash</span> THROUGH an enemy to <span class="c-mark">mark</span> it (blue sparks), then <span class="c-torp">attack</span> it → AoE <span class="c-shield">NUKE</span>! (⚠️ Not the dash-attack.)',
         setup: function () { d().nuke0 = self._tutEvents.nuke; self._tutSpawnRing(1, 6, 230); },
         check: function () { return self._tutEvents.nuke > d().nuke0; },
         maintain: function () { if (self._tutCountTier(1) < 3) self._tutSpawnRing(1, 5, 230); },
@@ -680,6 +711,11 @@
         desc:  fr
           ? 'Au contact de l’<span class="c-star">étoile bonus</span> : ton attaque devient un <span class="c-datk">dash-attaque spammable</span>. Fonce dans le tas !'
           : 'The <span class="c-star">bonus star</span> overdrives you : your attack becomes a <span class="c-datk">spammable dash-attack</span>. Go wild!',
+        mkeys: fr ? ['Bouton attaque'] : ['Attack button'],
+        glow:  'atk',
+        mdesc: fr
+          ? 'Au contact de l’<span class="c-star">étoile bonus</span> : ton attaque devient un <span class="c-datk">dash-attaque spammable</span>. <b>Maintiens l’attaque</b> et fonce !'
+          : 'Grab the <span class="c-star">bonus star</span>: your attack becomes a <span class="c-datk">spammable dash-attack</span>. <b>Hold attack</b> and go wild!',
         setup: function () {
           self._tutSpawnRing(1, 8, 300);
           self._spawnStar(self.p.x + 120, self.p.y - 40);
@@ -714,6 +750,11 @@
         desc:  fr
           ? 'Le Tireur <span class="c-shooter">◆</span> garde ses distances et tire. Une <span class="c-datk">dash-attaque</span> sur le projectile le <span class="c-datk">renvoie</span> à l’envoyeur (<span class="c-combo">x2 points</span>). ⚠️ Pas l’attaque simple.'
           : 'The Shooter <span class="c-shooter">◆</span> keeps its distance and fires. A <span class="c-datk">dash-attack</span> on the projectile <span class="c-datk">reflects</span> it back (<span class="c-combo">x2 points</span>). ⚠️ Not the basic attack.',
+        mkeys: fr ? ['Dash-attaque sur le projectile'] : ['Dash-attack the projectile'],
+        glow:  ['dash', 'atk'],
+        mdesc: fr
+          ? 'Le Tireur <span class="c-shooter">◆</span> tire de loin. Une <span class="c-datk">dash-attaque</span> sur le projectile le <span class="c-datk">renvoie</span> (<span class="c-combo">x2 points</span>). ⚠️ Pas l’attaque simple.'
+          : 'The Shooter <span class="c-shooter">◆</span> fires from afar. A <span class="c-datk">dash-attack</span> on the projectile <span class="c-datk">reflects</span> it (<span class="c-combo">x2 points</span>). ⚠️ Not the basic attack.',
         setup: function () {
           d().parade0 = self._tutEvents.parade;
           var e = self._tutSpawnOne(2, 430);
@@ -737,6 +778,11 @@
         desc:  fr
           ? 'Le <span class="c-bruiser">Bruiser ⬢</span> a un <span class="c-shield">bouclier</span> que seule la <span class="c-datk">dash-attaque</span> brise, puis achève-le. Astuce : <span class="c-mark">marque-le</span> au dash puis <span class="c-shield">NUKE</span> — one shot !'
           : 'The <span class="c-bruiser">Bruiser ⬢</span> has a <span class="c-shield">shield</span> only the <span class="c-datk">dash-attack</span> can break — then finish it. Tip: <span class="c-mark">mark it</span> on a dash then <span class="c-shield">NUKE</span> — one shot !',
+        mkeys: fr ? ['Dash-attaque → bouclier'] : ['Dash-attack → shield'],
+        glow:  ['dash', 'atk'],
+        mdesc: fr
+          ? 'Le <span class="c-bruiser">Bruiser ⬢</span> a un <span class="c-shield">bouclier</span> que seule la <span class="c-datk">dash-attaque</span> brise, puis achève-le. Astuce : <span class="c-mark">marque-le</span> au dash puis <span class="c-shield">NUKE</span> !'
+          : 'The <span class="c-bruiser">Bruiser ⬢</span> has a <span class="c-shield">shield</span> only the <span class="c-datk">dash-attack</span> breaks — then finish it. Tip: <span class="c-mark">mark</span> it on a dash then <span class="c-shield">NUKE</span>!',
         setup: function () { d().bruiser = self._tutSpawnOne(3, 360); },
         check: function () {
           var b = d().bruiser;
@@ -765,6 +811,11 @@
         desc:  fr
           ? 'Bac à sable : la <span class="c-dash">molette</span> règle le rythme d’apparition — <b>↑ accélère</b>, ↓ calme. <span class="c-shield">Suppr</span> / <span class="c-shield">Retour arrière</span> envoie une onde qui <b>balaie l’arène</b> (sans points). <span style="color:#c9bcff">🎮 Manette : <b>croix ↑ / ↓</b> pour le rythme, <b>bouton de droite</b> pour balayer.</span>'
           : 'Sandbox : the <span class="c-dash">wheel</span> sets the spawn pace — <b>↑ faster</b>, ↓ calmer. <span class="c-shield">Delete</span> / <span class="c-shield">Backspace</span> sends a wave that <b>sweeps the arena</b> (no points). <span style="color:#c9bcff">🎮 Controller : <b>D-pad ↑ / ↓</b> for pace, <b>right button</b> to sweep.</span>',
+        mkeys: fr ? ['Slider de vitesse', 'Bouton clear'] : ['Speed slider', 'Clear button'],
+        glow:  ['spawn', 'clear'],
+        mdesc: fr
+          ? 'Bac à sable : le <span class="c-dash">slider de vitesse</span> (à droite) règle le rythme d’apparition — <b>glisse vers le haut</b> pour accélérer. Le <span class="c-shield">bouton clear</span> <b>balaie l’arène</b> (sans points).'
+          : 'Sandbox : the <span class="c-dash">speed slider</span> (right) sets the spawn pace — <b>drag up</b> to speed up. The <span class="c-shield">clear button</span> <b>sweeps the arena</b> (no points).',
         setup: function () {
           // Free play: let the REAL sandbox spawner run (paced live by the wheel)
           // and re-enable Clear Board for this step only.
@@ -786,6 +837,9 @@
                       : 'Speed up the spawns with the <span class="c-dash">wheel</span>',
             keys:  fr ? ['Molette ↑'] : ['Wheel ↑'],
             pad:   fr ? ['Croix dir. ↑'] : ['D-pad ↑'],
+            mlabel: fr ? 'Accélère l’apparition avec le <span class="c-dash">slider</span>'
+                       : 'Speed up the spawns with the <span class="c-dash">slider</span>',
+            mkeys:  ['Slider ↑'],
             prog:  function () {
               var r = self._sandboxRate;
               var rateStr = (r % 1 === 0) ? String(r) : r.toFixed(1);
@@ -797,6 +851,9 @@
             label: fr ? 'Balaie toute l’arène d’un coup' : 'Sweep the whole arena at once',
             keys:  fr ? ['Suppr', 'Retour arrière'] : ['Delete', 'Backspace'],
             pad:   fr ? ['Boutons de droite'] : ['Right buttons'],
+            mlabel: fr ? 'Balaie l’arène avec le <span class="c-shield">bouton clear</span>'
+                       : 'Sweep the arena with the <span class="c-shield">clear button</span>',
+            mkeys:  ['Clear'],
             done:  function () { return !!d().sandCleared; },
           },
         ],
@@ -929,14 +986,21 @@
     dom.badge.textContent     = fr ? 'QUÊTE' : 'QUEST';
     dom.quest.classList.remove('la-tut-done');
 
-    if (step.keys && step.keys.length) {
-      dom.keys.innerHTML = buildKeysHtml(step.keys, fr, step.pad);
+    // Mobile: use the touch control labels (step.mkeys) + the touch-flavoured prose
+    // (step.mdesc) instead of the PC keys/prose, drop the 🎮 pad chips, and glow the
+    // matching on-screen button(s). Desktop keeps keys/pad/desc verbatim.
+    var mob = !!this._laMobile;
+    var useKeys = (mob && step.mkeys) ? step.mkeys : step.keys;
+    var usePad  = mob ? null : step.pad;
+    if (useKeys && useKeys.length) {
+      dom.keys.innerHTML = buildKeysHtml(useKeys, fr, usePad);
       dom.keys.style.display = '';
     } else {
       dom.keys.innerHTML = '';
       dom.keys.style.display = 'none';
     }
-    dom.desc.innerHTML = step.desc;
+    dom.desc.innerHTML = (mob && step.mdesc) ? step.mdesc : step.desc;
+    if (mob && this._tutGlowTouch) this._tutGlowTouch(step.glow || null);
     dom.step.textContent = (this._tutStepIdx + 1) + ' / ' + this._tutSteps.length;
     dom.progress.textContent = '';
     dom.progress.style.display = 'none';
@@ -975,15 +1039,19 @@
     if (!subs || !subs.length) { wrap.style.display = 'none'; return; }
 
     var fr = tutFr();
+    var mob = !!this._laMobile;
     var rows = [];
     for (var i = 0; i < subs.length; i++) {
       var sq = subs[i];
-      var keysHtml = (sq.keys && sq.keys.length) ? ' ' + buildKeysHtml(sq.keys, fr, sq.pad) : '';
+      var sqLabel = (mob && sq.mlabel) ? sq.mlabel : sq.label;
+      var sqKeys  = (mob && sq.mkeys) ? sq.mkeys : sq.keys;
+      var sqPad   = mob ? null : sq.pad;
+      var keysHtml = (sqKeys && sqKeys.length) ? ' ' + buildKeysHtml(sqKeys, fr, sqPad) : '';
       var row = document.createElement('div');
       row.className = 'la-tut-subq';
       row.innerHTML =
         '<span class="la-tut-subq-ic">' + (i + 1) + '</span>' +
-        '<span class="la-tut-subq-label">' + sq.label + keysHtml + '</span>' +
+        '<span class="la-tut-subq-label">' + sqLabel + keysHtml + '</span>' +
         '<span class="la-tut-subq-prog"></span>';
       wrap.appendChild(row);
       rows.push({

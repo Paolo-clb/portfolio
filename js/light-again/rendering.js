@@ -924,6 +924,77 @@
 
     // ---- Shield status (bottom-left HUD) ----
     this._renderShieldHUD(h);
+
+    // Off-screen threat indicators (mobile): edge chevrons pointing at nearby
+    // enemies the small FOV hides — so they don't arrive unseen from the fog.
+    if (this._laMobile) this._drawThreatArrows(cam, p);
+  };
+
+  /* ---- Off-screen enemy indicators (mobile) -----------------------------------
+     The mobile FOV is small, so enemies close enough to threaten you are often
+     just off-screen. Draw a small chevron at the screen edge pointing at each one,
+     COLOURED BY TIER (T1 red · T2 orange · T3 violet · T4 icy) and sized/brightened
+     by proximity. Capped to the nearest few + a one-screen-diagonal range so it
+     never clutters; cloaked snipers stay a surprise. Drawn into the screen-space
+     hudGfx (already cleared this frame by _renderHUD). */
+  function _byThreatD(a, b) { return a._threatD - b._threatD; }
+  M._drawThreatArrows = function (cam, p) {
+    var list = this.enemies;
+    if (!list || !list.length) return;
+    var zoom = cam.zoom || 1, W = cam.width, H = cam.height;
+    var cx = W * 0.5, cy = H * 0.5;
+    var arr = this._threatArr || (this._threatArr = []);
+    arr.length = 0;
+    var threatR = Math.sqrt(W * W + H * H) / zoom;   // ~one screen diagonal, in world px
+    var threatRSq = threatR * threatR;
+    for (var i = 0; i < list.length; i++) {
+      var e = list[i];
+      var tier = e.tier;
+      if (tier !== 1 && tier !== 2 && tier !== 3 && tier !== 4) continue;  // regular enemies only
+      if (e._snIntangible) continue;                       // cloaked sniper: keep the surprise
+      if (this._twActive && e._twCondemned) continue;      // already doomed this World
+      var sx = (e.x - cam.scrollX) * zoom, sy = (e.y - cam.scrollY) * zoom;
+      if (sx >= 0 && sx <= W && sy >= 0 && sy <= H) continue;   // already on screen
+      var ddx = e.x - p.x, ddy = e.y - p.y, dSq = ddx * ddx + ddy * ddy;
+      if (dSq > threatRSq) continue;                       // too far to matter yet
+      e._threatD = dSq;
+      arr.push(e);
+    }
+    if (!arr.length) return;
+    arr.sort(_byThreatD);
+    var n = arr.length < 9 ? arr.length : 9;
+    var g = this.hudGfx;
+    var margin = Math.max(30, Math.min(W, H) * 0.07);
+    var hx = cx - margin, hy = cy - margin;
+    for (var k = 0; k < n; k++) {
+      var en = arr[k];
+      var esx = (en.x - cam.scrollX) * zoom, esy = (en.y - cam.scrollY) * zoom;
+      var ang = Math.atan2(esy - cy, esx - cx);
+      var dirx = Math.cos(ang), diry = Math.sin(ang);
+      var tEdge = Math.min(
+        Math.abs(dirx) > 1e-4 ? hx / Math.abs(dirx) : 1e9,
+        Math.abs(diry) > 1e-4 ? hy / Math.abs(diry) : 1e9
+      );
+      var ex = cx + dirx * tEdge, ey = cy + diry * tEdge;
+      var prox = 1 - Math.sqrt(en._threatD) / threatR;
+      if (prox < 0) prox = 0; else if (prox > 1) prox = 1;
+      var alpha = 0.34 + 0.56 * prox;
+      var sz = 8 + 7 * prox;
+      var col = en.tier === 1 ? 0xff4338
+              : en.tier === 2 ? 0xffa023
+              : en.tier === 3 ? 0x9b54ff
+              : (C.T4_TINT || 0xcfe8ff);
+      var perpx = -diry, perpy = dirx;
+      var tipx = ex + dirx * sz,       tipy = ey + diry * sz;
+      var b1x = ex - dirx * sz * 0.5 + perpx * sz * 0.72, b1y = ey - diry * sz * 0.5 + perpy * sz * 0.72;
+      var b2x = ex - dirx * sz * 0.5 - perpx * sz * 0.72, b2y = ey - diry * sz * 0.5 - perpy * sz * 0.72;
+      g.fillStyle(0x000000, alpha * 0.40);                 // dark backing for contrast
+      g.fillCircle(ex, ey, sz * 1.15);
+      g.fillStyle(col, alpha);
+      g.beginPath();
+      g.moveTo(tipx, tipy); g.lineTo(b1x, b1y); g.lineTo(b2x, b2y); g.closePath();
+      g.fillPath();
+    }
   };
 
   /* ---- Upgrade HUD icons — bottom-right, horizontal ---- */
