@@ -18,6 +18,8 @@
     var playerScore = this.score;
     var runCombo    = Math.max(this.bestCombo || 1, this.comboMultiplier);
     var runKills    = this.totalKills || 0;
+    var isBossRush  = window.__laGameMode === 'bossrush';
+    var runBosses   = this._bossesDefeated || 0;   // Boss Rush "score"
     var sceneRef    = this;
     // Handles for the leaderboard-submit poll's self-rescheduling setTimeouts.
     // These run on the real-time clock (not Phaser's), so without explicit
@@ -43,13 +45,22 @@
     var isNewCombo = runCombo > prevCombo;
     var isNewKills = runKills > prevKills;
 
-    if (isNewScore) localStorage.setItem('lightGameHighScore', playerScore);
-    if (isNewCombo) localStorage.setItem('lightGameBestCombo', runCombo);
-    if (isNewKills) localStorage.setItem('lightGameBestKills', runKills);
+    // Boss Rush record (total bosses defeated) — its own localStorage key.
+    var prevBosses  = readRec('lightGameBestBosses');
+    var isNewBosses = runBosses > prevBosses;
+
+    // Boss Rush has no score → it must NOT touch the hardcore score/combo/kills
+    // records (its run score is inflated by board-clear sweeps). It only writes its
+    // own bosses-defeated record.
+    if (!isBossRush && isNewScore) localStorage.setItem('lightGameHighScore', playerScore);
+    if (!isBossRush && isNewCombo) localStorage.setItem('lightGameBestCombo', runCombo);
+    if (!isBossRush && isNewKills) localStorage.setItem('lightGameBestKills', runKills);
+    if (isNewBosses) localStorage.setItem('lightGameBestBosses', runBosses);
 
     var bestScore = Math.max(playerScore, prevScore);
     var bestCombo = Math.max(runCombo, prevCombo);
     var bestKills = Math.max(runKills, prevKills);
+    var bestBosses = Math.max(runBosses, prevBosses);
 
     // ----- Inject keyframes -----
     if (!document.getElementById('_la-go-styles')) {
@@ -111,11 +122,15 @@
       return '<div style="' + cell + '"><span style="' + sLbl + '">' + label + '</span><span style="' + valStyle + '">' + value + '</span>' + badge + '</div>';
     }
 
-    // Row 1: this run's score — the standalone prominent headline.
+    // Row 1: the headline — this run's SCORE, or in Boss Rush the BOSSES DEFEATED
+    // (no score in that mode). Animated 0 → headTarget below.
+    var headLabel  = isBossRush ? t('laGoBosses') : t('laGoScore');
+    var headTarget = isBossRush ? runBosses : playerScore;
+    var headCol    = isBossRush ? '#ffcf3a' : '#00ffff';
     var row1 =
       '<div style="margin-bottom:.9rem;display:flex;flex-direction:column;align-items:center;gap:.1rem">' +
-        '<span style="' + sLbl + ';font-size:calc(.6rem * var(--la-ui-scale))">' + t('laGoScore') + '</span>' +
-        '<span id="_la-go-score-val" style="font-size:calc(2.4rem * var(--la-ui-scale));font-weight:800;line-height:1;color:#00ffff;text-shadow:0 0 16px #00ffff66;display:inline-block">0</span>' +
+        '<span style="' + sLbl + ';font-size:calc(.6rem * var(--la-ui-scale))">' + headLabel + '</span>' +
+        '<span id="_la-go-score-val" style="font-size:calc(2.4rem * var(--la-ui-scale));font-weight:800;line-height:1;color:' + headCol + ';text-shadow:0 0 16px ' + headCol + '66;display:inline-block">0</span>' +
       '</div>';
 
     // Row 2: the rest of this run's stats (combo + kills), clearly grouped under
@@ -131,16 +146,24 @@
     var row3 =
       '<div style="' + sSection + '">' + t('laGoRecords') + '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.45rem;margin-bottom:.7rem">' +
-        recCell(t('laGoScore'), bestScore, '#00ffff', isNewScore, 0.15) +
+        (isBossRush
+          ? recCell(t('laGoBosses'), bestBosses, '#ffcf3a', isNewBosses, 0.15)
+          : recCell(t('laGoScore'), bestScore, '#00ffff', isNewScore, 0.15)) +
         recCell(t('laGoComboShort'), 'x' + bestCombo, '#ffcc00', isNewCombo, 0.30) +
         recCell(t('laGoKillsShort'), bestKills, '#ff6644', isNewKills, 0.45) +
       '</div>';
 
-    // Game-over mode context.
-    // Game-over only ever appears in hardcore (sandbox respawns); leaderboard
-    // submission lives below and is gated strictly on this flag.
+    // Game-over mode context. Appears in hardcore AND boss rush (sandbox respawns).
+    // Each has its OWN leaderboard (score vs bosses-defeated); the LB block below is
+    // gated on isLeaderboard and uses the mode-specific fetch/submit + value.
     var isHardcore = window.__laGameMode === 'hardcore';
     var unlocked = typeof LA.laIsHardcoreUnlocked === 'function' ? LA.laIsHardcoreUnlocked() : false;
+    var brUnlocked = typeof LA.laIsBossRushUnlocked === 'function' ? LA.laIsBossRushUnlocked() : false;
+    var isLeaderboard = isHardcore || isBossRush;
+    var llTop    = isBossRush ? LA.llGetTopBoss : LA.llGetTop;
+    var llSubmit = isBossRush ? LA.llSubmitBoss : LA.llSubmitScore;
+    var lbValue  = isBossRush ? runBosses : playerScore;   // what we submit / qualify on
+    var lbValLabel = isBossRush ? t('laGoBosses') : t('laGoScore');
 
     // Replay buttons
     var btnHtml =
@@ -148,6 +171,7 @@
       '<div style="display:flex;gap:.6rem;justify-content:center;margin-bottom:.4rem">' +
         '<button id="_la-go-sandbox" style="padding:.5rem 1.3rem;border:1.5px solid var(--la-accent-line);border-radius:8px;background:var(--la-accent-fill);color:var(--la-accent);font-family:monospace;font-size:calc(.85rem * var(--la-ui-scale));font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s,box-shadow .2s">' + t('laGoSandboxBtn') + '</button>' +
         '<button id="_la-go-hardcore"' + (unlocked ? '' : ' disabled') + ' style="padding:.5rem 1.3rem;border:1.5px solid rgba(255,60,0,' + (unlocked ? '0.55' : '0.18') + ');border-radius:8px;background:rgba(255,60,0,' + (unlocked ? '0.1' : '0.04') + ');color:' + (unlocked ? '#ff4422' : '#442211') + ';font-family:monospace;font-size:calc(.85rem * var(--la-ui-scale));font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:' + (unlocked ? 'pointer' : 'not-allowed') + ';transition:background .2s,box-shadow .2s">' + t('laGoHardcoreBtn') + '</button>' +
+        (brUnlocked ? '<button id="_la-go-bossrush" style="padding:.5rem 1.3rem;border:1.5px solid rgba(255,200,40,0.55);border-radius:8px;background:rgba(255,200,40,0.1);color:#ffcf3a;font-family:monospace;font-size:calc(.85rem * var(--la-ui-scale));font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s,box-shadow .2s">' + t('laGoBossRushBtn') + '</button>' : '') +
       '</div>' +
       '<div style="font-size:calc(.55rem * var(--la-ui-scale));color:#556688;letter-spacing:.06em;margin-bottom:.6rem">' + t('laGoEnterHint') + '</div>';
 
@@ -155,7 +179,7 @@
     var lbSpinRow =
       '<div style="width:18px;height:18px;border:2px solid var(--la-accent-soft);border-top-color:var(--la-accent);border-radius:50%;animation:la-go-spin .7s linear infinite"></div>' +
       '<span style="margin-left:.5rem;font-size:calc(.65rem * var(--la-ui-scale));color:#6688aa">' + t('laGoLoading') + '</span>';
-    var lbHtml = isHardcore
+    var lbHtml = isLeaderboard
       ? '<div style="' + sSection + '">' + t('laGoWorldRecord') + '</div>' +
         '<div id="_la-go-lb" style="position:relative;min-height:60px">' +
           '<div id="_la-go-lb-body" style="min-height:60px;display:flex;align-items:center;justify-content:center">' +
@@ -249,12 +273,17 @@
     // ----- Wire replay buttons -----
     var sbBtn = panel.querySelector('#_la-go-sandbox');
     var hcBtn = panel.querySelector('#_la-go-hardcore');
+    var brBtn = panel.querySelector('#_la-go-bossrush');
 
     sbBtn.addEventListener('mouseenter', function () { sbBtn.style.background = 'var(--la-accent-fill-hi)'; sbBtn.style.boxShadow = '0 0 16px var(--la-accent-glow)'; });
     sbBtn.addEventListener('mouseleave', function () { sbBtn.style.background = 'var(--la-accent-fill)'; sbBtn.style.boxShadow = ''; });
     if (unlocked) {
       hcBtn.addEventListener('mouseenter', function () { hcBtn.style.background = 'rgba(255,60,0,0.2)'; hcBtn.style.boxShadow = '0 0 14px rgba(255,60,0,0.18)'; });
       hcBtn.addEventListener('mouseleave', function () { hcBtn.style.background = 'rgba(255,60,0,0.11)'; hcBtn.style.boxShadow = ''; });
+    }
+    if (brBtn) {
+      brBtn.addEventListener('mouseenter', function () { brBtn.style.background = 'rgba(255,200,40,0.2)'; brBtn.style.boxShadow = '0 0 14px rgba(255,200,40,0.2)'; });
+      brBtn.addEventListener('mouseleave', function () { brBtn.style.background = 'rgba(255,200,40,0.1)'; brBtn.style.boxShadow = ''; });
     }
 
     function clearGameOverHostFlag() {
@@ -282,13 +311,16 @@
       var ae = document.activeElement;
       if (ae && ae.id === '_la-go-name') return;
       e.preventDefault();
-      // Default: replay the mode just played (hardcore), unless the sandbox button is focused
+      // Default: replay the mode just played, unless another button is focused.
       if (ae && ae.id === '_la-go-sandbox') doReplay('sandbox');
+      else if (ae && ae.id === '_la-go-bossrush') doReplay('bossrush');
+      else if (isBossRush && brUnlocked) doReplay('bossrush');
       else if (unlocked) doReplay('hardcore');
       else doReplay('sandbox');
     }
     sbBtn.addEventListener('click', function () { doReplay('sandbox'); });
     if (unlocked) hcBtn.addEventListener('click', function () { doReplay('hardcore'); });
+    if (brBtn) brBtn.addEventListener('click', function () { doReplay('bossrush'); });
     document.addEventListener('keydown', onKey);
     // Clean teardown — drops the keydown listener, clears the host flag and pulls
     // the overlay. Exposed so the shell can call it when the player presses Home
@@ -314,32 +346,33 @@
     // the most important number on the screen finally has the juice the records do.
     (function () {
       var el = document.getElementById('_la-go-score-val');
-      if (!el || !playerScore) { if (el) el.textContent = playerScore; return; }
+      if (!el || !headTarget) { if (el) el.textContent = headTarget; return; }
       var dur = 620, t0 = null;
       function step(ts) {
         if (!document.getElementById('_la-go-overlay')) return;   // bail if dismissed
         if (t0 === null) t0 = ts;
         var k = Math.min(1, (ts - t0) / dur);
-        el.textContent = Math.round(playerScore * (1 - Math.pow(1 - k, 3)));
+        el.textContent = Math.round(headTarget * (1 - Math.pow(1 - k, 3)));
         if (k < 1) requestAnimationFrame(step);
-        else { el.textContent = playerScore; el.style.animation = 'la-go-rec-pop .4s cubic-bezier(0.34,1.56,0.64,1)'; }
+        else { el.textContent = headTarget; el.style.animation = 'la-go-rec-pop .4s cubic-bezier(0.34,1.56,0.64,1)'; }
       }
       requestAnimationFrame(step);
     })();
-    // A new personal-best score turns the panel's pulsing glow GREEN (success) —
-    // celebrates a record run differently from an ordinary one.
-    if (isNewScore) panel.style.setProperty('--la-accent-glow', 'rgba(0,255,136,0.5)');
+    // A new personal-best (score, or bosses in Boss Rush) turns the panel's pulsing
+    // glow GREEN (success) — celebrates a record run differently from an ordinary one.
+    if (isBossRush ? isNewBosses : isNewScore) panel.style.setProperty('--la-accent-glow', 'rgba(0,255,136,0.5)');
 
-    // Default keyboard focus on the "replay hardcore" choice (submit form will steal
-    // focus to the name input later if the score qualifies for the leaderboard)
-    if (unlocked && hcBtn) hcBtn.focus();
+    // Default keyboard focus on the replay choice for the mode just played (the
+    // submit form steals focus to the name input later if the run qualifies).
+    if (isBossRush && brBtn) brBtn.focus();
+    else if (unlocked && hcBtn) hcBtn.focus();
 
     // Pause scene
     var self2 = this;
     this.time.delayedCall(50, function () { self2.scene.pause(); });
 
-    // ----- Leaderboard (hardcore only) -----
-    if (!isHardcore) return;
+    // ----- Leaderboard (hardcore = score · boss rush = bosses defeated) -----
+    if (!isLeaderboard) return;
     var lbEl = panel.querySelector('#_la-go-lb');
     var lastRenderedLbItems = null;
 
@@ -403,7 +436,7 @@
       body.style.display = 'block';
       body.style.width = '100%';
       var html = '<table style="width:100%;border-collapse:collapse;font-size:calc(.68rem * var(--la-ui-scale))">';
-      html += '<tr style="color:#5577aa;text-transform:uppercase;letter-spacing:.08em"><td style="text-align:left;padding:.2rem .3rem">#</td><td style="text-align:left;padding:.2rem .3rem">Player</td><td style="text-align:right;padding:.2rem .3rem">Score</td></tr>';
+      html += '<tr style="color:#5577aa;text-transform:uppercase;letter-spacing:.08em"><td style="text-align:left;padding:.2rem .3rem">#</td><td style="text-align:left;padding:.2rem .3rem">Player</td><td style="text-align:right;padding:.2rem .3rem">' + (isBossRush ? 'Boss' : 'Score') + '</td></tr>';
       for (var i = 0; i < items.length; i++) {
         var it = items[i];
         var name = (it.player && it.player.name) ? it.player.name : ('Player ' + it.member_id);
@@ -427,7 +460,7 @@
       // detached overlay, and it lets the closure (and the old scene it holds) GC.
       if (!document.getElementById('_la-go-overlay')) return;
       var exp = Number(expectedScore);
-      LA.llGetTop(10, function (err2, items2) {
+      llTop(10, function (err2, items2) {
         if (!document.getElementById('_la-go-overlay')) return;
         if (err2 || !items2) {
           if (triesLeft <= 1) {
@@ -497,7 +530,7 @@
         localStorage.setItem('ll_player_name', name);
 
         LA.llSetName(name, function () {
-          LA.llSubmitScore(playerScore, function (err) {
+          llSubmit(lbValue, function (err) {
             if (err) {
               sendBtn.disabled = false;
               sendBtn.textContent = t('laGoError');
@@ -505,7 +538,7 @@
             }
             form.innerHTML = '<span style="font-size:calc(.7rem * var(--la-ui-scale));color:#00ff88">' + t('laGoSubmitted') + '</span>';
             renderLeaderboardLoading();
-            pollLeaderboardAfterSubmit(playerScore, name, 8, 200);
+            pollLeaderboardAfterSubmit(lbValue, name, 8, 200);
           });
         });
       });
@@ -517,7 +550,7 @@
     }
 
     // Fetch leaderboard
-    LA.llGetTop(10, function (err, items) {
+    llTop(10, function (err, items) {
       // If the player left the game-over screen (Replay/Home destroys the overlay)
       // before this fetch resolved, bail: mutating the detached DOM is pointless and
       // the closure would otherwise pin the old scene until resolution. Mirrors the
@@ -529,8 +562,8 @@
       }
       renderLeaderboard(items);
       var submittedBest = LA.llGetMyBestSubmitted(_llPlayerId, items);
-      var beatsSubmittedWorld = (submittedBest === null) || (playerScore > submittedBest);
-      var strictlyBetter = LA.llCountAbove(items, playerScore);
+      var beatsSubmittedWorld = (submittedBest === null) || (lbValue > submittedBest);
+      var strictlyBetter = LA.llCountAbove(items, lbValue);
       var qualifiesTop10 = strictlyBetter < 10;
       if (qualifiesTop10 && beatsSubmittedWorld && LA.llGetToken()) showSubmitForm();
     });

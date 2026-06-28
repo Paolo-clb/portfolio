@@ -229,6 +229,17 @@
     BAG_T3_DIM:                  1,      // extra T3 generators added to each bag while fractured (slightly harder mix)
     BOSS_HINT_DELAY_S:           40,     // sandbox: seconds fighting a FIRST-time boss before its weakness tooltip pops
     BOSS_HINT_LIFE_S:            22,     // seconds the weakness tooltip stays on screen before auto-fading
+    /* ---- BOSS RUSH mode (unlocked by reaching the fractured dimension once in HC) ----
+       Waves of N bosses (1,2,3…∞) drawn like the dimension teams (repeats OK, ≤1
+       anomaly/wave). NO enemy stream — sub-T4 come only from giga-bruisers + the
+       anomaly burst (which here summons BR_ANOMALY_ENEMIES). T4 snipers prowl in on a
+       timer (from wave 1). No score — the run tracks total bosses defeated. */
+    BR_ANOMALY_ENEMIES:  400,    // enemies the anomaly summons each time it slams, in Boss Rush
+    BR_T4_FIRST:         7000,   // ms before the first prowling T4 sniper
+    BR_T4_MIN:           9000,   // ms — min gap between prowling T4 snipers
+    BR_T4_MAX:           16000,  // ms — max gap
+    BR_T4_MAX_LIVE:      3,      // cap of simultaneously prowling T4 snipers
+    BR_WAVE_START_DELAY: 1500,   // ms before the first wave spawns (orientation beat)
     UPGRADE_REROLLS_START: 1,     // rerolls the run begins with (+1 earned per boss kill)
     SPAWN_INTRO_DUR:       1.0,   // seconds the run-start arrow "materialise" flourish plays
     SPAWN_INTRO_DRAFT_MS:  1000,  // ms after the spawn flourish before the welcome draft (3 picks) opens

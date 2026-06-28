@@ -398,7 +398,8 @@
     this._spawnWaveRing(ex, ey, { maxRadius: 190, color: 0xffffff,  expandTime: 0.32 });
     this._applyShockwave(ex, ey, C.SHOCKWAVE_RADIUS * 2.4, C.SHOCKWAVE_FORCE, C.SHOCKWAVE_STUN);
     if (!isLast) {
-      this._bossBigScore(opts.label || 'BOSS DOWN', pts, opts.color || '#ffffff');
+      if (window.__laGameMode === 'bossrush') this._bossBigScore('⚔ BOSS × ' + (this._bossesDefeated || 0), null, opts.color || '#ffd24d');
+      else this._bossBigScore(opts.label || 'BOSS DOWN', pts, opts.color || '#ffffff');
     }
     return pts;
   };
@@ -468,7 +469,9 @@
     this._bossClearMult = (this._bossClearMult || 2) + 1;
 
     // Grand-total score (boss + everything the wave cleared) — sticky big popup up top.
-    this._bossBigScore(opts.label || 'BOSS DOWN', total, opts.color || '#ffffff');
+    // Boss Rush has no score → show the running bosses-defeated tally instead.
+    if (window.__laGameMode === 'bossrush') this._bossBigScore('⚔ BOSS × ' + (this._bossesDefeated || 0), null, '#ffd24d');
+    else this._bossBigScore(opts.label || 'BOSS DOWN', total, opts.color || '#ffffff');
 
     // Advance the kill counter for the next event (so kills made during the fight
     // don't shorten the gap), then the single reward draft for the whole team.
@@ -714,7 +717,9 @@
     var sy = topY + slot * slotGap;
     var col = color || '#ffd24d';
     var self = this;
-    var txt = this.add.text(sx, sy, '+' + pts + '  ' + label, {
+    // pts == null → label only (Boss Rush has no score, shows e.g. "BOSS ✕ 7").
+    var head = (pts == null) ? label : ('+' + pts + '  ' + label);
+    var txt = this.add.text(sx, sy, head, {
       fontFamily: 'monospace', fontSize: '34px', fontStyle: 'bold', color: col,
       stroke: '#000000', strokeThickness: 4, align: 'center',
       shadow: { offsetX: 0, offsetY: 2, color: col, blur: 14, fill: true },

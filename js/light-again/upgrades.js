@@ -63,6 +63,14 @@
     // tracks which types have fallen (real runs only; tutorial kills don't count).
     this._bossTeamSize      = 2;
     this._bossTypesDefeated = {};
+    // Total bosses defeated this run — drives the hardcore spawn-ramp AND is the
+    // Boss Rush "score". Reset here so it doesn't carry across scene.restart().
+    this._bossesDefeated    = 0;
+    // BOSS RUSH run-state: the next wave's size (1, 2, 3 … ∞), a pre-first-wave
+    // orientation delay, and the prowling-T4 timer.
+    this._brWaveSize = 1;
+    this._brWaveCd   = C.BR_WAVE_START_DELAY;
+    this._brT4Timer  = C.BR_T4_FIRST;
     // HUD "BOSS x/N" team gauge: total bosses in the current wave + fight-edge flag
     // (snapshotted on the rising edge of each boss event in _renderUpgradeHUD).
     this._bossWaveTotal     = 0;
@@ -100,6 +108,9 @@
   /* Advance the kill counter for the NEXT boss. Called on boss death so kills
      scored DURING a boss fight don't shorten the next gap (counter "pauses"). */
   M._advanceBossThreshold = function () {
+    // Boss Rush drives its own wave cadence (no kill-count thresholds, no fractured
+    // dimension ramp) — see _maybeSpawnBossRushWave.
+    if (window.__laGameMode === 'bossrush') return;
     // FRACTURED DIMENSION gate: the instant every boss type has been beaten once,
     // the first team is gated behind a fixed DIM_FRACTURE_KILLS ramp (BOTH modes)
     // — the counter reads 1000 and the map tears open as it counts down. Armed once.

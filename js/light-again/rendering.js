@@ -1121,6 +1121,15 @@
         this._bossWaveProg = bTotal > 1 ? bKilled / bTotal : 1;
         this._killCounterTxt.setScale(1.0);
         this._killCounterTxt.setAlpha(0.7 + dPulse * 0.3);
+      } else if (window.__laGameMode === 'bossrush') {
+        // BOSS RUSH between waves: show the running bosses-defeated tally (gold),
+        // not a kills-to-boss countdown (there is none in this mode).
+        this._bossWaveTotal = 0;
+        kcText  = '⚔ ' + (this._bossesDefeated || 0);
+        kcColor = '#ffcf3a';
+        kcRatio = 1; kcBarA = 0;   // no countdown bar between waves
+        this._killCounterTxt.setScale(1.0);
+        this._killCounterTxt.setAlpha(0.85);
       } else {
         this._bossWaveTotal = 0;   // fight over — clear the snapshot for the next wave
         var killsLeft = Math.max(0, (this._bossKillThreshold || 0) - this.totalKills);

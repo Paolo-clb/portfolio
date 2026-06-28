@@ -49,6 +49,11 @@
     var LA = window.LightAgain;
     return (LA && typeof LA.laIsHardcoreUnlocked === 'function') ? LA.laIsHardcoreUnlocked() : false;
   }
+  /* ---- Boss Rush unlock helper (reach the fractured dimension once in hardcore) ---- */
+  function laIsBossRushUnlocked() {
+    var LA = window.LightAgain;
+    return (LA && typeof LA.laIsBossRushUnlocked === 'function') ? LA.laIsBossRushUnlocked() : false;
+  }
 
   /* ---- Mode select helpers ---- */
 
@@ -76,7 +81,7 @@
     // during the tutorial (which runs under sandbox mode). But once the home menu
     // is open with nothing to resume (fresh launch / dead game-over run), the ▶
     // would be a dead no-op — so hide it entirely rather than show an inert button.
-    var show = (currentMode === 'sandbox' || currentMode === 'hardcore') &&
+    var show = (currentMode === 'sandbox' || currentMode === 'hardcore' || currentMode === 'bossrush') &&
                !(menuEl && !menuResumable);
     menuBtnEl.style.display = show ? 'flex' : 'none';
     // Toggle the header layout so the other controls reflow around the menu
@@ -316,6 +321,11 @@
     // mode menu cleanly replaces it instead of overlapping its translucent panel.
     if (typeof window.__laDismissGameOver === 'function') window.__laDismissGameOver();
     var unlocked = laIsHardcoreUnlocked();
+    var brUnlocked = laIsBossRushUnlocked();
+    // Personal records shown as a small elegant line under the cards.
+    var hcRec = 0, brRec = 0;
+    try { hcRec = parseInt(localStorage.getItem('lightGameHighScore'), 10) || 0; } catch (eR1) { /* ignore */ }
+    try { brRec = parseInt(localStorage.getItem('lightGameBestBosses'), 10) || 0; } catch (eR2) { /* ignore */ }
     // Pickaxe skin is a reward for unlocking hardcore — force off if still locked.
     window.__laSteveSkin = unlocked && (localStorage.getItem('la_skin_steve') === '1');
 
@@ -351,7 +361,12 @@
         '#_la-mode-select .la-ms-card--sandbox:hover{border-color:var(--la-accent-line);box-shadow:0 0 30px var(--la-accent-glow);background:var(--la-accent-fill)}' +
         '#_la-mode-select .la-ms-card--hardcore{border:1px solid rgba(255,70,20,0.32);background:rgba(255,45,0,0.035)}' +
         '#_la-mode-select .la-ms-card--hardcore.la-ms-card--enabled:hover{border-color:rgba(255,80,30,0.7);box-shadow:0 0 30px rgba(255,60,0,0.22);background:rgba(255,60,0,0.07)}' +
+        '#_la-mode-select .la-ms-card--bossrush{border:1px solid rgba(255,200,40,0.34);background:rgba(255,190,0,0.04)}' +
+        '#_la-mode-select .la-ms-card--bossrush.la-ms-card--enabled:hover{border-color:rgba(255,210,60,0.75);box-shadow:0 0 30px rgba(255,200,40,0.22);background:rgba(255,200,40,0.07)}' +
         '#_la-mode-select .la-ms-card--locked{border-style:dashed;cursor:not-allowed}' +
+        '#_la-mode-select .la-ms-records{margin-top:1rem;text-align:center;font-size:calc(.72rem * var(--la-ui-scale,1));letter-spacing:.04em;color:#6f8398;display:flex;gap:.6rem;justify-content:center;align-items:center;flex-wrap:wrap}' +
+        '#_la-mode-select .la-ms-records b{font-weight:800}' +
+        '#_la-mode-select .la-ms-rec-sep{opacity:.4}' +
         '#_la-mode-select .la-ms-glyph{font-size:2.6rem;line-height:1;text-shadow:0 0 18px currentColor,0 0 6px currentColor;animation:la-ms-float 3s ease-in-out infinite}' +
         '@keyframes la-ms-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}' +
         '#_la-mode-select .la-ms-name{font-size:calc(1.4rem * var(--la-ui-scale));font-weight:700;letter-spacing:.16em}' +
@@ -466,6 +481,7 @@
     if (window.LAViz) window.LAViz.toMenu({ muffled: resumable });
     var sbActive = resumable && currentMode === 'sandbox';
     var hcActive = resumable && currentMode === 'hardcore';
+    var brActive = resumable && currentMode === 'bossrush';
     var activeBadge = '<div class="la-ms-active-badge">' + (fr ? 'En cours' : 'In progress') + '</div>';
 
     // Live-run loadout. The scene is paused (not destroyed) while this menu is up,
@@ -486,8 +502,9 @@
     var resumeMode   = canResume ? currentMode : null;
     var sbCardActive = sbActive && !hasTopResume;
     var hcCardActive = hcActive && !hasTopResume;
-    var resumeName   = resumeMode === 'hardcore' ? 'HARDCORE' : 'SANDBOX';
-    var resumeCol    = resumeMode === 'hardcore' ? '#ff5530' : 'var(--la-accent)';
+    var brCardActive = brActive && !hasTopResume;
+    var resumeName   = resumeMode === 'hardcore' ? 'HARDCORE' : resumeMode === 'bossrush' ? 'BOSS RUSH' : 'SANDBOX';
+    var resumeCol    = resumeMode === 'hardcore' ? '#ff5530' : resumeMode === 'bossrush' ? '#ffcf3a' : 'var(--la-accent)';
 
     var resumeSection = '';
     if (canResume) {
@@ -527,6 +544,12 @@
       ? 'border:1.5px solid rgba(255,70,20,0.55);background:rgba(255,70,20,0.12);color:#ff5530'
       : 'border:1.5px solid rgba(255,70,20,0.2);background:rgba(255,70,20,0.05);color:#8a5240';
 
+    var brCardCls = 'la-ms-card la-ms-card--bossrush ' + (brUnlocked ? 'la-ms-card--enabled' : 'la-ms-card--locked') + (brCardActive ? ' la-ms-card--active' : '');
+    var brCol = brUnlocked ? '#ffcf3a' : '#7a6a2e';
+    var brCtaStyle = brUnlocked
+      ? 'border:1.5px solid rgba(255,200,40,0.55);background:rgba(255,200,40,0.12);color:#ffcf3a'
+      : 'border:1.5px solid rgba(255,200,40,0.2);background:rgba(255,200,40,0.05);color:#8a7a40';
+
     menuEl.innerHTML =
       '<div class="la-ms-wrap">' +
       (fromActiveGame ? '<div class="la-ms-return">' + tG('laMenuReturnTitle') + '</div>' : '') +
@@ -553,6 +576,20 @@
         '<div class="la-ms-cta" style="' + hcCtaStyle + '">' + ((!hasTopResume && resumable && currentMode === 'hardcore') ? tG('laModeResume') : (unlocked ? tG('laGoPlay') : '\ud83d\udd12 ' + tG('laModeHardcoreLocked'))) + '</div>' +
       '</div>' +
 
+      // BOSS RUSH card (gold) \u2014 unlocked by reaching the fractured dimension once in hardcore
+      '<div id="_la-ms-bossrush" class="' + brCardCls + '"' + (brUnlocked ? ' role="button" tabindex="0"' : '') + '>' +
+        (brCardActive ? activeBadge : '') +
+        '<div class="la-ms-glyph" style="color:' + brCol + '">\u2694</div>' +
+        '<div class="la-ms-name" style="color:' + brCol + '">BOSS RUSH</div>' +
+        '<div class="la-ms-desc" style="color:' + (brUnlocked ? '#c9a94a' : '#6a5a2e') + '">' + tG('laModeBossRushDesc') + '</div>' +
+        '<div class="la-ms-cta" style="' + brCtaStyle + '">' + ((!hasTopResume && resumable && currentMode === 'bossrush') ? tG('laModeResume') : (brUnlocked ? tG('laGoPlay') : '\ud83d\udd12 ' + tG('laModeBossRushLocked'))) + '</div>' +
+      '</div>' +
+
+      '</div>' +
+      // Personal records \u2014 small, elegant, single line (HC score + Boss Rush bosses).
+      '<div class="la-ms-records">' +
+        '<span>\ud83c\udfc6 ' + (fr ? 'Record HC' : 'HC best') + ' <b style="color:#00ffff">' + hcRec.toLocaleString() + '</b></span>' +
+        (brUnlocked ? '<span class="la-ms-rec-sep">\u00b7</span><span>\u2694 Boss Rush <b style="color:#ffcf3a">' + brRec.toLocaleString() + '</b></span>' : '') +
       '</div>' +
       // Tutorial banner stays at the BOTTOM as before — but NOT while a tutorial is
       // actually running (then its progress lives in the top resume section instead).
@@ -595,6 +632,7 @@
 
     var sbBtn = menuEl.querySelector('#_la-ms-sandbox');
     var hcBtn = menuEl.querySelector('#_la-ms-hardcore');
+    var brBtn = menuEl.querySelector('#_la-ms-bossrush');
     var steveCb = menuEl.querySelector('#_la-ms-steve-cb');
     if (steveCb) {
       steveCb.checked = !!window.__laSteveSkin;
@@ -705,6 +743,11 @@
       dismissModeMenu();
       startWithMode(container, 'hardcore', fromActiveGame);
     }
+    function chooseBossRush() {
+      if (!hasTopResume && resumable && currentMode === 'bossrush') { resumeGame(); return; }
+      dismissModeMenu();
+      startWithMode(container, 'bossrush', fromActiveGame);
+    }
 
     sbBtn.addEventListener('click', chooseSandbox);
     sbBtn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseSandbox(); } });
@@ -712,6 +755,10 @@
     if (unlocked) {
       hcBtn.addEventListener('click', chooseHardcore);
       hcBtn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseHardcore(); } });
+    }
+    if (brUnlocked && brBtn) {
+      brBtn.addEventListener('click', chooseBossRush);
+      brBtn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseBossRush(); } });
     }
     if (resumeBtn) resumeBtn.focus();
     else sbBtn.focus();
@@ -1308,9 +1355,9 @@
       return;
     }
 
-    // Live HARDCORE run: warn that starting the tutorial ends it, then relaunch
-    // in sandbox (the tutorial always runs under sandbox's forgiving rules).
-    if (currentMode === 'hardcore') {
+    // Live HARDCORE / BOSS RUSH run: warn that starting the tutorial ends it, then
+    // relaunch in sandbox (the tutorial always runs under sandbox's forgiving rules).
+    if (currentMode === 'hardcore' || currentMode === 'bossrush') {
       showTutorialConfirm(container);
       return;
     }
@@ -1335,6 +1382,10 @@
     // Freeze the doomed hardcore run behind the dialog.
     if (activeGame && typeof activeGame.pause === 'function') activeGame.pause();
 
+    // Name + colour of the mode being ended (Hardcore or Boss Rush).
+    var endMode = currentMode === 'bossrush' ? 'Boss Rush' : 'Hardcore';
+    var endCol  = currentMode === 'bossrush' ? '#ffcf3a' : '#ff5530';
+
     var ov = document.createElement('div');
     ov.id = '_la-tutorial-confirm';
     ov.style.cssText = [
@@ -1349,8 +1400,8 @@
         '<div style="font-size:calc(.95rem * var(--la-ui-scale));font-weight:700;color:#ffb499;margin-bottom:.7rem;letter-spacing:.04em">' +
           (fr ? 'Lancer le tutoriel ?' : 'Start the tutorial?') + '</div>' +
         '<div style="font-size:calc(.78rem * var(--la-ui-scale));line-height:1.6;color:#c8b0a8;margin-bottom:1.4rem">' +
-          (fr ? 'Cela mettra fin à ta partie <b style="color:#ff5530">Hardcore</b> en cours. Le tutoriel se déroule en <b style="color:var(--la-accent)">Sandbox</b>.'
-              : 'This will end your current <b style="color:#ff5530">Hardcore</b> run. The tutorial runs in <b style="color:var(--la-accent)">Sandbox</b>.') + '</div>' +
+          (fr ? 'Cela mettra fin à ta partie <b style="color:' + endCol + '">' + endMode + '</b> en cours. Le tutoriel se déroule en <b style="color:var(--la-accent)">Sandbox</b>.'
+              : 'This will end your current <b style="color:' + endCol + '">' + endMode + '</b> run. The tutorial runs in <b style="color:var(--la-accent)">Sandbox</b>.') + '</div>' +
         '<div style="display:flex;gap:.8rem;justify-content:center">' +
           '<button id="_la-tc-cancel" type="button" style="cursor:pointer;font-family:monospace;font-weight:700;font-size:calc(.78rem * var(--la-ui-scale));padding:.5rem 1.2rem;border-radius:9px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);color:#cfe0ee">' +
             (fr ? 'Annuler' : 'Cancel') + '</button>' +

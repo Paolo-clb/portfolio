@@ -17,6 +17,16 @@
     try { return localStorage.getItem('la_tutorial_done') === '1'; } catch (e) { return false; }
   };
 
+  /* ---- Boss Rush unlock ---- */
+  // Boss Rush unlocks the first time the player REACHES the fractured dimension in
+  // HARDCORE (flag set in dimension.js _enterDimensionCinematic).
+  LA.laIsBossRushUnlocked = function () {
+    try { return localStorage.getItem('la_bossrush_unlocked') === '1'; } catch (e) { return false; }
+  };
+  LA.laMarkBossRushUnlocked = function () {
+    try { localStorage.setItem('la_bossrush_unlocked', '1'); } catch (e) { /* ignore */ }
+  };
+
   LA.laMarkTutorialDone = function () {
     // Finishing clears the saved resume-point and grants the rewards.
     try {
@@ -61,7 +71,7 @@
       laUpBaseAtkName: 'Attaque Torpille', laUpBaseAtkDesc1: 'L\'attaque laisse une explosion \u00e0 l\'impact.', laUpBaseAtkDesc2: 'Chance de d\u00e9clencher une explosion g\u00e9ante.',
       laUpAvailable: 'Amélioration disponible…', laUpShield: 'Shield', laUpShieldName: 'Shield', laUpShieldDesc1: '+1 emplacement de shield.', laUpShieldDesc2: '+1 emplacement de shield supplémentaire.', laUpTheWorldName: 'The World', laUpTheWorldDesc1: 'Le clic molette arrête le temps pendant 3 secondes. (Cooldown : 30s)', laDelayExp: 'Explosion Retardée',
       laGoPlay: 'Jouer', laModeSelectTitle: 'Mode de jeu', laModeSandboxDesc: 'Respawn à la mort · Score libre · Entraînement', laModeHardcoreDesc: 'Mort définitive · Classement mondial',
-      laModeHardcoreLocked: 'Verrouillé', laModeBack: '← Reprendre', laMenuBtn: 'Menu', laGoSandboxBtn: 'Sandbox', laGoHardcoreBtn: 'Hardcore', laMenuReturnTitle: 'Retour au menu',
+      laModeHardcoreLocked: 'Verrouillé', laModeBack: '← Reprendre', laMenuBtn: 'Menu', laGoSandboxBtn: 'Sandbox', laGoHardcoreBtn: 'Hardcore', laGoBossRushBtn: 'Boss Rush', laGoBosses: 'Boss vaincus', laModeBossRushDesc: 'Vagues de boss à l’infini · Mort définitive · Classement', laModeBossRushLocked: 'Verrouillé', laMenuReturnTitle: 'Retour au menu',
       laModeUnlockHint: 'Élimine ces ennemis pour débloquer le mode Hardcore', laEnemyScout: 'Éclaireurs', laEnemyShooter: 'Tireurs', laEnemyBruiser: 'Mastodontes', laGoReplayPrompt: 'Rejouer en', laModeResume: 'Reprendre', laSpeed: 'Vitesse', laGoBigText: 'Gros texte', laGoNoFlash: 'Désactiver les flashs', laGoAntialias: 'Anticrénelage', laGoAntialiasHint: 'Redémarre le jeu pour appliquer · activé = un peu moins de perf',
     };
     var FB_EN = {
@@ -78,7 +88,7 @@
       laUpBaseAtkName: 'Torpedo Attack', laUpBaseAtkDesc1: 'Attack leaves a small explosion on impact.', laUpBaseAtkDesc2: 'Chance to trigger a giant explosion.',
       laUpAvailable: 'Upgrade available…', laUpShield: 'Shield', laUpShieldName: 'Shield', laUpShieldDesc1: '+1 shield slot.', laUpShieldDesc2: '+1 additional shield slot.', laUpTheWorldName: 'The World', laUpTheWorldDesc1: 'Middle-click stops time for 3 seconds. (Cooldown: 30s)', laDelayExp: 'Delayed Explosion',
       laGoPlay: 'Play', laModeSelectTitle: 'Game mode', laModeSandboxDesc: 'Respawn on death · Free score · Practice', laModeHardcoreDesc: 'Permadeath · World leaderboard',
-      laModeHardcoreLocked: 'Locked', laModeBack: '← Resume', laMenuBtn: 'Menu', laGoSandboxBtn: 'Sandbox', laGoHardcoreBtn: 'Hardcore', laMenuReturnTitle: 'Return to menu',
+      laModeHardcoreLocked: 'Locked', laModeBack: '← Resume', laMenuBtn: 'Menu', laGoSandboxBtn: 'Sandbox', laGoHardcoreBtn: 'Hardcore', laGoBossRushBtn: 'Boss Rush', laGoBosses: 'Bosses defeated', laModeBossRushDesc: 'Endless boss waves · Permadeath · Leaderboard', laModeBossRushLocked: 'Locked', laMenuReturnTitle: 'Return to menu',
       laModeUnlockHint: 'Eliminate these enemies to unlock Hardcore mode', laEnemyScout: 'Scouts', laEnemyShooter: 'Shooters', laEnemyBruiser: 'Bruisers', laGoReplayPrompt: 'Play again in', laModeResume: 'Resume', laSpeed: 'Speed', laGoBigText: 'Large text', laGoNoFlash: 'Disable flashes', laGoAntialias: 'Antialiasing', laGoAntialiasHint: 'Restart the game to apply · on = a bit less performance',
     };
     var lang = 'fr';
@@ -133,6 +143,11 @@
   var LL_API      = 'https://api.lootlocker.io';
   var LL_GAME_KEY = 'dev_9c2377a4f943498fb6c581ffa111a7e4';
   var LL_LB_KEY   = 'global_high_scores';
+  // Boss Rush leaderboard (separate board, ranks by TOTAL BOSSES DEFEATED).
+  // ⚠️ TO WIRE: create this leaderboard in the LootLocker dashboard and put its
+  // key here (and on Web set it to the real one). Until then BR submit/fetch
+  // simply no-op gracefully (the local record + game-over count still work).
+  var LL_BR_LB_KEY = 'boss_rush_bosses';
   var _llToken    = null;
   var _llPlayerId = null;
   var _llPlayerIdentifier = null;
@@ -197,6 +212,44 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-session-token': _llToken },
       body: JSON.stringify({ member_id: String(_llPlayerId), score: scoreInt }),
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      var d = res.d;
+      if (!res.ok || (d && d.success === false)) {
+        var msg = (d && (d.message || d.error || (d.messages && d.messages[0]) || d.text)) || 'submit_failed';
+        cb(msg, d);
+        return;
+      }
+      cb(null, d);
+    })
+    .catch(function () { cb('network', null); });
+  };
+
+  /* ---- Boss Rush leaderboard (ranks by total bosses defeated) — mirrors the
+     score board exactly, just a different leaderboard key. ---- */
+  LA.llGetTopBoss = function (count, cb) {
+    if (!_llToken) { cb('no_session', null); return; }
+    var bust = '&_=' + Date.now();
+    fetch(LL_API + '/game/leaderboards/' + LL_BR_LB_KEY + '/list?count=' + count + bust, {
+      headers: { 'x-session-token': _llToken, 'Cache-Control': 'no-cache' },
+      cache: 'no-store',
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (!res.ok) { cb('http', null); return; }
+      cb(null, (res.d && res.d.items) ? res.d.items : []);
+    })
+    .catch(function () { cb('network', null); });
+  };
+
+  LA.llSubmitBoss = function (bosses, cb) {
+    if (!_llToken) { cb('no_session'); return; }
+    var n = Math.round(Number(bosses));
+    fetch(LL_API + '/game/leaderboards/' + LL_BR_LB_KEY + '/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-session-token': _llToken },
+      body: JSON.stringify({ member_id: String(_llPlayerId), score: n }),
     })
     .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
     .then(function (res) {

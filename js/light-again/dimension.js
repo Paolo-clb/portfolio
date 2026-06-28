@@ -648,6 +648,8 @@
   M._enterDimensionCinematic = function () {
     this._dimTransition = false;
     this._dimFractured  = true;
+    // Reaching the fractured dimension — in SANDBOX or HARDCORE — unlocks Boss Rush.
+    if (LA.laMarkBossRushUnlocked) LA.laMarkBossRushUnlocked();
     if (!this._dimBuilt) this._dimBuild();
     this._dimApplyFloorTex(true); // the floor itself becomes OTHER (violet fissured tiles)
 

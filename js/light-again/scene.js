@@ -1279,7 +1279,7 @@
       // Natural spawns pause while the anomaly's quarantine barrier is up, and
       // during the tutorial (which curates its own lesson environments) — except
       // the final sandbox step, where the real wheel-paced spawner is the lesson.
-      if (this.spawnTimer > -999000 && !this._anomalyBarrierActive && !this._bossDraftPending && !this._dimPortalActive && (!this._tutorialActive || this._tutSandboxStep)) {
+      if (this.spawnTimer > -999000 && window.__laGameMode !== 'bossrush' && !this._anomalyBarrierActive && !this._bossDraftPending && !this._dimPortalActive && (!this._tutorialActive || this._tutSandboxStep)) {
         this.spawnTimer += ms;
         var _sandbox = (window.__laGameMode === 'sandbox');
         // Sandbox: steady one-by-one stream, paced live by the mouse wheel.
@@ -1293,6 +1293,17 @@
             this._spawnHardcoreWave();
             this.nextSpawnDelay = Phaser.Math.Between(C.HC_WAVE_GAP_MIN, C.HC_WAVE_GAP_MAX);
           }
+        }
+      }
+
+      // BOSS RUSH: no enemy stream — but T4 snipers prowl in on a timer (from the
+      // very first wave). The wave spawner itself runs in _updateAnomaly's gate.
+      if (window.__laGameMode === 'bossrush' && this.p && this.p.state !== 'DEAD' &&
+          !this._anomalyBarrierActive && !this._bossDraftPending && !this._upgradeDraftOpen && !this._upSlowMoPhase) {
+        this._brT4Timer = (this._brT4Timer || 0) - ms;
+        if (this._brT4Timer <= 0) {
+          this._brT4Timer = Phaser.Math.Between(C.BR_T4_MIN, C.BR_T4_MAX);
+          this._spawnBossRushT4();
         }
       }
 

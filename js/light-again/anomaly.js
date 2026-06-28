@@ -185,6 +185,43 @@
     this._bossTeamSize = Math.min(size + 1, NUM);
   };
 
+  /* ================================================================
+     BOSS RUSH — waves of N bosses (1, 2, 3 … ∞), drawn like the dimension teams
+     (repeats OK, ≤1 anomaly/wave). No kill-count gate: the next wave spawns as
+     soon as the previous one is fully cleared (the board-clear draft is the gap).
+     No enemy stream — sub-T4 come only from giga-bruisers + the anomaly burst (which
+     here summons BR_ANOMALY_ENEMIES). T4 snipers prowl in on a timer (see scene.js).
+     ================================================================ */
+  M._maybeSpawnBossRushWave = function (ms) {
+    if (this._tutorialActive) return;
+    if (this._anyBossAlive()) return;                       // wave still in progress
+    if (this._bossDeaths && this._bossDeaths.length) return; // a boss mid death-anim
+    if (this._anomalyBarrierActive) return;                  // wait out an anomaly fight
+    if (!this.p || this.p.state === 'DEAD') return;
+    if (this._upgradeDraftOpen || this._upSlowMoPhase || this._bossDraftPending) return;
+    // Brief delay before the first wave (and a tiny breath after a clear).
+    this._brWaveCd = (this._brWaveCd || 0) - ms;
+    if (this._brWaveCd > 0) return;
+
+    var size = this._brWaveSize || 1;
+    var team = this._drawBossTeam(size);   // ≤1 anomaly, repeats allowed
+    this._spawnTeamNow(team);
+    this._brWaveSize = size + 1;           // next wave is one boss bigger
+  };
+
+  /* A prowling T4 sniper, spawned on a timer in Boss Rush (the normal bag is off).
+     Capped so they never pile up; positioned off-screen around the player. */
+  M._spawnBossRushT4 = function () {
+    if (!this.p) return;
+    var live = 0;
+    for (var i = 0; i < this.enemies.length; i++) if (this.enemies[i].tier === 4) live++;
+    if (live >= (C.BR_T4_MAX_LIVE || 3)) return;
+    var ang  = Math.random() * TAU;
+    var dist = C.SPAWN_DIST + Math.random() * 160;
+    var pos  = this._spawnPosNear(ang, dist, 4);
+    this._spawnSniperAt(pos.x, pos.y);
+  };
+
   /* Clamp a desired spawn point into the player's current VIEW (minus a body margin)
      ∩ the arena disc, so a boss ALWAYS materialises on-screen where the player can see
      it arrive. (The Giga + Snake already do this in-line; the Anomaly shares it now.) */
@@ -397,8 +434,14 @@
      UPDATE — main per-frame logic (scaled world-time sMs)
      ================================================================ */
   M._updateAnomaly = function (sMs, pMs, dt) {
-    // Natural-spawn gate runs whether or not one is currently alive.
-    if (!this._anomaly) { this._maybeSpawnAnomaly(sMs); return; }
+    // Natural-spawn gate runs whether or not one is currently alive. Boss Rush
+    // drives its own wave spawner (no kill-count gate); every other mode uses the
+    // kill-count anomaly/boss gate.
+    if (!this._anomaly) {
+      if (window.__laGameMode === 'bossrush') this._maybeSpawnBossRushWave(sMs);
+      else this._maybeSpawnAnomaly(sMs);
+      return;
+    }
 
     var a = this._anomaly, p = this.p;
     // On death the anomaly stays put (like the other enemies) — freeze, don't clear.
@@ -592,10 +635,16 @@
       tierCounts[tt] = (tierCounts[tt] || 0) + 1;
     }
     var realTotal = tierCounts[1] + tierCounts[2] + tierCounts[3] + tierCounts[4];
-    // Pad up to ANO_MIN_TRAPPED with rushers / shooters
-    var need = Math.max(0, C.ANO_MIN_TRAPPED - realTotal);
+    // BOSS RUSH: the anomaly is the ONLY mass-enemy source — it floods the arena
+    // with BR_ANOMALY_ENEMIES (≈400) each slam (mixed mostly rushers, some shooters,
+    // a few generators). Every other mode just pads up to ANO_MIN_TRAPPED.
+    var floor = (window.__laGameMode === 'bossrush') ? (C.BR_ANOMALY_ENEMIES || 400) : C.ANO_MIN_TRAPPED;
+    var need = Math.max(0, floor - realTotal);
     for (var k = 0; k < need; k++) {
-      var t = (Math.random() < 0.28) ? 2 : 1;
+      var rr = Math.random();
+      var t = (window.__laGameMode === 'bossrush')
+        ? (rr < 0.7 ? 1 : rr < 0.9 ? 2 : 3)   // 70% T1 · 20% T2 · 10% T3
+        : (rr < 0.28 ? 2 : 1);
       tierCounts[t]++;
     }
     // Wipe — silent destroy so it costs no score / no combo
