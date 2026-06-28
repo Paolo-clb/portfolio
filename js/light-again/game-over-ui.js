@@ -227,7 +227,7 @@
     // (a scene restart reuses the same context — full reopen needed to switch).
     var aaCb = panel.querySelector('#_la-go-aa');
     if (aaCb) {
-      try { aaCb.checked = (localStorage.getItem('la_antialias') === '1'); } catch (e) { /* ignore */ }
+      try { aaCb.checked = (localStorage.getItem('la_antialias') !== '0'); } catch (e) { aaCb.checked = true; }
       aaCb.addEventListener('change', function () {
         try { localStorage.setItem('la_antialias', aaCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
       });

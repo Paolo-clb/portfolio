@@ -155,6 +155,7 @@
     // all their state guards — DEAD / cooldown / TW-locked — apply unchanged).
     if (rt && !prev.rt) this._tryAttack();                       // torpedo, along aim (manual, as before)
     if (lt && !prev.lt) this._tryDash();                         // dash, along movement
+    this._padDashHeld = lt;                                       // held LT → dash-attack at the dash's end (_dashHeld)
     if ((lb && !prev.lb) || (rb && !prev.rb)) this._tryTimeStop(); // The World
 
     // RIGHT-STICK = aim AND auto-fire. Deflecting the right stick faces the arrow

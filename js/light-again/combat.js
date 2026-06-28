@@ -398,8 +398,7 @@
     this._spawnWaveRing(ex, ey, { maxRadius: 190, color: 0xffffff,  expandTime: 0.32 });
     this._applyShockwave(ex, ey, C.SHOCKWAVE_RADIUS * 2.4, C.SHOCKWAVE_FORCE, C.SHOCKWAVE_STUN);
     if (!isLast) {
-      this._bossKillBanner(ex, ey - 56, (opts.label || 'BOSS DOWN') + '  +' + pts,
-                           opts.color || '#ffffff', opts.glow || opts.color);
+      this._bossBigScore(opts.label || 'BOSS DOWN', pts, opts.color || '#ffffff');
     }
     return pts;
   };
@@ -468,9 +467,8 @@
     // Grow the per-boss clear multiplier for the NEXT boss clear (×2 → ×3 → …).
     this._bossClearMult = (this._bossClearMult || 2) + 1;
 
-    // Grand-total banner (boss + everything the wave cleared).
-    this._bossKillBanner(ex, ey - 56, (opts.label || 'BOSS DOWN') + '  +' + total,
-                         opts.color || '#ffffff', opts.glow || opts.color);
+    // Grand-total score (boss + everything the wave cleared) — sticky big popup up top.
+    this._bossBigScore(opts.label || 'BOSS DOWN', total, opts.color || '#ffffff');
 
     // Advance the kill counter for the next event (so kills made during the fight
     // don't shorten the gap), then the single reward draft for the whole team.
@@ -697,6 +695,44 @@
         txt.destroy();
       },
     });
+  };
+
+  /* Boss kill score — a BIG sticky popup pinned near the TOP of the screen (like
+     the NUKE callout, but a notch larger than the classic big-score). Replaces the
+     old world-space boss banner so the number reads clearly up top on every device.
+     Stacks downward; wraps so a long boss name never clips on a narrow screen. */
+  M._bossBigScore = function (label, pts, color) {
+    if (!this.cameras || !this.cameras.main) return;   // torn down mid-delay
+    var cam = this.cameras.main;
+    var sx = cam.width / 2;
+    var topY = cam.height * 0.17;
+    var slotGap = 46, maxSlots = 5;
+    if (!this._bossScoreSlots) this._bossScoreSlots = [];
+    var slot = 0;
+    while (slot < maxSlots && this._bossScoreSlots[slot]) slot++;
+    if (slot >= maxSlots) slot = maxSlots - 1;   // full → pile on the last slot
+    var sy = topY + slot * slotGap;
+    var col = color || '#ffd24d';
+    var self = this;
+    var txt = this.add.text(sx, sy, '+' + pts + '  ' + label, {
+      fontFamily: 'monospace', fontSize: '34px', fontStyle: 'bold', color: col,
+      stroke: '#000000', strokeThickness: 4, align: 'center',
+      shadow: { offsetX: 0, offsetY: 2, color: col, blur: 14, fill: true },
+      wordWrap: { width: cam.width * 0.92, useAdvancedWrap: true },
+    });
+    txt.setOrigin(0.5, 0); txt.setDepth(106);
+    txt.setScrollFactor(0);
+    txt.setAlpha(0); txt.setScale(0.6);
+    this._bossScoreSlots[slot] = txt; txt._bossSlot = slot;
+    this.tweens.add({ targets: txt, scaleX: 1, scaleY: 1, alpha: 1, duration: 300, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: txt, alpha: 0, y: sy - 24, scaleX: 0.85, scaleY: 0.85,
+      duration: 700, ease: 'Cubic.easeIn', delay: 2000,
+      onComplete: function () {
+        // Only free the slot if WE still own it (a later popup may have reused it
+        // when all slots were full — don't null its ref out from under it).
+        if (self._bossScoreSlots && self._bossScoreSlots[txt._bossSlot] === txt) self._bossScoreSlots[txt._bossSlot] = null;
+        txt.destroy();
+      } });
   };
 
   M._breakCombo = function () {

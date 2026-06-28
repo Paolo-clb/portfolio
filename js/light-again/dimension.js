@@ -690,10 +690,14 @@
   M._dimShowBanner = function () {
     var cam = this.cameras.main;
     if (this._dimBannerTxt) { this._dimBannerTxt.destroy(); this._dimBannerTxt = null; }
-    var txt = this.add.text(cam.width / 2, cam.height * 0.42, 'DIMENSION FRACTURÉE', {
+    // Sits in the UPPER area (0.24): clears the Anomaly's objective banner (0.40)
+    // when the Anomaly leads the first fractured-dimension wave — they used to
+    // overlap. Wraps on a narrow (portrait) screen so the wide title never clips.
+    var txt = this.add.text(cam.width / 2, cam.height * 0.24, 'DIMENSION FRACTURÉE', {
       fontFamily: 'monospace', fontSize: '46px', fontStyle: 'bold',
       color: '#f0d6ff', stroke: '#1a0030', strokeThickness: 6,
       shadow: { offsetX: 0, offsetY: 0, color: '#e24dff', blur: 22, fill: true },
+      align: 'center', wordWrap: { width: cam.width * 0.9, useAdvancedWrap: true },
     });
     txt.setOrigin(0.5, 0.5); txt.setScrollFactor(0); txt.setDepth(110);
     txt.setAlpha(0); txt.setScale(0.6);

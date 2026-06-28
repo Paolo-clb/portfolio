@@ -36,6 +36,12 @@
 
   M._tryDash = function () {
     var p = this.p;
+    if (p.state === 'DEAD') return;
+    // A 2nd dash press DURING a dash (or in the brief post-dash coyote window)
+    // fires a DASH-ATTACK — so a quick double-tap of dash dash-attacks (and cuts
+    // the dash short), exactly like pressing attack mid-dash. See also the
+    // hold-dash auto-trigger at the dash's end (scene.js).
+    if (p.state === 'DASHING' || p.dashCoyote) { this._triggerDashAtk(); return; }
     if (!p.dashAvailable || p.state !== 'MOVING') return;
     var inp = this._inputVec();
     var dx = inp.dx, dy = inp.dy;
@@ -143,6 +149,17 @@
     p.dashTimer = 0;
     p.dashCooldown = C.DASH_CD * (dashUpLvl >= 1 ? 0.70 : 1.0) * (this._dashCdMult || 1);  // Dash Lv1 + dashRage curse
     p.dashCoyote = false; p.dashInvinc = false;
+  };
+
+  // Is a DASH input currently HELD down? (any of the bindings). Drives the
+  // "hold dash → dash-attack at the end of the dash" behaviour (scene.js).
+  M._dashHeld = function () {
+    var k = this._keys;
+    if (k && (k['Space'] || k['ShiftLeft'] || k['ShiftRight'])) return true;
+    if (this._rmbDown) return true;                       // PC right-mouse dash held
+    if (this._touch && this._touch.dashHeld) return true; // mobile dash button held
+    if (this._padDashHeld) return true;                   // gamepad left-trigger held
+    return false;
   };
 
   M._damagePlayer = function (nx, ny) {

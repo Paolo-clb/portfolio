@@ -641,7 +641,7 @@
     // (re)created, so it takes effect the next time Light Again is opened.
     var aaCb = menuEl.querySelector('#_la-ms-aa-cb');
     if (aaCb) {
-      try { aaCb.checked = (localStorage.getItem('la_antialias') === '1'); } catch (e) { /* ignore */ }
+      try { aaCb.checked = (localStorage.getItem('la_antialias') !== '0'); } catch (e) { aaCb.checked = true; }
       aaCb.addEventListener('change', function () {
         try { localStorage.setItem('la_antialias', aaCb.checked ? '1' : '0'); } catch (e) { /* ignore */ }
       });

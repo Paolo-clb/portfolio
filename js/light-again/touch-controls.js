@@ -51,7 +51,7 @@
     this._touchUI = null;
     this._touch = {
       stickId: null, baseX: 0, baseY: 0, dx: 0, dy: 0,
-      atkId: null, atkHeld: false, dashEdge: false, twEdge: false, autoFireCd: 0,
+      atkId: null, atkHeld: false, dashEdge: false, dashHeld: false, twEdge: false, autoFireCd: 0,
       spawnId: null,
     };
     if (!isTouchDevice()) return;
@@ -223,8 +223,19 @@
       btn.addEventListener('touchend', up, { passive: false });
       btn.addEventListener('touchcancel', up, { passive: false });
     };
-    tapBtn(dashBtn, function () { t.dashEdge = true; });
     tapBtn(twBtn,   function () { t.twEdge = true; });
+
+    // Dash button: edge-trigger _tryDash AND track the HELD state, so "hold dash →
+    // dash-attack at the end of the dash" works (player.js _dashHeld) and the
+    // dash-attack-ready purple tint can show. (A 2nd tap mid-dash dash-attacks now.)
+    dashBtn.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      t.dashEdge = true; t.dashHeld = true;
+      dashBtn.classList.add('la-touch__btn--press');
+    }, { passive: false });
+    var endDash = function () { t.dashHeld = false; dashBtn.classList.remove('la-touch__btn--press'); };
+    dashBtn.addEventListener('touchend', endDash, { passive: false });
+    dashBtn.addEventListener('touchcancel', endDash, { passive: false });
 
     /* Clear-board button (sandbox only — gated exactly like Delete/Backspace in
        scene.js: blocked mid-tutorial except the final free-play step). */
@@ -293,7 +304,7 @@
     if (menu) {
       if (ui.root.style.display !== 'none') ui.root.style.display = 'none';
       this._padMove.dx = 0; this._padMove.dy = 0;
-      t.atkHeld = false; t.dashEdge = false; t.twEdge = false; t.stickId = null;
+      t.atkHeld = false; t.dashEdge = false; t.dashHeld = false; t.twEdge = false; t.stickId = null;
       ui.stick.classList.remove('la-touch__stick--on');
       return;
     }
@@ -326,6 +337,16 @@
       if (dashing || t.autoFireCd <= 0) { this._tryAttack(); t.autoFireCd = TOUCH_AUTOFIRE_CD; }
     } else {
       t.autoFireCd = 0;
+    }
+
+    // Dash-attack-ready cue: while DASHING (or in the post-dash coyote window) a tap
+    // on ATTACK *or* a 2nd tap on DASH fires a dash-attack — recolour both buttons
+    // purple so the player sees exactly when that's armed.
+    var datkReady = !!(this.p && (this.p.state === 'DASHING' || this.p.dashCoyote));
+    if (ui._datkReady !== datkReady) {
+      ui._datkReady = datkReady;
+      ui.atk.classList.toggle('la-touch__btn--datk', datkReady);
+      ui.dash.classList.toggle('la-touch__btn--datk', datkReady);
     }
 
     this._updateTouchTwButton();

@@ -649,13 +649,13 @@
         keys:  fr ? ['Clic gauche  (pendant un dash)'] : ['Left click  (during a dash)'],
         pad:   fr ? ['Dash, puis stick droit'] : ['Dash, then right stick'],
         desc:  fr
-          ? 'Clique pendant un <span class="c-dash">dash</span> : la <span class="c-datk">dash-attaque</span> est plus rapide, plus large, et traverse les ennemis. <b>⚠️ Récupération plus longue qu’une attaque ratée.</b> <span style="color:#c9bcff">🎮 En manette : <b>dash</b> (gâchette gauche) puis pousse vite le <b>stick droit</b> vers la cible.</span>'
-          : 'Click during a <span class="c-dash">dash</span>: the <span class="c-datk">dash-attack</span> is faster, wider, and pierces enemies. <b>⚠️ A longer recovery than a missed attack.</b> <span style="color:#c9bcff">🎮 On a pad: <b>dash</b> (left trigger) then quickly push the <b>right stick</b> toward the target.</span>',
-        mkeys: fr ? ['Dash + attaque'] : ['Dash + attack'],
+          ? 'Clique pendant un <span class="c-dash">dash</span> — ou <b>double-clique le dash</b> / <b>maintiens-le</b> : la <span class="c-datk">dash-attaque</span> est plus rapide, plus large, et traverse les ennemis. <b>⚠️ Récupération plus longue qu’une attaque ratée.</b> <span style="color:#c9bcff">🎮 En manette : <b>dash</b> (gâchette gauche) puis pousse vite le <b>stick droit</b> vers la cible.</span>'
+          : 'Click during a <span class="c-dash">dash</span> — or <b>double-tap dash</b> / <b>hold it</b>: the <span class="c-datk">dash-attack</span> is faster, wider, and pierces enemies. <b>⚠️ A longer recovery than a missed attack.</b> <span style="color:#c9bcff">🎮 On a pad: <b>dash</b> (left trigger) then quickly push the <b>right stick</b> toward the target.</span>',
+        mkeys: fr ? ['Double-tap dash'] : ['Double-tap dash'],
         glow:  ['dash', 'atk'],
         mdesc: fr
-          ? 'Appuie sur <b>attaque pendant un dash</b> : la <span class="c-datk">dash-attaque</span> est plus rapide, plus large, et traverse les ennemis. <b>⚠️ Récupération plus longue.</b>'
-          : 'Tap <b>attack during a dash</b>: the <span class="c-datk">dash-attack</span> is faster, wider, and pierces enemies. <b>⚠️ Longer recovery.</b>',
+          ? 'Appuie sur <b>attaque pendant un dash</b> — ou <b>double-tape</b> / <b>maintiens</b> le bouton dash (il brille en <span style="color:#d7a6ff">violet</span> quand c’est prêt). La <span class="c-datk">dash-attaque</span> est plus rapide, plus large, et traverse les ennemis. <b>⚠️ Récupération plus longue.</b>'
+          : 'Tap <b>attack during a dash</b> — or <b>double-tap</b> / <b>hold</b> the dash button (it glows <span style="color:#d7a6ff">purple</span> when ready). The <span class="c-datk">dash-attack</span> is faster, wider, and pierces enemies. <b>⚠️ Longer recovery.</b>',
         setup: function () { self._tutSpawnOne(1, 360); },
         check: function () { return !!d().dashAtkHit; },
         maintain: function () { if (self._tutCountTier(1) === 0) self._tutSpawnOne(1, 360); },

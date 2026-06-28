@@ -604,7 +604,10 @@ body.hero-in-view .light-again-btn {
   .light-again-modal > .modal__close { display: none !important; }
 
   .light-again-help-btn {
-    top: max(1.7rem, calc(env(safe-area-inset-top, 0px) + 1.1rem));
+    /* Align in height with the top-left audio visualizer (top:2px) and the FPS/score
+       counter row. The game canvas already sits below the status bar, so DON'T add a
+       safe-area offset (that was pushing ? / ⏸ well below that top row). */
+    top: 1.7rem;
   }
 
   /* no menu (hardcore / launch): ? → slot 0, ⏸ → slot 1 */
@@ -1205,6 +1208,16 @@ body.hero-in-view .light-again-btn {
   transform: scale(0.94);
 }
 
+/* Dash-attack-ready (mid-dash / post-dash coyote): the attack + dash buttons turn
+   PURPLE so the player clearly sees a tap will fire a DASH-ATTACK, not a plain
+   attack/dash. Driven by .la-touch__btn--datk in _pollTouch. */
+.la-touch__btn--datk {
+  color: #d7a6ff;
+  border-color: #b45cff;
+  background: color-mix(in srgb, #b45cff 22%, rgba(10, 14, 22, 0.55));
+  box-shadow: 0 0 20px 3px rgba(180, 92, 255, 0.5);
+}
+
 /* Attack — biggest, bottom-right corner. Dash to its left. The World above dash. */
 .la-touch__atk  { right: 0;    bottom: 0;   width: 96px; height: 96px; }
 .la-touch__dash { right: 112px; bottom: 8px; width: 80px; height: 80px; }
@@ -1234,13 +1247,21 @@ body.hero-in-view .light-again-btn {
   .la-touch__btns { bottom: calc(env(safe-area-inset-bottom, 0px) + 40px); }
 }
 
+/* Landscape: lots of horizontal room — shift the dash + attack cluster a bit
+   further LEFT so the thumb reaches them comfortably (was hugging the right edge). */
+@media (orientation: landscape) {
+  .la-touch__btns { right: calc(env(safe-area-inset-right, 0px) + 64px); }
+}
+
 /* ---- Sandbox-only tools (Clear + spawn-rate slider), upper-right edge ----
    Only shown in sandbox (the JS toggles display). Sits above the bottom action
    cluster; movement lives on the left, so this never fights the joystick. */
 .la-touch__sandbox {
   position: absolute;
   right: calc(env(safe-area-inset-right, 0px) + 12px);
-  top: 13%;
+  /* Fixed offset BELOW the top-right header buttons (?, ⏸ end ~4.2rem) so it never
+     overlaps them — the old top:13% collided with the header on short landscape. */
+  top: 5.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;

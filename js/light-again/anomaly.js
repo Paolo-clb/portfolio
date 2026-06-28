@@ -708,6 +708,11 @@
       var t = self.add.text(cam.width / 2, cam.height * 0.40, '', {
         fontFamily: 'monospace', fontSize: '26px', fontStyle: 'bold',
         color: '#ffffff', stroke: '#000000', strokeThickness: 3, align: 'center',
+        // Wrap to the viewport so the long objective line ("TUEZ TOUS LES ENNEMIS…")
+        // breaks onto 2 lines on a narrow (portrait) screen instead of being clipped.
+        // 0.84 leaves margin for the ×1.1 pop-in scale + the chroma offsets. On a
+        // wide/landscape screen it still fits on one line.
+        wordWrap: { width: cam.width * 0.84, useAdvancedWrap: true },
       });
       t.setScrollFactor(0); t.setOrigin(0.5); t.setDepth(depth);
       t.setBlendMode(Phaser.BlendModes.ADD);

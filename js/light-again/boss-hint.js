@@ -62,17 +62,17 @@
     var st = document.createElement('style');
     st.id = '_la-boss-hint-styles';
     st.textContent = [
-      '@keyframes la-bh-in{from{opacity:0;transform:translate(-50%,26px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}',
-      '@keyframes la-bh-out{from{opacity:1;transform:translate(-50%,0) scale(1)}to{opacity:0;transform:translate(-50%,18px) scale(.97)}}',
+      '@keyframes la-bh-in{from{opacity:0;transform:translate(-50%,-26px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}',
+      '@keyframes la-bh-out{from{opacity:1;transform:translate(-50%,0) scale(1)}to{opacity:0;transform:translate(-50%,-18px) scale(.97)}}',
       '@keyframes la-bh-glow{0%,100%{box-shadow:0 0 0 1px var(--bh-col-soft),0 10px 34px -6px rgba(0,0,0,.7),0 0 18px -2px var(--bh-col-glow)}50%{box-shadow:0 0 0 1px var(--bh-col-line),0 10px 34px -6px rgba(0,0,0,.7),0 0 34px 2px var(--bh-col-glow)}}',
       '@keyframes la-bh-sheen{0%{transform:translateX(-120%)}60%,100%{transform:translateX(220%)}}',
 
-      '#_la-boss-hint{position:absolute;left:50%;bottom:5.6rem;transform:translateX(-50%);' +
+      '#_la-boss-hint{position:absolute;left:50%;top:5.6rem;bottom:auto;transform:translateX(-50%);' +
         'z-index:54;pointer-events:none;font-family:monospace;' +
         'width:min(560px,86%);box-sizing:border-box;' +
-        'padding:1rem 1.15rem 1.05rem;border-radius:14px;overflow:hidden;' +
+        'padding:1rem 2.2rem 1.05rem 1.15rem;border-radius:14px;overflow:hidden;' +   /* extra right pad for the × */
         'border:1.5px solid var(--bh-col-line);' +
-        'background:linear-gradient(160deg,rgba(8,10,16,.94),rgba(14,12,22,.97));' +
+        'background:linear-gradient(160deg,rgba(8,10,16,.58),rgba(14,12,22,.62));' +   /* more transparent */
         'backdrop-filter:blur(3px);' +
         'animation:la-bh-in .46s cubic-bezier(.22,1,.36,1) both,la-bh-glow 2.6s ease-in-out infinite .46s}',
       '#_la-boss-hint.la-bh-closing{animation:la-bh-out .42s ease-in both!important}',
@@ -100,18 +100,20 @@
       '#_la-boss-hint .la-bh-life{position:absolute;left:0;bottom:0;height:3px;width:100%;transform-origin:left center;' +
         'background:var(--bh-col);box-shadow:0 0 10px var(--bh-col-glow);opacity:.85}',
 
-      /* Mobile (touch): the card must never eat the whole — short, esp. landscape —
-         screen. Force a compact scale for the hint subtree, which ALSO tames the
-         "Gros texte" (--la-ui-scale 1.3) blow-up that made it full-screen, and tuck
-         it just above the on-screen buttons. */
-      '@media (pointer: coarse){#_la-boss-hint{--la-ui-scale:.85;width:min(500px,94%);' +
-        'bottom:max(4.2rem,calc(env(safe-area-inset-bottom) + 0.6rem));padding:.7rem .9rem .8rem;' +
+      /* in-game close × (the card is otherwise pointer-events:none, so it opts back in) */
+      '#_la-boss-hint .la-bh-close{position:absolute;top:.3rem;right:.4rem;width:1.55rem;height:1.55rem;' +
+        'display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;pointer-events:auto;' +
+        'font-size:calc(1.05rem * var(--la-ui-scale));line-height:1;font-weight:700;color:var(--bh-col);' +
+        'background:rgba(0,0,0,.28);border:1px solid var(--bh-col-soft);transition:background .15s,transform .15s}',
+      '#_la-boss-hint .la-bh-close:hover,#_la-boss-hint .la-bh-close:active{' +
+        'background:var(--bh-col);color:#08060a;transform:scale(1.12)}',
+
+      /* Mobile (touch): compact scale (also tames the "Gros texte" 1.3 blow-up that
+         made it full-screen) and tuck it just under the top score HUD — the card is
+         already top-anchored, clear of the bottom controls in both orientations. */
+      '@media (pointer: coarse){#_la-boss-hint{--la-ui-scale:.85;width:min(460px,94%);' +
+        'top:max(4.6rem,calc(env(safe-area-inset-top) + 4.4rem));padding:.7rem 1.9rem .8rem .9rem;' +
         'border-radius:12px}}',
-      /* Portrait: the dash / attack / The-World buttons live bottom-right and the
-         joystick bottom-left, so a bottom-anchored card sits right on them. Pin the
-         card to the TOP instead (just under the score HUD), clear of every control. */
-      '@media (pointer: coarse) and (orientation: portrait){#_la-boss-hint{' +
-        'top:max(4.8rem,calc(env(safe-area-inset-top) + 4.6rem));bottom:auto;width:min(440px,92%)}}',
     ].join('');
     document.head.appendChild(st);
   }
@@ -223,10 +225,20 @@
         '<span class="la-bh-name">' + esc(fr ? data.nameFr : data.nameEn) + '</span>' +
       '</div>' +
       '<div class="la-bh-desc">' + (fr ? data.descFr : data.descEn) + '</div>' +
-      '<span class="la-bh-life"></span>';
+      '<span class="la-bh-life"></span>' +
+      '<span class="la-bh-close" role="button" aria-label="' + (fr ? 'Fermer' : 'Close') + '">×</span>';
 
     container.style.position = 'relative';
     container.appendChild(box);
+
+    // In-game dismiss: the × closes the card immediately (mouse + touch).
+    var selfH = this;
+    var closeEl = box.querySelector('.la-bh-close');
+    if (closeEl) {
+      var onClose = function (e) { e.preventDefault(); e.stopPropagation(); selfH._dismissBossHint(); };
+      closeEl.addEventListener('click', onClose);
+      closeEl.addEventListener('touchstart', onClose, { passive: false });
+    }
 
     this._bossHintBox     = box;
     this._bossHintLifeEl  = box.querySelector('.la-bh-life');

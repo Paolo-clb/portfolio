@@ -383,6 +383,7 @@
       // Phaser already destroyed on shutdown (truthy → treated as live slots →
       // bogus evictions + destroy() on dead objects). Reset them with the run.
       this._bigScoreSlots = null;   // float "+score LABEL!" popup slots
+      this._bossScoreSlots = null;  // sticky boss big-score slots (same stale-ref reset)
       this._paradeBufs    = null;   // per-dash-attack PARADE accumulation buckets
       this._paradePending = null;   // per-dash-attack in-flight reflected-shot counts
 
@@ -694,8 +695,13 @@
       this.input.on('pointerdown', function (ptr) {
         if (isTouchPtr(ptr)) return;
         if (ptr.leftButtonDown())   self._tryAttack();
-        if (ptr.rightButtonDown())  self._tryDash();
+        if (ptr.rightButtonDown())  { self._rmbDown = true; self._tryDash(); }
         if (ptr.middleButtonDown()) self._tryTimeStop();
+      });
+      // Track the right-mouse held state so "hold dash → dash-attack at the end"
+      // works with the right-click dash binding too (_dashHeld in player.js).
+      this.input.on('pointerup', function (ptr) {
+        if (!ptr.rightButtonDown()) self._rmbDown = false;
       });
 
       // Canvas persists across scene.restart() — keep a ref so we can detach on shutdown
@@ -1120,12 +1126,21 @@
         }
         if (p.dashTimer <= 0) {
           var dashUpLvl = (this._upgradeLevels && this._upgradeLevels.dash) || 0;
-          p.state = 'MOVING'; p.dashCooldown = C.DASH_CD * (dashUpLvl >= 1 ? 0.70 : 1.0) * (this._dashCdMult || 1);
-          p.invincible = true; p.invincTimer = 220 + (this._dashIframeBonus || 0); p.dashInvinc = true;   // dashRage curse adds i-frames
-          p.dashCoyote = true; // coyote window: attack within post-dash iframes → Dash-Attack
+          // Dash Lv2 tornado (every 3rd dash) fires regardless of how the dash ends.
           if (dashUpLvl >= 2) {
             this._dashTornadoCounter = (this._dashTornadoCounter || 0) + 1;
             if (this._dashTornadoCounter % 3 === 0) { this._spawnDashTornado(p.x, p.y); }
+          }
+          // Still HOLDING dash at the end of the dash → auto dash-attack at the
+          // latest possible moment (the longest-range dash-attack). Releasing in
+          // time keeps it a plain dash. (Double-tapping dash mid-dash fires it
+          // immediately instead — see _tryDash.)
+          if (this._dashHeld && this._dashHeld()) {
+            this._triggerDashAtk();
+          } else {
+            p.state = 'MOVING'; p.dashCooldown = C.DASH_CD * (dashUpLvl >= 1 ? 0.70 : 1.0) * (this._dashCdMult || 1);
+            p.invincible = true; p.invincTimer = 220 + (this._dashIframeBonus || 0); p.dashInvinc = true;   // dashRage curse adds i-frames
+            p.dashCoyote = true; // coyote window: attack within post-dash iframes → Dash-Attack
           }
         }
       }
@@ -1481,13 +1496,12 @@
             transparent: false,
             render: {
               powerPreference: 'high-performance',
-              // Antialias is OFF by default (fill-rate-bound ADD-blend game — the
-              // per-frame MSAA resolve costs more than the smooth edges are worth,
-              // biggest win on weak/integrated/mobile GPUs). The player can re-enable
-              // it via the "Anticrénelage" toggle (menu + game-over); that only sets
-              // localStorage, so it's read HERE at WebGL-context creation and takes
-              // effect on the next game launch (reopen). Trade-off: slightly jaggier edges.
-              antialias: (function () { try { return localStorage.getItem('la_antialias') === '1'; } catch (e) { return false; } })(),
+              // Antialias is ON by default (smoother edges); the player can turn it
+              // OFF via the "Anticrénelage" toggle (menu + game-over) on a weak GPU —
+              // the per-frame MSAA resolve is fill-rate cost in this ADD-blend game.
+              // The toggle only sets localStorage, read HERE at WebGL-context creation,
+              // so it takes effect on the next game launch (reopen). Unset = ON.
+              antialias: (function () { try { return localStorage.getItem('la_antialias') !== '0'; } catch (e) { return true; } })(),
             },
             scale: {
               mode: Phaser.Scale.RESIZE,
