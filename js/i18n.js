@@ -161,10 +161,10 @@ window.SITE_I18N = {
 
     // Mode select
     laModeSelectTitle:    'Mode de jeu',
-    laModeSandboxDesc:    'Respawn à la mort · Score libre · Entraînement',
-    laModeHardcoreDesc:   'Mort définitive · Classement mondial',
+    laModeSandboxDesc:    'Respawn · Entraînement',
+    laModeHardcoreDesc:   'Mort définitive · Classement',
     laModeHardcoreLocked: 'Verrouillé',
-    laModeBossRushDesc:   'Vagues de boss à l’infini · Mort définitive · Classement',
+    laModeBossRushDesc:   'Vagues de boss · Classement',
     laModeBossRushLocked: 'Verrouillé',
     laModeBack:           '← Reprendre',
     laModeResume:         'Reprendre',
@@ -426,7 +426,7 @@ window.SITE_I18N = {
     laModeSandboxDesc:    'Respawn on death · Practice',
     laModeHardcoreDesc:   'Permadeath · leaderboard',
     laModeHardcoreLocked: 'Locked',
-    laModeBossRushDesc:   'Endless boss waves · Leaderboard',
+    laModeBossRushDesc:   'Boss waves · Leaderboard',
     laModeBossRushLocked: 'Locked',
     laModeBack:           '← Resume',
     laModeResume:         'Resume',
